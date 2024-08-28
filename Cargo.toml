@@ -1,0 +1,18 @@
+[package]
+name = "gorder"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/Ladme/gorder"
+keywords = ["gromacs", "molecular-dynamics"]
+categories = ["command-line-utilities", "science"]
+exclude = ["/tests"]
+
+[dependencies]
+backitup = "0.1.1"
+groan_rs = { version = "0.8.2", features = ["parallel"] }
+clap = { version = "4.5.16", features = ["derive"] }
+colored = "2.1"
+thiserror = "1.0.63"
+derive_builder = "0.20.0"
+getset = "0.1.2"
