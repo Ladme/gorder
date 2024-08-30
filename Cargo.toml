@@ -11,8 +11,8 @@ exclude = ["/tests"]
 [dependencies]
 backitup = "0.1.1"
 groan_rs = { version = "0.8.2", features = ["parallel"] }
-clap = { version = "4.5.16", features = ["derive"] }
 colored = "2.1"
 thiserror = "1.0.63"
 derive_builder = "0.20.0"
 getset = "0.1.2"
+log = "0.4.22"

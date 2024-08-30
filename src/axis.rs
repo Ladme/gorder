@@ -7,6 +7,8 @@ use std::fmt;
 
 use groan_rs::prelude::{Dimension, Vector3D};
 
+use crate::auxiliary::PANIC_MESSAGE;
+
 /// X, Y, or Z axis.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Axis {
@@ -55,7 +57,7 @@ impl From<Dimension> for Axis {
             Dimension::X => Axis::X,
             Dimension::Y => Axis::Y,
             Dimension::Z => Axis::Z,
-            unknown => panic!("FATAL GORDER ERROR | Axis::from::<Dimension> | Dimension '{}' could not be converted to Axis. {}", unknown, crate::PANIC_MESSAGE),
+            unknown => panic!("FATAL GORDER ERROR | Axis::from::<Dimension> | Dimension '{}' could not be converted to Axis. {}", unknown, PANIC_MESSAGE),
         }
     }
 }
@@ -70,7 +72,7 @@ impl From<&str> for Axis {
             unknown => panic!(
                 "FATAL GORDER ERROR | Axis::from::<&str> | String '{}' could not be converted to Axis. {}",
                 unknown,
-                crate::PANIC_MESSAGE
+                PANIC_MESSAGE
             ),
         }
     }

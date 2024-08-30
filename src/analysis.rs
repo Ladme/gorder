@@ -6,6 +6,11 @@
 use colored::Colorize;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
+use groan_rs::files::FileType;
+use groan_rs::system::System;
+
+use crate::auxiliary::PANIC_MESSAGE;
+use crate::molecule::Molecule;
 
 use super::axis::Axis;
 use super::leaflets::LeafletClassification;
@@ -34,6 +39,10 @@ pub struct Analysis {
     #[builder(setter(into, strip_option), default)]
     #[getset(get = "pub")]
     index: Option<String>,
+    /// Path to an output YAML file where the results of the analysis will be written.
+    #[builder(setter(into))]
+    #[getset(get = "pub")]
+    output: String,
     /// Type of the analysis to perform (AAOrder / CGOrder).
     #[getset(get_copy = "pub")]
     analysis_type: AnalysisType,
@@ -101,6 +110,14 @@ pub struct Analysis {
 impl Analysis {
     pub fn new() -> AnalysisBuilder {
         AnalysisBuilder::default()
+    }
+
+    /// Perform the analysis and write out the results.
+    pub fn analyze(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        match self.analysis_type() {
+            AnalysisType::AAOrder => crate::aaorder::analyze_atomistic(self),
+            AnalysisType::CGOrder => todo!("Implement CG order calculation."),
+        }
     }
 }
 
@@ -190,6 +207,7 @@ mod tests_builder {
         let analysis = Analysis::new()
             .structure("system.tpr")
             .trajectory("md.xtc")
+            .output("order.yaml")
             .analysis_type(AnalysisType::AAOrder)
             .heavy_atoms("@membrane and element name carbon")
             .hydrogens("@membrane and element name hydrogen")
@@ -199,6 +217,7 @@ mod tests_builder {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert!(analysis.index().is_none());
+        assert_eq!(analysis.output(), "order.yaml");
         assert_eq!(analysis.analysis_type(), AnalysisType::AAOrder);
         assert_eq!(analysis.membrane_normal(), Axis::Z);
         assert_eq!(
@@ -225,6 +244,7 @@ mod tests_builder {
             .structure("system.tpr")
             .trajectory("md.xtc")
             .index("index.ndx")
+            .output("order.yaml")
             .analysis_type(AnalysisType::CGOrder)
             .atoms("@membrane")
             .membrane_normal(Axis::X)
@@ -253,6 +273,7 @@ mod tests_builder {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
+        assert_eq!(analysis.output(), "order.yaml");
         assert_eq!(analysis.analysis_type(), AnalysisType::CGOrder);
         assert_eq!(analysis.membrane_normal(), Axis::X);
         assert!(analysis.heavy_atoms().is_none());
@@ -286,6 +307,7 @@ mod tests_builder {
             .structure("system.tpr")
             .trajectory("md.xtc")
             .atoms("@membrane")
+            .output("order.yaml")
             .build()
         {
             Ok(_) => panic!("Should have failed, but succeeded."),
@@ -299,6 +321,7 @@ mod tests_builder {
         match Analysis::new()
             .structure("system.tpr")
             .trajectory("md.xtc")
+            .output("order.yaml")
             .analysis_type(AnalysisType::AAOrder)
             .hydrogens("@membrane and element name hydrogen")
             .build()
@@ -314,6 +337,7 @@ mod tests_builder {
         match Analysis::new()
             .structure("system.tpr")
             .trajectory("md.xtc")
+            .output("order.yaml")
             .analysis_type(AnalysisType::AAOrder)
             .heavy_atoms("@membrane and element name carbon")
             .build()
@@ -333,6 +357,7 @@ mod tests_builder {
             .heavy_atoms("@membrane and element name carbon")
             .hydrogens("@membrane and element name hydrogen")
             .atoms("@membrane")
+            .output("order.yaml")
             .build()
         {
             Ok(_) => panic!("Should have failed, but succeeded."),
@@ -348,6 +373,7 @@ mod tests_builder {
             .trajectory("md.xtc")
             .analysis_type(AnalysisType::CGOrder)
             .hydrogens("@membrane and element name hydrogen")
+            .output("order.yaml")
             .build()
         {
             Ok(_) => panic!("Should have failed, but succeeded."),
@@ -364,6 +390,7 @@ mod tests_builder {
             .analysis_type(AnalysisType::CGOrder)
             .atoms("@membrane")
             .hydrogens("@membrane and element name hydrogen")
+            .output("order.yaml")
             .build()
         {
             Ok(_) => panic!("Should have failed, but succeeded."),
@@ -380,6 +407,7 @@ mod tests_builder {
             .analysis_type(AnalysisType::CGOrder)
             .atoms("@membrane")
             .heavy_atoms("@membrane and element name carbon")
+            .output("order.yaml")
             .build()
         {
             Ok(_) => panic!("Should have failed, but succeeded."),
