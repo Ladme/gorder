@@ -267,6 +267,7 @@ dependencies = [
  "derive_builder",
  "getset",
  "groan_rs",
+ "hashbrown",
  "log",
  "thiserror",
 ]

@@ -6,11 +6,6 @@
 use colored::Colorize;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
-use groan_rs::files::FileType;
-use groan_rs::system::System;
-
-use crate::auxiliary::PANIC_MESSAGE;
-use crate::molecule::Molecule;
 
 use super::axis::Axis;
 use super::leaflets::LeafletClassification;

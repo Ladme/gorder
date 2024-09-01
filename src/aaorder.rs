@@ -7,7 +7,12 @@ use std::collections::HashSet;
 
 use groan_rs::{files::FileType, structures::group::Group, system::System};
 
-use crate::{auxiliary::{macros::group_name, GORDER_GROUP_PREFIX, PANIC_MESSAGE}, errors::TopologyError, molecule::{AtomType, BondType, Molecule}, Analysis};
+use crate::{
+    auxiliary::{macros::group_name, GORDER_GROUP_PREFIX, PANIC_MESSAGE},
+    errors::TopologyError,
+    molecule::{AtomType, BondType, Molecule},
+    Analysis,
+};
 
 /// Calculate the atomistic lipid order parameters.
 pub(crate) fn analyze_atomistic(
@@ -30,11 +35,23 @@ pub(crate) fn analyze_atomistic(
     )?;
 
     // check that heavy_atoms and hydrogens do not overlap
-    let _ = system.group_intersection(group_name!("HeavyAtoms"), group_name!("Hydrogens"), group_name!("Intersection"));
-    if system.group_get_n_atoms(group_name!("Intersection")).expect(PANIC_MESSAGE) != 0 {
+    let _ = system.group_intersection(
+        group_name!("HeavyAtoms"),
+        group_name!("Hydrogens"),
+        group_name!("Intersection"),
+    );
+    if system
+        .group_get_n_atoms(group_name!("Intersection"))
+        .expect(PANIC_MESSAGE)
+        != 0
+    {
         return Err(Box::from(TopologyError::AtomsOverlap {
             name1: "HeavyAtoms".to_owned(),
-            query1: analysis.heavy_atoms().as_ref().expect(PANIC_MESSAGE).clone(),
+            query1: analysis
+                .heavy_atoms()
+                .as_ref()
+                .expect(PANIC_MESSAGE)
+                .clone(),
             name2: "Hydrogens".to_owned(),
             query2: analysis.hydrogens().as_ref().expect(PANIC_MESSAGE).clone(),
         }));
@@ -45,12 +62,10 @@ pub(crate) fn analyze_atomistic(
     Ok(())
 }
 
-
-
 /*/// Modifies the HeavyAtoms group so it only contains heavy atoms that are connected to at least one hydrogen.
 /// Modifies the Hydrogens group so it only contains hydrogens that are connected to exactly one heavy atom.
 /// In case a hydrogen atom is connected to multiple heavy atoms, raises an error.
-/// 
+///
 /// ## Warning
 /// Only works if the `System` originates from a tpr file.
 fn filter_unconnected(system: &mut System, heavy_atoms: &str, hydrogens: &str) -> Result<(), TopologyError> {

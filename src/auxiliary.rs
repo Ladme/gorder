@@ -3,13 +3,13 @@
 
 //! Implementations of some commonly used functions.
 
-use std::collections::HashSet;
+use hashbrown::HashSet;
 
 use groan_rs::{errors::GroupError, system::System};
 
 use crate::{
     errors::TopologyError,
-    molecule::{AtomType, Molecule},
+    molecule::{AtomType, BondType, Molecule, MoleculeTopology, OrderAtoms, OrderBonds},
 };
 
 /// A prefix used as an identifier for Gorder groups.
@@ -64,49 +64,142 @@ pub(crate) fn create_group(
 
 /// ## Warning
 /// Only works if the `System` originates from a tpr file.
-fn classify_molecules(system: &System, group: &str) -> Result<HashSet<Molecule>, TopologyError> {
-    let group_name = format!("{}{}", GORDER_GROUP_PREFIX, group);
+fn classify_molecules(
+    system: &System,
+    group1: &str,
+    group2: &str,
+) -> Result<Vec<Molecule>, TopologyError> {
+    let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
+    let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
 
     let mut visited = HashSet::new();
-    let mut molecules = HashSet::new();
-    for atom in system.group_iter(&group_name).expect(PANIC_MESSAGE) {
+    let mut molecules: Vec<Molecule> = Vec::new();
+    for atom in system.group_iter(&group1_name).expect(PANIC_MESSAGE) {
         let index = atom.get_atom_number() - 1;
         if !visited.insert(index) {
             continue;
         }
 
-        let mut bonds = HashSet::new();
-        let mut atom_types: Vec<(usize, AtomType)> = vec![(index, AtomType::from(atom))];
-        let mut residues = vec![atom.get_residue_name()];
+        let mut all_bonds = HashSet::new();
+        let mut residues = Vec::new();
+        let mut order_atoms = Vec::new();
+        let mut minimum_index = index;
 
         // iterate through the molecule
         for atom2 in system.molecule_iter(index).expect(PANIC_MESSAGE) {
             let index2 = atom2.get_atom_number() - 1;
-            if !visited.insert(index2) {
-                panic!("FATAL GORDER ERROR | auxiliary::classify_molecules | `atom2` (index: {}) was visited before `atom` (index: {}) which is part of the same molecule. {}", 
-                index2, index, PANIC_MESSAGE);
+            visited.insert(index2);
+
+            if index2 < minimum_index {
+                minimum_index = index2;
             }
 
-            atom_types.push((index2, AtomType::from(atom2)));
             if !residues.contains(&atom2.get_residue_name()) {
                 residues.push(atom2.get_residue_name());
             }
 
-            if !bonds.insert((index, index2)) {
-                panic!("FATAL GORDER ERROR | auxiliary::classify_molecules | Bond between `atom` and `atom2` (indices: {} and {}) encountered multiple times in the molecule. {}",
-                index, index2, PANIC_MESSAGE);
+            if system
+                .group_isin(&group1_name, index2)
+                .expect(PANIC_MESSAGE)
+            {
+                order_atoms.push(index2);
+            }
+
+            for bonded in system.bonded_atoms_iter(index2).expect(PANIC_MESSAGE) {
+                let index3 = bonded.get_atom_number() - 1;
+
+                if visited.contains(&index3) {
+                    continue;
+                }
+
+                if !all_bonds.insert((index2, index3)) {
+                    panic!("FATAL GORDER ERROR | auxiliary::classify_molecules | Bond between `atom` and `atom2` (indices: {} and {}) encountered multiple times in the molecule. {}",
+                    index, index2, PANIC_MESSAGE);
+                }
             }
         }
 
-        // construct the molecule
-        if atom_types.len() == 0 {
-            panic!("FATAL GORDER ERROR | auxiliary::classify_molecules | `atom_types` vector must contain at least 1 element. {}", PANIC_MESSAGE);
+        // select order bonds
+        let mut order_bonds = HashSet::new();
+        for &(a1, a2) in all_bonds.iter() {
+            if (system.group_isin(&group1_name, a1).expect(PANIC_MESSAGE)
+                && system.group_isin(&group2_name, a2).expect(PANIC_MESSAGE))
+                || (system.group_isin(&group2_name, a1).expect(PANIC_MESSAGE)
+                    && system.group_isin(&group1_name, a2).expect(PANIC_MESSAGE))
+            {
+                if !order_bonds.insert((a1, a2)) {
+                    panic!("FATAL GORDER ERROR | auxiliary::classify_molecules | Order bond between '{}' and '{}' encountered multiple times in the molecule. {}", a1, a2, PANIC_MESSAGE);
+                }
+            }
         }
 
-        let molecule = Molecule::new(&residues.join("-"), bonds, atom_types);
+        // add molecule to vector of molecules, if it does not already exist
+        let topology = MoleculeTopology::new(system, &all_bonds, minimum_index);
+
+        let mut add_molecule = true;
+        for molecule in molecules.iter_mut() {
+            if *molecule.topology() == topology {
+                molecule.add(system, &order_bonds, minimum_index);
+                add_molecule = false;
+                break;
+            }
+        }
+
+        if add_molecule {
+            let name = residues.join("-");
+            molecules.push(Molecule::new(
+                system,
+                &name,
+                &topology,
+                &order_bonds,
+                &order_atoms,
+                minimum_index,
+            ));
+        }
     }
 
-    // attempt to add the molecule into the set of molecules
-
     Ok(molecules)
+}
+
+#[cfg(test)]
+mod tests {
+    use groan_rs::files::FileType;
+
+    use super::*;
+
+    #[test]
+    fn test_classify_molecules() {
+        let mut system =
+            System::from_file_with_format("tests/files/pcpepg.tpr", FileType::TPR).unwrap();
+
+        create_group(
+            &mut system,
+            "HeavyAtoms",
+            "@membrane and element name carbon",
+        )
+        .unwrap();
+        create_group(
+            &mut system,
+            "Hydrogens",
+            "@membrane and element name hydrogen",
+        )
+        .unwrap();
+
+        let molecules = classify_molecules(&system, "HeavyAtoms", "Hydrogens").unwrap();
+        println!("{}", molecules.len());
+
+        for molecule in molecules {
+            println!("MOLECULE: {}", molecule.name());
+            for bond in molecule.topology().bonds.iter() {
+                println!("{}-{}", &bond.atom1.atom_name, &bond.atom2.atom_name);
+            }
+
+            for order_bond in molecule.order_bonds().bonds.iter() {
+                println!(
+                    "order: {}-{}",
+                    &order_bond.bond_type.atom1.atom_name, &order_bond.bond_type.atom2.atom_name
+                );
+            }
+        }
+    }
 }
