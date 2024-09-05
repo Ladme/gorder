@@ -77,7 +77,10 @@ impl MoleculeTopology {
             let bond = BondType::new(index1 - min_index, atom1, index2 - min_index, atom2);
 
             if !converted_bonds.insert(bond) {
-                panic!("FATAL GORDER ERROR | MoleculeTopology::new | Bond between atoms '{}' and '{}' defined multiple times. {}", index1, index2, PANIC_MESSAGE);
+                panic!(
+                    "FATAL GORDER ERROR | MoleculeTopology::new | Bond between atoms '{}' and '{}' defined multiple times. {}", 
+                    index1, index2, PANIC_MESSAGE
+                );
             }
         }
 
@@ -128,10 +131,18 @@ impl OrderBonds {
         for &(index1, index2) in bonds.iter() {
             let (atom1, atom2) = get_atoms_from_bond(system, index1, index2);
             let bond_type = BondType::new(index1 - min_index, atom1, index2 - min_index, atom2);
-            for order_bond in self.bonds.iter_mut() {
-                if order_bond.bond_type == bond_type {
-                    order_bond.add(index1, index2)
-                }
+
+            if let Some(order_bond) = self
+                .bonds
+                .iter_mut()
+                .find(|order_bond| order_bond.bond_type == bond_type)
+            {
+                order_bond.add(index1, index2);
+            } else {
+                panic!(
+                    "FATAL GORDER ERROR | OrderBonds::add | Could not find corresponding bond type for bond between atoms '{}' and '{}'. {}",
+                    index1, index2, PANIC_MESSAGE
+                );
             }
         }
     }
@@ -144,12 +155,18 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
     for &(index1, index2) in bonds {
         for index in [index1, index2] {
             if index < min_index {
-                panic!("FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}", index1, min_index, PANIC_MESSAGE);
+                panic!(
+                    "FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}", 
+                    index1, min_index, PANIC_MESSAGE
+                );
             }
         }
 
         if index1 == index2 {
-            panic!("FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}", index1, PANIC_MESSAGE);
+            panic!(
+                "FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}", 
+                index1, PANIC_MESSAGE
+            );
         }
     }
 }
@@ -171,23 +188,28 @@ fn get_atoms_from_bond(system: &System, index1: usize, index2: usize) -> (&Atom,
 /// Collection of all atom types for which order parameters should be calculated.
 /// In case of coarse-grained order parameters, this involves all specified atoms.
 /// In case of atomistic order parameters, this only involves heavy atoms.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OrderAtoms {
+    /// Ordered by the increasing relative index.
     pub(crate) atoms: Vec<AtomType>,
 }
 
 impl OrderAtoms {
     pub(crate) fn new(system: &System, atoms: &[usize], minimum_index: usize) -> OrderAtoms {
+        let mut converted_atoms = atoms
+            .into_iter()
+            .map(|&x| {
+                AtomType::new(
+                    x - minimum_index,
+                    system.get_atom_as_ref(x).expect(PANIC_MESSAGE),
+                )
+            })
+            .collect::<Vec<AtomType>>();
+
+        converted_atoms.sort_by(|a, b| a.relative_index.cmp(&b.relative_index));
+
         OrderAtoms {
-            atoms: atoms
-                .into_iter()
-                .map(|&x| {
-                    AtomType::new(
-                        x - minimum_index,
-                        system.get_atom_as_ref(x).expect(PANIC_MESSAGE),
-                    )
-                })
-                .collect(),
+            atoms: converted_atoms,
         }
     }
 }
@@ -348,5 +370,129 @@ mod tests {
         assert_eq!(bond.bonds[0], (455, 460));
         assert_eq!(bond.bonds[1], (1354, 1359));
         assert_eq!(bond.bonds[2], (1671, 1676));
+    }
+
+    #[test]
+    fn order_atoms_new() {
+        let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let atoms = [133, 127, 163, 156, 145];
+        let order_atoms = OrderAtoms::new(&system, &atoms, 125);
+
+        let expected_atoms = [
+            AtomType::new(2, system.get_atom_as_ref(127).unwrap()),
+            AtomType::new(8, system.get_atom_as_ref(133).unwrap()),
+            AtomType::new(20, system.get_atom_as_ref(145).unwrap()),
+            AtomType::new(31, system.get_atom_as_ref(156).unwrap()),
+            AtomType::new(38, system.get_atom_as_ref(163).unwrap()),
+        ];
+
+        for (atom, expected) in order_atoms.atoms.iter().zip(expected_atoms.iter()) {
+            assert_eq!(atom, expected);
+        }
+    }
+
+    fn expected_bonds(system: &System) -> [BondType; 5] {
+        [
+            BondType::new(
+                44,
+                system.get_atom_as_ref(169).unwrap(),
+                45,
+                system.get_atom_as_ref(170).unwrap(),
+            ),
+            BondType::new(
+                44,
+                system.get_atom_as_ref(169).unwrap(),
+                46,
+                system.get_atom_as_ref(171).unwrap(),
+            ),
+            BondType::new(
+                88,
+                system.get_atom_as_ref(213).unwrap(),
+                89,
+                system.get_atom_as_ref(214).unwrap(),
+            ),
+            BondType::new(
+                88,
+                system.get_atom_as_ref(213).unwrap(),
+                90,
+                system.get_atom_as_ref(215).unwrap(),
+            ),
+            BondType::new(
+                121,
+                system.get_atom_as_ref(246).unwrap(),
+                122,
+                system.get_atom_as_ref(247).unwrap(),
+            ),
+        ]
+    }
+
+    #[test]
+    fn order_bonds_new() {
+        let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
+        let bonds_set = HashSet::from(bonds.clone());
+        let order_bonds = OrderBonds::new(&system, &bonds_set, 125);
+
+        let expected_bonds = expected_bonds(&system);
+
+        // bonds can be in any order inside `order_bonds`
+        for bond in order_bonds.bonds.iter() {
+            let expected = expected_bonds
+                .iter()
+                .enumerate()
+                .find(|(_, expected)| &bond.bond_type == *expected);
+
+            if let Some((i, _)) = expected {
+                assert_eq!(bond.bonds.len(), 1);
+                assert_eq!(bond.bonds[0], bonds[i]);
+            } else {
+                panic!("Expected bond not found.");
+            }
+        }
+    }
+
+    #[test]
+    fn order_bonds_add() {
+        let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
+        let bonds_set = HashSet::from(bonds.clone());
+        let mut order_bonds = OrderBonds::new(&system, &bonds_set, 125);
+
+        let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
+        let new_bonds_set = HashSet::from(new_bonds.clone());
+        order_bonds.add(&system, &new_bonds_set, 875);
+
+        let expected_bonds = expected_bonds(&system);
+        for bond in order_bonds.bonds.iter() {
+            let expected = expected_bonds
+                .iter()
+                .enumerate()
+                .find(|(_, expected)| &bond.bond_type == *expected);
+
+            if let Some((i, _)) = expected {
+                assert_eq!(bond.bonds.len(), 2);
+                assert_eq!(bond.bonds[0], bonds[i]);
+                assert_eq!(bond.bonds[1], new_bonds[i]);
+            } else {
+                panic!("Expected bond not found.");
+            }
+        }
+    }
+
+    #[test]
+    fn molecule_topology_new() {
+        let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
+        let bonds_set = HashSet::from(bonds.clone());
+        let topology = MoleculeTopology::new(&system, &bonds_set, 125);
+
+        let expected_bonds = expected_bonds(&system);
+
+        // bonds can be in any order inside `order_bonds`
+        for bond in topology.bonds.iter() {
+            if !expected_bonds.iter().any(|expected| bond == expected) {
+                panic!("Expected bond not found.")
+            }
+        }
     }
 }
