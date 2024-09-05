@@ -67,11 +67,7 @@ pub(crate) fn create_group(
 ///
 /// ## Warning
 /// Only works if the `System` originates from a tpr file.
-fn classify_molecules(
-    system: &System,
-    group1: &str,
-    group2: &str,
-) -> Result<Vec<Molecule>, TopologyError> {
+fn classify_molecules(system: &System, group1: &str, group2: &str) -> Vec<Molecule> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
 
@@ -85,9 +81,9 @@ fn classify_molecules(
         }
 
         let (all_bonds, residues, order_atoms, minimum_index) =
-            process_molecule_dfs(system, &group1_name, index, &mut visited)?;
+            process_molecule_dfs(system, &group1_name, index, &mut visited);
 
-        let order_bonds = select_order_bonds(system, &group1_name, &group2_name, &all_bonds)?;
+        let order_bonds = select_order_bonds(system, &group1_name, &group2_name, &all_bonds);
 
         if let Some(existing_molecule) = molecules
             .iter_mut()
@@ -107,7 +103,7 @@ fn classify_molecules(
         }
     }
 
-    Ok(molecules)
+    molecules
 }
 
 /// Uses DFS to traverse a molecule, collecting bonds, residues, order atoms,
@@ -117,7 +113,7 @@ fn process_molecule_dfs(
     group_name: &str,
     start_index: usize,
     visited: &mut HashSet<usize>,
-) -> Result<(HashSet<(usize, usize)>, Vec<String>, Vec<usize>, usize), TopologyError> {
+) -> (HashSet<(usize, usize)>, Vec<String>, Vec<usize>, usize) {
     let mut all_bonds = HashSet::new();
     let mut residues = Vec::new();
     let mut order_atoms = Vec::new();
@@ -149,7 +145,7 @@ fn process_molecule_dfs(
         }
     }
 
-    Ok((all_bonds, residues, order_atoms, minimum_index))
+    (all_bonds, residues, order_atoms, minimum_index)
 }
 
 /// Selects bonds between two groups that should be considered as order bonds,
@@ -159,7 +155,7 @@ fn select_order_bonds(
     group1_name: &str,
     group2_name: &str,
     all_bonds: &HashSet<(usize, usize)>,
-) -> Result<HashSet<(usize, usize)>, TopologyError> {
+) -> HashSet<(usize, usize)> {
     let mut order_bonds = HashSet::new();
 
     for &(a1, a2) in all_bonds.iter() {
@@ -177,7 +173,7 @@ fn select_order_bonds(
         }
     }
 
-    Ok(order_bonds)
+    order_bonds
 }
 
 #[cfg(test)]
@@ -1039,7 +1035,7 @@ mod tests {
         )
         .unwrap();
 
-        let molecules = classify_molecules(&system, "HeavyAtoms", "Hydrogens").unwrap();
+        let molecules = classify_molecules(&system, "HeavyAtoms", "Hydrogens");
         let expected_names = ["POPE", "POPC", "POPG"];
         let expected_topology = [pope_topology(), popc_topology(), popg_topology()];
         let expected_order_bond_types =
