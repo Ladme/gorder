@@ -1353,14 +1353,423 @@ mod tests {
         }
     }
 
+    fn pope_cg_bonds() -> HashSet<BondType> {
+        let string_representation = "
+0 POPE NH3 1 POPE PO4
+1 POPE PO4 2 POPE GL1
+2 POPE GL1 4 POPE C1A
+2 POPE GL1 3 POPE GL2
+3 POPE GL2 8 POPE C1B
+4 POPE C1A 5 POPE D2A
+5 POPE D2A 6 POPE C3A
+6 POPE C3A 7 POPE C4A
+8 POPE C1B 9 POPE C2B
+9 POPE C2B 10 POPE C3B
+10 POPE C3B 11 POPE C4B";
+
+        string2bonds(string_representation)
+    }
+
+    fn pope_cg_order_atoms() -> OrderAtoms {
+        let string_representation = "
+0 POPE NH3
+1 POPE PO4
+2 POPE GL1
+3 POPE GL2
+4 POPE C1A
+5 POPE D2A
+6 POPE C3A
+7 POPE C4A
+8 POPE C1B
+9 POPE C2B
+10 POPE C3B
+11 POPE C4B";
+
+        string2atoms(string_representation)
+    }
+
+    fn popg_cg_bonds() -> HashSet<BondType> {
+        let string_representation = "
+0 POPG GL0 1 POPG PO4
+1 POPG PO4 2 POPG GL1
+2 POPG GL1 4 POPG C1A
+2 POPG GL1 3 POPG GL2
+3 POPG GL2 8 POPG C1B
+4 POPG C1A 5 POPG D2A
+5 POPG D2A 6 POPG C3A
+6 POPG C3A 7 POPG C4A
+8 POPG C1B 9 POPG C2B
+9 POPG C2B 10 POPG C3B
+10 POPG C3B 11 POPG C4B";
+
+        string2bonds(string_representation)
+    }
+
+    fn popg_cg_order_atoms() -> OrderAtoms {
+        let string_representation = "
+0 POPG GL0
+1 POPG PO4
+2 POPG GL1
+3 POPG GL2
+4 POPG C1A
+5 POPG D2A
+6 POPG C3A
+7 POPG C4A
+8 POPG C1B
+9 POPG C2B
+10 POPG C3B
+11 POPG C4B";
+
+        string2atoms(string_representation)
+    }
+
     #[test]
     fn test_classify_molecules_cg() {
-        todo!("Test classification of molecules for coarse grained order parameters calculation.")
+        let mut system = System::from_file("tests/files/pepg_cg.tpr").unwrap();
+
+        create_group(&mut system, "Atoms", "resname POPE POPG").unwrap();
+
+        let molecules = classify_molecules(&system, "Atoms", "Atoms");
+        let expected_names = ["POPE", "POPG"];
+        let expected_topology = [
+            MoleculeTopology {
+                bonds: pope_cg_bonds(),
+            },
+            MoleculeTopology {
+                bonds: popg_cg_bonds(),
+            },
+        ];
+        let expected_order_bond_types = [pope_cg_bonds(), popg_cg_bonds()];
+        let expected_n_instances = [216, 72];
+        let expected_bond_instances = [
+            vec![
+                (2, 4),
+                (14, 16),
+                (26, 28),
+                (38, 40),
+                (50, 52),
+                (62, 64),
+                (74, 76),
+                (86, 88),
+                (98, 100),
+                (110, 112),
+                (122, 124),
+                (134, 136),
+                (146, 148),
+                (158, 160),
+                (170, 172),
+                (182, 184),
+                (194, 196),
+                (206, 208),
+                (218, 220),
+                (230, 232),
+                (242, 244),
+                (254, 256),
+                (266, 268),
+                (278, 280),
+                (290, 292),
+                (302, 304),
+                (314, 316),
+                (326, 328),
+                (338, 340),
+                (350, 352),
+                (362, 364),
+                (374, 376),
+                (386, 388),
+                (398, 400),
+                (410, 412),
+                (422, 424),
+                (434, 436),
+                (446, 448),
+                (458, 460),
+                (470, 472),
+                (482, 484),
+                (494, 496),
+                (506, 508),
+                (518, 520),
+                (530, 532),
+                (542, 544),
+                (554, 556),
+                (566, 568),
+                (578, 580),
+                (590, 592),
+                (602, 604),
+                (614, 616),
+                (626, 628),
+                (638, 640),
+                (650, 652),
+                (662, 664),
+                (674, 676),
+                (686, 688),
+                (698, 700),
+                (710, 712),
+                (722, 724),
+                (734, 736),
+                (746, 748),
+                (758, 760),
+                (770, 772),
+                (782, 784),
+                (794, 796),
+                (806, 808),
+                (818, 820),
+                (830, 832),
+                (842, 844),
+                (854, 856),
+                (866, 868),
+                (878, 880),
+                (890, 892),
+                (902, 904),
+                (914, 916),
+                (926, 928),
+                (938, 940),
+                (950, 952),
+                (962, 964),
+                (974, 976),
+                (986, 988),
+                (998, 1000),
+                (1010, 1012),
+                (1022, 1024),
+                (1034, 1036),
+                (1046, 1048),
+                (1058, 1060),
+                (1070, 1072),
+                (1082, 1084),
+                (1094, 1096),
+                (1106, 1108),
+                (1118, 1120),
+                (1130, 1132),
+                (1142, 1144),
+                (1154, 1156),
+                (1166, 1168),
+                (1178, 1180),
+                (1190, 1192),
+                (1202, 1204),
+                (1214, 1216),
+                (1226, 1228),
+                (1238, 1240),
+                (1250, 1252),
+                (1262, 1264),
+                (1274, 1276),
+                (1286, 1288),
+                (1730, 1732),
+                (1742, 1744),
+                (1754, 1756),
+                (1766, 1768),
+                (1778, 1780),
+                (1790, 1792),
+                (1802, 1804),
+                (1814, 1816),
+                (1826, 1828),
+                (1838, 1840),
+                (1850, 1852),
+                (1862, 1864),
+                (1874, 1876),
+                (1886, 1888),
+                (1898, 1900),
+                (1910, 1912),
+                (1922, 1924),
+                (1934, 1936),
+                (1946, 1948),
+                (1958, 1960),
+                (1970, 1972),
+                (1982, 1984),
+                (1994, 1996),
+                (2006, 2008),
+                (2018, 2020),
+                (2030, 2032),
+                (2042, 2044),
+                (2054, 2056),
+                (2066, 2068),
+                (2078, 2080),
+                (2090, 2092),
+                (2102, 2104),
+                (2114, 2116),
+                (2126, 2128),
+                (2138, 2140),
+                (2150, 2152),
+                (2162, 2164),
+                (2174, 2176),
+                (2186, 2188),
+                (2198, 2200),
+                (2210, 2212),
+                (2222, 2224),
+                (2234, 2236),
+                (2246, 2248),
+                (2258, 2260),
+                (2270, 2272),
+                (2282, 2284),
+                (2294, 2296),
+                (2306, 2308),
+                (2318, 2320),
+                (2330, 2332),
+                (2342, 2344),
+                (2354, 2356),
+                (2366, 2368),
+                (2378, 2380),
+                (2390, 2392),
+                (2402, 2404),
+                (2414, 2416),
+                (2426, 2428),
+                (2438, 2440),
+                (2450, 2452),
+                (2462, 2464),
+                (2474, 2476),
+                (2486, 2488),
+                (2498, 2500),
+                (2510, 2512),
+                (2522, 2524),
+                (2534, 2536),
+                (2546, 2548),
+                (2558, 2560),
+                (2570, 2572),
+                (2582, 2584),
+                (2594, 2596),
+                (2606, 2608),
+                (2618, 2620),
+                (2630, 2632),
+                (2642, 2644),
+                (2654, 2656),
+                (2666, 2668),
+                (2678, 2680),
+                (2690, 2692),
+                (2702, 2704),
+                (2714, 2716),
+                (2726, 2728),
+                (2738, 2740),
+                (2750, 2752),
+                (2762, 2764),
+                (2774, 2776),
+                (2786, 2788),
+                (2798, 2800),
+                (2810, 2812),
+                (2822, 2824),
+                (2834, 2836),
+                (2846, 2848),
+                (2858, 2860),
+                (2870, 2872),
+                (2882, 2884),
+                (2894, 2896),
+                (2906, 2908),
+                (2918, 2920),
+                (2930, 2932),
+                (2942, 2944),
+                (2954, 2956),
+                (2966, 2968),
+                (2978, 2980),
+                (2990, 2992),
+                (3002, 3004),
+                (3014, 3016),
+            ],
+            vec![
+                (1299, 1304),
+                (1311, 1316),
+                (1323, 1328),
+                (1335, 1340),
+                (1347, 1352),
+                (1359, 1364),
+                (1371, 1376),
+                (1383, 1388),
+                (1395, 1400),
+                (1407, 1412),
+                (1419, 1424),
+                (1431, 1436),
+                (1443, 1448),
+                (1455, 1460),
+                (1467, 1472),
+                (1479, 1484),
+                (1491, 1496),
+                (1503, 1508),
+                (1515, 1520),
+                (1527, 1532),
+                (1539, 1544),
+                (1551, 1556),
+                (1563, 1568),
+                (1575, 1580),
+                (1587, 1592),
+                (1599, 1604),
+                (1611, 1616),
+                (1623, 1628),
+                (1635, 1640),
+                (1647, 1652),
+                (1659, 1664),
+                (1671, 1676),
+                (1683, 1688),
+                (1695, 1700),
+                (1707, 1712),
+                (1719, 1724),
+                (3027, 3032),
+                (3039, 3044),
+                (3051, 3056),
+                (3063, 3068),
+                (3075, 3080),
+                (3087, 3092),
+                (3099, 3104),
+                (3111, 3116),
+                (3123, 3128),
+                (3135, 3140),
+                (3147, 3152),
+                (3159, 3164),
+                (3171, 3176),
+                (3183, 3188),
+                (3195, 3200),
+                (3207, 3212),
+                (3219, 3224),
+                (3231, 3236),
+                (3243, 3248),
+                (3255, 3260),
+                (3267, 3272),
+                (3279, 3284),
+                (3291, 3296),
+                (3303, 3308),
+                (3315, 3320),
+                (3327, 3332),
+                (3339, 3344),
+                (3351, 3356),
+                (3363, 3368),
+                (3375, 3380),
+                (3387, 3392),
+                (3399, 3404),
+                (3411, 3416),
+                (3423, 3428),
+                (3435, 3440),
+                (3447, 3452),
+            ],
+        ];
+        let expected_order_atoms = [pope_cg_order_atoms(), popg_cg_order_atoms()];
+
+        assert_eq!(molecules.len(), 2);
+
+        for (i, molecule) in molecules.into_iter().enumerate() {
+            assert_eq!(molecule.name(), expected_names[i]);
+            assert_eq!(molecule.topology(), &expected_topology[i]);
+            let order_bonds = molecule.order_bonds();
+            let order_bond_types: HashSet<BondType> = order_bonds
+                .bonds
+                .iter()
+                .map(|x| x.bond_type.clone())
+                .collect();
+            assert_eq!(order_bond_types, expected_order_bond_types[i]);
+
+            for (b, bond_instances) in order_bonds
+                .bonds
+                .iter()
+                .map(|x| x.bonds.clone())
+                .enumerate()
+            {
+                assert_eq!(bond_instances.len(), expected_n_instances[i]);
+                if b == 1 {
+                    assert_eq!(bond_instances, expected_bond_instances[i]);
+                }
+            }
+
+            assert_eq!(molecule.order_atoms(), &expected_order_atoms[i]);
+        }
     }
 
     #[test]
     fn test_classify_molecules_shared_name() {
         todo!("Test classification of molecules composed of the residue of the same name.")
+        // also the atoms inside a single molecule should have the same name
     }
 
     #[test]
