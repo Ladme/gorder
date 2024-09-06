@@ -11,7 +11,7 @@ use groan_rs::{
 
 use crate::{auxiliary::PANIC_MESSAGE, ordermap::OrderMap};
 
-#[derive(Getters)]
+#[derive(Debug, Clone, Getters)]
 pub(crate) struct Molecule {
     #[getset(get = "pub(crate)")]
     name: String,
@@ -91,6 +91,7 @@ impl MoleculeTopology {
 }
 
 /// Collection of all bonds for which the order parameters should be calculated.
+#[derive(Debug, Clone)]
 pub(crate) struct OrderBonds {
     pub(crate) bonds: Vec<Bond>,
 }
@@ -214,6 +215,7 @@ impl OrderAtoms {
     }
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct Bond {
     pub(crate) bond_type: BondType,
     pub(crate) bonds: Vec<(usize, usize)>,
@@ -321,10 +323,11 @@ pub(crate) struct Order {
     n_samples: usize,
 }
 
+#[derive(Debug, Clone)]
 pub(crate) struct Map {
     params: OrderMap,
-    values: GridMap<f32, f32, Box<dyn Fn(&f32) -> f32>>,
-    samples: GridMap<usize, usize, Box<dyn Fn(&usize) -> usize>>,
+    values: GridMap<f32, f32, fn(&f32) -> f32>,
+    samples: GridMap<usize, usize, fn(&usize) -> usize>,
 }
 
 #[cfg(test)]
@@ -495,4 +498,33 @@ mod tests {
             }
         }
     }
+
+    /*fn clone_f32(val: &f32) -> f32 {
+        *val
+    }
+
+    fn clone_usize(val: &usize) -> usize {
+        *val
+    }
+
+    #[test]
+    fn test_map() {
+        let map = Map {
+            params: OrderMap::new().build().unwrap(),
+            values: GridMap::new(
+                (0.0, 10.0),
+                (0.0, 10.0),
+                (0.1, 0.1),
+                clone_f32 as fn(&f32) -> f32,
+            )
+            .unwrap(),
+            samples: GridMap::new(
+                (0.0, 10.0),
+                (0.0, 10.0),
+                (0.1, 0.1),
+                clone_usize as fn(&usize) -> usize,
+            )
+            .unwrap(),
+        };
+    }*/
 }

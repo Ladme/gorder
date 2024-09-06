@@ -9,7 +9,7 @@ use groan_rs::{errors::GroupError, system::System};
 
 use crate::{
     errors::TopologyError,
-    molecule::{AtomType, BondType, Molecule, MoleculeTopology, OrderAtoms, OrderBonds},
+    molecule::{Molecule, MoleculeTopology},
 };
 
 /// A prefix used as an identifier for Gorder groups.
@@ -67,7 +67,7 @@ pub(crate) fn create_group(
 ///
 /// ## Warning
 /// Only works if the `System` originates from a tpr file.
-fn classify_molecules(system: &System, group1: &str, group2: &str) -> Vec<Molecule> {
+pub(crate) fn classify_molecules(system: &System, group1: &str, group2: &str) -> Vec<Molecule> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
 
@@ -178,7 +178,8 @@ fn select_order_bonds(
 
 #[cfg(test)]
 mod tests {
-    use groan_rs::files::FileType;
+
+    use crate::molecule::{AtomType, BondType, OrderAtoms};
 
     use super::*;
 

@@ -14,6 +14,10 @@ use crate::{
     Analysis,
 };
 
+struct OrderData {
+    molecules: Vec<Molecule>,
+}
+
 /// Calculate the atomistic lipid order parameters.
 pub(crate) fn analyze_atomistic(
     analysis: &Analysis,
@@ -58,8 +62,15 @@ pub(crate) fn analyze_atomistic(
     }
 
     // classify the relevant molecules
+    let molecules = crate::auxiliary::classify_molecules(&system, "HeavyAtoms", "Hydrogens");
+
+    //system.traj_iter_map_reduce(trajectory_file, n_threads, body, start_time, end_time, step, progress_printer);
 
     Ok(())
+}
+
+fn analyze_frame(frame: &System, data: &Vec<Molecule>) {
+
 }
 
 /*/// Modifies the HeavyAtoms group so it only contains heavy atoms that are connected to at least one hydrogen.
