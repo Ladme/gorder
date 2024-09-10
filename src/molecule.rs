@@ -1,15 +1,23 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
+use std::{ops::Add, time::SystemTimeError};
+
 use hashbrown::HashSet;
 
 use getset::Getters;
 use groan_rs::{
     prelude::{Atom, GridMap},
+    structures::{gridmap::DataOrder, group::Group},
     system::System,
 };
 
-use crate::{auxiliary::PANIC_MESSAGE, ordermap::OrderMap};
+use crate::{
+    auxiliary::{macros::group_name, PANIC_MESSAGE},
+    errors::TopologyError,
+    leaflets::LeafletClassification,
+    ordermap::OrderMap,
+};
 
 #[derive(Debug, Clone, Getters)]
 pub(crate) struct Molecule {
@@ -21,6 +29,10 @@ pub(crate) struct Molecule {
     order_bonds: OrderBonds,
     #[getset(get = "pub(crate)")]
     order_atoms: OrderAtoms,
+    #[getset(get = "pub(crate)")]
+    molecule_ranges: Vec<Group>,
+    #[getset(get = "pub(crate)")]
+    leaflet_classification: Option<MoleculeLeafletClassification>,
 }
 
 impl Molecule {
@@ -30,24 +42,207 @@ impl Molecule {
         topology: &MoleculeTopology,
         order_bonds: &HashSet<(usize, usize)>,
         order_atoms: &[usize],
-        min_index: usize,
+        atoms: Group,
+        leaflet_classification: Option<MoleculeLeafletClassification>,
     ) -> Molecule {
         Molecule {
             name: name.to_owned(),
             topology: topology.to_owned(),
-            order_bonds: OrderBonds::new(system, order_bonds, min_index),
-            order_atoms: OrderAtoms::new(system, order_atoms, min_index),
+            order_bonds: OrderBonds::new(
+                system,
+                order_bonds,
+                atoms.get_atoms().first().expect(PANIC_MESSAGE),
+            ),
+            order_atoms: OrderAtoms::new(
+                system,
+                order_atoms,
+                atoms.get_atoms().first().expect(PANIC_MESSAGE),
+            ),
+            molecule_ranges: vec![atoms],
+            leaflet_classification,
         }
     }
 
-    /// Add new bond instances to the molecule.
-    pub(crate) fn add(
+    /// Insert new bond instances to the molecule.
+    pub(crate) fn insert(
         &mut self,
         system: &System,
         bonds: &HashSet<(usize, usize)>,
-        min_index: usize,
-    ) {
-        self.order_bonds.add(system, bonds, min_index);
+        atoms: Group,
+    ) -> Result<(), TopologyError> {
+        self.order_bonds
+            .insert(system, bonds, atoms.get_atoms().first().unwrap());
+
+        if let Some(classifier) = self.leaflet_classification.as_mut() {
+            classifier.insert(&atoms, system)?;
+        }
+
+        self.molecule_ranges.push(atoms);
+
+        Ok(())
+    }
+
+    /// Analyze order parameters of a molecule based on a single simulation frame.
+    pub(crate) fn analyze_frame(&mut self, frame: &System) {
+        todo!()
+    }
+}
+
+impl Add<Molecule> for Molecule {
+    type Output = Molecule;
+
+    fn add(self, rhs: Molecule) -> Self::Output {
+        Molecule {
+            name: self.name,
+            topology: self.topology,
+            order_bonds: self.order_bonds + rhs.order_bonds,
+            order_atoms: self.order_atoms,
+            molecule_ranges: self.molecule_ranges,
+            leaflet_classification: self.leaflet_classification,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum MoleculeLeafletClassification {
+    Global(GlobalClassification),
+    Local(LocalClassification),
+    Individual(IndividualClassification),
+}
+
+impl MoleculeLeafletClassification {
+    pub(crate) fn new(params: &LeafletClassification) -> Self {
+        match params {
+            LeafletClassification::Global(_) => {
+                Self::Global(GlobalClassification { heads: Vec::new() })
+            }
+            LeafletClassification::Local(_) => Self::Local(LocalClassification {
+                heads: Vec::new(),
+                radius: params.get_radius().expect(PANIC_MESSAGE),
+            }),
+            LeafletClassification::Individual(_) => Self::Individual(IndividualClassification {
+                heads: Vec::new(),
+                methyls: Vec::new(),
+            }),
+        }
+    }
+
+    /// Insert new molecule into the classifier.
+    pub(crate) fn insert(
+        &mut self,
+        molecule: &Group,
+        system: &System,
+    ) -> Result<(), TopologyError> {
+        match self {
+            Self::Global(x) => x.insert(molecule, system),
+            Self::Local(x) => x.insert(molecule, system),
+            Self::Individual(x) => x.insert(molecule, system),
+        }
+    }
+}
+
+fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, TopologyError> {
+    let group_name = group_name!("Heads");
+    let mut atoms = Vec::new();
+    for index in molecule.get_atoms().iter() {
+        if system.group_isin(group_name, index).expect(PANIC_MESSAGE) {
+            atoms.push(index);
+        }
+    }
+
+    if atoms.len() == 0 {
+        return Err(TopologyError::NoHead(
+                molecule
+                    .get_atoms()
+                    .first()
+                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | molecule::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
+    }
+
+    if atoms.len() > 1 {
+        return Err(TopologyError::MultipleHeads(
+            molecule.get_atoms().first().expect(PANIC_MESSAGE),
+        ));
+    }
+
+    Ok(*atoms.get(0).expect(PANIC_MESSAGE))
+}
+
+fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>, TopologyError> {
+    let group_name = group_name!("Methyls");
+    let mut atoms = Vec::new();
+
+    for index in molecule.get_atoms().iter() {
+        if system.group_isin(group_name, index).expect(PANIC_MESSAGE) {
+            atoms.push(index);
+        }
+    }
+
+    if atoms.len() == 0 {
+        return Err(TopologyError::NoMethyl(
+            molecule
+                .get_atoms()
+                .first()
+                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | molecule::get_reference_methyls | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
+    }
+
+    Ok(atoms)
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct GlobalClassification {
+    /// Indices of headgroup identifiers (one per molecule).
+    heads: Vec<usize>,
+}
+
+impl GlobalClassification {
+    fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
+        self.heads.push(get_reference_head(molecule, system)?);
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct LocalClassification {
+    /// Indices of headgroup identifiers (one per molecule).
+    heads: Vec<usize>,
+    /// Radius of a cylinder for the calculation of local membrane center of geometry (in nm).
+    radius: f32,
+}
+
+impl LocalClassification {
+    fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
+        self.heads.push(get_reference_head(molecule, system)?);
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct IndividualClassification {
+    /// Indices of headgroup identifiers (one per molecule).
+    heads: Vec<usize>,
+    /// Indices of methyl identifiers (any number per molecule).
+    methyls: Vec<Vec<usize>>,
+}
+
+impl IndividualClassification {
+    fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
+        self.heads.push(get_reference_head(molecule, system)?);
+        self.methyls.push(get_reference_methyls(molecule, system)?);
+
+        // check that the number of methyls is concistent in the molecule
+        if self.methyls.len() > 1 {
+            let curr_methyls = self.methyls[self.methyls.len() - 1].len();
+            let first_methyls = self.methyls[0].len();
+            if curr_methyls != first_methyls {
+                return Err(TopologyError::InconsistentNumberOfMethyls(
+                    molecule.get_atoms().first().expect(PANIC_MESSAGE),
+                    curr_methyls,
+                    first_methyls,
+                ));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -120,8 +315,8 @@ impl OrderBonds {
         OrderBonds { bonds: order_bonds }
     }
 
-    /// Add new real bonds to already constructed order bonds.
-    pub(crate) fn add(
+    /// Insert new real bonds to already constructed order bonds.
+    pub(crate) fn insert(
         &mut self,
         system: &System,
         bonds: &HashSet<(usize, usize)>,
@@ -138,13 +333,28 @@ impl OrderBonds {
                 .iter_mut()
                 .find(|order_bond| order_bond.bond_type == bond_type)
             {
-                order_bond.add(index1, index2);
+                order_bond.insert(index1, index2);
             } else {
                 panic!(
                     "FATAL GORDER ERROR | OrderBonds::add | Could not find corresponding bond type for bond between atoms '{}' and '{}'. {}",
                     index1, index2, PANIC_MESSAGE
                 );
             }
+        }
+    }
+}
+
+impl Add<OrderBonds> for OrderBonds {
+    type Output = OrderBonds;
+
+    fn add(self, rhs: OrderBonds) -> Self::Output {
+        OrderBonds {
+            bonds: self
+                .bonds
+                .into_iter()
+                .zip(rhs.bonds.into_iter())
+                .map(|(a, b)| a + b)
+                .collect::<Vec<Bond>>(),
         }
     }
 }
@@ -260,12 +470,28 @@ impl Bond {
         }
     }
 
-    /// Add new real bond to the current order bond.
-    pub(crate) fn add(&mut self, abs_index_1: usize, abs_index_2: usize) {
+    /// Insert new real bond to the current order bond.
+    pub(crate) fn insert(&mut self, abs_index_1: usize, abs_index_2: usize) {
         if abs_index_1 < abs_index_2 {
             self.bonds.push((abs_index_1, abs_index_2));
         } else {
             self.bonds.push((abs_index_2, abs_index_1));
+        }
+    }
+}
+
+impl Add<Bond> for Bond {
+    type Output = Bond;
+    fn add(self, rhs: Bond) -> Self::Output {
+        Bond {
+            bond_type: self.bond_type,
+            bonds: self.bonds,
+            total: self.total + rhs.total,
+            upper: merge_option_order(self.upper, rhs.upper),
+            lower: merge_option_order(self.lower, rhs.lower),
+            total_map: merge_option_maps(self.total_map, rhs.total_map),
+            upper_map: merge_option_maps(self.upper_map, rhs.upper_map),
+            lower_map: merge_option_maps(self.lower_map, rhs.lower_map),
         }
     }
 }
@@ -323,6 +549,28 @@ pub(crate) struct Order {
     n_samples: usize,
 }
 
+impl Add<Order> for Order {
+    type Output = Order;
+    fn add(self, rhs: Order) -> Self::Output {
+        Order {
+            order: self.order + rhs.order,
+            n_samples: self.n_samples + rhs.n_samples,
+        }
+    }
+}
+
+/// Helper function for merging optional Orders.
+fn merge_option_order(lhs: Option<Order>, rhs: Option<Order>) -> Option<Order> {
+    match (lhs, rhs) {
+        (Some(x), Some(y)) => Some(x + y),
+        (None, None) => None,
+        (Some(_), None) | (None, Some(_)) => panic!(
+            "FATAL GORDER ERROR | merge_option_order | Inconsistent option value. {}",
+            PANIC_MESSAGE
+        ),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Map {
     params: OrderMap,
@@ -330,8 +578,75 @@ pub(crate) struct Map {
     samples: GridMap<usize, usize, fn(&usize) -> usize>,
 }
 
+impl Add<Map> for Map {
+    type Output = Map;
+
+    fn add(self, rhs: Map) -> Self::Output {
+        let joined_values_map =
+            merge_grid_maps(self.values, rhs.values, f32::clone as fn(&f32) -> f32);
+
+        let joined_samples_map = merge_grid_maps(
+            self.samples,
+            rhs.samples,
+            usize::clone as fn(&usize) -> usize,
+        );
+
+        Map {
+            params: self.params,
+            values: joined_values_map,
+            samples: joined_samples_map,
+        }
+    }
+}
+
+/// Helper function for merging optional Maps.
+fn merge_option_maps(lhs: Option<Map>, rhs: Option<Map>) -> Option<Map> {
+    match (lhs, rhs) {
+        (Some(x), Some(y)) => Some(x + y),
+        (None, None) => None,
+        (Some(_), None) | (None, Some(_)) => panic!(
+            "FATAL GORDER ERROR | merge_option_maps | Inconsistent option value. {}",
+            PANIC_MESSAGE
+        ),
+    }
+}
+
+/// Helper function to merge two GridMaps and construct a new GridMap.
+fn merge_grid_maps<T, U>(
+    lhs: GridMap<T, U, fn(&T) -> U>,
+    rhs: GridMap<T, U, fn(&T) -> U>,
+    clone_fn: fn(&T) -> U,
+) -> GridMap<T, U, fn(&T) -> U>
+where
+    T: Add<Output = T> + Copy + Default + std::fmt::Debug,
+    U: std::fmt::Display,
+{
+    let merged = lhs
+        .extract_raw()
+        .zip(rhs.extract_raw())
+        .map(|((_, _, &x), (_, _, &y))| x + y)
+        .collect::<Vec<T>>();
+
+    GridMap::from_vec(
+        lhs.span_x(),
+        lhs.span_y(),
+        lhs.tile_dim(),
+        merged,
+        DataOrder::default(),
+        clone_fn,
+    )
+    .unwrap_or_else(|_| {
+        panic!(
+            "FATAL GORDER ERROR | merge_grid_maps | Could not construct merged map. {}",
+            PANIC_MESSAGE
+        )
+    })
+}
+
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
 
     #[test]
@@ -366,8 +681,8 @@ mod tests {
 
         let mut bond = Bond::new(455, &atom1, 460, &atom2, 455);
 
-        bond.add(1354, 1359);
-        bond.add(1676, 1671);
+        bond.insert(1354, 1359);
+        bond.insert(1676, 1671);
 
         assert_eq!(bond.bonds.len(), 3);
         assert_eq!(bond.bonds[0], (455, 460));
@@ -463,7 +778,7 @@ mod tests {
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
         let new_bonds_set = HashSet::from(new_bonds.clone());
-        order_bonds.add(&system, &new_bonds_set, 875);
+        order_bonds.insert(&system, &new_bonds_set, 875);
 
         let expected_bonds = expected_bonds(&system);
         for bond in order_bonds.bonds.iter() {
@@ -499,32 +814,107 @@ mod tests {
         }
     }
 
-    /*fn clone_f32(val: &f32) -> f32 {
-        *val
-    }
+    #[test]
+    fn merge_order() {
+        let order1 = Order {
+            order: 0.78,
+            n_samples: 31,
+        };
 
-    fn clone_usize(val: &usize) -> usize {
-        *val
+        let order2 = Order {
+            order: 0.43,
+            n_samples: 14,
+        };
+
+        let merged = order1 + order2;
+
+        assert_relative_eq!(merged.order, 1.21);
+        assert_eq!(merged.n_samples, 45);
     }
 
     #[test]
-    fn test_map() {
-        let map = Map {
-            params: OrderMap::new().build().unwrap(),
-            values: GridMap::new(
-                (0.0, 10.0),
-                (0.0, 10.0),
-                (0.1, 0.1),
-                clone_f32 as fn(&f32) -> f32,
-            )
-            .unwrap(),
-            samples: GridMap::new(
-                (0.0, 10.0),
-                (0.0, 10.0),
-                (0.1, 0.1),
-                clone_usize as fn(&usize) -> usize,
-            )
-            .unwrap(),
+    fn merge_map() {
+        let values = vec![1.0, 2.5, 3.0, 4.2, 5.3, 6.1, 7.3, 8.9];
+        let map1_values = GridMap::from_vec(
+            (1.0, 2.0),
+            (1.0, 2.5),
+            (1.0, 0.5),
+            values,
+            DataOrder::RowMajor,
+            f32::to_owned as fn(&f32) -> f32,
+        )
+        .unwrap();
+
+        let samples = vec![1, 2, 3, 4, 5, 6, 7, 8];
+        let map1_samples = GridMap::from_vec(
+            (1.0, 2.0),
+            (1.0, 2.5),
+            (1.0, 0.5),
+            samples,
+            DataOrder::RowMajor,
+            usize::to_owned as fn(&usize) -> usize,
+        )
+        .unwrap();
+
+        let map1 = Map {
+            params: OrderMap::new().output_directory(".").build().unwrap(),
+            values: map1_values,
+            samples: map1_samples,
         };
-    }*/
+
+        let values = vec![0.7, 1.4, 2.1, 1.4, 2.3, 3.1, 3.3, 1.9];
+        let map2_values = GridMap::from_vec(
+            (1.0, 2.0),
+            (1.0, 2.5),
+            (1.0, 0.5),
+            values,
+            DataOrder::RowMajor,
+            f32::to_owned as fn(&f32) -> f32,
+        )
+        .unwrap();
+
+        let samples = vec![2, 1, 4, 3, 2, 1, 0, 2];
+        let map2_samples = GridMap::from_vec(
+            (1.0, 2.0),
+            (1.0, 2.5),
+            (1.0, 0.5),
+            samples,
+            DataOrder::RowMajor,
+            usize::to_owned as fn(&usize) -> usize,
+        )
+        .unwrap();
+
+        let map2 = Map {
+            params: OrderMap::new().output_directory(".").build().unwrap(),
+            values: map2_values,
+            samples: map2_samples,
+        };
+
+        let map = map1 + map2;
+
+        let expected_values = vec![1.7, 3.9, 5.1, 5.6, 7.6, 9.2, 10.6, 10.8];
+        let expected_samples = vec![3, 3, 7, 7, 7, 7, 7, 10];
+
+        let values = map
+            .values
+            .extract_raw()
+            .map(|(_, _, &x)| x)
+            .collect::<Vec<f32>>();
+        let samples = map
+            .samples
+            .extract_raw()
+            .map(|(_, _, &x)| x)
+            .collect::<Vec<usize>>();
+
+        assert_eq!(values.len(), expected_values.len());
+        assert_eq!(samples.len(), expected_samples.len());
+
+        for (got, exp) in values.iter().zip(expected_values.iter()) {
+            assert_relative_eq!(got, exp);
+        }
+
+        for (got, exp) in samples.iter().zip(expected_samples.iter()) {
+            assert_eq!(got, exp);
+        }
+    }
 }

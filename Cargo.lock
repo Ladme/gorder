@@ -262,6 +262,7 @@ dependencies = [
 name = "gorder"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "backitup",
  "colored",
  "derive_builder",

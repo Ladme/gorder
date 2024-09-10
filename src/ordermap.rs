@@ -27,11 +27,16 @@ pub struct OrderMap {
     #[builder(default)]
     #[getset(get_copy = "pub")]
     dim_y: GridSpan,
-    /// The size of the grid bins in each dimension.
-    /// If not specified, the default value is 0.1 nm.
-    #[builder(default = "0.1")]
+    /// The size of the grid bin along the x-axis (relative to the simulation box size).
+    /// If not specified, the default value is 0.01.
+    #[builder(default = "0.01")]
     #[getset(get_copy = "pub")]
-    bin_size: f32,
+    bin_size_x: f32,
+    /// The size of the grid bin along the y-axis (relative to the simulation box size).
+    /// If not specified, the default value is 0.01.
+    #[builder(default = "0.01")]
+    #[getset(get_copy = "pub")]
+    bin_size_y: f32,
 }
 
 impl OrderMap {

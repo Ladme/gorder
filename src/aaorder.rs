@@ -61,8 +61,13 @@ pub(crate) fn analyze_atomistic(
         }));
     }
 
-    // classify the relevant molecules
-    let molecules = crate::auxiliary::classify_molecules(&system, "HeavyAtoms", "Hydrogens");
+    // prepare system for leaflet classification
+    if let Some(leaflet) = analysis.leaflets() {
+        leaflet.prepare_system(&mut system)?;
+    }
+
+    // get the relevant molecules
+    let molecules = crate::auxiliary::classify_molecules(&system, "HeavyAtoms", "Hydrogens", analysis.leaflets().as_ref())?;
 
     //system.traj_iter_map_reduce(trajectory_file, n_threads, body, start_time, end_time, step, progress_printer);
 
@@ -70,7 +75,6 @@ pub(crate) fn analyze_atomistic(
 }
 
 fn analyze_frame(frame: &System, data: &Vec<Molecule>) {
-
 }
 
 /*/// Modifies the HeavyAtoms group so it only contains heavy atoms that are connected to at least one hydrogen.

@@ -3,13 +3,17 @@
 
 //! Contains structures and methods for the assignment of lipids into membrane leaflets.
 
-/// Parameters for the classification of lipids
+use groan_rs::system::System;
+
+use crate::{auxiliary::create_group, errors::TopologyError};
+
+/// Parameters for the classification of lipids into membrane leaflets.
 #[derive(Debug, Clone)]
 #[allow(private_interfaces)]
 pub enum LeafletClassification {
-    Global(Global),
-    Local(Local),
-    Individual(Individual),
+    Global(GlobalParams),
+    Local(LocalParams),
+    Individual(IndividualParams),
 }
 
 impl LeafletClassification {
@@ -21,7 +25,7 @@ impl LeafletClassification {
     /// - `heads`: reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
     ///            there must only be one such atom/bead per lipid molecule.
     pub fn global(membrane: &str, heads: &str) -> LeafletClassification {
-        Self::Global(Global {
+        Self::Global(GlobalParams {
             membrane: membrane.to_string(),
             heads: heads.to_string(),
         })
@@ -36,7 +40,7 @@ impl LeafletClassification {
     ///            there must only be one such atom/bead per lipid molecule.
     /// - `radius`: radius of a cylinder for the calculation of local membrane center of geometry (in nm)
     pub fn local(membrane: &str, heads: &str, radius: f32) -> LeafletClassification {
-        Self::Local(Local {
+        Self::Local(LocalParams {
             membrane: membrane.to_string(),
             heads: heads.to_string(),
             radius,
@@ -52,16 +56,39 @@ impl LeafletClassification {
     /// - `methyls`: reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails;
     ///              there should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
     pub fn individual(heads: &str, methyls: &str) -> LeafletClassification {
-        Self::Individual(Individual {
+        Self::Individual(IndividualParams {
             heads: heads.to_string(),
             methyls: methyls.to_string(),
         })
+    }
+
+    /// Prepare the system for leaflet classification.
+    pub(crate) fn prepare_system(&self, system: &mut System) -> Result<(), TopologyError> {
+        match self {
+            Self::Global(params) => {
+                create_group(system, "Membrane", &params.membrane)?;
+                create_group(system, "Heads", &params.heads)?;
+            }
+            Self::Local(_) => todo!("FATAL GORDER ERROR | LeafletClassification::prepare_system | Local leaflet classification method is not yet supported."),
+            Self::Individual(_) => todo!("FATAL GORDER ERROR | LeafletClassification::prepare_system | Individual leaflet classification method is not yet supported.")
+        }
+
+        Ok(())
+    }
+
+    /// Returns a radius of the cylinder for the calculation of local membrane center of geometry, if the method is Local.
+    /// Otherwise, returns None.
+    pub(crate) fn get_radius(&self) -> Option<f32> {
+        match self {
+            Self::Local(x) => Some(x.radius),
+            _ => None,
+        }
     }
 }
 
 /// Based on the global membrane center of geometry; useful for disrupted membranes; fast.
 #[derive(Debug, Clone)]
-struct Global {
+pub(crate) struct GlobalParams {
     /// Selection of all lipids forming the membrane.
     membrane: String,
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
@@ -72,7 +99,7 @@ struct Global {
 /// Parameters for classification of lipids.
 /// Based on the local membrane center of geometry; useful for curved membranes; slow.
 #[derive(Debug, Clone)]
-struct Local {
+pub(crate) struct LocalParams {
     /// Selection of all lipids forming the membrane.
     membrane: String,
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
@@ -85,7 +112,7 @@ struct Local {
 /// Parameters for classification of lipids.
 /// Based on the orientation of the lipid tails; less reliable; fast.
 #[derive(Debug, Clone)]
-struct Individual {
+pub(crate) struct IndividualParams {
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
     heads: String,

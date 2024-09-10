@@ -3,13 +3,16 @@
 
 //! Implementations of some commonly used functions.
 
+use std::usize;
+
 use hashbrown::HashSet;
 
-use groan_rs::{errors::GroupError, system::System};
+use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 
 use crate::{
     errors::TopologyError,
-    molecule::{Molecule, MoleculeTopology},
+    leaflets::LeafletClassification,
+    molecule::{Molecule, MoleculeLeafletClassification, MoleculeTopology},
 };
 
 /// A prefix used as an identifier for Gorder groups.
@@ -67,7 +70,12 @@ pub(crate) fn create_group(
 ///
 /// ## Warning
 /// Only works if the `System` originates from a tpr file.
-pub(crate) fn classify_molecules(system: &System, group1: &str, group2: &str) -> Vec<Molecule> {
+pub(crate) fn classify_molecules(
+    system: &System,
+    group1: &str,
+    group2: &str,
+    leaflet_classification: Option<&LeafletClassification>,
+) -> Result<Vec<Molecule>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
 
@@ -80,30 +88,45 @@ pub(crate) fn classify_molecules(system: &System, group1: &str, group2: &str) ->
             continue;
         }
 
-        let (all_bonds, residues, order_atoms, minimum_index) =
+        let (all_bonds, residues, order_atoms, all_atom_indices) =
             process_molecule_dfs(system, &group1_name, index, &mut visited);
 
         let order_bonds = select_order_bonds(system, &group1_name, &group2_name, &all_bonds);
 
-        if let Some(existing_molecule) = molecules
-            .iter_mut()
-            .find(|m| *m.topology() == MoleculeTopology::new(system, &all_bonds, minimum_index))
-        {
-            existing_molecule.add(system, &order_bonds, minimum_index);
+        let topology = MoleculeTopology::new(
+            system,
+            &all_bonds,
+            all_atom_indices.get_atoms().first().expect(PANIC_MESSAGE),
+        );
+
+        if let Some(existing_molecule) = molecules.iter_mut().find(|m| *m.topology() == topology) {
+            existing_molecule.insert(system, &order_bonds, all_atom_indices)?;
         } else {
             let name = residues.join("-");
+
+            // construct a leaflet classifier
+            let classifier = if let Some(params) = leaflet_classification {
+                let mut leaflet_classifier = MoleculeLeafletClassification::new(params);
+                leaflet_classifier.insert(&all_atom_indices, &system)?;
+
+                Some(leaflet_classifier)
+            } else {
+                None
+            };
+
             molecules.push(Molecule::new(
                 system,
                 &name,
-                &MoleculeTopology::new(system, &all_bonds, minimum_index),
+                &topology,
                 &order_bonds,
                 &order_atoms,
-                minimum_index,
+                all_atom_indices,
+                classifier,
             ));
         }
     }
 
-    molecules
+    Ok(molecules)
 }
 
 /// Uses DFS to traverse a molecule, collecting bonds, residues, order atoms,
@@ -113,18 +136,18 @@ fn process_molecule_dfs(
     group_name: &str,
     start_index: usize,
     visited: &mut HashSet<usize>,
-) -> (HashSet<(usize, usize)>, Vec<String>, Vec<usize>, usize) {
+) -> (HashSet<(usize, usize)>, Vec<String>, Vec<usize>, Group) {
     let mut all_bonds = HashSet::new();
     let mut residues = Vec::new();
     let mut order_atoms = Vec::new();
-    let mut minimum_index = start_index;
+    let mut all_atom_indices = Vec::new();
 
     let mut stack = vec![start_index];
 
     while let Some(index) = stack.pop() {
         let atom = system.get_atom_as_ref(index).expect(PANIC_MESSAGE);
         visited.insert(index);
-        minimum_index = minimum_index.min(index);
+        all_atom_indices.push(index);
 
         if !residues.contains(&atom.get_residue_name().to_owned()) {
             residues.push(atom.get_residue_name().to_owned());
@@ -145,7 +168,12 @@ fn process_molecule_dfs(
         }
     }
 
-    (all_bonds, residues, order_atoms, minimum_index)
+    (
+        all_bonds,
+        residues,
+        order_atoms,
+        Group::from_indices(all_atom_indices, usize::MAX),
+    )
 }
 
 /// Selects bonds between two groups that should be considered as order bonds,
@@ -1036,7 +1064,7 @@ mod tests {
         )
         .unwrap();
 
-        let molecules = classify_molecules(&system, "HeavyAtoms", "Hydrogens");
+        let molecules = classify_molecules(&system, "HeavyAtoms", "Hydrogens", None).unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
         let expected_topology = [pope_topology(), popc_topology(), popg_topology()];
         let expected_order_bond_types =
@@ -1430,7 +1458,7 @@ mod tests {
 
         create_group(&mut system, "Atoms", "resname POPE POPG").unwrap();
 
-        let molecules = classify_molecules(&system, "Atoms", "Atoms");
+        let molecules = classify_molecules(&system, "Atoms", "Atoms", None).unwrap();
         let expected_names = ["POPE", "POPG"];
         let expected_topology = [
             MoleculeTopology {

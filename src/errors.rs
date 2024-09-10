@@ -38,4 +38,16 @@ pub enum TopologyError {
 
     #[error("{} \"hydrogen\" atom '{}' is bonded to two or more heavy atoms (the second heavy atom has a number '{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
     MultiBinding(usize, usize),
+
+    #[error("{} molecule starting with atom number '{}' contains multiple head group atoms", "error:".red().bold(), .0.to_string().yellow())]
+    MultipleHeads(usize),
+
+    #[error("{} molecule starting with atom number '{}' contains no head group atom", "error:".red().bold(), .0.to_string().yellow())]
+    NoHead(usize),
+
+    #[error("{} molecule starting with atom number '{}' contains no methyl group atom", "error:".red().bold(), .0.to_string().yellow())]
+    NoMethyl(usize),
+
+    #[error("{} molecule starting with atom number '{}' contains a number of methyl group atoms ('{}') not consistent with other molecules ('{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+    InconsistentNumberOfMethyls(usize, usize, usize),
 }

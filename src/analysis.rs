@@ -258,7 +258,8 @@ mod tests_builder {
                     })
                     .dim_y(GridSpan::Auto)
                     .min_samples(10)
-                    .bin_size(0.2)
+                    .bin_size_x(0.05)
+                    .bin_size_y(0.02)
                     .build()
                     .unwrap(),
             )
@@ -293,7 +294,8 @@ mod tests_builder {
         );
         matches!(map.dim_y(), GridSpan::Auto);
         assert_eq!(map.min_samples(), 10);
-        assert_eq!(map.bin_size(), 0.2);
+        assert_eq!(map.bin_size_x(), 0.05);
+        assert_eq!(map.bin_size_y(), 0.02);
     }
 
     #[test]

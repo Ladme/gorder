@@ -17,3 +17,6 @@ derive_builder = "0.20.0"
 getset = "0.1.2"
 log = "0.4.22"
 hashbrown = "0.14.5"
+
+[dev-dependencies]
+approx = "0.5.1"
