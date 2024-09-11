@@ -633,6 +633,8 @@ where
 mod tests {
     use approx::assert_relative_eq;
 
+    use crate::auxiliary::create_group;
+
     use super::*;
 
     #[test]
@@ -901,6 +903,217 @@ mod tests {
 
         for (got, exp) in samples.iter().zip(expected_samples.iter()) {
             assert_eq!(got, exp);
+        }
+    }
+
+    #[test]
+    fn test_global_leaflet_classification() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P").unwrap();
+        let mut classifier = MoleculeLeafletClassification::new(&LeafletClassification::global(
+            "@membrane",
+            "name P",
+        ));
+
+        let group1 = Group::from_query("resid 7", &system).unwrap();
+        let group2 = Group::from_query("resid 144", &system).unwrap();
+        let group3 = Group::from_query("resid 264", &system).unwrap();
+
+        classifier.insert(&group1, &system).unwrap();
+        classifier.insert(&group2, &system).unwrap();
+        classifier.insert(&group3, &system).unwrap();
+
+        if let MoleculeLeafletClassification::Global(x) = classifier {
+            assert_eq!(x.heads, vec![760, 18002, 34047]);
+        } else {
+            panic!("Invalid classifier type.")
+        }
+    }
+
+    #[test]
+    fn test_local_leaflet_classification() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P").unwrap();
+        let mut classifier = MoleculeLeafletClassification::new(&LeafletClassification::local(
+            "@membrane",
+            "name P",
+            3.3,
+        ));
+
+        let group1 = Group::from_query("resid 7", &system).unwrap();
+        let group2 = Group::from_query("resid 144", &system).unwrap();
+        let group3 = Group::from_query("resid 264", &system).unwrap();
+
+        classifier.insert(&group1, &system).unwrap();
+        classifier.insert(&group2, &system).unwrap();
+        classifier.insert(&group3, &system).unwrap();
+
+        if let MoleculeLeafletClassification::Local(x) = classifier {
+            assert_eq!(x.heads, vec![760, 18002, 34047]);
+            assert_eq!(x.radius, 3.3);
+        } else {
+            panic!("Invalid classifier type.")
+        }
+    }
+
+    #[test]
+    fn test_individual_leaflet_classification() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P").unwrap();
+        create_group(&mut system, "Methyls", "name C218 C316").unwrap();
+        let mut classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::individual("name P", "name C218 C316"),
+        );
+
+        let group1 = Group::from_query("resid 7", &system).unwrap();
+        let group2 = Group::from_query("resid 144", &system).unwrap();
+        let group3 = Group::from_query("resid 264", &system).unwrap();
+
+        classifier.insert(&group1, &system).unwrap();
+        classifier.insert(&group2, &system).unwrap();
+        classifier.insert(&group3, &system).unwrap();
+
+        if let MoleculeLeafletClassification::Individual(x) = classifier {
+            assert_eq!(x.heads, vec![760, 18002, 34047]);
+            assert_eq!(x.methyls, vec![[828, 871], [18070, 18113], [34115, 34158]]);
+        } else {
+            panic!("Invalid classifier type.")
+        }
+    }
+
+    /// Helper function to run the classification test and check for the expected error.
+    fn run_classification_test<F>(
+        system: &mut System,
+        classifier: LeafletClassification,
+        group_query: &str,
+        is_expected_error: F,
+    ) where
+        F: Fn(&TopologyError) -> bool,
+    {
+        let mut molecule_classifier = MoleculeLeafletClassification::new(&classifier);
+        let group = Group::from_query(group_query, system).unwrap();
+        match molecule_classifier.insert(&group, system) {
+            Err(e) if is_expected_error(&e) => (),
+            Ok(_) => panic!("Function should have failed but it succeeded."),
+            Err(e) => panic!("Incorrect error type returned: {:?}", e),
+        }
+    }
+
+    #[test]
+    fn test_global_leaflet_classification_fail_no_head() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P and not resid 144").unwrap();
+        let classifier = LeafletClassification::global("@membrane", "name P and not resid 144");
+
+        run_classification_test(&mut system, classifier, "resid 144", |e| {
+            matches!(e, TopologyError::NoHead(_))
+        });
+    }
+
+    #[test]
+    fn test_global_leaflet_classification_fail_multiple_heads() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P or (resid 144 and name P HA)").unwrap();
+        let classifier =
+            LeafletClassification::global("@membrane", "name P or (resid 144 and name P HA)");
+
+        run_classification_test(&mut system, classifier, "resid 144", |e| {
+            matches!(e, TopologyError::MultipleHeads(_))
+        });
+    }
+
+    #[test]
+    fn test_local_leaflet_classification_fail_no_head() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P and not resid 144").unwrap();
+        let classifier = LeafletClassification::local("@membrane", "name P and not resid 144", 2.5);
+
+        run_classification_test(&mut system, classifier, "resid 144", |e| {
+            matches!(e, TopologyError::NoHead(_))
+        });
+    }
+
+    #[test]
+    fn test_local_leaflet_classification_fail_multiple_heads() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P or (resid 144 and name P HA)").unwrap();
+        let classifier =
+            LeafletClassification::local("@membrane", "name P or (resid 144 and name P HA)", 2.5);
+
+        run_classification_test(&mut system, classifier, "resid 144", |e| {
+            matches!(e, TopologyError::MultipleHeads(_))
+        });
+    }
+
+    #[test]
+    fn test_individual_leaflet_classification_fail_no_head() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P and not resid 144").unwrap();
+        create_group(&mut system, "Methyls", "name C218 C316").unwrap();
+        let classifier =
+            LeafletClassification::individual("name P and not resid 144", "name C218 C316");
+
+        run_classification_test(&mut system, classifier, "resid 144", |e| {
+            matches!(e, TopologyError::NoHead(_))
+        });
+    }
+
+    #[test]
+    fn test_individual_leaflet_classification_fail_multiple_heads() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P or (resid 144 and name P HA)").unwrap();
+        create_group(&mut system, "Methyls", "name C218 C316").unwrap();
+        let classifier = LeafletClassification::individual(
+            "name P or (resid 144 and name P HA)",
+            "name C218 C316",
+        );
+
+        run_classification_test(&mut system, classifier, "resid 144", |e| {
+            matches!(e, TopologyError::MultipleHeads(_))
+        });
+    }
+
+    #[test]
+    fn test_individual_leaflet_classification_fail_no_methyl() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P").unwrap();
+        create_group(&mut system, "Methyls", "name C218 C316 and not resid 144").unwrap();
+        let classifier =
+            LeafletClassification::individual("name P", "name C218 C316 and not resid 144");
+
+        run_classification_test(&mut system, classifier, "resid 144", |e| {
+            matches!(e, TopologyError::NoMethyl(_))
+        });
+    }
+
+    #[test]
+    fn test_individual_leaflet_classification_inconsistent_methyls() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        create_group(&mut system, "Heads", "name P").unwrap();
+        create_group(
+            &mut system,
+            "Methyls",
+            "(name C218 C316 and not resid 144) or (resid 144 and name C218)",
+        )
+        .unwrap();
+        let classifier = LeafletClassification::individual(
+            "name P",
+            "(name C218 C316 and not resid 144) or (resid 144 and name C218)",
+        );
+
+        let mut molecule_classifier = MoleculeLeafletClassification::new(&classifier);
+        let group1 = Group::from_query("resid 7", &system).unwrap();
+        let group2 = Group::from_query("resid 144", &system).unwrap();
+
+        molecule_classifier.insert(&group1, &system).unwrap();
+
+        match molecule_classifier.insert(&group2, &system) {
+            Err(TopologyError::InconsistentNumberOfMethyls(_, a, b)) => {
+                assert_eq!(a, 1);
+                assert_eq!(b, 2);
+            }
+            Ok(_) => panic!("Function should have failed but it succeeded."),
+            Err(e) => panic!("Incorrect error type returned: {:?}", e),
         }
     }
 }
