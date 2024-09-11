@@ -69,8 +69,14 @@ impl LeafletClassification {
                 create_group(system, "Membrane", &params.membrane)?;
                 create_group(system, "Heads", &params.heads)?;
             }
-            Self::Local(_) => todo!("FATAL GORDER ERROR | LeafletClassification::prepare_system | Local leaflet classification method is not yet supported."),
-            Self::Individual(_) => todo!("FATAL GORDER ERROR | LeafletClassification::prepare_system | Individual leaflet classification method is not yet supported.")
+            Self::Local(params) => {
+                create_group(system, "Membrane", &params.membrane)?;
+                create_group(system, "Heads", &params.heads)?;
+            }
+            Self::Individual(params) => {
+                create_group(system, "Heads", &params.heads)?;
+                create_group(system, "Methyls", &params.methyls)?;
+            }
         }
 
         Ok(())
@@ -119,4 +125,44 @@ pub(crate) struct IndividualParams {
     /// Reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails.
     /// There should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
     methyls: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::auxiliary::macros::group_name;
+
+    use super::*;
+
+    #[test]
+    fn test_prepare_system_global() {
+        let mut system = System::from_file("tests/files/pepg_cg.tpr").unwrap();
+        let classifier = LeafletClassification::global("@membrane", "name PO4");
+
+        classifier.prepare_system(&mut system).unwrap();
+
+        assert!(system.group_exists(group_name!("Membrane")));
+        assert!(system.group_exists(group_name!("Heads")));
+    }
+
+    #[test]
+    fn test_prepare_system_local() {
+        let mut system = System::from_file("tests/files/pepg_cg.tpr").unwrap();
+        let classifier = LeafletClassification::local("@membrane", "name PO4", 2.5);
+
+        classifier.prepare_system(&mut system).unwrap();
+
+        assert!(system.group_exists(group_name!("Membrane")));
+        assert!(system.group_exists(group_name!("Heads")));
+    }
+
+    #[test]
+    fn test_prepare_system_individual() {
+        let mut system = System::from_file("tests/files/pepg_cg.tpr").unwrap();
+        let classifier = LeafletClassification::individual("name PO4", "name C4A C4B");
+
+        classifier.prepare_system(&mut system).unwrap();
+
+        assert!(system.group_exists(group_name!("Heads")));
+        assert!(system.group_exists(group_name!("Methyls")));
+    }
 }
