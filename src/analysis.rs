@@ -108,7 +108,7 @@ impl Analysis {
     }
 
     /// Perform the analysis and write out the results.
-    pub fn analyze(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub fn run(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         match self.analysis_type() {
             AnalysisType::AAOrder => crate::aaorder::analyze_atomistic(self),
             AnalysisType::CGOrder => todo!("Implement CG order calculation."),

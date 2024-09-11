@@ -1,4 +1,5 @@
 use colored::Colorize;
+use groan_rs::errors::SelectError;
 use thiserror::Error;
 
 /// Errors that can occur when creating a `GridSpan` structure.
@@ -10,11 +11,11 @@ pub enum GridSpanError {
     Negative(f32),
 }
 
-/// Errors that can occur when constructing a `Topology` structure.
+/// Errors that can occur when analyzing system topology.
 #[derive(Error, Debug)]
 pub enum TopologyError {
-    #[error("{} groan selection language query '{}' is invalid.", "error:".red().bold(), .0.yellow())]
-    InvalidQuery(String),
+    #[error("{}", .0)]
+    InvalidQuery(SelectError),
 
     #[error("{} group '{}' is empty.", "error:".red().bold(), .0.yellow())]
     EmptyGroup(String),
@@ -50,4 +51,20 @@ pub enum TopologyError {
 
     #[error("{} molecule starting with atom number '{}' contains a number of methyl group atoms ('{}') not consistent with other molecules ('{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
     InconsistentNumberOfMethyls(usize, usize, usize),
+}
+
+/// Errors that can occur while analyzing the trajectory.
+#[derive(Error, Debug)]
+pub enum AnalysisError {
+    #[error("{} system has undefined simulation box", "error:".red().bold())]
+    UndefinedBox,
+
+    #[error("{} the simulation box is not orthogonal", "error:".red().bold())]
+    NotOrthogonalBox,
+
+    #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
+    ZeroBox,
+
+    #[error("{} atom with atom number '{}' has an undefined position", "error:".red().bold(), .0.to_string().yellow())]
+    UndefinedPosition(usize),
 }

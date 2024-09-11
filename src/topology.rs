@@ -1,20 +1,20 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 use hashbrown::HashSet;
 
 use getset::Getters;
 use groan_rs::{
-    prelude::{Atom, GridMap},
+    prelude::{Atom, GridMap, SimBox, Vector3D},
     structures::{gridmap::DataOrder, group::Group},
     system::System,
 };
 
 use crate::{
     auxiliary::{macros::group_name, PANIC_MESSAGE},
-    errors::TopologyError,
+    errors::{AnalysisError, TopologyError},
     leaflets::LeafletClassification,
     ordermap::OrderMap,
 };
@@ -69,9 +69,39 @@ impl MoleculeType {
         Ok(())
     }
 
-    /// Analyze order parameters of a molecule based on a single simulation frame.
-    pub(crate) fn analyze_frame(&mut self, frame: &System) {
-        todo!()
+    /// Calculate order parameters for bonds of a single molecule type from a single simulation frame.
+    pub(crate) fn analyze_frame(
+        &mut self,
+        frame: &System,
+        simbox: &SimBox,
+        membrane_normal: &Vector3D,
+    ) -> Result<(), AnalysisError> {
+        // todo! leaflet classification
+
+        for bond_type in self.order_bonds.bonds.iter_mut() {
+            for (index1, index2) in bond_type.bonds.iter() {
+                let atom1 = unsafe { frame.get_atom_unchecked_as_ref(*index1) };
+                let atom2 = unsafe { frame.get_atom_unchecked_as_ref(*index2) };
+
+                let pos1 = atom1
+                    .get_position()
+                    .ok_or_else(|| AnalysisError::UndefinedPosition(index1 + 1))?;
+
+                let pos2 = atom2
+                    .get_position()
+                    .ok_or_else(|| AnalysisError::UndefinedPosition(index2 + 1))?;
+
+                let vector = pos1.vector_to(pos2, simbox);
+                let angle = vector.angle(membrane_normal);
+
+                let cos = angle.cos();
+                let sch = 0.5 * (1.0 - (3.0 * cos * cos));
+
+                bond_type.total += sch;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -542,6 +572,13 @@ impl Add<Order> for Order {
             order: self.order + rhs.order,
             n_samples: self.n_samples + rhs.n_samples,
         }
+    }
+}
+
+impl AddAssign<f32> for Order {
+    fn add_assign(&mut self, rhs: f32) {
+        self.order += rhs;
+        self.n_samples += 1;
     }
 }
 

@@ -44,8 +44,8 @@ pub(crate) fn create_group(
 
     match system.group_create(&group_name, query) {
         Ok(_) | Err(GroupError::AlreadyExistsWarning(_)) => (),
-        Err(GroupError::InvalidQuery(_)) => {
-            return Err(TopologyError::InvalidQuery(query.to_owned()))
+        Err(GroupError::InvalidQuery(e)) => {
+            return Err(TopologyError::InvalidQuery(e))
         }
         Err(e) => panic!(
             "FATAL GORDER ERROR | auxiliary::create_group | Unexpected error `{}` returned when selecting '{}' using the query '{}'. {}",
