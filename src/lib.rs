@@ -10,8 +10,8 @@ mod auxiliary;
 pub mod axis;
 pub mod errors;
 pub mod leaflets;
-mod molecule;
 pub mod ordermap;
+mod topology;
 
 pub use analysis::Analysis;
 pub use axis::Axis;

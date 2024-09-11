@@ -1,7 +1,7 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-use std::{ops::Add, time::SystemTimeError};
+use std::ops::Add;
 
 use hashbrown::HashSet;
 
@@ -20,7 +20,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Getters)]
-pub(crate) struct Molecule {
+pub(crate) struct MoleculeType {
     #[getset(get = "pub(crate)")]
     name: String,
     #[getset(get = "pub(crate)")]
@@ -30,35 +30,24 @@ pub(crate) struct Molecule {
     #[getset(get = "pub(crate)")]
     order_atoms: OrderAtoms,
     #[getset(get = "pub(crate)")]
-    molecule_ranges: Vec<Group>,
-    #[getset(get = "pub(crate)")]
     leaflet_classification: Option<MoleculeLeafletClassification>,
 }
 
-impl Molecule {
+impl MoleculeType {
     pub(crate) fn new(
         system: &System,
         name: &str,
         topology: &MoleculeTopology,
         order_bonds: &HashSet<(usize, usize)>,
         order_atoms: &[usize],
-        atoms: Group,
+        min_index: usize,
         leaflet_classification: Option<MoleculeLeafletClassification>,
-    ) -> Molecule {
-        Molecule {
+    ) -> Self {
+        Self {
             name: name.to_owned(),
             topology: topology.to_owned(),
-            order_bonds: OrderBonds::new(
-                system,
-                order_bonds,
-                atoms.get_atoms().first().expect(PANIC_MESSAGE),
-            ),
-            order_atoms: OrderAtoms::new(
-                system,
-                order_atoms,
-                atoms.get_atoms().first().expect(PANIC_MESSAGE),
-            ),
-            molecule_ranges: vec![atoms],
+            order_bonds: OrderBonds::new(system, order_bonds, min_index),
+            order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
         }
     }
@@ -77,8 +66,6 @@ impl Molecule {
             classifier.insert(&atoms, system)?;
         }
 
-        self.molecule_ranges.push(atoms);
-
         Ok(())
     }
 
@@ -88,16 +75,15 @@ impl Molecule {
     }
 }
 
-impl Add<Molecule> for Molecule {
-    type Output = Molecule;
+impl Add<MoleculeType> for MoleculeType {
+    type Output = Self;
 
-    fn add(self, rhs: Molecule) -> Self::Output {
-        Molecule {
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
             name: self.name,
             topology: self.topology,
             order_bonds: self.order_bonds + rhs.order_bonds,
             order_atoms: self.order_atoms,
-            molecule_ranges: self.molecule_ranges,
             leaflet_classification: self.leaflet_classification,
         }
     }
@@ -155,7 +141,7 @@ fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, Topolo
                 molecule
                     .get_atoms()
                     .first()
-                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | molecule::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
+                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | topology::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
     }
 
     if atoms.len() > 1 {
@@ -182,7 +168,7 @@ fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>
             molecule
                 .get_atoms()
                 .first()
-                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | molecule::get_reference_methyls | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
+                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | topology::get_reference_methyls | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
     }
 
     Ok(atoms)
@@ -191,7 +177,7 @@ fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>
 #[derive(Debug, Clone)]
 pub(crate) struct GlobalClassification {
     /// Indices of headgroup identifiers (one per molecule).
-    heads: Vec<usize>,
+    pub(crate) heads: Vec<usize>,
 }
 
 impl GlobalClassification {
@@ -204,9 +190,9 @@ impl GlobalClassification {
 #[derive(Debug, Clone)]
 pub(crate) struct LocalClassification {
     /// Indices of headgroup identifiers (one per molecule).
-    heads: Vec<usize>,
+    pub(crate) heads: Vec<usize>,
     /// Radius of a cylinder for the calculation of local membrane center of geometry (in nm).
-    radius: f32,
+    pub(crate) radius: f32,
 }
 
 impl LocalClassification {
@@ -219,9 +205,9 @@ impl LocalClassification {
 #[derive(Debug, Clone)]
 pub(crate) struct IndividualClassification {
     /// Indices of headgroup identifiers (one per molecule).
-    heads: Vec<usize>,
+    pub(crate) heads: Vec<usize>,
     /// Indices of methyl identifiers (any number per molecule).
-    methyls: Vec<Vec<usize>>,
+    pub(crate) methyls: Vec<Vec<usize>>,
 }
 
 impl IndividualClassification {
@@ -367,7 +353,7 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
         for index in [index1, index2] {
             if index < min_index {
                 panic!(
-                    "FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}", 
+                    "FATAL GORDER ERROR | topology::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}", 
                     index1, min_index, PANIC_MESSAGE
                 );
             }
@@ -375,7 +361,7 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
 
         if index1 == index2 {
             panic!(
-                "FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}", 
+                "FATAL GORDER ERROR | topology::bonds_sanity_check | Bond between the same atom (index: '{}'). {}", 
                 index1, PANIC_MESSAGE
             );
         }
@@ -387,11 +373,11 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
 fn get_atoms_from_bond(system: &System, index1: usize, index2: usize) -> (&Atom, &Atom) {
     let atom1 = system
         .get_atom_as_ref(index1)
-        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | molecule::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index1, PANIC_MESSAGE));
+        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | topology::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index1, PANIC_MESSAGE));
 
     let atom2 = system
         .get_atom_as_ref(index2)
-        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | molecule::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index2, PANIC_MESSAGE));
+        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | topology::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index2, PANIC_MESSAGE));
 
     (atom1, atom2)
 }

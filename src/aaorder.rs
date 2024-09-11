@@ -10,12 +10,12 @@ use groan_rs::{files::FileType, structures::group::Group, system::System};
 use crate::{
     auxiliary::{macros::group_name, GORDER_GROUP_PREFIX, PANIC_MESSAGE},
     errors::TopologyError,
-    molecule::{AtomType, BondType, Molecule},
+    topology::{AtomType, BondType, MoleculeType},
     Analysis,
 };
 
 struct OrderData {
-    molecules: Vec<Molecule>,
+    molecules: Vec<MoleculeType>,
 }
 
 /// Calculate the atomistic lipid order parameters.
@@ -74,7 +74,7 @@ pub(crate) fn analyze_atomistic(
     Ok(())
 }
 
-fn analyze_frame(frame: &System, data: &Vec<Molecule>) {
+fn analyze_frame(frame: &System, data: &Vec<MoleculeType>) {
 }
 
 /*/// Modifies the HeavyAtoms group so it only contains heavy atoms that are connected to at least one hydrogen.
