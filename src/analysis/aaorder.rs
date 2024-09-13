@@ -3,57 +3,30 @@
 
 //! Contains the implementation of the calculation of the atomistic lipid order parameters.
 
-use std::{collections::HashSet, ops::Add};
-
+use super::leaflets::MoleculeLeafletClassification;
+use super::{auxiliary::macros::group_name, topology::SystemTopology};
+use crate::errors::{AnalysisError, TopologyError};
+use crate::{Analysis, PANIC_MESSAGE};
 use groan_rs::{
     files::FileType,
-    prelude::{ProgressPrinter, SimBox, Vector3D, XtcReader},
-    structures::group::Group,
+    prelude::{ProgressPrinter, XtcReader},
     system::System,
 };
 
-use crate::{
-    auxiliary::{macros::group_name, GORDER_GROUP_PREFIX, PANIC_MESSAGE},
-    errors::{AnalysisError, TopologyError},
-    topology::{AtomType, BondType, MoleculeType},
-    Analysis,
-};
-
-#[derive(Debug, Clone)]
-struct SystemTopology {
-    molecules: Vec<MoleculeType>,
-    membrane_normal: Vector3D,
-}
-
-impl Add<SystemTopology> for SystemTopology {
-    type Output = Self;
-    fn add(self, rhs: SystemTopology) -> Self::Output {
-        Self {
-            molecules: self
-                .molecules
-                .into_iter()
-                .zip(rhs.molecules.into_iter())
-                .map(|(a, b)| a + b)
-                .collect::<Vec<MoleculeType>>(),
-            membrane_normal: self.membrane_normal,
-        }
-    }
-}
-
 /// Calculate the atomistic lipid order parameters.
-pub(crate) fn analyze_atomistic(
+pub(super) fn analyze_atomistic(
     analysis: &Analysis,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
 
-    crate::auxiliary::create_group(
+    super::auxiliary::create_group(
         &mut system,
         "HeavyAtoms",
         analysis.heavy_atoms().as_ref().unwrap_or_else(||
              panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of heavy atoms should be provided. {}", PANIC_MESSAGE)),
     )?;
 
-    crate::auxiliary::create_group(
+    super::auxiliary::create_group(
         &mut system,
         "Hydrogens", 
         analysis.hydrogens().as_ref().unwrap_or_else(||
@@ -89,17 +62,22 @@ pub(crate) fn analyze_atomistic(
     }
 
     // get the relevant molecules
-    let molecules = crate::auxiliary::classify_molecules(
+    let molecules = super::auxiliary::classify_molecules(
         &system,
         "HeavyAtoms",
         "Hydrogens",
         analysis.leaflets().as_ref(),
+        analysis.membrane_normal().into(),
+        analysis.map().as_ref(),
     )?;
 
-    let data = SystemTopology {
-        molecules: molecules,
-        membrane_normal: analysis.membrane_normal().into(),
-    };
+    // if no molecules are detected, end the analysis
+    if molecules.len() == 0 {
+        log::info!("No molecules detected for analysis.");
+        return Ok(());
+    }
+
+    let data = SystemTopology::new(molecules, analysis.membrane_normal().into());
 
     // run the analysis in parallel
     let result = system.traj_iter_map_reduce::<XtcReader, SystemTopology, AnalysisError>(
@@ -119,6 +97,7 @@ pub(crate) fn analyze_atomistic(
     Ok(())
 }
 
+/// Analyze order parameters in a single simulation frame.
 fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), AnalysisError> {
     let simbox = frame.get_box_as_ref().ok_or(AnalysisError::UndefinedBox)?;
 
@@ -130,8 +109,34 @@ fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), Analys
         return Err(AnalysisError::ZeroBox);
     }
 
-    for molecule in data.molecules.iter_mut() {
-        molecule.analyze_frame(frame, &simbox, &data.membrane_normal)?;
+    let membrane_normal = data.membrane_normal().into();
+    let membrane_center = {
+        match data
+            .molecules()
+            .get(0)
+            .expect(PANIC_MESSAGE)
+            .leaflet_classification()
+        {
+            Some(MoleculeLeafletClassification::Global(_)) => frame
+                .group_get_center(group_name!("Membrane"))
+                .map(Some)
+                .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter),
+            _ => Ok(None), // No applicable classification, return Ok with None
+        }
+    }?;
+
+    for molecule in data.molecules_mut().iter_mut() {
+        match molecule.leaflet_classification_mut() {
+            Some(MoleculeLeafletClassification::Global(x)) => {
+                x.set_membrane_center(membrane_center.clone().expect(PANIC_MESSAGE));
+            }
+            Some(MoleculeLeafletClassification::Local(x)) => {
+                x.set_membrane_center(frame, membrane_normal)?;
+            }
+            Some(MoleculeLeafletClassification::Individual(_)) | None => (),
+        };
+
+        molecule.analyze_frame(frame, &simbox, &membrane_normal.into())?;
     }
 
     Ok(())

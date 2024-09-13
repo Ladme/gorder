@@ -4,14 +4,18 @@
 /// Version of the 'gorder' crate / program.
 pub const GORDER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-mod aaorder;
-pub mod analysis;
-mod auxiliary;
-pub mod axis;
+mod analysis;
 pub mod errors;
-pub mod leaflets;
-pub mod ordermap;
-mod topology;
+pub mod input;
+mod presentation;
 
-pub use analysis::Analysis;
-pub use axis::Axis;
+pub use input::Analysis;
+pub use input::AnalysisType;
+pub use input::Axis;
+pub use input::LeafletClassification;
+pub use input::OrderMap;
+
+/// Message that should be added to every panic.
+pub(crate) const PANIC_MESSAGE: &str =
+    "\n\n\n            >>> THIS SHOULD NOT HAVE HAPPENED! PLEASE REPORT THIS ERROR <<<
+(open an issue at 'github.com/Ladme/gorder/issues' or write an e-mail to 'ladmeb@gmail.com')\n\n";

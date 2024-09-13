@@ -3,20 +3,17 @@
 
 //! Implementations of some commonly used functions.
 
+use super::leaflets::MoleculeLeafletClassification;
+use super::molecule::{MoleculeTopology, MoleculeType};
+use crate::{errors::TopologyError, LeafletClassification};
+use crate::{OrderMap, PANIC_MESSAGE};
+use groan_rs::prelude::Dimension;
+use groan_rs::{errors::GroupError, structures::group::Group, system::System};
+use hashbrown::HashSet;
 use std::usize;
 
-use hashbrown::HashSet;
-
-use groan_rs::{errors::GroupError, structures::group::Group, system::System};
-
-use crate::{
-    errors::TopologyError,
-    leaflets::LeafletClassification,
-    topology::{MoleculeLeafletClassification, MoleculeTopology, MoleculeType},
-};
-
 /// A prefix used as an identifier for Gorder groups.
-pub(crate) const GORDER_GROUP_PREFIX: &str = "xxxGorderReservedxxx-";
+pub(super) const GORDER_GROUP_PREFIX: &str = "xxxGorderReservedxxx-";
 
 #[macro_use]
 pub(crate) mod macros {
@@ -29,13 +26,8 @@ pub(crate) mod macros {
     pub(crate) use group_name;
 }
 
-/// Message that should be added to every panic.
-pub(crate) const PANIC_MESSAGE: &str =
-    "\n\n\n            >>> THIS SHOULD NOT HAVE HAPPENED! PLEASE REPORT THIS ERROR <<<
-(open an issue at 'github.com/Ladme/gorder/issues' or write an e-mail to 'ladmeb@gmail.com')\n\n";
-
 /// Create group handling all potential errors. Also check that the group is not empty.
-pub(crate) fn create_group(
+pub(super) fn create_group(
     system: &mut System,
     group: &str,
     query: &str,
@@ -70,11 +62,13 @@ pub(crate) fn create_group(
 ///
 /// ## Warning
 /// Only works if the `System` originates from a tpr file.
-pub(crate) fn classify_molecules(
+pub(super) fn classify_molecules(
     system: &System,
     group1: &str,
     group2: &str,
     leaflet_classification: Option<&LeafletClassification>,
+    membrane_normal: Dimension,
+    ordermap_params: Option<&OrderMap>,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -106,7 +100,8 @@ pub(crate) fn classify_molecules(
 
             // construct a leaflet classifier
             let classifier = if let Some(params) = leaflet_classification {
-                let mut leaflet_classifier = MoleculeLeafletClassification::new(params);
+                let mut leaflet_classifier =
+                    MoleculeLeafletClassification::new(params, membrane_normal);
                 leaflet_classifier.insert(&all_atom_indices, &system)?;
 
                 Some(leaflet_classifier)
@@ -128,6 +123,7 @@ pub(crate) fn classify_molecules(
                 &order_atoms,
                 minimum_index,
                 classifier,
+                ordermap_params,
             ));
         }
     }
@@ -213,7 +209,7 @@ fn select_order_bonds(
 #[cfg(test)]
 mod tests {
 
-    use crate::topology::{AtomType, BondType, OrderAtoms};
+    use crate::analysis::molecule::{AtomType, BondType, OrderAtoms};
 
     use super::*;
 
@@ -1014,19 +1010,10 @@ mod tests {
             let resname2 = split[4];
             let atomname2 = split[5];
 
-            let atom1 = AtomType {
-                relative_index: index1,
-                residue_name: resname1.to_owned(),
-                atom_name: atomname1.to_owned(),
-            };
+            let atom1 = AtomType::new_raw(index1, resname1, atomname1);
+            let atom2 = AtomType::new_raw(index2, resname2, atomname2);
 
-            let atom2 = AtomType {
-                relative_index: index2,
-                residue_name: resname2.to_owned(),
-                atom_name: atomname2.to_owned(),
-            };
-
-            let bond = BondType { atom1, atom2 };
+            let bond = BondType::new_from_types(atom1, atom2);
             bonds.insert(bond);
         }
 
@@ -1043,11 +1030,7 @@ mod tests {
             let residue_name = split[1];
             let atom_name = split[2];
 
-            atoms.push(AtomType {
-                relative_index,
-                residue_name: residue_name.to_owned(),
-                atom_name: atom_name.to_owned(),
-            })
+            atoms.push(AtomType::new_raw(relative_index, residue_name, atom_name));
         }
 
         OrderAtoms { atoms }
@@ -1077,6 +1060,8 @@ mod tests {
             "HeavyAtoms",
             "Hydrogens",
             Some(&LeafletClassification::local("@membrane", "name P", 2.5)),
+            Dimension::Z,
+            None,
         )
         .unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
@@ -1404,17 +1389,17 @@ mod tests {
             assert_eq!(molecule.topology(), &expected_topology[i]);
             let order_bonds = molecule.order_bonds();
             let order_bond_types: HashSet<BondType> = order_bonds
-                .bonds
+                .bonds()
                 .iter()
-                .map(|x| x.bond_type.clone())
+                .map(|x| x.bond_type().clone())
                 .collect();
 
             assert_eq!(order_bond_types, expected_order_bond_types[i]);
 
             for (b, bond_instances) in order_bonds
-                .bonds
+                .bonds()
                 .iter()
-                .map(|x| x.bonds.clone())
+                .map(|x| x.bonds().clone())
                 .enumerate()
             {
                 assert_eq!(bond_instances.len(), expected_n_instances[i]);
@@ -1427,8 +1412,8 @@ mod tests {
 
             if let Some(MoleculeLeafletClassification::Local(x)) = molecule.leaflet_classification()
             {
-                assert_eq!(x.heads, expected_heads[i]);
-                assert_eq!(x.radius, 2.5);
+                assert_eq!(x.heads(), &expected_heads[i]);
+                assert_eq!(x.radius(), 2.5);
             } else {
                 panic!("Incorrect MoleculeLeafletClassification.")
             }
@@ -1521,6 +1506,8 @@ mod tests {
                 "name PO4",
                 "name C4A C4B",
             )),
+            Dimension::Z,
+            None,
         )
         .unwrap();
         let expected_names = ["POPE", "POPG"];
@@ -2158,16 +2145,16 @@ mod tests {
             assert_eq!(molecule.topology(), &expected_topology[i]);
             let order_bonds = molecule.order_bonds();
             let order_bond_types: HashSet<BondType> = order_bonds
-                .bonds
+                .bonds()
                 .iter()
-                .map(|x| x.bond_type.clone())
+                .map(|x| x.bond_type().clone())
                 .collect();
             assert_eq!(order_bond_types, expected_order_bond_types[i]);
 
             for (b, bond_instances) in order_bonds
-                .bonds
+                .bonds()
                 .iter()
-                .map(|x| x.bonds.clone())
+                .map(|x| x.bonds().clone())
                 .enumerate()
             {
                 assert_eq!(bond_instances.len(), expected_n_instances[i]);
@@ -2181,8 +2168,8 @@ mod tests {
             if let Some(MoleculeLeafletClassification::Individual(x)) =
                 molecule.leaflet_classification()
             {
-                assert_eq!(x.heads, expected_heads[i]);
-                assert_eq!(x.methyls, expected_methyls[i]);
+                assert_eq!(x.heads(), &expected_heads[i]);
+                assert_eq!(x.methyls(), &expected_methyls[i]);
             } else {
                 panic!("Incorrect MoleculeLeafletClassification.")
             }

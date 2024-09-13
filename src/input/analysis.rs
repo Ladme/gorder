@@ -7,9 +7,9 @@ use colored::Colorize;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
 
-use super::axis::Axis;
-use super::leaflets::LeafletClassification;
-use super::ordermap::OrderMap;
+use super::Axis;
+use super::LeafletClassification;
+use super::OrderMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnalysisType {
@@ -106,14 +106,6 @@ impl Analysis {
     pub fn new() -> AnalysisBuilder {
         AnalysisBuilder::default()
     }
-
-    /// Perform the analysis and write out the results.
-    pub fn run(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        match self.analysis_type() {
-            AnalysisType::AAOrder => crate::aaorder::analyze_atomistic(self),
-            AnalysisType::CGOrder => todo!("Implement CG order calculation."),
-        }
-    }
 }
 
 impl AnalysisBuilder {
@@ -194,8 +186,8 @@ impl AnalysisBuilder {
 #[cfg(test)]
 mod tests_builder {
 
+    use super::super::GridSpan;
     use super::*;
-    use crate::ordermap::GridSpan;
 
     #[test]
     fn analysis_builder_pass_basic() {

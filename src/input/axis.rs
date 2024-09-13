@@ -7,7 +7,7 @@ use std::fmt;
 
 use groan_rs::prelude::{Dimension, Vector3D};
 
-use crate::auxiliary::PANIC_MESSAGE;
+use crate::PANIC_MESSAGE;
 
 /// X, Y, or Z axis.
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]

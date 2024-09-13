@@ -67,4 +67,10 @@ pub enum AnalysisError {
 
     #[error("{} atom with atom number '{}' has an undefined position", "error:".red().bold(), .0.to_string().yellow())]
     UndefinedPosition(usize),
+
+    #[error("{} could not calculate global membrane center", "error:".red().bold())]
+    InvalidGlobalMembraneCenter,
+
+    #[error("{} could not calculate local membrane center for molecule with a head identifier number '{}'", "error:".red().bold(), .0.to_string().yellow())]
+    InvalidLocalMembraneCenter(usize),
 }

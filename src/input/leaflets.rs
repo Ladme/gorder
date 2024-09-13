@@ -3,9 +3,7 @@
 
 //! Contains structures and methods for the assignment of lipids into membrane leaflets.
 
-use groan_rs::system::System;
-
-use crate::{auxiliary::create_group, errors::TopologyError};
+use getset::{CopyGetters, Getters};
 
 /// Parameters for the classification of lipids into membrane leaflets.
 #[derive(Debug, Clone)]
@@ -62,26 +60,6 @@ impl LeafletClassification {
         })
     }
 
-    /// Prepare the system for leaflet classification.
-    pub(crate) fn prepare_system(&self, system: &mut System) -> Result<(), TopologyError> {
-        match self {
-            Self::Global(params) => {
-                create_group(system, "Membrane", &params.membrane)?;
-                create_group(system, "Heads", &params.heads)?;
-            }
-            Self::Local(params) => {
-                create_group(system, "Membrane", &params.membrane)?;
-                create_group(system, "Heads", &params.heads)?;
-            }
-            Self::Individual(params) => {
-                create_group(system, "Heads", &params.heads)?;
-                create_group(system, "Methyls", &params.methyls)?;
-            }
-        }
-
-        Ok(())
-    }
-
     /// Returns a radius of the cylinder for the calculation of local membrane center of geometry, if the method is Local.
     /// Otherwise, returns None.
     pub(crate) fn get_radius(&self) -> Option<f32> {
@@ -93,76 +71,43 @@ impl LeafletClassification {
 }
 
 /// Based on the global membrane center of geometry; useful for disrupted membranes; fast.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters, CopyGetters)]
 pub(crate) struct GlobalParams {
     /// Selection of all lipids forming the membrane.
+    #[getset(get = "pub(crate)")]
     membrane: String,
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
+    #[getset(get = "pub(crate)")]
     heads: String,
 }
 
 /// Parameters for classification of lipids.
 /// Based on the local membrane center of geometry; useful for curved membranes; slow.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters, CopyGetters)]
 pub(crate) struct LocalParams {
     /// Selection of all lipids forming the membrane.
+    #[getset(get = "pub(crate)")]
     membrane: String,
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
+    #[getset(get = "pub(crate)")]
     heads: String,
     /// Radius of a cylinder for the calculation of local membrane center of geometry (in nm).
+    #[getset(get_copy = "pub(crate)")]
     radius: f32,
 }
 
 /// Parameters for classification of lipids.
 /// Based on the orientation of the lipid tails; less reliable; fast.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters, CopyGetters)]
 pub(crate) struct IndividualParams {
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
+    #[getset(get = "pub(crate)")]
     heads: String,
     /// Reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails.
     /// There should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
+    #[getset(get = "pub(crate)")]
     methyls: String,
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::auxiliary::macros::group_name;
-
-    use super::*;
-
-    #[test]
-    fn test_prepare_system_global() {
-        let mut system = System::from_file("tests/files/pepg_cg.tpr").unwrap();
-        let classifier = LeafletClassification::global("@membrane", "name PO4");
-
-        classifier.prepare_system(&mut system).unwrap();
-
-        assert!(system.group_exists(group_name!("Membrane")));
-        assert!(system.group_exists(group_name!("Heads")));
-    }
-
-    #[test]
-    fn test_prepare_system_local() {
-        let mut system = System::from_file("tests/files/pepg_cg.tpr").unwrap();
-        let classifier = LeafletClassification::local("@membrane", "name PO4", 2.5);
-
-        classifier.prepare_system(&mut system).unwrap();
-
-        assert!(system.group_exists(group_name!("Membrane")));
-        assert!(system.group_exists(group_name!("Heads")));
-    }
-
-    #[test]
-    fn test_prepare_system_individual() {
-        let mut system = System::from_file("tests/files/pepg_cg.tpr").unwrap();
-        let classifier = LeafletClassification::individual("name PO4", "name C4A C4B");
-
-        classifier.prepare_system(&mut system).unwrap();
-
-        assert!(system.group_exists(group_name!("Heads")));
-        assert!(system.group_exists(group_name!("Methyls")));
-    }
 }
