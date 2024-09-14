@@ -519,6 +519,8 @@ fn merge_option_order(lhs: Option<Order>, rhs: Option<Order>) -> Option<Order> {
 
 #[cfg(test)]
 mod tests {
+    use crate::input::GridSpan;
+
     use super::*;
 
     #[test]
@@ -544,6 +546,57 @@ mod tests {
         assert_eq!(bond1.bonds.len(), 1);
         assert_eq!(bond2.bonds.len(), 1);
         assert_eq!(bond1.bonds[0], bond2.bonds[0]);
+    }
+
+    #[test]
+    fn test_bond_new_with_leaflet_classification() {
+        let atom1 = Atom::new(17, "POPE", 456, "N");
+        let atom2 = Atom::new(17, "POPE", 461, "HN");
+
+        let bond = Bond::new(455, &atom1, 460, &atom2, 455, true, None);
+
+        assert!(bond.lower.is_some());
+        assert!(bond.upper.is_some());
+    }
+
+    #[test]
+    fn test_bond_new_with_ordermap() {
+        let atom1 = Atom::new(17, "POPE", 456, "N");
+        let atom2 = Atom::new(17, "POPE", 461, "HN");
+
+        let ordermap_params = OrderMap::new()
+            .dim_x(GridSpan::Auto)
+            .dim_y(GridSpan::Auto)
+            .output_directory(".")
+            .build()
+            .unwrap();
+        let bond = Bond::new(455, &atom1, 460, &atom2, 455, false, Some(&ordermap_params));
+
+        assert!(bond.lower.is_none());
+        assert!(bond.upper.is_none());
+        assert!(bond.total_map.is_some());
+        assert!(bond.lower_map.is_none());
+        assert!(bond.upper_map.is_none());
+    }
+
+    #[test]
+    fn test_bond_new_with_leaflet_classification_and_ordermap() {
+        let atom1 = Atom::new(17, "POPE", 456, "N");
+        let atom2 = Atom::new(17, "POPE", 461, "HN");
+
+        let ordermap_params = OrderMap::new()
+            .dim_x(GridSpan::Auto)
+            .dim_y(GridSpan::Auto)
+            .output_directory(".")
+            .build()
+            .unwrap();
+        let bond = Bond::new(455, &atom1, 460, &atom2, 455, true, Some(&ordermap_params));
+
+        assert!(bond.lower.is_some());
+        assert!(bond.upper.is_some());
+        assert!(bond.total_map.is_some());
+        assert!(bond.lower_map.is_some());
+        assert!(bond.upper_map.is_some());
     }
 
     #[test]
