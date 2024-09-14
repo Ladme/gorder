@@ -18,7 +18,7 @@ use groan_rs::{
     system::System,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Leaflet {
     Upper,
     Lower,
@@ -207,7 +207,7 @@ pub(super) struct LocalClassification {
     #[getset(get_copy = "pub(super)", get_mut = "pub(super)")]
     radius: f32,
     /// Local membrane center of geometry for each molecule.
-    #[getset(get = "pub(super)")]
+    #[getset(get = "pub(super)", get_mut)]
     membrane_center: Vec<Vector3D>,
     /// Orientation of the membrane normal.
     #[getset(get_copy = "pub(super)")]
@@ -610,5 +610,99 @@ mod tests {
             Ok(_) => panic!("Function should have failed but it succeeded."),
             Err(e) => panic!("Incorrect error type returned: {:?}", e),
         }
+    }
+
+    #[test]
+    fn test_global_assign_to_leaflet() {
+        let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let mut classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::global("@membrane", "name P"),
+            Dimension::Z,
+        );
+
+        let membrane_center = system
+            .selection_iter("@membrane")
+            .unwrap()
+            .get_center()
+            .unwrap();
+
+        match &mut classifier {
+            MoleculeLeafletClassification::Global(x) => {
+                x.heads_mut().push(1385);
+                x.heads_mut().push(11885);
+                x.set_membrane_center(membrane_center);
+            }
+            _ => panic!("Unexpected classification method."),
+        }
+
+        assert_eq!(
+            classifier.assign_to_leaflet(&system, 0).unwrap(),
+            Leaflet::Upper
+        );
+        assert_eq!(
+            classifier.assign_to_leaflet(&system, 1).unwrap(),
+            Leaflet::Lower
+        );
+    }
+
+    #[test]
+    fn test_local_assign_to_leaflet() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let mut classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::local("@membrane", "name P", 2.5),
+            Dimension::Z,
+        );
+
+        system
+            .group_create(group_name!("Membrane"), "@membrane")
+            .unwrap();
+
+        match &mut classifier {
+            MoleculeLeafletClassification::Local(x) => {
+                x.heads_mut().push(1385);
+                x.heads_mut().push(11885);
+                x.membrane_center_mut().push(Vector3D::new(0.0, 0.0, 0.0));
+                x.membrane_center_mut().push(Vector3D::new(0.0, 0.0, 0.0));
+                x.set_membrane_center(&system, Dimension::Z).unwrap();
+            }
+            _ => panic!("Unexpected classification method."),
+        }
+
+        assert_eq!(
+            classifier.assign_to_leaflet(&system, 0).unwrap(),
+            Leaflet::Upper
+        );
+        assert_eq!(
+            classifier.assign_to_leaflet(&system, 1).unwrap(),
+            Leaflet::Lower
+        );
+    }
+
+    #[test]
+    fn test_individual_assign_to_leaflet() {
+        let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let mut classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::individual("name P", "name C218 C316"),
+            Dimension::Z,
+        );
+
+        match &mut classifier {
+            MoleculeLeafletClassification::Individual(x) => {
+                x.heads_mut().push(1385);
+                x.heads_mut().push(11885);
+                x.methyls_mut().push(vec![1453, 1496]);
+                x.methyls_mut().push(vec![11953, 11996]);
+            }
+            _ => panic!("Unexpected classification method."),
+        }
+
+        assert_eq!(
+            classifier.assign_to_leaflet(&system, 0).unwrap(),
+            Leaflet::Upper
+        );
+        assert_eq!(
+            classifier.assign_to_leaflet(&system, 1).unwrap(),
+            Leaflet::Lower
+        );
     }
 }
