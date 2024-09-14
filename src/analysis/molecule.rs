@@ -10,6 +10,7 @@ use groan_rs::{
     system::System,
 };
 use hashbrown::HashSet;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     errors::{AnalysisError, TopologyError},
@@ -445,12 +446,12 @@ impl BondType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters)]
-pub(super) struct AtomType {
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+pub(crate) struct AtomType {
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     relative_index: usize,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     residue_name: String,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     atom_name: String,
 }
 
@@ -464,7 +465,7 @@ impl AtomType {
     }
 
     #[allow(unused)]
-    pub(super) fn new_raw(relative_index: usize, residue_name: &str, atom_name: &str) -> AtomType {
+    pub(crate) fn new_raw(relative_index: usize, residue_name: &str, atom_name: &str) -> AtomType {
         AtomType {
             relative_index,
             residue_name: residue_name.to_owned(),

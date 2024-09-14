@@ -10,7 +10,7 @@ use crate::{errors::AnalysisError, Analysis, AnalysisType};
 mod aaorder;
 mod auxiliary;
 mod leaflets;
-mod molecule;
+pub(crate) mod molecule;
 mod ordermap;
 mod topology;
 
