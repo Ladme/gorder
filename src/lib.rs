@@ -15,6 +15,14 @@ pub use input::Axis;
 pub use input::LeafletClassification;
 pub use input::OrderMap;
 
+pub mod prelude {
+    pub use super::Analysis;
+    pub use super::AnalysisType;
+    pub use super::Axis;
+    pub use super::LeafletClassification;
+    pub use super::OrderMap;
+}
+
 /// Message that should be added to every panic.
 pub(crate) const PANIC_MESSAGE: &str =
     "\n\n\n            >>> THIS SHOULD NOT HAVE HAPPENED! PLEASE REPORT THIS ERROR <<<

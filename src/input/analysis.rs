@@ -3,6 +3,8 @@
 
 //! Contains the implementation of the main `Analysis` structure and its methods.
 
+use std::num::NonZeroUsize;
+
 use colored::Colorize;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
@@ -111,6 +113,54 @@ impl Analysis {
 impl AnalysisBuilder {
     /// Validate the process of analysis building.
     fn validate(&self) -> Result<(), String> {
+        // check that step, min_samples and n_threads are not zero
+        if self.step == Some(0) {
+            let error = format!(
+                "{} the specified value of '{}' is invalid (must be positive).",
+                "error:".red().bold(),
+                "step".yellow()
+            );
+
+            return Err(error);
+        }
+
+        if self.min_samples == Some(0) {
+            let error = format!(
+                "{} the specified value of '{}' is invalid (must be positive).",
+                "error:".red().bold(),
+                "min_samples".yellow()
+            );
+
+            return Err(error);
+        }
+
+        if self.n_threads == Some(0) {
+            let error = format!(
+                "{} the specified value of '{}' is invalid (must be positive).",
+                "error:".red().bold(),
+                "n_threads".yellow()
+            );
+
+            return Err(error);
+        }
+
+        // check that start is not larger than end
+        match (self.start, self.end) {
+            (Some(x), Some(y)) => {
+                if x > y {
+                    let error = format!(
+                        "{} invalid values of '{}' and '{}' (start is higher than end).",
+                        "error:".red().bold(),
+                        "start".yellow(),
+                        "end".yellow()
+                    );
+
+                    return Err(error);
+                }
+            }
+            _ => (),
+        }
+
         match self.analysis_type {
             // skip validation, building will fail anyway
             None => Ok(()),
@@ -397,6 +447,79 @@ mod tests_builder {
             .atoms("@membrane")
             .heavy_atoms("@membrane and element name carbon")
             .output("order.yaml")
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_zero_step() {
+        match Analysis::new()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::AAOrder)
+            .heavy_atoms("@membrane and element name carbon")
+            .hydrogens("@membrane and element name hydrogen")
+            .step(0)
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_zero_min_samples() {
+        match Analysis::new()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::AAOrder)
+            .heavy_atoms("@membrane and element name carbon")
+            .hydrogens("@membrane and element name hydrogen")
+            .min_samples(0)
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_zero_threads() {
+        match Analysis::new()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::AAOrder)
+            .heavy_atoms("@membrane and element name carbon")
+            .hydrogens("@membrane and element name hydrogen")
+            .n_threads(0)
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_start_higher_than_end() {
+        match Analysis::new()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::AAOrder)
+            .heavy_atoms("@membrane and element name carbon")
+            .hydrogens("@membrane and element name hydrogen")
+            .start(100_000.0)
+            .end(50_000.0)
             .build()
         {
             Ok(_) => panic!("Should have failed, but succeeded."),

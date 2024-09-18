@@ -6,6 +6,7 @@
 use super::leaflets::MoleculeLeafletClassification;
 use super::{auxiliary::macros::group_name, topology::SystemTopology};
 use crate::errors::{AnalysisError, TopologyError};
+use crate::presentation::aapresenter::AAOrderResults;
 use crate::{Analysis, PANIC_MESSAGE};
 use groan_rs::{
     files::FileType,
@@ -69,6 +70,7 @@ pub(super) fn analyze_atomistic(
         analysis.leaflets().as_ref(),
         analysis.membrane_normal().into(),
         analysis.map().as_ref(),
+        analysis.min_samples(),
     )?;
 
     // if no molecules are detected, end the analysis
@@ -91,8 +93,9 @@ pub(super) fn analyze_atomistic(
         Some(ProgressPrinter::new()),
     )?;
 
-    // todo! average & convert to output structure
-    // todo! write out
+    // write out the results
+    let results = AAOrderResults::from(result);
+    results.write_yaml(analysis.output())?;
 
     Ok(())
 }
@@ -144,6 +147,7 @@ fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), Analys
 
 #[cfg(test)]
 mod tests {
+
     use approx::assert_relative_eq;
     use groan_rs::prelude::Dimension;
 
@@ -184,6 +188,7 @@ mod tests {
             leaflet_classification.as_ref(),
             Dimension::Z,
             None,
+            1,
         )
         .unwrap();
 

@@ -69,6 +69,7 @@ pub(super) fn classify_molecules(
     leaflet_classification: Option<&LeafletClassification>,
     membrane_normal: Dimension,
     ordermap_params: Option<&OrderMap>,
+    min_samples: usize,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -124,6 +125,7 @@ pub(super) fn classify_molecules(
                 minimum_index,
                 classifier,
                 ordermap_params,
+                min_samples,
             ));
         }
     }
@@ -1033,7 +1035,7 @@ mod tests {
             atoms.push(AtomType::new_raw(relative_index, residue_name, atom_name));
         }
 
-        OrderAtoms { atoms }
+        OrderAtoms::new_raw(atoms)
     }
 
     #[test]
@@ -1062,6 +1064,7 @@ mod tests {
             Some(&LeafletClassification::local("@membrane", "name P", 2.5)),
             Dimension::Z,
             None,
+            1,
         )
         .unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
@@ -1508,6 +1511,7 @@ mod tests {
             )),
             Dimension::Z,
             None,
+            1,
         )
         .unwrap();
         let expected_names = ["POPE", "POPG"];

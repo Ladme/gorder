@@ -1,6 +1,12 @@
-use colored::Colorize;
+use std::path::Path;
+
+use colored::{ColoredString, Colorize};
 use groan_rs::errors::SelectError;
 use thiserror::Error;
+
+fn path_to_yellow(path: &Path) -> ColoredString {
+    path.to_str().unwrap().yellow()
+}
 
 /// Errors that can occur when creating a `GridSpan` structure.
 #[derive(Error, Debug)]
@@ -73,4 +79,13 @@ pub enum AnalysisError {
 
     #[error("{} could not calculate local membrane center for molecule with a head identifier number '{}'", "error:".red().bold(), .0.to_string().yellow())]
     InvalidLocalMembraneCenter(usize),
+}
+
+/// Errors that can occur while writing the results.
+#[derive(Error, Debug)]
+pub enum WriteError {
+    #[error("{} could not create file '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotCreateFile(Box<Path>),
+    #[error("{} could not write results in yaml format into '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotWriteYaml(Box<Path>),
 }

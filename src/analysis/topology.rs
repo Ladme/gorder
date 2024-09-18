@@ -8,15 +8,15 @@ use std::ops::Add;
 
 /// Structure used in parallel analysis of the trajectory file.
 #[derive(Debug, Clone, CopyGetters, Getters, MutGetters)]
-pub(super) struct SystemTopology {
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+pub(crate) struct SystemTopology {
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     molecules: Vec<MoleculeType>,
     #[getset(get_copy = "pub(super)")]
     membrane_normal: Dimension,
 }
 
 impl SystemTopology {
-    pub(super) fn new(molecules: Vec<MoleculeType>, membrane_normal: Dimension) -> SystemTopology {
+    pub(crate) fn new(molecules: Vec<MoleculeType>, membrane_normal: Dimension) -> SystemTopology {
         SystemTopology {
             molecules,
             membrane_normal,

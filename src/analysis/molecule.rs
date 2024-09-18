@@ -1,7 +1,10 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-use std::ops::{Add, AddAssign};
+use std::{
+    num::NonZeroUsize,
+    ops::{Add, AddAssign, Div},
+};
 
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::{
@@ -23,14 +26,14 @@ use super::{
 };
 
 #[derive(Debug, Clone, Getters, MutGetters)]
-pub(super) struct MoleculeType {
-    #[getset(get = "pub(super)")]
+pub(crate) struct MoleculeType {
+    #[getset(get = "pub(crate)")]
     name: String,
     #[getset(get = "pub(super)")]
     topology: MoleculeTopology,
-    #[getset(get = "pub(super)")]
+    #[getset(get = "pub(crate)")]
     order_bonds: OrderBonds,
-    #[getset(get = "pub(super)")]
+    #[getset(get = "pub(crate)")]
     order_atoms: OrderAtoms,
     #[getset(get = "pub(super)", get_mut = "pub(super)")]
     leaflet_classification: Option<MoleculeLeafletClassification>,
@@ -46,6 +49,7 @@ impl MoleculeType {
         min_index: usize,
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
+        min_samples: usize,
     ) -> Self {
         Self {
             name: name.to_owned(),
@@ -56,6 +60,7 @@ impl MoleculeType {
                 min_index,
                 leaflet_classification.is_some(),
                 ordermap_params,
+                min_samples,
             ),
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
@@ -163,8 +168,8 @@ impl MoleculeTopology {
 
 /// Collection of all bonds for which the order parameters should be calculated.
 #[derive(Debug, Clone, Getters, MutGetters)]
-pub(super) struct OrderBonds {
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+pub(crate) struct OrderBonds {
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     bonds: Vec<Bond>,
 }
 
@@ -181,7 +186,8 @@ impl OrderBonds {
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
-    ) -> OrderBonds {
+        min_samples: usize,
+    ) -> Self {
         bonds_sanity_check(bonds, min_index);
 
         let mut order_bonds = Vec::new();
@@ -195,6 +201,7 @@ impl OrderBonds {
                 min_index,
                 classify_leaflets,
                 ordermap,
+                min_samples,
             );
             order_bonds.push(bond)
         }
@@ -286,14 +293,15 @@ fn get_atoms_from_bond(system: &System, index1: usize, index2: usize) -> (&Atom,
 /// Collection of all atom types for which order parameters should be calculated.
 /// In case of coarse-grained order parameters, this involves all specified atoms.
 /// In case of atomistic order parameters, this only involves heavy atoms.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct OrderAtoms {
+#[derive(Debug, Clone, PartialEq, Eq, MutGetters, Getters)]
+pub(crate) struct OrderAtoms {
     /// Ordered by the increasing relative index.
-    pub(super) atoms: Vec<AtomType>,
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
+    atoms: Vec<AtomType>,
 }
 
 impl OrderAtoms {
-    pub(super) fn new(system: &System, atoms: &[usize], minimum_index: usize) -> OrderAtoms {
+    pub(super) fn new(system: &System, atoms: &[usize], minimum_index: usize) -> Self {
         let mut converted_atoms = atoms
             .into_iter()
             .map(|&x| {
@@ -310,6 +318,11 @@ impl OrderAtoms {
             atoms: converted_atoms,
         }
     }
+
+    #[allow(unused)]
+    pub(super) fn new_raw(atoms: Vec<AtomType>) -> Self {
+        OrderAtoms { atoms }
+    }
 }
 
 #[derive(Debug, Clone, Getters, MutGetters)]
@@ -324,6 +337,8 @@ pub(crate) struct Bond {
     upper: Option<Order>,
     #[getset(get = "pub(super)", get_mut = "pub(super)")]
     lower: Option<Order>,
+    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    min_samples: usize,
     #[getset(get = "pub(super)", get_mut = "pub(super)")]
     total_map: Option<Map>,
     #[getset(get = "pub(super)", get_mut = "pub(super)")]
@@ -342,6 +357,7 @@ impl Bond {
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
+        min_samples: usize,
     ) -> Bond {
         let bond_type = BondType::new(
             abs_index_1 - min_index,
@@ -373,6 +389,7 @@ impl Bond {
             total: Order::default(),
             upper: leaflet_order.clone(),
             lower: leaflet_order,
+            min_samples: min_samples,
             total_map: optional_map,
             upper_map: leaflet_map.clone(),
             lower_map: leaflet_map,
@@ -387,6 +404,40 @@ impl Bond {
             self.bonds.push((abs_index_2, abs_index_1));
         }
     }
+
+    /// Does this bond involve a specific atom type?
+    pub(crate) fn contains(&self, atom: &AtomType) -> bool {
+        self.bond_type().contains(atom)
+    }
+
+    /// Return the other atom involved in this bond.
+    /// If the provided atom is not involved in the bond, return `None`.
+    pub(crate) fn get_other_atom(&self, atom: &AtomType) -> Option<&AtomType> {
+        self.bond_type().get_other_atom(atom)
+    }
+
+    /// Calculate average order parameter for the full membrane and optionally for
+    /// the upper and lower leaflet from the collected data.
+    pub(crate) fn calc_order(&self) -> (f32, Option<f32>, Option<f32>) {
+        let checked_min_samples = NonZeroUsize::new(self.min_samples).unwrap_or_else(|| {
+            panic!(
+                "FATAL GORDER ERROR | Bond::calc_order | 'min_samples' is ZERO. {}",
+                PANIC_MESSAGE
+            )
+        });
+
+        let total_order = self.total.calc_order(checked_min_samples);
+        let upper_order = self
+            .upper
+            .as_ref()
+            .map(|x| x.calc_order(checked_min_samples));
+        let lower_order = self
+            .lower
+            .as_ref()
+            .map(|x| x.calc_order(checked_min_samples));
+
+        (total_order, upper_order, lower_order)
+    }
 }
 
 impl Add<Bond> for Bond {
@@ -398,6 +449,7 @@ impl Add<Bond> for Bond {
             total: self.total + rhs.total,
             upper: merge_option_order(self.upper, rhs.upper),
             lower: merge_option_order(self.lower, rhs.lower),
+            min_samples: self.min_samples,
             total_map: merge_option_maps(self.total_map, rhs.total_map),
             upper_map: merge_option_maps(self.upper_map, rhs.upper_map),
             lower_map: merge_option_maps(self.lower_map, rhs.lower_map),
@@ -443,6 +495,23 @@ impl BondType {
             atom2: atom_type2,
         }
     }
+
+    /// Does this bond type involve the provided atom type?
+    fn contains(&self, atom: &AtomType) -> bool {
+        self.atom1() == atom || self.atom2() == atom
+    }
+
+    /// Return the other atom involved in this bond.
+    /// If the provided atom is not involved in the bond, return `None`.
+    fn get_other_atom(&self, atom: &AtomType) -> Option<&AtomType> {
+        if self.atom1() == atom {
+            Some(self.atom2())
+        } else if self.atom2() == atom {
+            Some(self.atom1())
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters)]
@@ -475,7 +544,7 @@ impl AtomType {
 }
 
 #[derive(Debug, Clone, Default, CopyGetters)]
-pub(super) struct Order {
+pub(crate) struct Order {
     #[getset(get_copy = "pub(super)")]
     order: f32,
     #[getset(get_copy = "pub(super)")]
@@ -486,6 +555,17 @@ impl Order {
     #[allow(unused)]
     pub(super) fn new(order: f32, n_samples: usize) -> Order {
         Order { order, n_samples }
+    }
+
+    /// Calculate average order from the collected data.
+    ///
+    /// Return `f32::NAN` if the number of samples is lower than the required minimal number.
+    pub(crate) fn calc_order(&self, min_samples: NonZeroUsize) -> f32 {
+        if self.n_samples < min_samples.into() {
+            f32::NAN
+        } else {
+            self.order / self.n_samples as f32
+        }
     }
 }
 
@@ -540,8 +620,8 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let bond1 = Bond::new(455, &atom1, 460, &atom2, 455, false, None);
-        let bond2 = Bond::new(460, &atom2, 455, &atom1, 455, false, None);
+        let bond1 = Bond::new(455, &atom1, 460, &atom2, 455, false, None, 1);
+        let bond2 = Bond::new(460, &atom2, 455, &atom1, 455, false, None, 1);
 
         assert_eq!(bond1.bond_type, bond2.bond_type);
         assert_eq!(bond1.bonds.len(), 1);
@@ -554,7 +634,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let bond = Bond::new(455, &atom1, 460, &atom2, 455, true, None);
+        let bond = Bond::new(455, &atom1, 460, &atom2, 455, true, None, 1);
 
         assert!(bond.lower.is_some());
         assert!(bond.upper.is_some());
@@ -571,7 +651,16 @@ mod tests {
             .output_directory(".")
             .build()
             .unwrap();
-        let bond = Bond::new(455, &atom1, 460, &atom2, 455, false, Some(&ordermap_params));
+        let bond = Bond::new(
+            455,
+            &atom1,
+            460,
+            &atom2,
+            455,
+            false,
+            Some(&ordermap_params),
+            1,
+        );
 
         assert!(bond.lower.is_none());
         assert!(bond.upper.is_none());
@@ -591,7 +680,16 @@ mod tests {
             .output_directory(".")
             .build()
             .unwrap();
-        let bond = Bond::new(455, &atom1, 460, &atom2, 455, true, Some(&ordermap_params));
+        let bond = Bond::new(
+            455,
+            &atom1,
+            460,
+            &atom2,
+            455,
+            true,
+            Some(&ordermap_params),
+            1,
+        );
 
         assert!(bond.lower.is_some());
         assert!(bond.upper.is_some());
@@ -605,7 +703,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let mut bond = Bond::new(455, &atom1, 460, &atom2, 455, false, None);
+        let mut bond = Bond::new(455, &atom1, 460, &atom2, 455, false, None, 1);
 
         bond.insert(1354, 1359);
         bond.insert(1676, 1671);
@@ -675,7 +773,7 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds.clone());
-        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None);
+        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1);
 
         let expected_bonds = expected_bonds(&system);
 
@@ -700,7 +798,7 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds.clone());
-        let mut order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None);
+        let mut order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1);
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
         let new_bonds_set = HashSet::from(new_bonds.clone());
