@@ -3,8 +3,6 @@
 
 //! Contains the implementation of the main `Analysis` structure and its methods.
 
-use std::num::NonZeroUsize;
-
 use colored::Colorize;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
@@ -69,7 +67,7 @@ pub struct Analysis {
     /// If not specified, the analysis starts at the beginning of the trajectory.
     #[builder(default = "0.0")]
     #[getset(get_copy = "pub")]
-    start: f32,
+    begin: f32,
     /// Ending time of the trajectory analysis (in ps).
     /// If not specified, the analysis ends at the end of the trajectory.
     #[builder(default = "f32::INFINITY")]
@@ -102,6 +100,10 @@ pub struct Analysis {
     #[builder(setter(strip_option), default)]
     #[getset(get = "pub")]
     map: Option<OrderMap>,
+    /// Be silent. Print nothing to the standard output during the analysis.
+    #[builder(setter(custom), default = "false")]
+    #[getset(get_copy = "pub")]
+    silent: bool,
 }
 
 impl Analysis {
@@ -111,6 +113,12 @@ impl Analysis {
 }
 
 impl AnalysisBuilder {
+    /// Be silent. Print nothing to the standard output during the analysis.
+    pub fn silent(&mut self) -> &mut Self {
+        self.silent = Some(true);
+        self
+    }
+
     /// Validate the process of analysis building.
     fn validate(&self) -> Result<(), String> {
         // check that step, min_samples and n_threads are not zero
@@ -145,7 +153,7 @@ impl AnalysisBuilder {
         }
 
         // check that start is not larger than end
-        match (self.start, self.end) {
+        match (self.begin, self.end) {
             (Some(x), Some(y)) => {
                 if x > y {
                     let error = format!(
@@ -266,7 +274,7 @@ mod tests_builder {
             "@membrane and element name hydrogen"
         );
         assert!(analysis.atoms().is_none());
-        assert_eq!(analysis.start(), 0.0);
+        assert_eq!(analysis.begin(), 0.0);
         assert!(analysis.end().is_infinite());
         assert_eq!(analysis.step(), 1);
         assert_eq!(analysis.min_samples(), 1);
@@ -285,7 +293,7 @@ mod tests_builder {
             .analysis_type(AnalysisType::CGOrder)
             .atoms("@membrane")
             .membrane_normal(Axis::X)
-            .start(100.0)
+            .begin(100.0)
             .end(10_000.0)
             .step(5)
             .min_samples(10)
@@ -317,7 +325,7 @@ mod tests_builder {
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());
         assert_eq!(analysis.atoms().as_ref().unwrap(), "@membrane");
-        assert_eq!(analysis.start(), 100.0);
+        assert_eq!(analysis.begin(), 100.0);
         assert_eq!(analysis.end(), 10_000.0);
         assert_eq!(analysis.step(), 5);
         assert_eq!(analysis.min_samples(), 10);
@@ -518,7 +526,7 @@ mod tests_builder {
             .analysis_type(AnalysisType::AAOrder)
             .heavy_atoms("@membrane and element name carbon")
             .hydrogens("@membrane and element name hydrogen")
-            .start(100_000.0)
+            .begin(100_000.0)
             .end(50_000.0)
             .build()
         {

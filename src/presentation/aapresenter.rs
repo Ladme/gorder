@@ -6,7 +6,8 @@
 use std::{fs::File, io::BufWriter, path::Path};
 
 use indexmap::IndexMap;
-use serde::{Serialize, Serializer};
+use serde::Serialize;
+use std::io::Write;
 
 use crate::{
     analysis::{
@@ -39,11 +40,23 @@ impl From<SystemTopology> for AAOrderResults {
 
 impl AAOrderResults {
     /// Write the results of the analysis into a new file with the specified name.
-    pub(crate) fn write_yaml(&self, filename: &impl AsRef<Path>) -> Result<(), WriteError> {
+    pub(crate) fn write_yaml(
+        &self,
+        filename: &impl AsRef<Path>,
+        input_structure: &str,
+        input_trajectory: &str,
+    ) -> Result<(), WriteError> {
         let file = File::create(filename)
             .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
 
-        let writer = BufWriter::new(file);
+        let mut writer = BufWriter::new(file);
+        writeln!(
+            writer,
+            "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.",
+            crate::GORDER_VERSION, input_structure, input_trajectory
+        )
+        .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))?;
+
         serde_yaml::to_writer(writer, self)
             .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))?;
 
@@ -152,7 +165,7 @@ impl AAAtomResults {
 fn average_of_some(values: &[Option<f32>]) -> Option<f32> {
     let (sum, count) = values
         .iter()
-        .filter_map(|&x| x)
+        .filter_map(|&x| x.filter(|&n| n.is_finite())) // filter out None and NaN or infinite values
         .fold((0.0, 0), |(acc, cnt), x| (acc + x, cnt + 1));
 
     if count > 0 {
@@ -164,6 +177,9 @@ fn average_of_some(values: &[Option<f32>]) -> Option<f32> {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+    use groan_rs::prelude::Atom;
+
     use super::*;
 
     fn prepare_example_atom_results_1() -> AAAtomResults {
@@ -364,5 +380,99 @@ order:
           lower: 0.812
 "
         );
+    }
+
+    #[test]
+    fn test_aaatom_results_new() {
+        let heavy_atom = Atom::new(1, "POPC", 1, "C2");
+        let hydrogen1 = Atom::new(1, "POPC", 3, "HA");
+        let hydrogen2 = Atom::new(1, "POPC", 4, "HB");
+
+        let mut bond1 = Bond::new(0, &heavy_atom, 2, &hydrogen1, 0, false, None, 1);
+        let mut bond2 = Bond::new(0, &heavy_atom, 3, &hydrogen2, 0, false, None, 1);
+
+        *bond1.total_mut() += 0.234;
+        *bond1.total_mut() += 0.176;
+        *bond1.total_mut() += 0.112;
+        // average: 0.174
+
+        *bond2.total_mut() += 0.112;
+        *bond2.total_mut() += 0.245;
+        *bond2.total_mut() += -0.013;
+        // average: 0.11466666
+
+        let heavy_atom_type = AtomType::new_raw(0, "POPC", "C2");
+        let hydrogen1_atom_type = AtomType::new_raw(2, "POPC", "HA");
+        let hydrogen2_atom_type = AtomType::new_raw(3, "POPC", "HB");
+
+        let results = AAAtomResults::new(&[&bond1, &bond2], &heavy_atom_type);
+
+        assert_eq!(results.bonds.len(), 2);
+
+        let bond1_results = results.bonds.get(&hydrogen1_atom_type).unwrap();
+        assert_relative_eq!(bond1_results.total, 0.174);
+        assert!(bond1_results.upper.is_none());
+        assert!(bond1_results.lower.is_none());
+
+        let bond1_results = results.bonds.get(&hydrogen2_atom_type).unwrap();
+        assert_relative_eq!(bond1_results.total, 0.11466666);
+        assert!(bond1_results.upper.is_none());
+        assert!(bond1_results.lower.is_none());
+
+        assert_relative_eq!(results.total.unwrap(), 0.14433333);
+        assert!(results.upper.is_none());
+        assert!(results.lower.is_none());
+    }
+
+    #[test]
+    fn test_aaatom_results_new_leaflets() {
+        let heavy_atom = Atom::new(1, "POPC", 1, "C2");
+        let hydrogen1 = Atom::new(1, "POPC", 3, "HA");
+        let hydrogen2 = Atom::new(1, "POPC", 4, "HB");
+
+        let mut bond1 = Bond::new(0, &heavy_atom, 2, &hydrogen1, 0, true, None, 1);
+        let mut bond2 = Bond::new(0, &heavy_atom, 3, &hydrogen2, 0, true, None, 1);
+
+        *bond1.total_mut() += 0.234;
+        *bond1.total_mut() += 0.176;
+        *bond1.total_mut() += 0.112;
+        // average: 0.174
+
+        *bond1.upper_mut().as_mut().unwrap() += 0.115;
+        *bond1.upper_mut().as_mut().unwrap() += 0.325;
+        *bond1.upper_mut().as_mut().unwrap() += 0.008;
+        // average: 0.14933333
+
+        *bond2.total_mut() += 0.112;
+        *bond2.total_mut() += 0.245;
+        *bond2.total_mut() += -0.013;
+        // average: 0.11466666
+
+        *bond2.lower_mut().as_mut().unwrap() += 0.332;
+        *bond2.lower_mut().as_mut().unwrap() += 0.087;
+        *bond2.lower_mut().as_mut().unwrap() += 0.125;
+        // average: 0.18133333
+
+        let heavy_atom_type = AtomType::new_raw(0, "POPC", "C2");
+        let hydrogen1_atom_type = AtomType::new_raw(2, "POPC", "HA");
+        let hydrogen2_atom_type = AtomType::new_raw(3, "POPC", "HB");
+
+        let results = AAAtomResults::new(&[&bond1, &bond2], &heavy_atom_type);
+
+        assert_eq!(results.bonds.len(), 2);
+
+        let bond1_results = results.bonds.get(&hydrogen1_atom_type).unwrap();
+        assert_relative_eq!(bond1_results.total, 0.174);
+        assert_relative_eq!(bond1_results.upper.unwrap(), 0.14933333);
+        assert!(bond1_results.lower.unwrap().is_nan()); // no values for the lower leaflet
+
+        let bond1_results = results.bonds.get(&hydrogen2_atom_type).unwrap();
+        assert_relative_eq!(bond1_results.total, 0.11466666);
+        assert!(bond1_results.upper.unwrap().is_nan()); // no values for the upper leaflet
+        assert_relative_eq!(bond1_results.lower.unwrap(), 0.18133333);
+
+        assert_relative_eq!(results.total.unwrap(), 0.14433333);
+        assert_relative_eq!(results.upper.unwrap(), 0.14933333);
+        assert_relative_eq!(results.lower.unwrap(), 0.18133333);
     }
 }

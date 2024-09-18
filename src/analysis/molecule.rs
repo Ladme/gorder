@@ -3,7 +3,7 @@
 
 use std::{
     num::NonZeroUsize,
-    ops::{Add, AddAssign, Div},
+    ops::{Add, AddAssign},
 };
 
 use getset::{CopyGetters, Getters, MutGetters};
@@ -13,7 +13,6 @@ use groan_rs::{
     system::System,
 };
 use hashbrown::HashSet;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     errors::{AnalysisError, TopologyError},
@@ -327,29 +326,29 @@ impl OrderAtoms {
 
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct Bond {
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     bond_type: BondType,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     bonds: Vec<(usize, usize)>,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     total: Order,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     upper: Option<Order>,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     lower: Option<Order>,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     min_samples: usize,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     total_map: Option<Map>,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     upper_map: Option<Map>,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     lower_map: Option<Map>,
 }
 
 impl Bond {
     /// Create a new bond for the calculation of order parameters.
-    pub(super) fn new(
+    pub(crate) fn new(
         abs_index_1: usize,
         atom_1: &Atom,
         abs_index_2: usize,
@@ -600,6 +599,8 @@ fn merge_option_order(lhs: Option<Order>, rhs: Option<Order>) -> Option<Order> {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use crate::input::GridSpan;
 
     use super::*;
@@ -712,6 +713,46 @@ mod tests {
         assert_eq!(bond.bonds[0], (455, 460));
         assert_eq!(bond.bonds[1], (1354, 1359));
         assert_eq!(bond.bonds[2], (1671, 1676));
+    }
+
+    #[test]
+    fn test_bond_calc_order_basic() {
+        let atom1 = Atom::new(17, "POPE", 456, "N");
+        let atom2 = Atom::new(17, "POPE", 461, "HN");
+
+        let mut bond = Bond::new(455, &atom1, 460, &atom2, 455, false, None, 1);
+
+        bond.total.n_samples = 17;
+        bond.total.order = 3.978;
+
+        let (total, upper, lower) = bond.calc_order();
+
+        assert_relative_eq!(total, 0.234);
+        assert!(upper.is_none());
+        assert!(lower.is_none());
+    }
+
+    #[test]
+    fn test_bond_calc_order_leaflets() {
+        let atom1 = Atom::new(17, "POPE", 456, "N");
+        let atom2 = Atom::new(17, "POPE", 461, "HN");
+
+        let mut bond = Bond::new(455, &atom1, 460, &atom2, 455, true, None, 1);
+
+        bond.total.n_samples = 17;
+        bond.total.order = 3.978;
+
+        bond.upper.as_mut().unwrap().n_samples = 8;
+        bond.upper.as_mut().unwrap().order = 1.976;
+
+        bond.lower.as_mut().unwrap().n_samples = 9;
+        bond.lower.as_mut().unwrap().order = 1.989;
+
+        let (total, upper, lower) = bond.calc_order();
+
+        assert_relative_eq!(total, 0.234);
+        assert_relative_eq!(upper.unwrap(), 0.247);
+        assert_relative_eq!(lower.unwrap(), 0.221);
     }
 
     #[test]

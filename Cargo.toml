@@ -23,3 +23,5 @@ indexmap = { version = "2.5.0", features = ["serde"] }
 
 [dev-dependencies]
 approx = "0.5.1"
+file_diff = "1.0.0"
+tempfile = "3.8.0"

@@ -16,7 +16,7 @@ pub enum LeafletClassification {
 
 impl LeafletClassification {
     /// Classify lipids based on the global membrane center of geometry.
-    /// Useful for disrupted membranes.
+    /// Generally reliable and fast. The best option when working with disrupted membranes.
     ///
     /// ## Parameters
     /// - `membrane`: selection of all lipids forming the membrane
@@ -30,7 +30,7 @@ impl LeafletClassification {
     }
 
     /// Classify lipids based on the local membrane center of geometry.
-    /// Useful for curved membranes, slow.
+    /// Useful for curved membranes, very slow.
     ///
     /// ## Parameters
     /// - `membrane`: selection of all lipids forming the membrane
@@ -46,7 +46,7 @@ impl LeafletClassification {
     }
 
     /// Classify lipids based on the orientation of acyl chains.
-    /// Less reliable, fast.
+    /// Less reliable but fast.
     ///
     /// ## Parameters
     /// - `heads`: reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);

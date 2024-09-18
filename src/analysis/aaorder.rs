@@ -8,6 +8,7 @@ use super::{auxiliary::macros::group_name, topology::SystemTopology};
 use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aapresenter::AAOrderResults;
 use crate::{Analysis, PANIC_MESSAGE};
+
 use groan_rs::{
     files::FileType,
     prelude::{ProgressPrinter, XtcReader},
@@ -75,11 +76,25 @@ pub(super) fn analyze_atomistic(
 
     // if no molecules are detected, end the analysis
     if molecules.len() == 0 {
-        log::info!("No molecules detected for analysis.");
+        log::info!("No molecules suitable for the analysis detected.");
         return Ok(());
     }
 
+    // if only empty molecules are detected, end the analysis
+    for mol in molecules.iter() {
+        if mol.order_bonds().bonds().is_empty() {
+            log::info!("No bonds suitable for the analysis detected.");
+            return Ok(());
+        }
+    }
+
     let data = SystemTopology::new(molecules, analysis.membrane_normal().into());
+
+    let progress_printer = if analysis.silent() {
+        None
+    } else {
+        Some(ProgressPrinter::new())
+    };
 
     // run the analysis in parallel
     let result = system.traj_iter_map_reduce::<XtcReader, SystemTopology, AnalysisError>(
@@ -87,15 +102,19 @@ pub(super) fn analyze_atomistic(
         analysis.n_threads(),
         analyze_frame,
         data,
-        Some(analysis.start()),
+        Some(analysis.begin()),
         Some(analysis.end()),
         Some(analysis.step()),
-        Some(ProgressPrinter::new()),
+        progress_printer,
     )?;
 
     // write out the results
     let results = AAOrderResults::from(result);
-    results.write_yaml(analysis.output())?;
+    results.write_yaml(
+        analysis.output(),
+        analysis.structure(),
+        analysis.trajectory(),
+    )?;
 
     Ok(())
 }
@@ -152,7 +171,7 @@ mod tests {
     use groan_rs::prelude::Dimension;
 
     use crate::{
-        analysis::molecule::{Bond, MoleculeType, Order},
+        analysis::molecule::{Bond, MoleculeType},
         LeafletClassification,
     };
 

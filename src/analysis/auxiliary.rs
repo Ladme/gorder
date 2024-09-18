@@ -2180,13 +2180,13 @@ mod tests {
         }
     }
 
-    #[test]
+    //#[test]
     fn test_classify_molecules_shared_name() {
         todo!("Test classification of molecules composed of the residue of the same name.")
         // also the atoms inside a single molecule should have the same name
     }
 
-    #[test]
+    //#[test]
     fn test_classify_molecules_multiple_residues() {
         todo!("Test classification of molecules composed of multiple residues.")
     }
