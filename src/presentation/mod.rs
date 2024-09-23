@@ -10,6 +10,7 @@ use crate::{
 use serde::{Serialize, Serializer};
 
 pub(crate) mod aapresenter;
+pub(crate) mod ordermap;
 
 #[derive(Debug, Clone, Serialize)]
 struct BondResults {

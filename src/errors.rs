@@ -57,6 +57,15 @@ pub enum TopologyError {
 
     #[error("{} molecule starting with atom number '{}' contains a number of methyl group atoms ('{}') not consistent with other molecules ('{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
     InconsistentNumberOfMethyls(usize, usize, usize),
+
+    #[error("{} system has undefined simulation box", "error:".red().bold())]
+    UndefinedBox,
+
+    #[error("{} the simulation box is not orthogonal", "error:".red().bold())]
+    NotOrthogonalBox,
+
+    #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
+    ZeroBox,
 }
 
 /// Errors that can occur while analyzing the trajectory.
@@ -88,4 +97,15 @@ pub enum WriteError {
     CouldNotCreateFile(Box<Path>),
     #[error("{} could not write results in yaml format into '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotWriteYaml(Box<Path>),
+}
+
+/// Errors that can occur while writing the order maps.
+#[derive(Error, Debug)]
+pub enum OrderMapWriteError {
+    #[error("{} could not create directory '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotCreateDirectory(Box<Path>),
+    #[error("{} could not create file '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotCreateFile(Box<Path>),
+    #[error("{} could not write line into '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotWriteLine(Box<Path>),
 }

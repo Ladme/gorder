@@ -9,6 +9,12 @@ pub(crate) const PANIC_MESSAGE: &str =
     "\n\n\n            >>> THIS SHOULD NOT HAVE HAPPENED! PLEASE REPORT THIS ERROR <<<
 (open an issue at 'github.com/Ladme/gorder/issues' or write an e-mail to 'ladmeb@gmail.com')\n\n";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Leaflet {
+    Upper,
+    Lower,
+}
+
 mod analysis;
 pub mod errors;
 pub mod input;

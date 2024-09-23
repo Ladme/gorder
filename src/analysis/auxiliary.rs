@@ -126,7 +126,7 @@ pub(super) fn classify_molecules(
                 classifier,
                 ordermap_params,
                 min_samples,
-            ));
+            )?);
         }
     }
 

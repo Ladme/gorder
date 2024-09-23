@@ -3,15 +3,15 @@
 
 //! This module contains the implementation of the analysis logic.
 
-use groan_rs::prelude::{Atom, SimBox, Vector3D};
+use groan_rs::prelude::{SimBox, Vector3D};
 
-use crate::{errors::AnalysisError, Analysis, AnalysisType};
+use crate::{Analysis, AnalysisType};
 
 mod aaorder;
 mod auxiliary;
 mod leaflets;
 pub(crate) mod molecule;
-mod ordermap;
+pub(crate) mod ordermap;
 pub(crate) mod topology;
 
 impl Analysis {
@@ -27,26 +27,18 @@ impl Analysis {
 /// Calculate instantenous value of order parameter of a bond defined by two atoms.
 /// Simulation box must be valid and orthogonal.
 pub(super) fn calc_sch(
-    atom1: &Atom,
-    atom2: &Atom,
+    pos1: &Vector3D,
+    pos2: &Vector3D,
     simbox: &SimBox,
     membrane_normal: &Vector3D,
-) -> Result<f32, AnalysisError> {
-    let pos1 = atom1
-        .get_position()
-        .ok_or_else(|| AnalysisError::UndefinedPosition(atom1.get_atom_number()))?;
-
-    let pos2 = atom2
-        .get_position()
-        .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_atom_number()))?;
-
+) -> f32 {
     let vector = pos1.vector_to(pos2, simbox);
     let angle = vector.angle(membrane_normal);
 
     let cos = angle.cos();
     let sch = 0.5 - (1.5 * cos * cos);
 
-    Ok(sch)
+    sch
 }
 
 #[cfg(test)]
@@ -57,28 +49,14 @@ mod tests {
 
     #[test]
     fn test_calc_sch() {
-        let atom1 = Atom::new(1, "LYS", 1, "CA").with_position(Vector3D::new(1.7, 2.1, 9.7));
-        let atom2 = Atom::new(1, "LYS", 2, "H").with_position(Vector3D::new(1.9, 2.4, 0.8));
+        let pos1 = Vector3D::new(1.7, 2.1, 9.7);
+        let pos2 = Vector3D::new(1.9, 2.4, 0.8);
 
         let simbox = SimBox::from([10.0, 10.0, 10.0]);
 
         assert_relative_eq!(
-            calc_sch(&atom1, &atom2, &simbox, &Dimension::Z.into()).unwrap(),
+            calc_sch(&pos1, &pos2, &simbox, &Dimension::Z.into()),
             -0.8544775
         );
-    }
-
-    #[test]
-    fn test_calc_sch_no_position() {
-        let atom1 = Atom::new(1, "LYS", 1, "CA").with_position(Vector3D::new(1.7, 2.1, 9.7));
-        let atom2 = Atom::new(1, "LYS", 2, "H");
-
-        let simbox = SimBox::from([10.0, 10.0, 10.0]);
-
-        match calc_sch(&atom1, &atom2, &simbox, &Dimension::Z.into()) {
-            Err(AnalysisError::UndefinedPosition(x)) => assert_eq!(x, 2),
-            Ok(_) => panic!("Function should have failed."),
-            Err(e) => panic!("Incorrect error returned. {}", e),
-        }
     }
 }

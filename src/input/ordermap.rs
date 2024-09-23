@@ -5,10 +5,11 @@
 
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
+use serde::Deserialize;
 
 use crate::errors::GridSpanError;
 
-#[derive(Debug, Clone, Builder, Getters, CopyGetters)]
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Deserialize)]
 pub struct OrderMap {
     /// Directory where the output files containing the individual ordermaps should be saved.
     #[builder(setter(into))]
@@ -17,26 +18,43 @@ pub struct OrderMap {
     /// Minimal number of samples in a grid tile required to calculate order parameter for it.
     /// If not specified, the default value is 1.
     #[builder(default = "1")]
+    #[serde(default = "default_min_samples")]
     #[getset(get_copy = "pub")]
     min_samples: usize,
     /// Span of the grid along the x-axis.
     #[builder(default)]
+    #[serde(default = "default_gridspan")]
     #[getset(get_copy = "pub")]
     dim_x: GridSpan,
     /// Span of the grid along the z-axis.
     #[builder(default)]
+    #[serde(default = "default_gridspan")]
     #[getset(get_copy = "pub")]
     dim_y: GridSpan,
-    /// The size of the grid bin along the x-axis (relative to the simulation box size).
-    /// If not specified, the default value is 0.01.
-    #[builder(default = "0.01")]
+    /// The size of the grid bin along the x-axis.
+    /// If not specified, the default value is 0.1 nm.
+    #[builder(default = "0.1")]
+    #[serde(default = "default_bin_size")]
     #[getset(get_copy = "pub")]
     bin_size_x: f32,
-    /// The size of the grid bin along the y-axis (relative to the simulation box size).
-    /// If not specified, the default value is 0.01.
-    #[builder(default = "0.01")]
+    /// The size of the grid bin along the y-axis.
+    /// If not specified, the default value is 0.1 nm.
+    #[builder(default = "0.1")]
+    #[serde(default = "default_bin_size")]
     #[getset(get_copy = "pub")]
     bin_size_y: f32,
+}
+
+fn default_bin_size() -> f32 {
+    0.1
+}
+
+fn default_min_samples() -> usize {
+    1
+}
+
+fn default_gridspan() -> GridSpan {
+    GridSpan::Auto
 }
 
 impl OrderMap {
@@ -46,7 +64,7 @@ impl OrderMap {
 }
 
 /// Specifies the span of an ordermap grid.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Deserialize)]
 pub enum GridSpan {
     /// Span should be obtained from the input structure file.
     #[default]

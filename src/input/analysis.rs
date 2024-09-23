@@ -6,19 +6,20 @@
 use colored::Colorize;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
+use serde::Deserialize;
 
 use super::Axis;
 use super::LeafletClassification;
 use super::OrderMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 pub enum AnalysisType {
     AAOrder,
     CGOrder,
 }
 
 /// Structure holding all the information necessary to perform the specified analysis.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters)]
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Deserialize)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
     /// Path to TPR file containing the topology of the system.
@@ -44,6 +45,7 @@ pub struct Analysis {
     /// Direction of the membrane normal.
     /// If not provided, the default value is 'Axis::Z'.
     #[builder(setter(into), default = "Axis::Z")]
+    #[serde(default = "default_membrane_normal")]
     #[getset(get_copy = "pub")]
     membrane_normal: Axis,
     /// Selection of heavy atoms for which the order parameters should be calculated.
@@ -66,26 +68,31 @@ pub struct Analysis {
     /// Starting time of the trajectory analysis (in ps).
     /// If not specified, the analysis starts at the beginning of the trajectory.
     #[builder(default = "0.0")]
+    #[serde(default = "default_begin")]
     #[getset(get_copy = "pub")]
     begin: f32,
     /// Ending time of the trajectory analysis (in ps).
     /// If not specified, the analysis ends at the end of the trajectory.
     #[builder(default = "f32::INFINITY")]
+    #[serde(default = "default_end")]
     #[getset(get_copy = "pub")]
     end: f32,
     /// Only every Nth frame of the simulation trajectory will be analyzed.
     /// If not specified, each frame of the trajectory will be analyzed.
     #[builder(default = "1")]
+    #[serde(default = "default_one")]
     #[getset(get_copy = "pub")]
     step: usize,
     /// Minimal number of samples for each heavy atom required to calculate order parameter for it.
     /// If not specified, the default value is 1.
     #[builder(default = "1")]
+    #[serde(default = "default_one")]
     #[getset(get_copy = "pub")]
     min_samples: usize,
     /// Number of threads to use to perform the analysis.
     /// If not specified, the default value is 1.
     #[builder(default = "1")]
+    #[serde(default = "default_one")]
     #[getset(get_copy = "pub")]
     n_threads: usize,
     /// Specifies how to assign lipids into membrane leaflets.
@@ -102,8 +109,29 @@ pub struct Analysis {
     map: Option<OrderMap>,
     /// Be silent. Print nothing to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
+    #[serde(default = "default_false")]
     #[getset(get_copy = "pub")]
     silent: bool,
+}
+
+fn default_membrane_normal() -> Axis {
+    Axis::Z
+}
+
+fn default_begin() -> f32 {
+    0.0
+}
+
+fn default_end() -> f32 {
+    f32::INFINITY
+}
+
+fn default_one() -> usize {
+    1
+}
+
+fn default_false() -> bool {
+    false
 }
 
 impl Analysis {

@@ -1,6 +1,7 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
+use core::fmt;
 use std::{
     num::NonZeroUsize,
     ops::{Add, AddAssign},
@@ -16,11 +17,11 @@ use hashbrown::HashSet;
 
 use crate::{
     errors::{AnalysisError, TopologyError},
-    OrderMap, PANIC_MESSAGE,
+    Leaflet, OrderMap, PANIC_MESSAGE,
 };
 
 use super::{
-    leaflets::{Leaflet, LeafletClassifier, MoleculeLeafletClassification},
+    leaflets::{LeafletClassifier, MoleculeLeafletClassification},
     ordermap::{merge_option_maps, Map},
 };
 
@@ -49,8 +50,8 @@ impl MoleculeType {
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
         min_samples: usize,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, TopologyError> {
+        Ok(Self {
             name: name.to_owned(),
             topology: topology.to_owned(),
             order_bonds: OrderBonds::new(
@@ -60,10 +61,10 @@ impl MoleculeType {
                 leaflet_classification.is_some(),
                 ordermap_params,
                 min_samples,
-            ),
+            )?,
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
-        }
+        })
     }
 
     /// Insert new bond instances to the molecule.
@@ -95,14 +96,36 @@ impl MoleculeType {
                 let atom1 = unsafe { frame.get_atom_unchecked_as_ref(*index1) };
                 let atom2 = unsafe { frame.get_atom_unchecked_as_ref(*index2) };
 
-                let sch = super::calc_sch(atom1, atom2, simbox, membrane_normal)?;
+                let pos1 = atom1
+                    .get_position()
+                    .ok_or_else(|| AnalysisError::UndefinedPosition(atom1.get_atom_number()))?;
+
+                let pos2 = atom2
+                    .get_position()
+                    .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_atom_number()))?;
+
+                let sch = super::calc_sch(pos1, pos2, simbox, membrane_normal);
                 bond_type.total += sch;
+
+                if let Some(map) = bond_type.total_map.as_mut() {
+                    map.add_order(sch, &((pos1 + pos2) / 2.0));
+                }
 
                 // assign molecule to leaflet
                 if let Some(classifier) = &self.leaflet_classification {
                     match classifier.assign_to_leaflet(frame, molecule_index)? {
-                        Leaflet::Upper => *bond_type.upper.as_mut().expect(PANIC_MESSAGE) += sch,
-                        Leaflet::Lower => *bond_type.lower.as_mut().expect(PANIC_MESSAGE) += sch,
+                        Leaflet::Upper => {
+                            *bond_type.upper.as_mut().expect(PANIC_MESSAGE) += sch;
+                            if let Some(map) = bond_type.upper_map.as_mut() {
+                                map.add_order(sch, &((pos1 + pos2) / 2.0));
+                            }
+                        }
+                        Leaflet::Lower => {
+                            *bond_type.lower.as_mut().expect(PANIC_MESSAGE) += sch;
+                            if let Some(map) = bond_type.lower_map.as_mut() {
+                                map.add_order(sch, &((pos1 + pos2) / 2.0));
+                            }
+                        }
                     }
                 }
             }
@@ -186,8 +209,20 @@ impl OrderBonds {
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
         min_samples: usize,
-    ) -> Self {
+    ) -> Result<Self, TopologyError> {
         bonds_sanity_check(bonds, min_index);
+
+        let simbox = system
+            .get_box_as_ref()
+            .ok_or_else(|| TopologyError::UndefinedBox)?;
+
+        if !simbox.is_orthogonal() {
+            return Err(TopologyError::NotOrthogonalBox);
+        }
+
+        if simbox.is_zero() {
+            return Err(TopologyError::ZeroBox);
+        }
 
         let mut order_bonds = Vec::new();
         for &(index1, index2) in bonds.iter() {
@@ -201,11 +236,12 @@ impl OrderBonds {
                 classify_leaflets,
                 ordermap,
                 min_samples,
+                simbox,
             );
             order_bonds.push(bond)
         }
 
-        OrderBonds { bonds: order_bonds }
+        Ok(OrderBonds { bonds: order_bonds })
     }
 
     /// Insert new real bonds to already constructed order bonds.
@@ -357,6 +393,7 @@ impl Bond {
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
         min_samples: usize,
+        simbox: &SimBox,
     ) -> Bond {
         let bond_type = BondType::new(
             abs_index_1 - min_index,
@@ -371,7 +408,7 @@ impl Bond {
         };
 
         let optional_map = if let Some(map_params) = ordermap {
-            Some(Map::new(map_params.to_owned()))
+            Some(Map::new(map_params.to_owned(), simbox))
         } else {
             None
         };
@@ -457,10 +494,10 @@ impl Add<Bond> for Bond {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters)]
-pub(super) struct BondType {
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+pub(crate) struct BondType {
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     atom1: AtomType,
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     atom2: AtomType,
 }
 
@@ -513,9 +550,9 @@ impl BondType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters, CopyGetters)]
 pub(crate) struct AtomType {
-    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
+    #[getset(get_copy = "pub(crate)", get_mut = "pub(super)")]
     relative_index: usize,
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     residue_name: String,
@@ -539,6 +576,18 @@ impl AtomType {
             residue_name: residue_name.to_owned(),
             atom_name: atom_name.to_owned(),
         }
+    }
+}
+
+impl fmt::Display for AtomType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}-{}-{}",
+            self.residue_name(),
+            self.atom_name(),
+            self.relative_index()
+        )
     }
 }
 
@@ -621,8 +670,28 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let bond1 = Bond::new(455, &atom1, 460, &atom2, 455, false, None, 1);
-        let bond2 = Bond::new(460, &atom2, 455, &atom1, 455, false, None, 1);
+        let bond1 = Bond::new(
+            455,
+            &atom1,
+            460,
+            &atom2,
+            455,
+            false,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
+        let bond2 = Bond::new(
+            460,
+            &atom2,
+            455,
+            &atom1,
+            455,
+            false,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
 
         assert_eq!(bond1.bond_type, bond2.bond_type);
         assert_eq!(bond1.bonds.len(), 1);
@@ -635,7 +704,17 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let bond = Bond::new(455, &atom1, 460, &atom2, 455, true, None, 1);
+        let bond = Bond::new(
+            455,
+            &atom1,
+            460,
+            &atom2,
+            455,
+            true,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
 
         assert!(bond.lower.is_some());
         assert!(bond.upper.is_some());
@@ -661,6 +740,7 @@ mod tests {
             false,
             Some(&ordermap_params),
             1,
+            &SimBox::from([10.0, 10.0, 10.0]),
         );
 
         assert!(bond.lower.is_none());
@@ -690,6 +770,7 @@ mod tests {
             true,
             Some(&ordermap_params),
             1,
+            &SimBox::from([10.0, 10.0, 10.0]),
         );
 
         assert!(bond.lower.is_some());
@@ -704,7 +785,17 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let mut bond = Bond::new(455, &atom1, 460, &atom2, 455, false, None, 1);
+        let mut bond = Bond::new(
+            455,
+            &atom1,
+            460,
+            &atom2,
+            455,
+            false,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
 
         bond.insert(1354, 1359);
         bond.insert(1676, 1671);
@@ -720,7 +811,17 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let mut bond = Bond::new(455, &atom1, 460, &atom2, 455, false, None, 1);
+        let mut bond = Bond::new(
+            455,
+            &atom1,
+            460,
+            &atom2,
+            455,
+            false,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
 
         bond.total.n_samples = 17;
         bond.total.order = 3.978;
@@ -737,7 +838,17 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let mut bond = Bond::new(455, &atom1, 460, &atom2, 455, true, None, 1);
+        let mut bond = Bond::new(
+            455,
+            &atom1,
+            460,
+            &atom2,
+            455,
+            true,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
 
         bond.total.n_samples = 17;
         bond.total.order = 3.978;
@@ -814,7 +925,7 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds.clone());
-        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1);
+        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1).unwrap();
 
         let expected_bonds = expected_bonds(&system);
 
@@ -839,7 +950,7 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds.clone());
-        let mut order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1);
+        let mut order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1).unwrap();
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
         let new_bonds_set = HashSet::from(new_bonds.clone());

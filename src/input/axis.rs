@@ -6,11 +6,12 @@
 use std::fmt;
 
 use groan_rs::prelude::{Dimension, Vector3D};
+use serde::Deserialize;
 
 use crate::PANIC_MESSAGE;
 
 /// X, Y, or Z axis.
-#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Deserialize)]
 pub enum Axis {
     X,
     Y,

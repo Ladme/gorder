@@ -3,28 +3,43 @@
 
 //! Contains structures and methods for the construction of maps of order parameters.
 
-use std::ops::Add;
+use std::io::Write;
+use std::{fs::File, io::BufWriter, ops::Add, path::Path};
 
-use groan_rs::{prelude::GridMap, structures::gridmap::DataOrder};
+use getset::Getters;
+use groan_rs::{
+    prelude::{GridMap, SimBox, Vector3D},
+    structures::gridmap::DataOrder,
+};
 
-use crate::{OrderMap, PANIC_MESSAGE};
+use crate::{errors::OrderMapWriteError, input::GridSpan, OrderMap, PANIC_MESSAGE};
 
-#[derive(Debug, Clone)]
+use super::molecule::AtomType;
+
+#[derive(Debug, Clone, Getters)]
 pub(crate) struct Map {
+    #[getset(get = "pub(crate)")]
     params: OrderMap,
+    #[getset(get = "pub(crate)")]
     values: GridMap<f32, f32, fn(&f32) -> f32>,
+    #[getset(get = "pub(crate)")]
     samples: GridMap<usize, usize, fn(&usize) -> usize>,
 }
 
 impl Map {
-    pub(super) fn new(params: OrderMap) -> Map {
+    pub(super) fn new(params: OrderMap, simbox: &SimBox) -> Map {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();
 
-        let xmin = 0.0 + (binx / 2.0);
-        let xmax = 1.0 - (binx / 2.0);
-        let ymin = 0.0 + (biny / 2.0);
-        let ymax = 1.0 - (biny / 2.0);
+        let (xmin, xmax) = match params.dim_x() {
+            GridSpan::Auto => (0.0, simbox.x),
+            GridSpan::Manual { start, end } => (start, end),
+        };
+
+        let (ymin, ymax) = match params.dim_y() {
+            GridSpan::Auto => (0.0, simbox.y),
+            GridSpan::Manual { start, end } => (start, end),
+        };
 
         Map {
             params,
@@ -43,6 +58,17 @@ impl Map {
                 usize::clone as fn(&usize) -> usize,
             ).unwrap_or_else(|e|
                  panic!("FATAL GORDER ERROR | Map::new | Could not create gridmap for samples. Error: {}. {}", e, PANIC_MESSAGE))
+        }
+    }
+
+    /// Add sampled order parameter to the correct position. Ignore if out of range.
+    pub(super) fn add_order(&mut self, order: f32, bond_pos: &Vector3D) {
+        if let (Some(valbin), Some(samplebin)) = (
+            self.values.get_mut_at(bond_pos.x, bond_pos.y),
+            self.samples.get_mut_at(bond_pos.x, bond_pos.y),
+        ) {
+            *valbin += order;
+            *samplebin += 1;
         }
     }
 }
@@ -119,6 +145,54 @@ mod tests {
     use crate::analysis::molecule::Order;
 
     use super::*;
+
+    #[test]
+    fn new_map_auto() {
+        let simbox = SimBox::from([10.0, 5.0, 7.0]);
+        let params = OrderMap::new()
+            .output_directory(".")
+            .bin_size_y(0.2)
+            .bin_size_x(0.05)
+            .build()
+            .unwrap();
+
+        let map = Map::new(params, &simbox);
+
+        assert_eq!(map.samples.span_x(), (0.0, 10.0));
+        assert_eq!(map.samples.span_y(), (0.0, 5.0));
+        assert_eq!(map.samples.tile_dim(), (0.05, 0.2));
+
+        assert_eq!(map.values.span_x(), (0.0, 10.0));
+        assert_eq!(map.values.span_y(), (0.0, 5.0));
+        assert_eq!(map.values.tile_dim(), (0.05, 0.2));
+    }
+
+    #[test]
+    fn new_map_manual() {
+        let simbox = SimBox::from([10.0, 5.0, 7.0]);
+        let params = OrderMap::new()
+            .output_directory(".")
+            .dim_x(GridSpan::Manual {
+                start: -4.0,
+                end: 8.0,
+            })
+            .dim_y(GridSpan::Manual {
+                start: 1.5,
+                end: 4.5,
+            })
+            .build()
+            .unwrap();
+
+        let map = Map::new(params, &simbox);
+
+        assert_eq!(map.samples.span_x(), (-4.0, 8.0));
+        assert_eq!(map.samples.span_y(), (1.5, 4.5));
+        assert_eq!(map.samples.tile_dim(), (0.1, 0.1));
+
+        assert_eq!(map.values.span_x(), (-4.0, 8.0));
+        assert_eq!(map.values.span_y(), (1.5, 4.5));
+        assert_eq!(map.values.tile_dim(), (0.1, 0.1));
+    }
 
     #[test]
     fn merge_order() {

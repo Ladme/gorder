@@ -8,7 +8,7 @@ use core::f32;
 use super::auxiliary::{create_group, macros::group_name};
 use crate::{
     errors::{AnalysisError, TopologyError},
-    LeafletClassification, PANIC_MESSAGE,
+    Leaflet, LeafletClassification, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
@@ -17,12 +17,6 @@ use groan_rs::{
     structures::group::Group,
     system::System,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Leaflet {
-    Upper,
-    Lower,
-}
 
 impl LeafletClassification {
     /// Prepare the system for leaflet classification.

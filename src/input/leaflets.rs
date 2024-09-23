@@ -4,9 +4,10 @@
 //! Contains structures and methods for the assignment of lipids into membrane leaflets.
 
 use getset::{CopyGetters, Getters};
+use serde::Deserialize;
 
 /// Parameters for the classification of lipids into membrane leaflets.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 #[allow(private_interfaces)]
 pub enum LeafletClassification {
     Global(GlobalParams),
@@ -71,7 +72,7 @@ impl LeafletClassification {
 }
 
 /// Based on the global membrane center of geometry; useful for disrupted membranes; fast.
-#[derive(Debug, Clone, Getters, CopyGetters)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
 pub(crate) struct GlobalParams {
     /// Selection of all lipids forming the membrane.
     #[getset(get = "pub(crate)")]
@@ -84,7 +85,7 @@ pub(crate) struct GlobalParams {
 
 /// Parameters for classification of lipids.
 /// Based on the local membrane center of geometry; useful for curved membranes; slow.
-#[derive(Debug, Clone, Getters, CopyGetters)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
 pub(crate) struct LocalParams {
     /// Selection of all lipids forming the membrane.
     #[getset(get = "pub(crate)")]
@@ -100,7 +101,7 @@ pub(crate) struct LocalParams {
 
 /// Parameters for classification of lipids.
 /// Based on the orientation of the lipid tails; less reliable; fast.
-#[derive(Debug, Clone, Getters, CopyGetters)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
 pub(crate) struct IndividualParams {
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.

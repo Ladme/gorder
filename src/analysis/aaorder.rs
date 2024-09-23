@@ -108,6 +108,9 @@ pub(super) fn analyze_atomistic(
         progress_printer,
     )?;
 
+    // write out the maps
+    result.write_ordermaps_bonds()?;
+
     // write out the results
     let results = AAOrderResults::from(result);
     results.write_yaml(

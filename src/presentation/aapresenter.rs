@@ -178,7 +178,7 @@ fn average_of_some(values: &[Option<f32>]) -> Option<f32> {
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use groan_rs::prelude::Atom;
+    use groan_rs::prelude::{Atom, SimBox};
 
     use super::*;
 
@@ -388,8 +388,28 @@ order:
         let hydrogen1 = Atom::new(1, "POPC", 3, "HA");
         let hydrogen2 = Atom::new(1, "POPC", 4, "HB");
 
-        let mut bond1 = Bond::new(0, &heavy_atom, 2, &hydrogen1, 0, false, None, 1);
-        let mut bond2 = Bond::new(0, &heavy_atom, 3, &hydrogen2, 0, false, None, 1);
+        let mut bond1 = Bond::new(
+            0,
+            &heavy_atom,
+            2,
+            &hydrogen1,
+            0,
+            false,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
+        let mut bond2 = Bond::new(
+            0,
+            &heavy_atom,
+            3,
+            &hydrogen2,
+            0,
+            false,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
 
         *bond1.total_mut() += 0.234;
         *bond1.total_mut() += 0.176;
@@ -430,8 +450,28 @@ order:
         let hydrogen1 = Atom::new(1, "POPC", 3, "HA");
         let hydrogen2 = Atom::new(1, "POPC", 4, "HB");
 
-        let mut bond1 = Bond::new(0, &heavy_atom, 2, &hydrogen1, 0, true, None, 1);
-        let mut bond2 = Bond::new(0, &heavy_atom, 3, &hydrogen2, 0, true, None, 1);
+        let mut bond1 = Bond::new(
+            0,
+            &heavy_atom,
+            2,
+            &hydrogen1,
+            0,
+            true,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
+        let mut bond2 = Bond::new(
+            0,
+            &heavy_atom,
+            3,
+            &hydrogen2,
+            0,
+            true,
+            None,
+            1,
+            &SimBox::from([10.0, 10.0, 10.0]),
+        );
 
         *bond1.total_mut() += 0.234;
         *bond1.total_mut() += 0.176;
