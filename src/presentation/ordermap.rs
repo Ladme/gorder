@@ -6,6 +6,7 @@ use std::{fs::File, io::BufWriter, path::Path};
 
 use crate::analysis::molecule::MoleculeType;
 use crate::analysis::topology::SystemTopology;
+use crate::GORDER_VERSION;
 use crate::{
     analysis::{molecule::AtomType, ordermap::Map},
     errors::OrderMapWriteError,
@@ -26,7 +27,9 @@ impl Map {
             None => format!("ordermap_{}_total.dat", atom),
         };
 
-        self.write_ordermap(&filename)
+        let comment = format!("# Map of average order parameters calculated for bonds involving atom type {}.\n# Calculated with 'gorder v{}.", atom, GORDER_VERSION);
+
+        self.write_ordermap(&filename, &comment)
     }
 
     /// Write the map of order parameters for a single bond into an output file.
@@ -43,10 +46,12 @@ impl Map {
             None => format!("ordermap_{}--{}_total.dat", atom1, atom2),
         };
 
-        self.write_ordermap(&filename)
+        let comment = format!("# Map of average order parameters calculated for bonds between atom types {} and {}.\n# Calculated with 'gorder v{}.'", atom1, atom2, GORDER_VERSION);
+
+        self.write_ordermap(&filename, &comment)
     }
 
-    fn write_ordermap(&self, filename: &str) -> Result<(), OrderMapWriteError> {
+    fn write_ordermap(&self, filename: &str, comment: &str) -> Result<(), OrderMapWriteError> {
         let directory = self.params().output_directory();
 
         // create the directory if it does not exist
@@ -62,9 +67,12 @@ impl Map {
         })?;
         let mut output = BufWriter::new(output_file);
 
+        writeln!(output, "{}", comment)
+            .map_err(|_| OrderMapWriteError::CouldNotWriteLine(Box::from(Path::new(&full_path))))?;
+
         writeln!(
             output,
-            "@ xlabel x-dimension [nm]\n@ ylabel y-dimension [nm]\n@zrange -1 1 0.2"
+            "@ xlabel x-dimension [nm]\n@ ylabel y-dimension [nm]\n@ zrange -1 1 0.2"
         )
         .map_err(|_| OrderMapWriteError::CouldNotWriteLine(Box::from(Path::new(&full_path))))?;
 
