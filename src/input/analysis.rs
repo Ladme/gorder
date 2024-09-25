@@ -7,6 +7,7 @@ use core::fmt;
 
 use colored::Colorize;
 use derive_builder::Builder;
+use getset::Setters;
 use getset::{CopyGetters, Getters};
 use serde::Deserialize;
 
@@ -30,7 +31,7 @@ impl fmt::Display for AnalysisType {
 }
 
 /// Structure holding all the information necessary to perform the specified analysis.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Deserialize)]
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
@@ -122,12 +123,12 @@ pub struct Analysis {
     /// Be silent. Print nothing to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
     #[serde(default = "default_false")]
-    #[getset(get_copy = "pub")]
+    #[getset(get_copy = "pub", set = "pub")]
     silent: bool,
     /// Overwrite all output files and directories.
     #[builder(setter(custom), default = "false")]
     #[serde(default = "default_false")]
-    #[getset(get_copy = "pub")]
+    #[getset(get_copy = "pub", set = "pub")]
     overwrite: bool,
 }
 
