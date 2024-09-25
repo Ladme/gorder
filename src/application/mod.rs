@@ -25,17 +25,23 @@ pub struct Args {
 pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = Args::parse();
 
-    let config_str = std::fs::read_to_string(&args.config)
-        .map_err(|_| ApplicationError::CouldNotReadConfig(args.config.clone()))?;
-    let analysis: Analysis = serde_yaml::from_str(&config_str)
-        .map_err(|_| ApplicationError::CouldNotReadConfig(args.config.clone()))?;
+    colog::init();
+
+    let config_str = std::fs::read_to_string(&args.config).map_err(|_| {
+        let error = ApplicationError::CouldNotOpenConfig(args.config.clone());
+        log::error!("{}", error);
+        Box::new(error)
+    })?;
+
+    let analysis: Analysis = serde_yaml::from_str(&config_str).map_err(|e| {
+        let error = ApplicationError::CouldNotParseConfig(args.config.clone(), e);
+        log::error!("{}", error);
+        Box::new(error)
+    })?;
 
     if analysis.silent() {
-        colog::basic_builder()
-            .filter(None, log::LevelFilter::Error)
-            .init();
+        log::set_max_level(log::LevelFilter::Error);
     } else {
-        colog::init();
         let header = format!(">>> GORDER v{} <<<", GORDER_VERSION).bold();
         println!("\n{}\n", header);
         log::info!("Read config file '{}'.", args.config);
@@ -43,32 +49,38 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let result = analysis.run();
 
-    if !analysis.silent() {
-        match &result {
-            Ok(_) => {
-                let prefix = format!(
-                    "{}{}{}",
-                    "[".to_string().blue().bold(),
-                    "✔".to_string().bright_green().bold(),
-                    "]".to_string().blue().bold()
-                );
-                let message = "ANALYSIS COMPLETED".to_string().bright_green().bold();
-                println!("{} {}", prefix, message);
-            }
-            Err(e) => {
-                log::error!("{}", e);
+    if let Err(ref e) = result {
+        log::error!("{}", e);
+    }
 
-                let prefix = format!(
-                    "{}{}{}",
-                    "[".to_string().blue().bold(),
-                    "✖".to_string().red().bold(),
-                    "]".to_string().blue().bold()
-                );
-                let message = "ANALYSIS FAILED".to_string().red().bold();
-                println!("{} {}", prefix, message);
-            }
-        }
+    if !analysis.silent() {
+        display_result(&result);
     }
 
     result
+}
+
+fn display_result(result: &Result<(), Box<dyn std::error::Error + Send + Sync>>) {
+    match result {
+        Ok(_) => {
+            let prefix = format!(
+                "{}{}{}",
+                "[".to_string().blue().bold(),
+                "✔".to_string().bright_green().bold(),
+                "]".to_string().blue().bold()
+            );
+            let message = "ANALYSIS COMPLETED".to_string().bright_green().bold();
+            println!("{} {}\n", prefix, message);
+        }
+        Err(_) => {
+            let prefix = format!(
+                "{}{}{}",
+                "[".to_string().blue().bold(),
+                "✖".to_string().red().bold(),
+                "]".to_string().blue().bold()
+            );
+            let message = "ANALYSIS FAILED".to_string().red().bold();
+            println!("{} {}\n", prefix, message);
+        }
+    }
 }

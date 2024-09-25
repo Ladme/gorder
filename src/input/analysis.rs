@@ -31,6 +31,7 @@ impl fmt::Display for AnalysisType {
 
 /// Structure holding all the information necessary to perform the specified analysis.
 #[derive(Debug, Clone, Builder, Getters, CopyGetters, Deserialize)]
+#[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
     /// Path to TPR file containing the topology of the system.

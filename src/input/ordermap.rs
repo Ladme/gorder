@@ -10,6 +10,7 @@ use serde::Deserialize;
 use crate::errors::GridSpanError;
 
 #[derive(Debug, Clone, Builder, Getters, CopyGetters, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct OrderMap {
     /// Directory where the output files containing the individual ordermaps should be saved.
     #[builder(setter(into))]
@@ -65,6 +66,7 @@ impl OrderMap {
 
 /// Specifies the span of an ordermap grid.
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum GridSpan {
     /// Span should be obtained from the input structure file.
     #[default]

@@ -11,8 +11,10 @@ fn path_to_yellow(path: &Path) -> ColoredString {
 /// Errors that can occur inside the application itself.
 #[derive(Error, Debug)]
 pub enum ApplicationError {
-    #[error("{} could not read configuration file '{}'", "error:".red().bold(), .0.yellow())]
-    CouldNotReadConfig(String),
+    #[error("{} could not open the configuration file '{}'", "error:".red().bold(), .0.yellow())]
+    CouldNotOpenConfig(String),
+    #[error("{} could not understand the contents of the configuration file '{}' ({})", "error:".red().bold(), .0.yellow(), .1)]
+    CouldNotParseConfig(String, serde_yaml::Error),
 }
 
 /// Errors that can occur when creating a `GridSpan` structure.
