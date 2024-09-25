@@ -36,7 +36,7 @@ pub enum TopologyError {
     #[error("{} group '{}' is empty", "error:".red().bold(), .0.yellow())]
     EmptyGroup(String),
 
-    #[error("{} an atom overlap detected between '{}' (query: '{}') and '{}' (query: '{}')", "error:".red().bold(), .name1.yellow(), .query1.yellow(), .name2.yellow(), .query2.yellow())]
+    #[error("{} some atoms are part of both '{}' (query: '{}') and '{}' (query: '{}')", "error:".red().bold(), .name1.yellow(), .query1.yellow(), .name2.yellow(), .query2.yellow())]
     AtomsOverlap {
         name1: String,
         query1: String,
