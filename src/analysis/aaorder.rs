@@ -20,6 +20,7 @@ pub(super) fn analyze_atomistic(
     analysis: &Analysis,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
+    log::info!("Read molecular topology from '{}'.", analysis.structure());
 
     super::auxiliary::create_group(
         &mut system,
@@ -28,12 +29,28 @@ pub(super) fn analyze_atomistic(
              panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of heavy atoms should be provided. {}", PANIC_MESSAGE)),
     )?;
 
+    log::info!(
+        "Detected {} heavy atoms using query '{}'.",
+        system
+            .group_get_n_atoms(group_name!("HeavyAtoms"))
+            .expect(PANIC_MESSAGE),
+        analysis.heavy_atoms().as_ref().expect(PANIC_MESSAGE)
+    );
+
     super::auxiliary::create_group(
         &mut system,
         "Hydrogens", 
         analysis.hydrogens().as_ref().unwrap_or_else(||
             panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of hydrogens should be provided. {}", PANIC_MESSAGE))
     )?;
+
+    log::info!(
+        "Detected {} hydrogen atoms using query '{}'.",
+        system
+            .group_get_n_atoms(group_name!("Hydrogens"))
+            .expect(PANIC_MESSAGE),
+        analysis.hydrogens().as_ref().expect(PANIC_MESSAGE)
+    );
 
     // check that heavy_atoms and hydrogens do not overlap
     let _ = system.group_intersection(
@@ -63,6 +80,9 @@ pub(super) fn analyze_atomistic(
         leaflet.prepare_system(&mut system)?;
     }
 
+    log::info!("Detecting molecule types...");
+    log::logger().flush();
+
     // get the relevant molecules
     let molecules = super::auxiliary::classify_molecules(
         &system,
@@ -76,25 +96,39 @@ pub(super) fn analyze_atomistic(
 
     // if no molecules are detected, end the analysis
     if molecules.len() == 0 {
-        log::info!("No molecules suitable for the analysis detected.");
+        log::warn!("No molecules suitable for the analysis detected.");
         return Ok(());
     }
 
     // if only empty molecules are detected, end the analysis
     for mol in molecules.iter() {
         if mol.order_bonds().bonds().is_empty() {
-            log::info!("No bonds suitable for the analysis detected.");
+            log::warn!("No bonds suitable for the analysis detected.");
             return Ok(());
         }
     }
 
     let data = SystemTopology::new(molecules, analysis.membrane_normal().into());
+    data.info();
 
     let progress_printer = if analysis.silent() {
         None
     } else {
         Some(ProgressPrinter::new())
     };
+
+    log::info!(
+        "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
+        analysis.trajectory(),
+        analysis.begin(),
+        analysis.end(),
+        analysis.step()
+    );
+
+    log::info!(
+        "Performing the analysis using {} thread(s)...",
+        analysis.n_threads()
+    );
 
     // run the analysis in parallel
     let result = system.traj_iter_map_reduce::<XtcReader, SystemTopology, AnalysisError>(
@@ -109,15 +143,22 @@ pub(super) fn analyze_atomistic(
     )?;
 
     // write out the maps
-    result.handle_ordermap_directory()?;
+    result.handle_ordermap_directory(analysis.overwrite())?;
     result.write_ordermaps_bonds()?;
 
     // write out the results
+    log::info!(
+        "Writing the order parameters into a yaml file '{}'...",
+        analysis.output()
+    );
+    log::logger().flush();
+
     let results = AAOrderResults::from(result);
     results.write_yaml(
         analysis.output(),
         analysis.structure(),
         analysis.trajectory(),
+        analysis.overwrite(),
     )?;
 
     Ok(())

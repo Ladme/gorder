@@ -4,8 +4,11 @@
 //! This module contains structures and methods for presenting the results of the analysis.
 
 use crate::{
-    analysis::molecule::{AtomType, Bond},
-    PANIC_MESSAGE,
+    analysis::{
+        molecule::{AtomType, Bond, MoleculeType},
+        topology::SystemTopology,
+    },
+    Analysis, PANIC_MESSAGE,
 };
 use serde::{Serialize, Serializer};
 
@@ -64,6 +67,57 @@ where
     S: Serializer,
 {
     s.serialize_f32((x * 10000.0).round() / 10000.0)
+}
+
+impl Analysis {
+    /// Print basic information about the analysis for the user.
+    pub(crate) fn info(&self) {
+        log::info!("Will calculate {}.", self.analysis_type());
+        if self.map().is_some() {
+            log::info!("Will calculate order maps.");
+        }
+        if self.leaflets().is_some() {
+            log::info!(
+                "Will classify lipids into membrane leaflets using the '{}' method.",
+                self.leaflets().as_ref().expect(PANIC_MESSAGE)
+            )
+        }
+        log::info!(
+            "Membrane normal expected to be oriented along the {} axis.",
+            self.membrane_normal()
+        );
+    }
+}
+
+impl MoleculeType {
+    /// Print basic information about the molecule type for the user.
+    fn info(&self) {
+        log::info!(
+            "Molecule type {}: {} order bonds, {} molecules.",
+            self.name(),
+            self.order_bonds().bonds().len(),
+            self.order_bonds()
+                .bonds()
+                .get(0)
+                .expect(PANIC_MESSAGE)
+                .bonds()
+                .len()
+        )
+    }
+}
+
+impl SystemTopology {
+    /// Print basic information about the system topology for the user.
+    pub(crate) fn info(&self) {
+        log::info!(
+            "Detected {} relevant molecule type(s).",
+            self.molecules().len()
+        );
+
+        for molecule in self.molecules() {
+            molecule.info();
+        }
+    }
 }
 
 #[cfg(test)]

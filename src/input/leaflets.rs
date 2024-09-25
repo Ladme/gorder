@@ -3,6 +3,8 @@
 
 //! Contains structures and methods for the assignment of lipids into membrane leaflets.
 
+use std::fmt;
+
 use getset::{CopyGetters, Getters};
 use serde::Deserialize;
 
@@ -13,6 +15,16 @@ pub enum LeafletClassification {
     Global(GlobalParams),
     Local(LocalParams),
     Individual(IndividualParams),
+}
+
+impl fmt::Display for LeafletClassification {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LeafletClassification::Global(_) => write!(f, "global"),
+            LeafletClassification::Local(_) => write!(f, "local"),
+            LeafletClassification::Individual(_) => write!(f, "individual"),
+        }
+    }
 }
 
 impl LeafletClassification {

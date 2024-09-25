@@ -134,7 +134,10 @@ impl SystemTopology {
     }
 
     /// Create or back up the directory for the ordermaps.
-    pub(crate) fn handle_ordermap_directory(&self) -> Result<(), OrderMapWriteError> {
+    pub(crate) fn handle_ordermap_directory(
+        &self,
+        overwrite: bool,
+    ) -> Result<(), OrderMapWriteError> {
         if let Some(map_unwrapped) = self
             .molecules()
             .iter()
@@ -144,14 +147,31 @@ impl SystemTopology {
         {
             let directory = Path::new(map_unwrapped.params().output_directory());
 
+            log::info!(
+                "Writing ordermaps into a directory '{}'...",
+                directory.to_str().expect(PANIC_MESSAGE)
+            );
+
+            log::logger().flush();
+
             // back up the directory if it already exists
             if directory.is_dir() {
-                log::warn!(
-                    "Output directory for ordermaps '{}' already exists. Backing it up.",
-                    directory.to_str().expect(PANIC_MESSAGE)
-                );
-                backitup::backup(directory)
-                    .map_err(|_| OrderMapWriteError::CouldNotBackupDirectory(directory.into()))?;
+                if !overwrite {
+                    log::warn!(
+                        "Output directory for ordermaps '{}' already exists. Backing it up.",
+                        directory.to_str().expect(PANIC_MESSAGE)
+                    );
+                    backitup::backup(directory).map_err(|_| {
+                        OrderMapWriteError::CouldNotBackupDirectory(directory.into())
+                    })?;
+                } else {
+                    log::warn!("Output directory for ordermaps '{}' already exists. It will be overwritten as requested.", 
+                        directory.to_str().expect(PANIC_MESSAGE)
+                    );
+                    std::fs::remove_dir_all(directory).map_err(|_| {
+                        OrderMapWriteError::CouldNotRemoveDirectory(directory.into())
+                    })?;
+                }
             }
 
             // create a new directory

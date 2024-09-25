@@ -74,8 +74,11 @@ impl MoleculeType {
         bonds: &HashSet<(usize, usize)>,
         atoms: Group,
     ) -> Result<(), TopologyError> {
-        self.order_bonds
-            .insert(system, bonds, atoms.get_atoms().first().unwrap());
+        self.order_bonds.insert(
+            system,
+            bonds,
+            atoms.get_atoms().first().expect(PANIC_MESSAGE),
+        );
 
         if let Some(classifier) = self.leaflet_classification.as_mut() {
             classifier.insert(&atoms, system)?;

@@ -3,6 +3,8 @@
 
 //! Contains the implementation of the main `Analysis` structure and its methods.
 
+use core::fmt;
+
 use colored::Colorize;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
@@ -16,6 +18,15 @@ use super::OrderMap;
 pub enum AnalysisType {
     AAOrder,
     CGOrder,
+}
+
+impl fmt::Display for AnalysisType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AnalysisType::AAOrder => write!(f, "all-atom order parameters"),
+            AnalysisType::CGOrder => write!(f, "coarse-grained order parameters"),
+        }
+    }
 }
 
 /// Structure holding all the information necessary to perform the specified analysis.
@@ -112,6 +123,11 @@ pub struct Analysis {
     #[serde(default = "default_false")]
     #[getset(get_copy = "pub")]
     silent: bool,
+    /// Overwrite all output files and directories.
+    #[builder(setter(custom), default = "false")]
+    #[serde(default = "default_false")]
+    #[getset(get_copy = "pub")]
+    overwrite: bool,
 }
 
 fn default_membrane_normal() -> Axis {
@@ -309,6 +325,8 @@ mod tests_builder {
         assert_eq!(analysis.n_threads(), 1);
         assert!(analysis.leaflets().is_none());
         assert!(analysis.map().is_none());
+        assert!(!analysis.silent());
+        assert!(!analysis.overwrite());
     }
 
     #[test]

@@ -45,7 +45,24 @@ impl AAOrderResults {
         filename: &impl AsRef<Path>,
         input_structure: &str,
         input_trajectory: &str,
+        overwrite: bool,
     ) -> Result<(), WriteError> {
+        if filename.as_ref().exists() {
+            if !overwrite {
+                log::warn!(
+                    "Output yaml file '{}' already exists. Backing it up.",
+                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
+                );
+                backitup::backup(filename)
+                    .map_err(|_| WriteError::CouldNotBackupFile(Box::from(filename.as_ref())))?;
+            } else {
+                log::warn!(
+                    "Output yaml file '{}' already exists. It will be overwritten as requested.",
+                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
+                );
+            }
+        }
+
         let file = File::create(filename)
             .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
 

@@ -6,8 +6,7 @@ use std::process;
 mod application;
 
 fn main() {
-    if let Err(e) = application::run() {
-        eprintln!("{}", e);
+    if let Err(_) = application::run() {
         process::exit(1);
     }
 

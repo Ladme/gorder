@@ -17,6 +17,7 @@ pub(crate) mod topology;
 impl Analysis {
     /// Perform the analysis and write out the results.
     pub fn run(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.info();
         match self.analysis_type() {
             AnalysisType::AAOrder => crate::analysis::aaorder::analyze_atomistic(self),
             AnalysisType::CGOrder => todo!("CG Order calculation is not yet implemented."),
