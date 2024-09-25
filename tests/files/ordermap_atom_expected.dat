@@ -1,0 +1,23 @@
+# Map of average order parameters calculated for bonds involving atom type POPC-C22-4.
+# Calculated with 'gorder v0.1.0'.
+@ xlabel x-dimension [nm]
+@ ylabel y-dimension [nm]
+@ zrange -1 1 0.2
+$ type colorbar
+$ colormap seismic_r
+0.0000 0.0000 0.1540
+0.0000 1.0000 -0.2262
+0.0000 2.0000 NaN
+0.0000 3.0000 NaN
+1.0000 0.0000 NaN
+1.0000 1.0000 NaN
+1.0000 2.0000 NaN
+1.0000 3.0000 NaN
+2.0000 0.0000 NaN
+2.0000 1.0000 NaN
+2.0000 2.0000 NaN
+2.0000 3.0000 NaN
+3.0000 0.0000 NaN
+3.0000 1.0000 0.5884
+3.0000 2.0000 NaN
+3.0000 3.0000 NaN

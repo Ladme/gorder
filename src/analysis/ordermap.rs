@@ -6,7 +6,7 @@
 use std::io::Write;
 use std::{fs::File, io::BufWriter, ops::Add, path::Path};
 
-use getset::Getters;
+use getset::{Getters, MutGetters};
 use groan_rs::{
     prelude::{GridMap, SimBox, Vector3D},
     structures::gridmap::DataOrder,
@@ -16,18 +16,18 @@ use crate::{errors::OrderMapWriteError, input::GridSpan, OrderMap, PANIC_MESSAGE
 
 use super::molecule::AtomType;
 
-#[derive(Debug, Clone, Getters)]
+#[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct Map {
     #[getset(get = "pub(crate)")]
     params: OrderMap,
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     values: GridMap<f32, f32, fn(&f32) -> f32>,
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     samples: GridMap<usize, usize, fn(&usize) -> usize>,
 }
 
 impl Map {
-    pub(super) fn new(params: OrderMap, simbox: &SimBox) -> Map {
+    pub(crate) fn new(params: OrderMap, simbox: &SimBox) -> Map {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();
 

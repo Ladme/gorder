@@ -109,6 +109,7 @@ pub(super) fn analyze_atomistic(
     )?;
 
     // write out the maps
+    result.handle_ordermap_directory()?;
     result.write_ordermaps_bonds()?;
 
     // write out the results

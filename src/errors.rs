@@ -95,6 +95,7 @@ pub enum AnalysisError {
 pub enum WriteError {
     #[error("{} could not create file '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotCreateFile(Box<Path>),
+
     #[error("{} could not write results in yaml format into '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotWriteYaml(Box<Path>),
 }
@@ -104,8 +105,13 @@ pub enum WriteError {
 pub enum OrderMapWriteError {
     #[error("{} could not create directory '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotCreateDirectory(Box<Path>),
+
+    #[error("{} could not create a backup for directory '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotBackupDirectory(Box<Path>),
+
     #[error("{} could not create file '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotCreateFile(Box<Path>),
+
     #[error("{} could not write line into '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotWriteLine(Box<Path>),
 }
