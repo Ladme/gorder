@@ -3,8 +3,7 @@
 
 //! Contains structures and methods for the construction of maps of order parameters.
 
-use std::io::Write;
-use std::{fs::File, io::BufWriter, ops::Add, path::Path};
+use std::ops::Add;
 
 use getset::{Getters, MutGetters};
 use groan_rs::{
@@ -12,9 +11,7 @@ use groan_rs::{
     structures::gridmap::DataOrder,
 };
 
-use crate::{errors::OrderMapWriteError, input::GridSpan, OrderMap, PANIC_MESSAGE};
-
-use super::molecule::AtomType;
+use crate::{input::GridSpan, OrderMap, PANIC_MESSAGE};
 
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct Map {

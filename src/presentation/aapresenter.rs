@@ -180,15 +180,43 @@ impl AAAtomResults {
 }
 
 fn average_of_some(values: &[Option<f32>]) -> Option<f32> {
+    let mut all_none = true;
+    let mut all_nan = true;
+
     let (sum, count) = values
         .iter()
-        .filter_map(|&x| x.filter(|&n| n.is_finite())) // filter out None and NaN or infinite values
-        .fold((0.0, 0), |(acc, cnt), x| (acc + x, cnt + 1));
+        .filter_map(|&x| {
+            x.map(|n| {
+                // at least one value is Some, not None
+                all_none = false;
+                // at least one value is not NaN
+                if !n.is_nan() {
+                    all_nan = false;
+                    n
+                } else {
+                    f32::NAN
+                }
+            })
+        })
+        .fold((0.0, 0), |(acc, cnt), x| {
+            if !x.is_nan() {
+                (acc + x, cnt + 1)
+            } else {
+                (acc, cnt)
+            }
+        });
 
-    if count > 0 {
+    if all_none {
+        // all values were None
+        None
+    } else if all_nan {
+        // all non-None values were NaN
+        Some(f32::NAN)
+    } else if count > 0 {
+        // average of not-none values
         Some(sum / count as f32)
     } else {
-        None
+        panic!("FATAL GORDER ERROR | presentation::aapresenter::average_of_some | Impossible branch reached. {}", PANIC_MESSAGE);
     }
 }
 
@@ -531,5 +559,52 @@ order:
         assert_relative_eq!(results.total.unwrap(), 0.14433333);
         assert_relative_eq!(results.upper.unwrap(), 0.14933333);
         assert_relative_eq!(results.lower.unwrap(), 0.18133333);
+    }
+
+    #[test]
+    fn test_average_of_some() {
+        let values = [Some(1.0), Some(1.0), Some(3.0), Some(2.0), Some(3.0)];
+        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
+
+        let values = [Some(1.0), Some(2.0), Some(3.0), Some(2.0), Some(f32::NAN)];
+        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
+
+        let values = [Some(1.0), None, Some(3.0), Some(2.0), None];
+        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
+
+        let values = [Some(1.0), Some(f32::NAN), Some(3.0), Some(2.0), None];
+        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
+
+        let values = [None, Some(f32::NAN), None, Some(2.0), None];
+        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
+
+        let values = [None, None, None, Some(2.0), None];
+        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
+
+        let values = [
+            Some(f32::NAN),
+            Some(f32::NAN),
+            Some(f32::NAN),
+            Some(2.0),
+            Some(f32::NAN),
+        ];
+        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
+
+        let values = [None, None, None, None, None];
+        assert!(average_of_some(&values).is_none());
+
+        let values = [
+            Some(f32::NAN),
+            Some(f32::NAN),
+            Some(f32::NAN),
+            Some(f32::NAN),
+        ];
+        assert!(average_of_some(&values).unwrap().is_nan());
+
+        let values = [Some(f32::NAN), None, Some(f32::NAN), Some(f32::NAN)];
+        assert!(average_of_some(&values).unwrap().is_nan());
+
+        let values = [None, None, None, Some(f32::NAN), None];
+        assert!(average_of_some(&values).unwrap().is_nan());
     }
 }
