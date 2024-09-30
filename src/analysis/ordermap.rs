@@ -3,7 +3,7 @@
 
 //! Contains structures and methods for the construction of maps of order parameters.
 
-use std::ops::Add;
+use std::{iter::Sum, ops::Add};
 
 use getset::{Getters, MutGetters};
 use groan_rs::{
