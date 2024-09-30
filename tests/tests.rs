@@ -19,9 +19,10 @@ fn test_aa_order_basic_yaml() {
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
-        .analysis_type(AnalysisType::AAOrder)
-        .heavy_atoms("@membrane and element name carbon")
-        .hydrogens("@membrane and element name hydrogen")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
         .silent()
         .build()
         .unwrap();
@@ -44,9 +45,10 @@ fn test_aa_order_basic_yaml_multiple_threads() {
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .n_threads(n_threads)
             .silent()
             .build()
@@ -75,9 +77,10 @@ fn test_aa_order_leaflets_yaml() {
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .leaflets(method)
             .silent()
             .build()
@@ -101,9 +104,10 @@ fn test_aa_order_leaflets_yaml_supershort() {
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg_selected.xtc")
         .output(path_to_output)
-        .analysis_type(AnalysisType::AAOrder)
-        .heavy_atoms("@membrane and element name carbon")
-        .hydrogens("@membrane and element name hydrogen")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
         .leaflets(LeafletClassification::global("@membrane", "name P"))
         .silent()
         .build()
@@ -126,9 +130,10 @@ fn test_aa_order_limit_yaml() {
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
-        .analysis_type(AnalysisType::AAOrder)
-        .heavy_atoms("@membrane and element name carbon")
-        .hydrogens("@membrane and element name hydrogen")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
         .min_samples(2000)
         .silent()
         .build()
@@ -151,9 +156,10 @@ fn test_aa_order_begin_end_step_yaml() {
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
-        .analysis_type(AnalysisType::AAOrder)
-        .heavy_atoms("@membrane and element name carbon")
-        .hydrogens("@membrane and element name hydrogen")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
         .begin(450_000.0)
         .end(450_200.0)
         .step(3)
@@ -176,9 +182,10 @@ fn test_aa_order_no_molecules() {
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output("THIS_FILE_SHOULD_NOT_BE_CREATED_1")
-        .analysis_type(AnalysisType::AAOrder)
-        .heavy_atoms("@ion")
-        .hydrogens("@membrane and element name hydrogen")
+        .analysis_type(AnalysisType::aaorder(
+            "@ion",
+            "@membrane and element name hydrogen",
+        ))
         .silent()
         .build()
         .unwrap();
@@ -194,9 +201,10 @@ fn test_aa_order_empty_molecules() {
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output("THIS_FILE_SHOULD_NOT_BE_CREATED_2")
-        .analysis_type(AnalysisType::AAOrder)
-        .heavy_atoms("@water and element symbol O")
-        .hydrogens("@membrane and element name hydrogen")
+        .analysis_type(AnalysisType::aaorder(
+            "@water and element symbol O",
+            "@membrane and element name hydrogen",
+        ))
         .silent()
         .build()
         .unwrap();
@@ -238,9 +246,10 @@ fn test_aa_order_maps_basic() {
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
-        .analysis_type(AnalysisType::AAOrder)
-        .heavy_atoms("resname POPC and name C22 C24 C218")
-        .hydrogens("@membrane and element name hydrogen")
+        .analysis_type(AnalysisType::aaorder(
+            "resname POPC and name C22 C24 C218",
+            "@membrane and element name hydrogen",
+        ))
         .map(
             OrderMap::new()
                 .bin_size_y(4.0)
@@ -298,9 +307,10 @@ fn test_aa_order_maps_leaflets() {
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("resname POPC and name C22 C24 C218")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "resname POPC and name C22 C24 C218",
+                "@membrane and element name hydrogen",
+            ))
             .leaflets(method)
             .map(
                 OrderMap::new()
@@ -376,9 +386,10 @@ fn test_aa_order_maps_basic_multiple_threads() {
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("resname POPC and name C22 C24 C218")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "resname POPC and name C22 C24 C218",
+                "@membrane and element name hydrogen",
+            ))
             .n_threads(n_threads)
             .map(
                 OrderMap::new()

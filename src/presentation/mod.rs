@@ -72,7 +72,7 @@ where
 impl Analysis {
     /// Print basic information about the analysis for the user.
     pub(crate) fn info(&self) {
-        log::info!("Will calculate {}.", self.analysis_type());
+        log::info!("Will calculate {}.", self.analysis_type().name());
         if self.map().is_some() {
             log::info!("Will calculate order maps.");
         }

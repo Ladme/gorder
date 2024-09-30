@@ -19,8 +19,13 @@ impl Analysis {
     pub fn run(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         self.info();
         match self.analysis_type() {
-            AnalysisType::AAOrder => crate::analysis::aaorder::analyze_atomistic(self),
-            AnalysisType::CGOrder => todo!("CG Order calculation is not yet implemented."),
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => crate::analysis::aaorder::analyze_atomistic(self),
+            AnalysisType::CGOrder { atoms: _ } => {
+                todo!("CG Order calculation is not yet implemented.")
+            }
         }
     }
 }

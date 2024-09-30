@@ -3,36 +3,57 @@
 
 //! Contains the implementation of the main `Analysis` structure and its methods.
 
-use core::fmt;
-
 use colored::Colorize;
 use derive_builder::Builder;
 use getset::Setters;
 use getset::{CopyGetters, Getters};
 use serde::Deserialize;
+use serde_valid::Validate;
 
 use super::Axis;
 use super::LeafletClassification;
 use super::OrderMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub enum AnalysisType {
-    AAOrder,
-    CGOrder,
+    AAOrder {
+        heavy_atoms: String,
+        hydrogens: String,
+    },
+    CGOrder {
+        atoms: String,
+    },
 }
 
-impl fmt::Display for AnalysisType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl AnalysisType {
+    pub fn aaorder(heavy_atoms: &str, hydrogens: &str) -> Self {
+        Self::AAOrder {
+            heavy_atoms: heavy_atoms.to_owned(),
+            hydrogens: hydrogens.to_owned(),
+        }
+    }
+
+    pub fn cgorder(atoms: &str) -> Self {
+        Self::CGOrder {
+            atoms: atoms.to_owned(),
+        }
+    }
+
+    pub fn name(&self) -> &str {
         match self {
-            AnalysisType::AAOrder => write!(f, "all-atom order parameters"),
-            AnalysisType::CGOrder => write!(f, "coarse-grained order parameters"),
+            Self::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => "all-atom order parameters",
+            Self::CGOrder { atoms: _ } => "coarse-grained order parameters",
         }
     }
 }
 
 /// Structure holding all the information necessary to perform the specified analysis.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize)]
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
+#[validate(custom = |x| validate_begin_end(x.begin, x.end))]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
     /// Path to TPR file containing the topology of the system.
@@ -53,7 +74,7 @@ pub struct Analysis {
     #[getset(get = "pub")]
     output: String,
     /// Type of the analysis to perform (AAOrder / CGOrder).
-    #[getset(get_copy = "pub")]
+    #[getset(get = "pub")]
     analysis_type: AnalysisType,
     /// Direction of the membrane normal.
     /// If not provided, the default value is 'Axis::Z'.
@@ -61,23 +82,6 @@ pub struct Analysis {
     #[serde(default = "default_membrane_normal")]
     #[getset(get_copy = "pub")]
     membrane_normal: Axis,
-    /// Selection of heavy atoms for which the order parameters should be calculated.
-    /// Only needed if analysis_type is 'AAOrder'.
-    #[builder(setter(into, strip_option), default)]
-    #[getset(get = "pub")]
-    heavy_atoms: Option<String>,
-    /// Selection of hydrogens to be used for the order parameters calculation.
-    /// Only hydrogens from this selection that are bonded to the `heavy_atoms` will be used.
-    /// Only needed if analysis_type is 'AAOrder'.
-    #[builder(setter(into, strip_option), default)]
-    #[getset(get = "pub")]
-    hydrogens: Option<String>,
-    /// Atoms/beads forming bonds for which the coarse-grained order parameters should be calculated.
-    /// The bonds will be automatically searched for between the selected atoms.
-    /// Only needed if analysis_type is 'CGOrder'.
-    #[builder(setter(into, strip_option), default)]
-    #[getset(get = "pub")]
-    atoms: Option<String>,
     /// Starting time of the trajectory analysis (in ps).
     /// If not specified, the analysis starts at the beginning of the trajectory.
     #[builder(default = "0.0")]
@@ -94,12 +98,14 @@ pub struct Analysis {
     /// If not specified, each frame of the trajectory will be analyzed.
     #[builder(default = "1")]
     #[serde(default = "default_one")]
+    #[validate(custom = validate_step)]
     #[getset(get_copy = "pub")]
     step: usize,
     /// Minimal number of samples for each heavy atom required to calculate order parameter for it.
     /// If not specified, the default value is 1.
     #[builder(default = "1")]
     #[serde(default = "default_one")]
+    #[validate(custom = validate_min_samples)]
     #[getset(get_copy = "pub")]
     min_samples: usize,
     /// Number of threads to use to perform the analysis.
@@ -125,7 +131,7 @@ pub struct Analysis {
     #[serde(default = "default_false")]
     #[getset(get_copy = "pub", set = "pub")]
     silent: bool,
-    /// Overwrite all output files and directories.
+    /// Do not make backups. Overwrite all output files and directories.
     #[builder(setter(custom), default = "false")]
     #[serde(default = "default_false")]
     #[getset(get_copy = "pub", set = "pub")]
@@ -152,9 +158,96 @@ fn default_false() -> bool {
     false
 }
 
+fn validate_step(step: &usize) -> Result<(), serde_valid::validation::Error> {
+    if *step == 0 {
+        let error = format!(
+            "{} the specified value of '{}' is invalid (must be positive).",
+            "error:".red().bold(),
+            "step".yellow()
+        );
+
+        Err(serde_valid::validation::Error::Custom(error))
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_min_samples(samples: &usize) -> Result<(), serde_valid::validation::Error> {
+    if *samples == 0 {
+        let error = format!(
+            "{} the specified value of '{}' is invalid (must be positive).",
+            "error:".red().bold(),
+            "min_samples".yellow()
+        );
+
+        Err(serde_valid::validation::Error::Custom(error))
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_n_threads(n_threads: &usize) -> Result<(), serde_valid::validation::Error> {
+    if *n_threads == 0 {
+        let error = format!(
+            "{} the specified value of '{}' is invalid (must be positive).",
+            "error:".red().bold(),
+            "n_threads".yellow()
+        );
+
+        Err(serde_valid::validation::Error::Custom(error))
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_begin_end(begin: f32, end: f32) -> Result<(), serde_valid::validation::Error> {
+    if begin > end {
+        let error = format!(
+            "{} invalid values of '{}' and '{}' (start is higher than end).",
+            "error:".red().bold(),
+            "start".yellow(),
+            "end".yellow()
+        );
+
+        Err(serde_valid::validation::Error::Custom(error))
+    } else {
+        Ok(())
+    }
+}
+
 impl Analysis {
     pub fn new() -> AnalysisBuilder {
         AnalysisBuilder::default()
+    }
+
+    pub fn heavy_atoms(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { atoms: _ } => None,
+            AnalysisType::AAOrder {
+                heavy_atoms,
+                hydrogens: _,
+            } => Some(heavy_atoms),
+        }
+    }
+
+    pub fn hydrogens(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { atoms: _ } => None,
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens,
+            } => Some(hydrogens),
+        }
+    }
+
+    pub fn atoms(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { atoms } => Some(atoms),
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => None,
+        }
     }
 }
 
@@ -165,125 +258,33 @@ impl AnalysisBuilder {
         self
     }
 
+    /// Do not make backups. Overwrite all output files and directories.
+    pub fn overwrite(&mut self) -> &mut Self {
+        self.overwrite = Some(true);
+        self
+    }
+
     /// Validate the process of analysis building.
     fn validate(&self) -> Result<(), String> {
         // check that step, min_samples and n_threads are not zero
-        if self.step == Some(0) {
-            let error = format!(
-                "{} the specified value of '{}' is invalid (must be positive).",
-                "error:".red().bold(),
-                "step".yellow()
-            );
-
-            return Err(error);
+        if let Some(ref step) = self.step {
+            validate_step(step).map_err(|x| x.to_string())?;
         }
 
-        if self.min_samples == Some(0) {
-            let error = format!(
-                "{} the specified value of '{}' is invalid (must be positive).",
-                "error:".red().bold(),
-                "min_samples".yellow()
-            );
-
-            return Err(error);
+        if let Some(ref min_samples) = self.min_samples {
+            validate_min_samples(min_samples).map_err(|x| x.to_string())?;
         }
 
-        if self.n_threads == Some(0) {
-            let error = format!(
-                "{} the specified value of '{}' is invalid (must be positive).",
-                "error:".red().bold(),
-                "n_threads".yellow()
-            );
-
-            return Err(error);
+        if let Some(ref n_threads) = self.n_threads {
+            validate_n_threads(n_threads).map_err(|x| x.to_string())?;
         }
 
         // check that start is not larger than end
-        match (self.begin, self.end) {
-            (Some(x), Some(y)) => {
-                if x > y {
-                    let error = format!(
-                        "{} invalid values of '{}' and '{}' (start is higher than end).",
-                        "error:".red().bold(),
-                        "start".yellow(),
-                        "end".yellow()
-                    );
-
-                    return Err(error);
-                }
-            }
-            _ => (),
+        if let (Some(begin), Some(end)) = (self.begin, self.end) {
+            validate_begin_end(begin, end).map_err(|x| x.to_string())?;
         }
 
-        match self.analysis_type {
-            // skip validation, building will fail anyway
-            None => Ok(()),
-            Some(AnalysisType::AAOrder) => {
-                // `heavy_atoms` and `hydrogens` must be defined
-                // `atoms` cannot be defined
-                if self.heavy_atoms.is_none() {
-                    let error = format!(
-                        "{} heavy atoms were not specified and the analysis type is '{}'.",
-                        "error:".red().bold(),
-                        "aaorder".yellow()
-                    );
-
-                    Err(error)
-                } else if self.hydrogens.is_none() {
-                    let error = format!(
-                        "{} hydrogens were not specified and the analysis type is '{}'.",
-                        "error:".red().bold(),
-                        "aaorder".yellow()
-                    );
-
-                    Err(error)
-                } else if !self.atoms.is_none() {
-                    let error = format!(
-                        "{} atoms were specified but the analysis type is '{}' not '{}'.",
-                        "error:".red().bold(),
-                        "aaorder".yellow(),
-                        "cgorder".yellow()
-                    );
-
-                    Err(error)
-                } else {
-                    Ok(())
-                }
-            }
-            Some(AnalysisType::CGOrder) => {
-                // `atoms` must be defined
-                // `heavy_atoms` and `hydrogens` cannot be defined
-                if self.atoms.is_none() {
-                    let error = format!(
-                        "{} atoms were not specified and the analysis type is '{}'.",
-                        "error:".red().bold(),
-                        "cgorder".yellow()
-                    );
-
-                    Err(error)
-                } else if !self.heavy_atoms.is_none() {
-                    let error = format!(
-                        "{} heavy atoms were specified but the analysis type is '{}' not '{}'.",
-                        "error:".red().bold(),
-                        "cgorder".yellow(),
-                        "aaorder".yellow()
-                    );
-
-                    Err(error)
-                } else if !self.hydrogens.is_none() {
-                    let error = format!(
-                        "{} hydrogens were specified but the analysis type is '{}' not '{}'.",
-                        "error:".red().bold(),
-                        "cgorder".yellow(),
-                        "aaorder".yellow()
-                    );
-
-                    Err(error)
-                } else {
-                    Ok(())
-                }
-            }
-        }
+        Ok(())
     }
 }
 
@@ -299,9 +300,10 @@ mod tests_builder {
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .build()
             .unwrap();
 
@@ -309,14 +311,13 @@ mod tests_builder {
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert!(analysis.index().is_none());
         assert_eq!(analysis.output(), "order.yaml");
-        assert_eq!(analysis.analysis_type(), AnalysisType::AAOrder);
         assert_eq!(analysis.membrane_normal(), Axis::Z);
         assert_eq!(
-            analysis.heavy_atoms().as_ref().unwrap(),
+            analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
         );
         assert_eq!(
-            analysis.hydrogens().as_ref().unwrap(),
+            analysis.hydrogens().unwrap(),
             "@membrane and element name hydrogen"
         );
         assert!(analysis.atoms().is_none());
@@ -338,8 +339,7 @@ mod tests_builder {
             .trajectory("md.xtc")
             .index("index.ndx")
             .output("order.yaml")
-            .analysis_type(AnalysisType::CGOrder)
-            .atoms("@membrane")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
             .membrane_normal(Axis::X)
             .begin(100.0)
             .end(10_000.0)
@@ -368,11 +368,10 @@ mod tests_builder {
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
         assert_eq!(analysis.output(), "order.yaml");
-        assert_eq!(analysis.analysis_type(), AnalysisType::CGOrder);
         assert_eq!(analysis.membrane_normal(), Axis::X);
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());
-        assert_eq!(analysis.atoms().as_ref().unwrap(), "@membrane");
+        assert_eq!(analysis.atoms().unwrap(), "@membrane");
         assert_eq!(analysis.begin(), 100.0);
         assert_eq!(analysis.end(), 10_000.0);
         assert_eq!(analysis.step(), 5);
@@ -401,7 +400,6 @@ mod tests_builder {
         match Analysis::new()
             .structure("system.tpr")
             .trajectory("md.xtc")
-            .atoms("@membrane")
             .output("order.yaml")
             .build()
         {
@@ -412,114 +410,15 @@ mod tests_builder {
     }
 
     #[test]
-    fn analysis_builder_fail_aaorder_missing_heavy() {
-        match Analysis::new()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
-            .output("order.yaml")
-            .analysis_type(AnalysisType::AAOrder)
-            .hydrogens("@membrane and element name hydrogen")
-            .build()
-        {
-            Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(AnalysisBuilderError::ValidationError(_)) => (),
-            Err(_) => panic!("Incorrect error type returned."),
-        }
-    }
-
-    #[test]
-    fn analysis_builder_fail_aaorder_missing_hydrogens() {
-        match Analysis::new()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
-            .output("order.yaml")
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .build()
-        {
-            Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(AnalysisBuilderError::ValidationError(_)) => (),
-            Err(_) => panic!("Incorrect error type returned."),
-        }
-    }
-
-    #[test]
-    fn analysis_builder_fail_aaorder_atoms_present() {
-        match Analysis::new()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .hydrogens("@membrane and element name hydrogen")
-            .atoms("@membrane")
-            .output("order.yaml")
-            .build()
-        {
-            Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(AnalysisBuilderError::ValidationError(_)) => (),
-            Err(_) => panic!("Incorrect error type returned."),
-        }
-    }
-
-    #[test]
-    fn analysis_builder_fail_cgorder_missing_atoms() {
-        match Analysis::new()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
-            .analysis_type(AnalysisType::CGOrder)
-            .hydrogens("@membrane and element name hydrogen")
-            .output("order.yaml")
-            .build()
-        {
-            Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(AnalysisBuilderError::ValidationError(_)) => (),
-            Err(_) => panic!("Incorrect error type returned."),
-        }
-    }
-
-    #[test]
-    fn analysis_builder_fail_cgorder_hydrogens_present() {
-        match Analysis::new()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
-            .analysis_type(AnalysisType::CGOrder)
-            .atoms("@membrane")
-            .hydrogens("@membrane and element name hydrogen")
-            .output("order.yaml")
-            .build()
-        {
-            Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(AnalysisBuilderError::ValidationError(_)) => (),
-            Err(_) => panic!("Incorrect error type returned."),
-        }
-    }
-
-    #[test]
-    fn analysis_builder_fail_cgorder_heavy_atoms_present() {
-        match Analysis::new()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
-            .analysis_type(AnalysisType::CGOrder)
-            .atoms("@membrane")
-            .heavy_atoms("@membrane and element name carbon")
-            .output("order.yaml")
-            .build()
-        {
-            Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(AnalysisBuilderError::ValidationError(_)) => (),
-            Err(_) => panic!("Incorrect error type returned."),
-        }
-    }
-
-    #[test]
     fn analysis_builder_fail_zero_step() {
         match Analysis::new()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .step(0)
             .build()
         {
@@ -535,9 +434,10 @@ mod tests_builder {
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .min_samples(0)
             .build()
         {
@@ -553,9 +453,10 @@ mod tests_builder {
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .n_threads(0)
             .build()
         {
@@ -571,9 +472,10 @@ mod tests_builder {
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
-            .analysis_type(AnalysisType::AAOrder)
-            .heavy_atoms("@membrane and element name carbon")
-            .hydrogens("@membrane and element name hydrogen")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .begin(100_000.0)
             .end(50_000.0)
             .build()

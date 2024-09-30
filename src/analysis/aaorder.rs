@@ -65,13 +65,9 @@ pub(super) fn analyze_atomistic(
     {
         return Err(Box::from(TopologyError::AtomsOverlap {
             name1: "HeavyAtoms".to_owned(),
-            query1: analysis
-                .heavy_atoms()
-                .as_ref()
-                .expect(PANIC_MESSAGE)
-                .clone(),
+            query1: analysis.heavy_atoms().expect(PANIC_MESSAGE).clone(),
             name2: "Hydrogens".to_owned(),
-            query2: analysis.hydrogens().as_ref().expect(PANIC_MESSAGE).clone(),
+            query2: analysis.hydrogens().expect(PANIC_MESSAGE).clone(),
         }));
     }
 
