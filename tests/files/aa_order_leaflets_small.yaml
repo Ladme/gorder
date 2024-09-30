@@ -1,0 +1,46 @@
+# Order parameters calculated with 'gorder v0.1.0' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+- molecule: POPC
+  order:
+    POPC C22 (32):
+      total: 0.1079
+      upper: 0.096
+      lower: 0.1199
+      bonds:
+        POPC H2R (33):
+          total: 0.0961
+          upper: 0.1137
+          lower: 0.0785
+        POPC H2S (34):
+          total: 0.1198
+          upper: 0.0783
+          lower: 0.1612
+    POPC C24 (47):
+      total: 0.2101
+      upper: 0.2008
+      lower: 0.2194
+      bonds:
+        POPC H4S (49):
+          total: 0.2113
+          upper: 0.195
+          lower: 0.2275
+        POPC H4R (48):
+          total: 0.2089
+          upper: 0.2066
+          lower: 0.2112
+    POPC C218 (87):
+      total: 0.0337
+      upper: 0.0314
+      lower: 0.036
+      bonds:
+        POPC H18T (90):
+          total: 0.0278
+          upper: 0.0298
+          lower: 0.0257
+        POPC H18R (88):
+          total: 0.0375
+          upper: 0.0451
+          lower: 0.0298
+        POPC H18S (89):
+          total: 0.036
+          upper: 0.0194
+          lower: 0.0526

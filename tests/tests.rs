@@ -5,8 +5,10 @@
 
 use std::{fs::File, path::Path};
 
+use approx::assert_relative_eq;
 use gorder::prelude::*;
-use tempfile::NamedTempFile;
+use groan_rs::prelude::GridMap;
+use tempfile::{NamedTempFile, TempDir};
 
 #[test]
 fn test_aa_order_basic_yaml() {
@@ -202,4 +204,219 @@ fn test_aa_order_empty_molecules() {
     analysis.run().unwrap();
 
     assert!(!Path::new("THIS_FILE_SHOULD_NOT_BE_CREATED_2").exists());
+}
+
+fn parse_float(string: &str) -> Option<f32> {
+    string.parse::<f32>().ok()
+}
+
+fn compare_ordermaps(file1: impl AsRef<Path>, file2: impl AsRef<Path>) {
+    let map2 =
+        GridMap::from_file(file2, f32::clone, &[' '], parse_float, &["#", "$", "@"]).unwrap();
+
+    let map1 =
+        GridMap::from_file(file1, f32::clone, &[' '], parse_float, &["#", "$", "@"]).unwrap();
+
+    for ((x1, y1, z1), (x2, y2, z2)) in map1.extract_convert().zip(map2.extract_convert()) {
+        assert_relative_eq!(x1, x2);
+        assert_relative_eq!(y1, y2);
+        if !z1.is_nan() || !z2.is_nan() {
+            assert_relative_eq!(z1, z2, epsilon = 0.0002);
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_maps_basic() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::AAOrder)
+        .heavy_atoms("resname POPC and name C22 C24 C218")
+        .hydrogens("@membrane and element name hydrogen")
+        .map(
+            OrderMap::new()
+                .bin_size_y(4.0)
+                .bin_size_y(4.0)
+                .output_directory(path_to_dir)
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let expected_file_names = [
+        "ordermap_POPC-C218-87--POPC-H18R-88_total.dat",
+        "ordermap_POPC-C218-87--POPC-H18S-89_total.dat",
+        "ordermap_POPC-C218-87--POPC-H18T-90_total.dat",
+        "ordermap_POPC-C218-87_total.dat",
+        "ordermap_POPC-C22-32--POPC-H2R-33_total.dat",
+        "ordermap_POPC-C22-32--POPC-H2S-34_total.dat",
+        "ordermap_POPC-C22-32_total.dat",
+        "ordermap_POPC-C24-47--POPC-H4R-48_total.dat",
+        "ordermap_POPC-C24-47--POPC-H4S-49_total.dat",
+        "ordermap_POPC-C24-47_total.dat",
+    ];
+
+    for file in expected_file_names {
+        let real_file = format!("{}/{}", path_to_dir, file);
+        let test_file = format!("tests/files/ordermaps/{}", file);
+        compare_ordermaps(real_file, test_file);
+    }
+
+    let mut result = File::open(path_to_output).unwrap();
+    let mut expected = File::open("tests/files/aa_order_small.yaml").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
+fn test_aa_order_maps_leaflets() {
+    for method in [
+        LeafletClassification::global("@membrane", "name P"),
+        LeafletClassification::local("@membrane", "name P", 2.0),
+        LeafletClassification::individual("name P", "name C218 C316"),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::AAOrder)
+            .heavy_atoms("resname POPC and name C22 C24 C218")
+            .hydrogens("@membrane and element name hydrogen")
+            .leaflets(method)
+            .map(
+                OrderMap::new()
+                    .bin_size_y(4.0)
+                    .bin_size_y(4.0)
+                    .output_directory(path_to_dir)
+                    .min_samples(5)
+                    .build()
+                    .unwrap(),
+            )
+            .silent()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        let expected_file_names = [
+            "ordermap_POPC-C218-87_lower.dat",
+            "ordermap_POPC-C218-87--POPC-H18S-89_upper.dat",
+            "ordermap_POPC-C22-32_lower.dat",
+            "ordermap_POPC-C22-32--POPC-H2S-34_upper.dat",
+            "ordermap_POPC-C24-47--POPC-H4R-48_upper.dat",
+            "ordermap_POPC-C218-87--POPC-H18R-88_lower.dat",
+            "ordermap_POPC-C218-87--POPC-H18T-90_lower.dat",
+            "ordermap_POPC-C22-32--POPC-H2R-33_lower.dat",
+            "ordermap_POPC-C22-32_total.dat",
+            "ordermap_POPC-C24-47--POPC-H4S-49_lower.dat",
+            "ordermap_POPC-C218-87--POPC-H18R-88_total.dat",
+            "ordermap_POPC-C218-87--POPC-H18T-90_total.dat",
+            "ordermap_POPC-C22-32--POPC-H2R-33_total.dat",
+            "ordermap_POPC-C22-32_upper.dat",
+            "ordermap_POPC-C24-47--POPC-H4S-49_total.dat",
+            "ordermap_POPC-C218-87--POPC-H18R-88_upper.dat",
+            "ordermap_POPC-C218-87--POPC-H18T-90_upper.dat",
+            "ordermap_POPC-C22-32--POPC-H2R-33_upper.dat",
+            "ordermap_POPC-C24-47_lower.dat",
+            "ordermap_POPC-C24-47--POPC-H4S-49_upper.dat",
+            "ordermap_POPC-C218-87--POPC-H18S-89_lower.dat",
+            "ordermap_POPC-C218-87_total.dat",
+            "ordermap_POPC-C22-32--POPC-H2S-34_lower.dat",
+            "ordermap_POPC-C24-47--POPC-H4R-48_lower.dat",
+            "ordermap_POPC-C24-47_total.dat",
+            "ordermap_POPC-C218-87--POPC-H18S-89_total.dat",
+            "ordermap_POPC-C218-87_upper.dat",
+            "ordermap_POPC-C22-32--POPC-H2S-34_total.dat",
+            "ordermap_POPC-C24-47--POPC-H4R-48_total.dat",
+            "ordermap_POPC-C24-47_upper.dat",
+        ];
+
+        for file in expected_file_names {
+            let real_file = format!("{}/{}", path_to_dir, file);
+            let test_file = format!("tests/files/ordermaps/{}", file);
+            compare_ordermaps(real_file, test_file);
+        }
+
+        let mut result = File::open(path_to_output).unwrap();
+        let mut expected = File::open("tests/files/aa_order_leaflets_small.yaml").unwrap();
+
+        assert!(file_diff::diff_files(&mut result, &mut expected));
+    }
+}
+
+#[test]
+fn test_aa_order_maps_basic_multiple_threads() {
+    for n_threads in [3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::AAOrder)
+            .heavy_atoms("resname POPC and name C22 C24 C218")
+            .hydrogens("@membrane and element name hydrogen")
+            .n_threads(n_threads)
+            .map(
+                OrderMap::new()
+                    .bin_size_y(4.0)
+                    .bin_size_y(4.0)
+                    .output_directory(path_to_dir)
+                    .min_samples(5)
+                    .build()
+                    .unwrap(),
+            )
+            .silent()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        let expected_file_names = [
+            "ordermap_POPC-C218-87--POPC-H18R-88_total.dat",
+            "ordermap_POPC-C218-87--POPC-H18S-89_total.dat",
+            "ordermap_POPC-C218-87--POPC-H18T-90_total.dat",
+            "ordermap_POPC-C218-87_total.dat",
+            "ordermap_POPC-C22-32--POPC-H2R-33_total.dat",
+            "ordermap_POPC-C22-32--POPC-H2S-34_total.dat",
+            "ordermap_POPC-C22-32_total.dat",
+            "ordermap_POPC-C24-47--POPC-H4R-48_total.dat",
+            "ordermap_POPC-C24-47--POPC-H4S-49_total.dat",
+            "ordermap_POPC-C24-47_total.dat",
+        ];
+
+        for file in expected_file_names {
+            let real_file = format!("{}/{}", path_to_dir, file);
+            let test_file = format!("tests/files/ordermaps/{}", file);
+            compare_ordermaps(real_file, test_file);
+        }
+
+        let mut result = File::open(path_to_output).unwrap();
+        let mut expected = File::open("tests/files/aa_order_small.yaml").unwrap();
+
+        assert!(file_diff::diff_files(&mut result, &mut expected));
+    }
 }
