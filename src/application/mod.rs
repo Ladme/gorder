@@ -5,7 +5,7 @@
 
 use clap::Parser;
 use colored::Colorize;
-use gorder::{errors::ApplicationError, Analysis, GORDER_VERSION};
+use gorder::{Analysis, GORDER_VERSION};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -47,17 +47,13 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     colog::init();
 
-    let config_str = std::fs::read_to_string(&args.config).map_err(|_| {
-        let error = ApplicationError::CouldNotOpenConfig(args.config.clone());
-        log::error!("{}", error);
-        Box::new(error)
-    })?;
-
-    let mut analysis: Analysis = serde_yaml::from_str(&config_str).map_err(|e| {
-        let error = ApplicationError::CouldNotParseConfig(args.config.clone(), e);
-        log::error!("{}", error);
-        Box::new(error)
-    })?;
+    let mut analysis = match Analysis::from_file(&args.config) {
+        Ok(x) => x,
+        Err(e) => {
+            log::error!("{}", e);
+            return Err(Box::new(e));
+        }
+    };
 
     if !analysis.silent() {
         analysis.set_silent(args.silent);

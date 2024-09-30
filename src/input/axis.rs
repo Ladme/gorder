@@ -13,8 +13,11 @@ use crate::PANIC_MESSAGE;
 /// X, Y, or Z axis.
 #[derive(Debug, Clone, PartialEq, Eq, Copy, Deserialize)]
 pub enum Axis {
+    #[serde(alias = "x")]
     X,
+    #[serde(alias = "y")]
     Y,
+    #[serde(alias = "z")]
     Z,
 }
 

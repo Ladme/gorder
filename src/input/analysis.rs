@@ -3,12 +3,15 @@
 
 //! Contains the implementation of the main `Analysis` structure and its methods.
 
-use colored::Colorize;
+use std::fs::read_to_string;
+use std::path::Path;
+
 use derive_builder::Builder;
 use getset::Setters;
 use getset::{CopyGetters, Getters};
 use serde::Deserialize;
-use serde_valid::Validate;
+
+use crate::errors::ConfigError;
 
 use super::Axis;
 use super::LeafletClassification;
@@ -52,9 +55,8 @@ impl AnalysisType {
 }
 
 /// Structure holding all the information necessary to perform the specified analysis.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize, Validate)]
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize)]
 #[serde(deny_unknown_fields)]
-#[validate(custom = |x| validate_begin_end(x.begin, x.end))]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
     /// Path to TPR file containing the topology of the system.
@@ -73,9 +75,11 @@ pub struct Analysis {
     /// Path to an output YAML file where the results of the analysis will be written.
     #[builder(setter(into))]
     #[getset(get = "pub")]
-    output: String,
+    #[serde(alias = "output")]
+    output_yaml: String,
     /// Type of the analysis to perform (AAOrder / CGOrder).
     #[getset(get = "pub")]
+    #[serde(alias = "type")]
     analysis_type: AnalysisType,
     /// Direction of the membrane normal.
     /// If not provided, the default value is 'Axis::Z'.
@@ -86,7 +90,7 @@ pub struct Analysis {
     /// Starting time of the trajectory analysis (in ps).
     /// If not specified, the analysis starts at the beginning of the trajectory.
     #[builder(default = "0.0")]
-    #[serde(default = "default_begin")]
+    #[serde(default = "default_begin", alias = "start")]
     #[getset(get_copy = "pub")]
     begin: f32,
     /// Ending time of the trajectory analysis (in ps).
@@ -99,14 +103,12 @@ pub struct Analysis {
     /// If not specified, each frame of the trajectory will be analyzed.
     #[builder(default = "1")]
     #[serde(default = "default_one")]
-    #[validate(custom = validate_step)]
     #[getset(get_copy = "pub")]
     step: usize,
     /// Minimal number of samples for each heavy atom required to calculate order parameter for it.
     /// If not specified, the default value is 1.
     #[builder(default = "1")]
     #[serde(default = "default_one")]
-    #[validate(custom = validate_min_samples)]
     #[getset(get_copy = "pub")]
     min_samples: usize,
     /// Number of threads to use to perform the analysis.
@@ -159,58 +161,33 @@ fn default_false() -> bool {
     false
 }
 
-fn validate_step(step: &usize) -> Result<(), serde_valid::validation::Error> {
-    if *step == 0 {
-        let error = format!(
-            "{} the specified value of '{}' is invalid (must be positive).",
-            "error:".red().bold(),
-            "step".yellow()
-        );
-
-        Err(serde_valid::validation::Error::Custom(error))
+fn validate_step(step: usize) -> Result<(), ConfigError> {
+    if step == 0 {
+        Err(ConfigError::InvalidStep)
     } else {
         Ok(())
     }
 }
 
-fn validate_min_samples(samples: &usize) -> Result<(), serde_valid::validation::Error> {
-    if *samples == 0 {
-        let error = format!(
-            "{} the specified value of '{}' is invalid (must be positive).",
-            "error:".red().bold(),
-            "min_samples".yellow()
-        );
-
-        Err(serde_valid::validation::Error::Custom(error))
+fn validate_min_samples(samples: usize) -> Result<(), ConfigError> {
+    if samples == 0 {
+        Err(ConfigError::InvalidMinSamples)
     } else {
         Ok(())
     }
 }
 
-fn validate_n_threads(n_threads: &usize) -> Result<(), serde_valid::validation::Error> {
-    if *n_threads == 0 {
-        let error = format!(
-            "{} the specified value of '{}' is invalid (must be positive).",
-            "error:".red().bold(),
-            "n_threads".yellow()
-        );
-
-        Err(serde_valid::validation::Error::Custom(error))
+fn validate_n_threads(n_threads: usize) -> Result<(), ConfigError> {
+    if n_threads == 0 {
+        Err(ConfigError::InvalidNThreads)
     } else {
         Ok(())
     }
 }
 
-fn validate_begin_end(begin: f32, end: f32) -> Result<(), serde_valid::validation::Error> {
+fn validate_begin_end(begin: f32, end: f32) -> Result<(), ConfigError> {
     if begin > end {
-        let error = format!(
-            "{} invalid values of '{}' and '{}' (start is higher than end).",
-            "error:".red().bold(),
-            "start".yellow(),
-            "end".yellow()
-        );
-
-        Err(serde_valid::validation::Error::Custom(error))
+        Err(ConfigError::InvalidBeginEnd)
     } else {
         Ok(())
     }
@@ -219,6 +196,26 @@ fn validate_begin_end(begin: f32, end: f32) -> Result<(), serde_valid::validatio
 impl Analysis {
     pub fn new() -> AnalysisBuilder {
         AnalysisBuilder::default()
+    }
+
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Analysis, ConfigError> {
+        let string = read_to_string(&path).map_err(|_| {
+            ConfigError::CouldNotOpenConfig(path.as_ref().to_str().unwrap().to_owned())
+        })?;
+        let analysis: Analysis = serde_yaml::from_str(&string).map_err(|e| {
+            ConfigError::CouldNotParseConfig(path.as_ref().to_str().unwrap().to_owned(), e)
+        })?;
+
+        analysis.validate()?;
+        Ok(analysis)
+    }
+
+    fn validate(&self) -> Result<(), ConfigError> {
+        validate_step(self.step)?;
+        validate_min_samples(self.min_samples)?;
+        validate_n_threads(self.n_threads)?;
+        validate_begin_end(self.begin, self.end)?;
+        Ok(())
     }
 
     pub fn heavy_atoms(&self) -> Option<&String> {
@@ -250,42 +247,174 @@ impl Analysis {
             } => None,
         }
     }
+
+    /// Alias for `output_yaml`.
+    #[inline(always)]
+    pub fn output(&self) -> &String {
+        &self.output_yaml
+    }
 }
 
 impl AnalysisBuilder {
     /// Be silent. Print nothing to the standard output during the analysis.
+    #[inline(always)]
     pub fn silent(&mut self) -> &mut Self {
         self.silent = Some(true);
         self
     }
 
     /// Do not make backups. Overwrite all output files and directories.
+    #[inline(always)]
     pub fn overwrite(&mut self) -> &mut Self {
         self.overwrite = Some(true);
         self
     }
 
+    /// Alias for `output_yaml`.
+    #[inline(always)]
+    pub fn output(&mut self, value: &str) -> &mut Self {
+        self.output_yaml(value)
+    }
+
     /// Validate the process of analysis building.
     fn validate(&self) -> Result<(), String> {
         // check that step, min_samples and n_threads are not zero
-        if let Some(ref step) = self.step {
-            validate_step(step).map_err(|x| x.to_string())?;
+        if let Some(step) = self.step {
+            validate_step(step).map_err(|e| e.to_string())?;
         }
 
-        if let Some(ref min_samples) = self.min_samples {
-            validate_min_samples(min_samples).map_err(|x| x.to_string())?;
+        if let Some(min_samples) = self.min_samples {
+            validate_min_samples(min_samples).map_err(|e| e.to_string())?;
         }
 
-        if let Some(ref n_threads) = self.n_threads {
-            validate_n_threads(n_threads).map_err(|x| x.to_string())?;
+        if let Some(n_threads) = self.n_threads {
+            validate_n_threads(n_threads).map_err(|e| e.to_string())?;
         }
 
         // check that start is not larger than end
         if let (Some(begin), Some(end)) = (self.begin, self.end) {
-            validate_begin_end(begin, end).map_err(|x| x.to_string())?;
+            validate_begin_end(begin, end).map_err(|e| e.to_string())?;
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests_yaml {
+    use crate::input::GridSpan;
+
+    use super::*;
+
+    #[test]
+    fn analysis_yaml_pass_basic() {
+        let analysis = Analysis::from_file("tests/files/inputs/basic.yaml").unwrap();
+
+        assert_eq!(analysis.structure(), "system.tpr");
+        assert_eq!(analysis.trajectory(), "md.xtc");
+        assert!(analysis.index().is_none());
+        assert_eq!(analysis.output(), "order.yaml");
+        assert_eq!(analysis.membrane_normal(), Axis::Z);
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+        assert!(analysis.atoms().is_none());
+        assert_eq!(analysis.begin(), 0.0);
+        assert!(analysis.end().is_infinite());
+        assert_eq!(analysis.step(), 1);
+        assert_eq!(analysis.min_samples(), 1);
+        assert_eq!(analysis.n_threads(), 1);
+        assert!(analysis.leaflets().is_none());
+        assert!(analysis.map().is_none());
+        assert!(!analysis.silent());
+        assert!(!analysis.overwrite());
+    }
+
+    #[test]
+    fn analysis_yaml_pass_full() {
+        let analysis = Analysis::from_file("tests/files/inputs/full.yaml").unwrap();
+
+        assert_eq!(analysis.structure(), "system.tpr");
+        assert_eq!(analysis.trajectory(), "md.xtc");
+        assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
+        assert_eq!(analysis.output(), "order.yaml");
+        assert_eq!(analysis.membrane_normal(), Axis::X);
+        assert!(analysis.heavy_atoms().is_none());
+        assert!(analysis.hydrogens().is_none());
+        assert_eq!(analysis.atoms().unwrap(), "@membrane");
+        assert_eq!(analysis.begin(), 100.0);
+        assert_eq!(analysis.end(), 10_000.0);
+        assert_eq!(analysis.step(), 5);
+        assert_eq!(analysis.min_samples(), 10);
+        assert_eq!(analysis.n_threads(), 4);
+        assert!(analysis.leaflets().is_some());
+
+        let map = analysis.map().as_ref().unwrap();
+
+        assert_eq!(map.output_directory(), ".");
+        matches!(
+            map.dim_x(),
+            GridSpan::Manual {
+                start: 0.5,
+                end: 10.5
+            }
+        );
+        matches!(map.dim_y(), GridSpan::Auto);
+        assert_eq!(map.min_samples(), 10);
+        assert_eq!(map.bin_size_x(), 0.05);
+        assert_eq!(map.bin_size_y(), 0.02);
+    }
+
+    #[test]
+    fn analysis_yaml_fail_incomplete() {
+        match Analysis::from_file("tests/files/inputs/incomplete.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::CouldNotParseConfig(_, e)) => {
+                assert!(e.to_string().contains("missing field"))
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_zero_step() {
+        match Analysis::from_file("tests/files/inputs/zero_step.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidStep) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_zero_min_samples() {
+        match Analysis::from_file("tests/files/inputs/zero_min_samples.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidMinSamples) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_zero_n_threads() {
+        match Analysis::from_file("tests/files/inputs/zero_n_threads.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidNThreads) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_start_higher_than_end() {
+        match Analysis::from_file("tests/files/inputs/begin_higher.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidBeginEnd) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
     }
 }
 

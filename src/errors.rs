@@ -8,15 +8,6 @@ fn path_to_yellow(path: &Path) -> ColoredString {
     path.to_str().unwrap().yellow()
 }
 
-/// Errors that can occur inside the application itself.
-#[derive(Error, Debug)]
-pub enum ApplicationError {
-    #[error("{} could not open the configuration file '{}'", "error:".red().bold(), .0.yellow())]
-    CouldNotOpenConfig(String),
-    #[error("{} could not understand the contents of the configuration file '{}' ({})", "error:".red().bold(), .0.yellow(), .1)]
-    CouldNotParseConfig(String, serde_yaml::Error),
-}
-
 /// Errors that can occur when creating a `GridSpan` structure.
 #[derive(Error, Debug)]
 pub enum GridSpanError {
@@ -130,4 +121,24 @@ pub enum OrderMapWriteError {
 
     #[error("{} could not write line into '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotWriteLine(Box<Path>),
+}
+
+/// Errors that can occur when constructing an `Analysis` structure from the provided configuration.
+#[derive(Error, Debug)]
+pub enum ConfigError {
+    #[error("{} could not open the configuration file '{}'", "error:".red().bold(), .0.yellow())]
+    CouldNotOpenConfig(String),
+    #[error("{} could not understand the contents of the configuration file '{}' ({})", "error:".red().bold(), .0.yellow(), .1)]
+    CouldNotParseConfig(String, serde_yaml::Error),
+    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "step".yellow())]
+    InvalidStep,
+    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "min_samples".yellow())]
+    InvalidMinSamples,
+    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "n_threads".yellow())]
+    InvalidNThreads,
+    #[error("{} invalid values of '{}' and '{}' (begin is higher than end)",
+            "error:".red().bold(),
+            "begin".yellow(),
+            "end".yellow())]
+    InvalidBeginEnd,
 }

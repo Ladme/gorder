@@ -1,0 +1,22 @@
+structure: system.tpr
+trajectory: md.xtc
+index: index.ndx
+type: !CGOrder
+  atoms: "@membrane"
+output: order.yaml
+membrane_normal: x
+begin: 100.0
+end: 10000.0
+step: 5
+min_samples: 10
+n_threads: 4
+leaflets: !Global
+  membrane: "@membrane"
+  heads: name P
+map:
+  output_directory: "."
+  dim_x: !Manual { start: 0.5, end: 10.5 }
+  dim_y: !Auto
+  min_samples: 10
+  bin_size_x: 0.05
+  bin_size_y: 0.02
