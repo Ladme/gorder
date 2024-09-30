@@ -15,6 +15,7 @@ use super::LeafletClassification;
 use super::OrderMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub enum AnalysisType {
     AAOrder {
         heavy_atoms: String,
