@@ -210,11 +210,19 @@ impl Analysis {
         Ok(analysis)
     }
 
+    /// Check that the Analysis structure is valid. Used after deserialization from config yaml file.
     fn validate(&self) -> Result<(), ConfigError> {
         validate_step(self.step)?;
         validate_min_samples(self.min_samples)?;
         validate_n_threads(self.n_threads)?;
         validate_begin_end(self.begin, self.end)?;
+
+        // check the validity of the order map, if present
+        if let Some(ref map) = self.map {
+            map.validate()
+                .map_err(|e| ConfigError::InvalidOrderMap(e))?;
+        }
+
         Ok(())
     }
 
@@ -302,7 +310,9 @@ impl AnalysisBuilder {
 
 #[cfg(test)]
 mod tests_yaml {
-    use crate::input::GridSpan;
+    use approx::assert_relative_eq;
+
+    use crate::{errors::OrderMapConfigError, input::GridSpan};
 
     use super::*;
 
@@ -371,6 +381,19 @@ mod tests_yaml {
     }
 
     #[test]
+    fn analysis_yaml_pass_default_ordermap() {
+        let analysis = Analysis::from_file("tests/files/inputs/default_ordermap.yaml").unwrap();
+
+        let ordermap = analysis.map.unwrap();
+        assert_eq!(ordermap.output_directory(), "ordermaps");
+        assert_relative_eq!(ordermap.bin_size_x(), 0.1);
+        assert_relative_eq!(ordermap.bin_size_y(), 0.1);
+        assert_eq!(ordermap.min_samples(), 1);
+        matches!(ordermap.dim_x(), GridSpan::Auto);
+        matches!(ordermap.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
     fn analysis_yaml_fail_incomplete() {
         match Analysis::from_file("tests/files/inputs/incomplete.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
@@ -381,38 +404,93 @@ mod tests_yaml {
         }
     }
 
+    fn check_analysis_error(file: &str, expected_variant: &str) {
+        match Analysis::from_file(file) {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(e) => match e {
+                ConfigError::InvalidStep if expected_variant == "InvalidStep" => (),
+                ConfigError::InvalidMinSamples if expected_variant == "InvalidMinSamples" => (),
+                ConfigError::InvalidNThreads if expected_variant == "InvalidNThreads" => (),
+                ConfigError::InvalidBeginEnd if expected_variant == "InvalidBeginEnd" => (),
+                _ => panic!("Unexpected error type returned: {}", e),
+            },
+        }
+    }
+
     #[test]
     fn analysis_yaml_fail_zero_step() {
-        match Analysis::from_file("tests/files/inputs/zero_step.yaml") {
-            Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(ConfigError::InvalidStep) => (),
-            Err(e) => panic!("Unexpected error type returned: {}", e),
-        }
+        check_analysis_error("tests/files/inputs/zero_step.yaml", "InvalidStep");
     }
 
     #[test]
     fn analysis_yaml_fail_zero_min_samples() {
-        match Analysis::from_file("tests/files/inputs/zero_min_samples.yaml") {
-            Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(ConfigError::InvalidMinSamples) => (),
-            Err(e) => panic!("Unexpected error type returned: {}", e),
-        }
+        check_analysis_error(
+            "tests/files/inputs/zero_min_samples.yaml",
+            "InvalidMinSamples",
+        );
     }
 
     #[test]
     fn analysis_yaml_fail_zero_n_threads() {
-        match Analysis::from_file("tests/files/inputs/zero_n_threads.yaml") {
+        check_analysis_error("tests/files/inputs/zero_n_threads.yaml", "InvalidNThreads");
+    }
+
+    #[test]
+    fn analysis_yaml_fail_start_higher_than_end() {
+        check_analysis_error("tests/files/inputs/begin_higher.yaml", "InvalidBeginEnd");
+    }
+
+    #[test]
+    fn analysis_yaml_fail_ordermap_zero_min_samples() {
+        match Analysis::from_file("tests/files/inputs/ordermap_zero_min_samples.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(ConfigError::InvalidNThreads) => (),
+            Err(ConfigError::InvalidOrderMap(OrderMapConfigError::InvalidMinSamples)) => (),
             Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
 
     #[test]
-    fn analysis_yaml_fail_start_higher_than_end() {
-        match Analysis::from_file("tests/files/inputs/begin_higher.yaml") {
+    fn analysis_yaml_fail_ordermap_invalid_dim_x() {
+        match Analysis::from_file("tests/files/inputs/ordermap_invalid_dim_x.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(ConfigError::InvalidBeginEnd) => (),
+            Err(ConfigError::InvalidOrderMap(OrderMapConfigError::InvalidGridSpan(x, y))) => {
+                assert_relative_eq!(x, 10.0);
+                assert_relative_eq!(y, 7.5);
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_ordermap_invalid_dim_y() {
+        match Analysis::from_file("tests/files/inputs/ordermap_invalid_dim_y.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidOrderMap(OrderMapConfigError::InvalidGridSpan(x, y))) => {
+                assert_relative_eq!(x, 10.0);
+                assert_relative_eq!(y, 7.5);
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_ordermap_invalid_bin_size_x() {
+        match Analysis::from_file("tests/files/inputs/ordermap_invalid_bin_size_x.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidOrderMap(OrderMapConfigError::InvalidBinSize(x))) => {
+                assert_relative_eq!(x, 0.0);
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_ordermap_invalid_bin_size_y() {
+        match Analysis::from_file("tests/files/inputs/ordermap_invalid_bin_size_y.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidOrderMap(OrderMapConfigError::InvalidBinSize(x))) => {
+                assert_relative_eq!(x, -0.1);
+            }
             Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
@@ -420,6 +498,8 @@ mod tests_yaml {
 
 #[cfg(test)]
 mod tests_builder {
+
+    use approx::assert_relative_eq;
 
     use super::super::GridSpan;
     use super::*;
@@ -523,6 +603,34 @@ mod tests_builder {
         assert_eq!(map.min_samples(), 10);
         assert_eq!(map.bin_size_x(), 0.05);
         assert_eq!(map.bin_size_y(), 0.02);
+    }
+
+    #[test]
+    fn analysis_builder_pass_default_ordermap() {
+        let analysis = Analysis::new()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .map(
+                OrderMap::new()
+                    .output_directory("ordermaps")
+                    .build()
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
+
+        let ordermap = analysis.map.unwrap();
+        assert_eq!(ordermap.output_directory(), "ordermaps");
+        assert_relative_eq!(ordermap.bin_size_x(), 0.1);
+        assert_relative_eq!(ordermap.bin_size_y(), 0.1);
+        assert_eq!(ordermap.min_samples(), 1);
+        matches!(ordermap.dim_x(), GridSpan::Auto);
+        matches!(ordermap.dim_y(), GridSpan::Auto);
     }
 
     #[test]

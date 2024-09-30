@@ -7,13 +7,15 @@ use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
 use serde::Deserialize;
 
-use crate::errors::GridSpanError;
+use crate::errors::{GridSpanError, OrderMapConfigError};
 
 #[derive(Debug, Clone, Builder, Getters, CopyGetters, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[builder(build_fn(validate = "Self::validate"))]
 pub struct OrderMap {
     /// Directory where the output files containing the individual ordermaps should be saved.
     #[builder(setter(into))]
+    #[serde(alias = "output_dir")]
     #[getset(get = "pub")]
     output_directory: String,
     /// Minimal number of samples in a grid tile required to calculate order parameter for it.
@@ -58,9 +60,65 @@ fn default_gridspan() -> GridSpan {
     GridSpan::Auto
 }
 
+fn validate_min_samples(samples: usize) -> Result<(), OrderMapConfigError> {
+    if samples == 0 {
+        Err(OrderMapConfigError::InvalidMinSamples)
+    } else {
+        Ok(())
+    }
+}
+
+fn validate_gridspan(gridspan: &GridSpan) -> Result<(), OrderMapConfigError> {
+    if let GridSpan::Manual { start, end } = gridspan {
+        if start > end {
+            return Err(OrderMapConfigError::InvalidGridSpan(*start, *end));
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_bin_size(size: f32) -> Result<(), OrderMapConfigError> {
+    if size <= 0.0 {
+        Err(OrderMapConfigError::InvalidBinSize(size))
+    } else {
+        Ok(())
+    }
+}
+
 impl OrderMap {
     pub fn new() -> OrderMapBuilder {
         OrderMapBuilder::default()
+    }
+
+    /// Check that the OrderMap is valid. This is used after deserializing the structure from the yaml config file.
+    pub(crate) fn validate(&self) -> Result<(), OrderMapConfigError> {
+        validate_min_samples(self.min_samples)?;
+        validate_gridspan(&self.dim_x)?;
+        validate_gridspan(&self.dim_y)?;
+        validate_bin_size(self.bin_size_x)?;
+        validate_bin_size(self.bin_size_y)?;
+        Ok(())
+    }
+}
+
+impl OrderMapBuilder {
+    fn validate(&self) -> Result<(), String> {
+        if let Some(min_samples) = self.min_samples {
+            validate_min_samples(min_samples).map_err(|e| e.to_string())?;
+        }
+
+        if let Some(bin_x) = self.bin_size_x {
+            validate_bin_size(bin_x).map_err(|e| e.to_string())?;
+        }
+
+        if let Some(bin_y) = self.bin_size_y {
+            validate_bin_size(bin_y).map_err(|e| e.to_string())?;
+        }
+
+        // no need to validate GridSpan as that is guaranteed to be valid
+
+        Ok(())
     }
 }
 
@@ -78,17 +136,8 @@ pub enum GridSpan {
 impl GridSpan {
     /// Create a new valid `GridSpan` structure from the provided floats.
     ///
-    /// This performs sanity checks, making sure that no value is lower than 0 and
-    /// that start is not higher than end.
+    /// This performs sanity checks, making sure that start is not higher than end.
     pub fn manual(start: f32, end: f32) -> Result<GridSpan, GridSpanError> {
-        if start < 0.0 {
-            return Err(GridSpanError::Negative(start));
-        }
-
-        if end < 0.0 {
-            return Err(GridSpanError::Negative(end));
-        }
-
         if start > end {
             return Err(GridSpanError::Invalid(start, end));
         }
@@ -102,25 +151,113 @@ mod grid_span {
     use super::*;
 
     #[test]
-    fn manual_pass() {
+    fn test_manual_pass() {
         GridSpan::manual(0.0, 10.0).unwrap();
     }
 
     #[test]
-    fn manual_fail_negative_start() {
-        let error = GridSpan::manual(-1.0, 10.0).unwrap_err();
-        assert!(matches!(error, GridSpanError::Negative(val) if val == -1.0));
-    }
-
-    #[test]
-    fn manual_fail_negative_end() {
-        let error = GridSpan::manual(0.0, -10.0).unwrap_err();
-        assert!(matches!(error, GridSpanError::Negative(val) if val == -10.0));
-    }
-
-    #[test]
-    fn manual_fail_invalid() {
+    fn test_manual_fail_invalid() {
         let error = GridSpan::manual(10.0, 0.0).unwrap_err();
         assert!(matches!(error, GridSpanError::Invalid(x, y) if x == 10.0 && y == 0.0));
+    }
+}
+
+#[cfg(test)]
+mod ordermap {
+    use approx::assert_relative_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_ordermap_pass_basic() {
+        let map = OrderMap::new()
+            .output_directory("ordermaps")
+            .build()
+            .unwrap();
+
+        assert_eq!(map.output_directory(), "ordermaps");
+        assert_relative_eq!(map.bin_size_x(), 0.1);
+        assert_relative_eq!(map.bin_size_y(), 0.1);
+        assert_eq!(map.min_samples(), 1);
+        matches!(map.dim_x(), GridSpan::Auto);
+        matches!(map.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn test_ordermap_pass_full() {
+        let map = OrderMap::new()
+            .output_directory("ordermaps")
+            .bin_size_x(0.2)
+            .bin_size_y(0.01)
+            .dim_x(GridSpan::manual(-5.0, 10.0).unwrap())
+            .dim_y(GridSpan::Auto)
+            .min_samples(10)
+            .build()
+            .unwrap();
+
+        assert_eq!(map.output_directory(), "ordermaps");
+        assert_relative_eq!(map.bin_size_x(), 0.2);
+        assert_relative_eq!(map.bin_size_y(), 0.01);
+        assert_eq!(map.min_samples(), 10);
+        matches!(
+            map.dim_x(),
+            GridSpan::Manual {
+                start: 0.5,
+                end: 10.5
+            }
+        );
+        matches!(map.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn test_ordermap_fail_incomplete() {
+        match OrderMap::new().build() {
+            Ok(_) => panic!("Function should have failed but it succeeded."),
+            Err(OrderMapBuilderError::UninitializedField(x)) => assert_eq!(x, "output_directory"),
+            Err(e) => panic!("Unexpected error type returned {}", e),
+        }
+    }
+
+    #[test]
+    fn test_ordermap_fail_zero_min_samples() {
+        match OrderMap::new()
+            .output_directory("ordermaps")
+            .min_samples(0)
+            .build()
+        {
+            Ok(_) => panic!("Function should have failed but it succeeded."),
+            Err(OrderMapBuilderError::ValidationError(x)) => assert!(x.contains("min_samples")),
+            Err(e) => panic!("Unexpected error type returned {}", e),
+        }
+    }
+
+    #[test]
+    fn test_ordermap_fail_invalid_bin_size_x() {
+        match OrderMap::new()
+            .output_directory("ordermaps")
+            .bin_size_x(0.0)
+            .build()
+        {
+            Ok(_) => panic!("Function should have failed but it succeeded."),
+            Err(OrderMapBuilderError::ValidationError(x)) => {
+                assert!(x.contains("invalid bin size"))
+            }
+            Err(e) => panic!("Unexpected error type returned {}", e),
+        }
+    }
+
+    #[test]
+    fn test_ordermap_fail_invalid_bin_size_y() {
+        match OrderMap::new()
+            .output_directory("ordermaps")
+            .bin_size_y(-0.3)
+            .build()
+        {
+            Ok(_) => panic!("Function should have failed but it succeeded."),
+            Err(OrderMapBuilderError::ValidationError(x)) => {
+                assert!(x.contains("invalid bin size"))
+            }
+            Err(e) => panic!("Unexpected error type returned {}", e),
+        }
     }
 }

@@ -13,9 +13,6 @@ fn path_to_yellow(path: &Path) -> ColoredString {
 pub enum GridSpanError {
     #[error("{} the first coordinate for the grid span ('{}' nm) is higher than the second coordinate for the grid span ('{}' nm)", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
     Invalid(f32, f32),
-
-    #[error("{} grid span contains a negative value ('{}' nm)", "error:".red().bold(), .0.to_string().yellow())]
-    Negative(f32),
 }
 
 /// Errors that can occur when analyzing system topology.
@@ -141,4 +138,26 @@ pub enum ConfigError {
             "begin".yellow(),
             "end".yellow())]
     InvalidBeginEnd,
+    #[error("{}", .0)]
+    InvalidOrderMap(OrderMapConfigError),
+}
+
+/// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.
+#[derive(Error, Debug)]
+pub enum OrderMapConfigError {
+    #[error("{} the specified value of '{}' inside '{}' is invalid (must be positive)", 
+            "error:".red().bold(), 
+            "min_samples".yellow(), 
+            "ordermap".yellow())]
+    InvalidMinSamples,
+    #[error("{} invalid span of '{}': minimum ('{}') is higher than maximum ('{}')",
+            "error:".red().bold(),
+            "ordermap".yellow(),
+            .0.to_string().yellow(), .1.to_string().yellow())]
+    InvalidGridSpan(f32, f32),
+    #[error("{} invalid bin size of '{}': value is '{}', must be positive", 
+            "error:".red().bold(), 
+            "ordermap".yellow(), 
+            .0.to_string().yellow())]
+    InvalidBinSize(f32),
 }
