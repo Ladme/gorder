@@ -8,9 +8,16 @@ use crate::{
         molecule::{AtomType, Bond, MoleculeType},
         topology::SystemTopology,
     },
+    errors::WriteError,
     Analysis, PANIC_MESSAGE,
 };
 use serde::{Serialize, Serializer};
+
+macro_rules! write_result {
+    ($dst:expr, $($arg:tt)*) => {
+        write!($dst, $($arg)*).map_err(|e| WriteError::CouldNotWriteResults(e))?
+    };
+}
 
 pub(crate) mod aapresenter;
 pub(crate) mod ordermap;
@@ -36,6 +43,29 @@ impl From<&Bond> for BondResults {
             upper,
             lower,
         }
+    }
+}
+
+impl BondResults {
+    /// Write results for a single bond in human readable table format.
+    fn write_tab(
+        &self,
+        writer: &mut impl std::io::Write,
+        leaflets: bool,
+    ) -> Result<(), WriteError> {
+        write_result!(writer, " {: ^8.4} ", self.total);
+        if leaflets {
+            for value in [self.upper, self.lower] {
+                match value {
+                    Some(unwrapped) => write_result!(writer, " {: ^8.4} ", unwrapped),
+                    None => write_result!(writer, "               "),
+                }
+            }
+        }
+
+        write_result!(writer, "|");
+
+        Ok(())
     }
 }
 

@@ -97,8 +97,14 @@ pub enum WriteError {
     #[error("{} could not create a backup for file '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotBackupFile(Box<Path>),
 
+    #[error("{} could not write output file header into '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotWriteHeader(Box<Path>),
+
     #[error("{} could not write results in yaml format into '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotWriteYaml(Box<Path>),
+
+    #[error("{} could not write results in the output file ({})", "error:".red().bold(), .0)]
+    CouldNotWriteResults(std::io::Error),
 }
 
 /// Errors that can occur while writing the order maps.

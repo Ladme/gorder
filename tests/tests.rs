@@ -36,6 +36,35 @@ fn test_aa_order_basic_yaml() {
 }
 
 #[test]
+fn test_aa_order_basic_table() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let output_table = NamedTempFile::new().unwrap();
+    let path_to_table = output_table.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_tab(path_to_table)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let mut result = File::open(path_to_table).unwrap();
+    let mut expected = File::open("tests/files/aa_order_basic.tab").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
 fn test_aa_order_basic_yaml_multiple_threads() {
     for n_threads in [3, 5, 8, 12, 16, 64] {
         let output = NamedTempFile::new().unwrap();
@@ -58,6 +87,38 @@ fn test_aa_order_basic_yaml_multiple_threads() {
 
         let mut result = File::open(path_to_output).unwrap();
         let mut expected = File::open("tests/files/aa_order_basic.yaml").unwrap();
+
+        assert!(file_diff::diff_files(&mut result, &mut expected));
+    }
+}
+
+#[test]
+fn test_aa_order_basic_table_multiple_threads() {
+    for n_threads in [3, 5, 8, 12, 16, 64] {
+        let output_yaml = NamedTempFile::new().unwrap();
+        let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+        let output_table = NamedTempFile::new().unwrap();
+        let path_to_table = output_table.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_yaml)
+            .output_tab(path_to_table)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .n_threads(n_threads)
+            .silent()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        let mut result = File::open(path_to_table).unwrap();
+        let mut expected = File::open("tests/files/aa_order_basic.tab").unwrap();
 
         assert!(file_diff::diff_files(&mut result, &mut expected));
     }
@@ -96,6 +157,42 @@ fn test_aa_order_leaflets_yaml() {
 }
 
 #[test]
+fn test_aa_order_leaflets_table() {
+    for method in [
+        LeafletClassification::global("@membrane", "name P"),
+        LeafletClassification::local("@membrane", "name P", 2.5),
+        LeafletClassification::individual("name P", "name C218 C316"),
+    ] {
+        let output_yaml = NamedTempFile::new().unwrap();
+        let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+        let output_table = NamedTempFile::new().unwrap();
+        let path_to_table = output_table.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_yaml)
+            .output_tab(path_to_table)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(method)
+            .silent()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        let mut result = File::open(path_to_table).unwrap();
+        let mut expected = File::open("tests/files/aa_order_leaflets.tab").unwrap();
+
+        assert!(file_diff::diff_files(&mut result, &mut expected));
+    }
+}
+
+#[test]
 fn test_aa_order_leaflets_yaml_supershort() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -122,6 +219,36 @@ fn test_aa_order_leaflets_yaml_supershort() {
 }
 
 #[test]
+fn test_aa_order_one_different_hydrogen_numbers_table() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let output_table = NamedTempFile::new().unwrap();
+    let path_to_table = output_table.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_tab(path_to_table)
+        .analysis_type(AnalysisType::aaorder(
+            "(resname POPC and name C29 C210) or (resname POPE and element name carbon)",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let mut result = File::open(path_to_table).unwrap();
+    let mut expected = File::open("tests/files/aa_order_different_hydrogen_numbers.tab").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
 fn test_aa_order_limit_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -143,6 +270,64 @@ fn test_aa_order_limit_yaml() {
 
     let mut result = File::open(path_to_output).unwrap();
     let mut expected = File::open("tests/files/aa_order_limit.yaml").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
+fn test_aa_order_leaflets_limit_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .min_samples(500)
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .silent()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let mut result = File::open(path_to_output).unwrap();
+    let mut expected = File::open("tests/files/aa_order_leaflets_limit.yaml").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
+fn test_aa_order_leaflets_limit_tab() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let output_table = NamedTempFile::new().unwrap();
+    let path_to_table = output_table.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_tab(path_to_table)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .min_samples(500)
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .silent()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let mut result = File::open(path_to_table).unwrap();
+    let mut expected = File::open("tests/files/aa_order_leaflets_limit.tab").unwrap();
 
     assert!(file_diff::diff_files(&mut result, &mut expected));
 }

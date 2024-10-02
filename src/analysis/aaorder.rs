@@ -158,6 +158,18 @@ pub(super) fn analyze_atomistic(
         analysis.overwrite(),
     )?;
 
+    if let Some(tab) = analysis.output_tab() {
+        log::info!("Writing the order parameters into a table '{}'...", tab);
+
+        log::logger().flush();
+        results.write_tab(
+            tab,
+            analysis.structure(),
+            analysis.trajectory(),
+            analysis.overwrite(),
+        )?;
+    };
+
     Ok(())
 }
 

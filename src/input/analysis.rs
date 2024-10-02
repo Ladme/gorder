@@ -77,6 +77,10 @@ pub struct Analysis {
     #[getset(get = "pub")]
     #[serde(alias = "output")]
     output_yaml: String,
+    /// Path to an output TABLE file where the results of the analysis will be written in a human readable format.
+    #[builder(setter(into, strip_option), default)]
+    #[getset(get = "pub")]
+    output_tab: Option<String>,
     /// Type of the analysis to perform (AAOrder / CGOrder).
     #[getset(get = "pub")]
     #[serde(alias = "type")]
@@ -324,6 +328,7 @@ mod tests_yaml {
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert!(analysis.index().is_none());
         assert_eq!(analysis.output(), "order.yaml");
+        assert!(analysis.output_tab().is_none());
         assert_eq!(analysis.membrane_normal(), Axis::Z);
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
@@ -353,6 +358,7 @@ mod tests_yaml {
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
         assert_eq!(analysis.output(), "order.yaml");
+        assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.membrane_normal(), Axis::X);
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());
@@ -521,6 +527,7 @@ mod tests_builder {
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert!(analysis.index().is_none());
         assert_eq!(analysis.output(), "order.yaml");
+        assert!(analysis.output_tab().is_none());
         assert_eq!(analysis.membrane_normal(), Axis::Z);
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
@@ -549,6 +556,7 @@ mod tests_builder {
             .trajectory("md.xtc")
             .index("index.ndx")
             .output("order.yaml")
+            .output_tab("order.dat")
             .analysis_type(AnalysisType::cgorder("@membrane"))
             .membrane_normal(Axis::X)
             .begin(100.0)
@@ -578,6 +586,7 @@ mod tests_builder {
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
         assert_eq!(analysis.output(), "order.yaml");
+        assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.membrane_normal(), Axis::X);
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());

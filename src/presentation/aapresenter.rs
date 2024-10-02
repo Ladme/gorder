@@ -39,43 +39,112 @@ impl From<SystemTopology> for AAOrderResults {
 }
 
 impl AAOrderResults {
-    /// Write the results of the analysis into a new file with the specified name.
+    /// Write the results of the analysis into a new yaml file with the specified name.
     pub(crate) fn write_yaml(
         &self,
-        filename: &impl AsRef<Path>,
+        filename: impl AsRef<Path>,
         input_structure: &str,
         input_trajectory: &str,
         overwrite: bool,
     ) -> Result<(), WriteError> {
-        if filename.as_ref().exists() {
-            if !overwrite {
-                log::warn!(
-                    "Output yaml file '{}' already exists. Backing it up.",
-                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
-                );
-                backitup::backup(filename)
-                    .map_err(|_| WriteError::CouldNotBackupFile(Box::from(filename.as_ref())))?;
-            } else {
-                log::warn!(
-                    "Output yaml file '{}' already exists. It will be overwritten as requested.",
-                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
-                );
-            }
+        let writer = AAOrderResults::prepare_file(
+            &filename,
+            input_structure,
+            input_trajectory,
+            "yaml",
+            overwrite,
+        )?;
+
+        serde_yaml::to_writer(writer, self)
+            .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))?;
+
+        Ok(())
+    }
+
+    /// Write the results of the analysis in form of a table.
+    pub(crate) fn write_tab(
+        &self,
+        filename: impl AsRef<Path>,
+        input_structure: &str,
+        input_trajectory: &str,
+        overwrite: bool,
+    ) -> Result<(), WriteError> {
+        let mut writer = AAOrderResults::prepare_file(
+            &filename,
+            input_structure,
+            input_trajectory,
+            "tab",
+            overwrite,
+        )?;
+
+        for mol in self.molecules.iter() {
+            mol.write_tab(&mut writer)?;
         }
 
-        let file = File::create(filename)
-            .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
+        Ok(())
+    }
 
-        let mut writer = BufWriter::new(file);
+    /// Back up a file, create a new one and write a header into it.
+    fn prepare_file(
+        filename: &impl AsRef<Path>,
+        input_structure: &str,
+        input_trajectory: &str,
+        file_type: &str,
+        overwrite: bool,
+    ) -> Result<BufWriter<File>, WriteError> {
+        AAOrderResults::try_backup_file(filename, overwrite, file_type)?;
+        let mut writer = AAOrderResults::create_and_open_file(filename)?;
+        AAOrderResults::write_header(&mut writer, filename, input_structure, input_trajectory)?;
+
+        Ok(writer)
+    }
+
+    /// Write header into an output file.
+    fn write_header(
+        writer: &mut BufWriter<File>,
+        filename: &impl AsRef<Path>,
+        input_structure: &str,
+        input_trajectory: &str,
+    ) -> Result<(), WriteError> {
         writeln!(
             writer,
             "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.",
             crate::GORDER_VERSION, input_structure, input_trajectory
         )
-        .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))?;
+        .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))
+    }
 
-        serde_yaml::to_writer(writer, self)
-            .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))?;
+    /// Create and open file for buffered writing.
+    fn create_and_open_file(filename: &impl AsRef<Path>) -> Result<BufWriter<File>, WriteError> {
+        let file = File::create(filename.as_ref())
+            .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
+
+        Ok(BufWriter::new(file))
+    }
+
+    /// Back up an output file, if it is necessary and if it is requested.
+    fn try_backup_file(
+        filename: &impl AsRef<Path>,
+        overwrite: bool,
+        file_type: &str,
+    ) -> Result<(), WriteError> {
+        if filename.as_ref().exists() {
+            if !overwrite {
+                log::warn!(
+                    "Output {} file '{}' already exists. Backing it up.",
+                    file_type,
+                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
+                );
+                backitup::backup(filename.as_ref())
+                    .map_err(|_| WriteError::CouldNotBackupFile(Box::from(filename.as_ref())))?;
+            } else {
+                log::warn!(
+                    "Output {} file '{}' already exists. It will be overwritten as requested.",
+                    file_type,
+                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
+                );
+            }
+        }
 
         Ok(())
     }
@@ -112,6 +181,53 @@ impl From<&MoleculeType> for AAMoleculeResults {
             molecule: value.name().to_owned(),
             order,
         }
+    }
+}
+
+impl AAMoleculeResults {
+    /// Write results for a single molecule in human readable table format.
+    fn write_tab(&self, writer: &mut impl Write) -> Result<(), WriteError> {
+        write_result!(writer, "\nMolecule type {}\n", self.molecule);
+
+        let max_bonds = match self.order.values().map(|x| x.bonds.len()).max() {
+            Some(x) => x,
+            None => {
+                log::warn!("No atoms have any order bonds associated. Unable to write output table. Aborting...");
+                return Ok(());
+            }
+        };
+
+        let upper_lower = self.order.values().map(|x| x.upper).any(|x| x.is_some())
+            || self.order.values().map(|x| x.lower).any(|x| x.is_some());
+
+        write_result!(writer, "         ");
+
+        let width = if upper_lower { 28usize } else { 8usize };
+        write_result!(writer, " {: ^width$} |", "TOTAL", width = width);
+        for i in 1..=max_bonds {
+            let hydrogen = if upper_lower {
+                format!("HYDROGEN #{}", i)
+            } else {
+                format!("H #{}", i)
+            };
+
+            write_result!(writer, " {: ^width$} |", hydrogen, width = width);
+        }
+        write_result!(writer, "\n");
+
+        if upper_lower {
+            write_result!(writer, "         ");
+            for _ in 0..=max_bonds {
+                write_result!(writer, "   FULL     UPPER     LOWER   |");
+            }
+            write_result!(writer, "\n");
+        }
+
+        for (name, results) in self.order.iter() {
+            results.write_tab(writer, name, max_bonds, upper_lower)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -176,6 +292,56 @@ impl AAAtomResults {
 
     fn is_empty(&self) -> bool {
         self.bonds.is_empty()
+    }
+
+    /// Write results for an atom in human readable table format.
+    fn write_tab(
+        &self,
+        writer: &mut impl std::io::Write,
+        atom_type: &AtomType,
+        max_bonds: usize,
+        leaflets: bool,
+    ) -> Result<(), WriteError> {
+        write_result!(writer, "{:<8} ", atom_type.atom_name());
+
+        if let Some(val) = self.total {
+            write_result!(writer, " {: ^8.4} ", val);
+
+            if leaflets {
+                for value in [self.upper, self.lower] {
+                    match value {
+                        Some(unwrapped) => write_result!(writer, " {: ^8.4} ", unwrapped),
+                        None => write_result!(writer, "               "),
+                    }
+                }
+            }
+
+            write_result!(writer, "|");
+        } else {
+            if leaflets {
+                write_result!(writer, " {: ^28} |", "");
+            } else {
+                write_result!(writer, " {: ^8} |", "");
+            }
+        }
+
+        let mut bond_results = self.bonds.values();
+        for _ in 0..max_bonds {
+            match bond_results.next() {
+                Some(val) => val.write_tab(writer, leaflets)?,
+                None => {
+                    if leaflets {
+                        write_result!(writer, " {: ^28} |", "");
+                    } else {
+                        write_result!(writer, "          |");
+                    }
+                }
+            }
+        }
+
+        write_result!(writer, "\n");
+
+        Ok(())
     }
 }
 
