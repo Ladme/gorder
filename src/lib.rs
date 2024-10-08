@@ -15,10 +15,21 @@ pub(crate) enum Leaflet {
     Lower,
 }
 
+impl Display for Leaflet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Leaflet::Upper => write!(f, "upper"),
+            Leaflet::Lower => write!(f, "lower"),
+        }
+    }
+}
+
 mod analysis;
 pub mod errors;
 pub mod input;
 mod presentation;
+
+use std::fmt::Display;
 
 pub use input::Analysis;
 pub use input::AnalysisType;

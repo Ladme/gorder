@@ -1,0 +1,86 @@
+# Order parameters calculated with 'gorder v0.1.0' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+@    title "Order parameters for molecule type POPC"
+@    xaxis label "Atom"
+@    yaxis label "-Scd"
+@    s0 legend "Full membrane"
+@TYPE xy
+# Atom C12:
+1      0.1017 
+# Atom C13:
+2     -0.0155 
+# Atom C14:
+3     -0.0158 
+# Atom C15:
+4     -0.0190 
+# Atom C11:
+5     -0.0403 
+# Atom C1:
+6      0.2346 
+# Atom C2:
+7      0.1865 
+# Atom C22:
+8      0.1079 
+# Atom C3:
+9      0.0986 
+# Atom C32:
+10     0.2363 
+# Atom C23:
+11     0.2149 
+# Atom C24:
+12     0.2101 
+# Atom C25:
+13     0.2206 
+# Atom C26:
+14     0.1962 
+# Atom C27:
+15     0.1829 
+# Atom C28:
+16     0.0933 
+# Atom C29:
+17     0.0386 
+# Atom C210:
+18     0.0588 
+# Atom C211:
+19     0.1031 
+# Atom C212:
+20     0.1441 
+# Atom C213:
+21     0.1570 
+# Atom C214:
+22     0.1636 
+# Atom C215:
+23     0.1519 
+# Atom C216:
+24     0.1370 
+# Atom C217:
+25     0.1057 
+# Atom C218:
+26     0.0337 
+# Atom C33:
+27     0.1968 
+# Atom C34:
+28     0.2389 
+# Atom C35:
+29     0.2296 
+# Atom C36:
+30     0.2456 
+# Atom C37:
+31     0.2458 
+# Atom C38:
+32     0.2471 
+# Atom C39:
+33     0.2313 
+# Atom C310:
+34     0.2273 
+# Atom C311:
+35     0.2004 
+# Atom C312:
+36     0.1909 
+# Atom C313:
+37     0.1692 
+# Atom C314:
+38     0.1400 
+# Atom C315:
+39     0.1023 
+# Atom C316:
+40     0.0327 

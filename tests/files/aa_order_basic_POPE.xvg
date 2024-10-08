@@ -1,0 +1,80 @@
+# Order parameters calculated with 'gorder v0.1.0' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+@    title "Order parameters for molecule type POPE"
+@    xaxis label "Atom"
+@    yaxis label "-Scd"
+@    s0 legend "Full membrane"
+@TYPE xy
+# Atom C12:
+1     -0.0046 
+# Atom C11:
+2     -0.0745 
+# Atom C1:
+3      0.2155 
+# Atom C2:
+4      0.1914 
+# Atom C22:
+5      0.0928 
+# Atom C3:
+6      0.0905 
+# Atom C32:
+7      0.2226 
+# Atom C23:
+8      0.1905 
+# Atom C24:
+9      0.2024 
+# Atom C25:
+10     0.2142 
+# Atom C26:
+11     0.1847 
+# Atom C27:
+12     0.1798 
+# Atom C28:
+13     0.1121 
+# Atom C29:
+14     0.0640 
+# Atom C210:
+15     0.0422 
+# Atom C211:
+16     0.0850 
+# Atom C212:
+17     0.1278 
+# Atom C213:
+18     0.1372 
+# Atom C214:
+19     0.1472 
+# Atom C215:
+20     0.1381 
+# Atom C216:
+21     0.1282 
+# Atom C217:
+22     0.0970 
+# Atom C218:
+23     0.0322 
+# Atom C33:
+24     0.1846 
+# Atom C34:
+25     0.2221 
+# Atom C35:
+26     0.2310 
+# Atom C36:
+27     0.2452 
+# Atom C37:
+28     0.2390 
+# Atom C38:
+29     0.2382 
+# Atom C39:
+30     0.2282 
+# Atom C310:
+31     0.2211 
+# Atom C311:
+32     0.2024 
+# Atom C312:
+33     0.1842 
+# Atom C313:
+34     0.1606 
+# Atom C314:
+35     0.1344 
+# Atom C315:
+36     0.0942 
+# Atom C316:
+37     0.0288 

@@ -3,8 +3,13 @@
 
 //! Structures and methods for presenting the results of the analysis of all-atom order parameters.
 
-use std::{fs::File, io::BufWriter, path::Path};
+use std::{
+    fs::File,
+    io::BufWriter,
+    path::{Path, PathBuf},
+};
 
+use hashbrown::HashMap;
 use indexmap::IndexMap;
 use serde::Serialize;
 use std::io::Write;
@@ -82,6 +87,72 @@ impl AAOrderResults {
         }
 
         Ok(())
+    }
+
+    fn rename_duplicates(strings: &mut [String]) {
+        let mut seen: HashMap<String, usize> = HashMap::new();
+
+        for s in strings.iter_mut() {
+            let count = seen.entry(s.clone()).or_insert(0);
+
+            if *count > 0 {
+                *s = format!("{}{}", s, *count + 1);
+            }
+
+            *count += 1;
+        }
+    }
+
+    /// Write the results of the analysis for the individual order atoms into xvg files.
+    pub(crate) fn write_xvg(
+        &self,
+        file_pattern: &impl AsRef<Path>,
+        input_structure: &str,
+        input_trajectory: &str,
+        overwrite: bool,
+    ) -> Result<(), WriteError> {
+        let extension = file_pattern
+            .as_ref()
+            .extension()
+            .and_then(|x| x.to_str())
+            .map(Some)
+            .unwrap_or(None);
+
+        let path_buf = Self::strip_extension(file_pattern.as_ref());
+        let file_path = path_buf.to_str().expect(PANIC_MESSAGE);
+
+        let mut names: Vec<String> = self.molecules.iter().map(|x| x.molecule.clone()).collect();
+        Self::rename_duplicates(&mut names);
+
+        for (i, mol) in self.molecules.iter().enumerate() {
+            let filename = match extension {
+                Some(x) => format!("{}_{}.{}", file_path, names[i], x),
+                None => format!("{}_{}", file_path, names[i]),
+            };
+
+            log::info!("Writing an xvg file '{}'...", filename);
+
+            let mut writer = AAOrderResults::prepare_file(
+                &filename,
+                input_structure,
+                input_trajectory,
+                "xvg",
+                overwrite,
+            )?;
+
+            mol.write_xvg(&mut writer)?;
+        }
+
+        Ok(())
+    }
+
+    fn strip_extension(file_path: &Path) -> PathBuf {
+        if let Some(stem) = file_path.file_stem() {
+            if let Some(parent) = file_path.parent() {
+                return parent.join(stem);
+            }
+        }
+        file_path.to_path_buf()
     }
 
     /// Back up a file, create a new one and write a header into it.
@@ -197,15 +268,14 @@ impl AAMoleculeResults {
             }
         };
 
-        let upper_lower = self.order.values().map(|x| x.upper).any(|x| x.is_some())
-            || self.order.values().map(|x| x.lower).any(|x| x.is_some());
+        let leaflets = self.has_assigned_leaflets();
 
         write_result!(writer, "         ");
 
-        let width = if upper_lower { 28usize } else { 8usize };
+        let width = if leaflets { 28usize } else { 8usize };
         write_result!(writer, " {: ^width$} |", "TOTAL", width = width);
         for i in 1..=max_bonds {
-            let hydrogen = if upper_lower {
+            let hydrogen = if leaflets {
                 format!("HYDROGEN #{}", i)
             } else {
                 format!("H #{}", i)
@@ -215,7 +285,7 @@ impl AAMoleculeResults {
         }
         write_result!(writer, "\n");
 
-        if upper_lower {
+        if leaflets {
             write_result!(writer, "         ");
             for _ in 0..=max_bonds {
                 write_result!(writer, "   FULL     UPPER     LOWER   |");
@@ -224,10 +294,44 @@ impl AAMoleculeResults {
         }
 
         for (name, results) in self.order.iter() {
-            results.write_tab(writer, name, max_bonds, upper_lower)?;
+            results.write_tab(writer, name, max_bonds, leaflets)?;
         }
 
         Ok(())
+    }
+
+    /// Write results for a single molecule in an xvg format. Only order parameters for atoms are written.
+    /// Order parameters are written for the full membrane and for the individual leaflets (if calculated).
+    fn write_xvg(&self, writer: &mut impl Write) -> Result<(), WriteError> {
+        write_result!(
+            writer,
+            "@    title \"Order parameters for molecule type {}\"\n",
+            self.molecule
+        );
+        write_result!(
+            writer,
+            "@    xaxis label \"Atom\"\n@    yaxis label \"-Scd\"\n"
+        );
+
+        write_result!(writer, "@    s0 legend \"Full membrane\"\n");
+        if self.has_assigned_leaflets() {
+            write_result!(writer, "@    s1 legend \"Upper leaflet\"\n");
+            write_result!(writer, "@    s2 legend \"Lower leaflet\"\n");
+        }
+
+        write_result!(writer, "@TYPE xy\n");
+
+        for (i, (name, results)) in self.order.iter().enumerate() {
+            results.write_xvg(writer, i + 1, name)?;
+        }
+
+        Ok(())
+    }
+
+    /// Check whether order parameters for individual membrane leaflets have been calculated for at least one order bond.
+    fn has_assigned_leaflets(&self) -> bool {
+        self.order.values().map(|x| x.upper).any(|x| x.is_some())
+            || self.order.values().map(|x| x.lower).any(|x| x.is_some())
     }
 }
 
@@ -297,7 +401,7 @@ impl AAAtomResults {
     /// Write results for an atom in human readable table format.
     fn write_tab(
         &self,
-        writer: &mut impl std::io::Write,
+        writer: &mut impl Write,
         atom_type: &AtomType,
         max_bonds: usize,
         leaflets: bool,
@@ -336,6 +440,31 @@ impl AAAtomResults {
                         write_result!(writer, "          |");
                     }
                 }
+            }
+        }
+
+        write_result!(writer, "\n");
+
+        Ok(())
+    }
+
+    fn write_xvg(
+        &self,
+        writer: &mut impl Write,
+        number: usize,
+        name: &AtomType,
+    ) -> Result<(), WriteError> {
+        match self.total {
+            Some(order) => {
+                write_result!(writer, "# Atom {}:\n", name.atom_name());
+                write_result!(writer, "{:<4} {: >8.4} ", number, order);
+            }
+            None => return Ok(()),
+        }
+
+        for order in [self.upper, self.lower].into_iter() {
+            if let Some(value) = order {
+                write_result!(writer, "{: >8.4} ", value);
             }
         }
 

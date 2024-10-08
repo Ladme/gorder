@@ -24,6 +24,7 @@ fn test_aa_order_basic_yaml() {
             "@membrane and element name hydrogen",
         ))
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -53,6 +54,7 @@ fn test_aa_order_basic_table() {
             "@membrane and element name hydrogen",
         ))
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -62,6 +64,86 @@ fn test_aa_order_basic_table() {
     let mut expected = File::open("tests/files/aa_order_basic.tab").unwrap();
 
     assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
+fn test_aa_order_basic_xvg() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let pattern = format!("{}/order.xvg", path_to_dir);
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_xvg(pattern)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    for molecule in ["POPC", "POPE", "POPG"] {
+        let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
+        let path_expected = format!("tests/files/aa_order_basic_{}.xvg", molecule);
+        let mut result = File::open(path).unwrap();
+        let mut expected = File::open(path_expected).unwrap();
+
+        assert!(file_diff::diff_files(&mut result, &mut expected));
+    }
+}
+
+#[test]
+fn test_aa_order_basic_xvg_weird_names() {
+    for name in ["order", ".this.is.a.weird.name.xvg"] {
+        let output_yaml = NamedTempFile::new().unwrap();
+        let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let pattern = format!("{}/{}", path_to_dir, name);
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_yaml)
+            .output_xvg(pattern)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        for molecule in ["POPC", "POPE", "POPG"] {
+            let path = if name.contains(".xvg") {
+                format!("{}/.this.is.a.weird.name_{}.xvg", path_to_dir, molecule)
+            } else {
+                format!("{}/order_{}", path_to_dir, molecule)
+            };
+            println!("{:?}", path);
+
+            let path_expected = format!("tests/files/aa_order_basic_{}.xvg", molecule);
+            let mut result = File::open(path).unwrap();
+            let mut expected = File::open(path_expected).unwrap();
+
+            assert!(file_diff::diff_files(&mut result, &mut expected));
+        }
+    }
 }
 
 #[test]
@@ -80,6 +162,7 @@ fn test_aa_order_basic_yaml_multiple_threads() {
             ))
             .n_threads(n_threads)
             .silent()
+            .overwrite()
             .build()
             .unwrap();
 
@@ -112,6 +195,7 @@ fn test_aa_order_basic_table_multiple_threads() {
             ))
             .n_threads(n_threads)
             .silent()
+            .overwrite()
             .build()
             .unwrap();
 
@@ -144,6 +228,7 @@ fn test_aa_order_leaflets_yaml() {
             ))
             .leaflets(method)
             .silent()
+            .overwrite()
             .build()
             .unwrap();
 
@@ -180,6 +265,7 @@ fn test_aa_order_leaflets_table() {
             ))
             .leaflets(method)
             .silent()
+            .overwrite()
             .build()
             .unwrap();
 
@@ -189,6 +275,49 @@ fn test_aa_order_leaflets_table() {
         let mut expected = File::open("tests/files/aa_order_leaflets.tab").unwrap();
 
         assert!(file_diff::diff_files(&mut result, &mut expected));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_xvg() {
+    for method in [
+        LeafletClassification::global("@membrane", "name P"),
+        LeafletClassification::local("@membrane", "name P", 2.5),
+        LeafletClassification::individual("name P", "name C218 C316"),
+    ] {
+        let output_yaml = NamedTempFile::new().unwrap();
+        let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let pattern = format!("{}/order.xvg", path_to_dir);
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_yaml)
+            .output_xvg(pattern)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(method)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        for molecule in ["POPC", "POPE", "POPG"] {
+            let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
+            let path_expected = format!("tests/files/aa_order_leaflets_{}.xvg", molecule);
+            let mut result = File::open(path).unwrap();
+            let mut expected = File::open(path_expected).unwrap();
+
+            assert!(file_diff::diff_files(&mut result, &mut expected));
+        }
     }
 }
 
@@ -207,6 +336,7 @@ fn test_aa_order_leaflets_yaml_supershort() {
         ))
         .leaflets(LeafletClassification::global("@membrane", "name P"))
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -237,6 +367,7 @@ fn test_aa_order_one_different_hydrogen_numbers_table() {
         ))
         .silent()
         .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .overwrite()
         .build()
         .unwrap();
 
@@ -263,6 +394,7 @@ fn test_aa_order_limit_yaml() {
         ))
         .min_samples(2000)
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -290,6 +422,7 @@ fn test_aa_order_leaflets_limit_yaml() {
         .min_samples(500)
         .leaflets(LeafletClassification::global("@membrane", "name P"))
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -321,6 +454,7 @@ fn test_aa_order_leaflets_limit_tab() {
         .min_samples(500)
         .leaflets(LeafletClassification::global("@membrane", "name P"))
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -350,6 +484,7 @@ fn test_aa_order_begin_end_step_yaml() {
         .step(3)
         .leaflets(LeafletClassification::global("@membrane", "name P"))
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -372,6 +507,7 @@ fn test_aa_order_no_molecules() {
             "@membrane and element name hydrogen",
         ))
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -391,6 +527,7 @@ fn test_aa_order_empty_molecules() {
             "@membrane and element name hydrogen",
         ))
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -445,6 +582,7 @@ fn test_aa_order_maps_basic() {
                 .unwrap(),
         )
         .silent()
+        .overwrite()
         .build()
         .unwrap();
 
@@ -507,6 +645,7 @@ fn test_aa_order_maps_leaflets() {
                     .unwrap(),
             )
             .silent()
+            .overwrite()
             .build()
             .unwrap();
 
@@ -586,6 +725,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
                     .unwrap(),
             )
             .silent()
+            .overwrite()
             .build()
             .unwrap();
 

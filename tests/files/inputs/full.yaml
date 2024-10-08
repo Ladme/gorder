@@ -5,6 +5,7 @@ type: !CGOrder
   atoms: "@membrane"
 output: order.yaml
 output_tab: order.dat
+output_xvg: order.xvg
 membrane_normal: x
 begin: 100.0
 end: 10000.0

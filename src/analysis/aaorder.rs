@@ -170,6 +170,18 @@ pub(super) fn analyze_atomistic(
         )?;
     };
 
+    if let Some(xvg) = analysis.output_xvg() {
+        log::info!("Writing the order parameters into xvg file(s)...");
+
+        log::logger().flush();
+        results.write_xvg(
+            xvg,
+            analysis.structure(),
+            analysis.trajectory(),
+            analysis.overwrite(),
+        )?;
+    }
+
     Ok(())
 }
 
