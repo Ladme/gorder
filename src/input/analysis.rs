@@ -89,6 +89,10 @@ pub struct Analysis {
     #[builder(setter(into, strip_option), default)]
     #[getset(get = "pub")]
     output_xvg: Option<String>,
+    /// Path to an output CSV file where the results of the analysis will be written.
+    #[builder(setter(into, strip_option), default)]
+    #[getset(get = "pub")]
+    output_csv: Option<String>,
     /// Type of the analysis to perform (AAOrder / CGOrder).
     #[getset(get = "pub")]
     #[serde(alias = "type")]
@@ -338,6 +342,7 @@ mod tests_yaml {
         assert_eq!(analysis.output(), "order.yaml");
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
+        assert!(analysis.output_csv().is_none());
         assert_eq!(analysis.membrane_normal(), Axis::Z);
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
@@ -369,6 +374,7 @@ mod tests_yaml {
         assert_eq!(analysis.output(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
+        assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
         assert_eq!(analysis.membrane_normal(), Axis::X);
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());
@@ -539,6 +545,7 @@ mod tests_builder {
         assert_eq!(analysis.output(), "order.yaml");
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
+        assert!(analysis.output_csv().is_none());
         assert_eq!(analysis.membrane_normal(), Axis::Z);
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
@@ -569,6 +576,7 @@ mod tests_builder {
             .output("order.yaml")
             .output_tab("order.dat")
             .output_xvg("order.xvg")
+            .output_csv("order.csv")
             .analysis_type(AnalysisType::cgorder("@membrane"))
             .membrane_normal(Axis::X)
             .begin(100.0)
@@ -600,6 +608,7 @@ mod tests_builder {
         assert_eq!(analysis.output(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
+        assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
         assert_eq!(analysis.membrane_normal(), Axis::X);
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());

@@ -182,6 +182,12 @@ pub(super) fn analyze_atomistic(
         )?;
     }
 
+    if let Some(csv) = analysis.output_csv() {
+        log::info!("Writing the order parameters into a csv file '{}'...", csv);
+        log::logger().flush();
+        results.write_csv(csv, analysis.overwrite())?;
+    }
+
     Ok(())
 }
 

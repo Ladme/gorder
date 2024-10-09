@@ -52,12 +52,13 @@ impl AAOrderResults {
         input_trajectory: &str,
         overwrite: bool,
     ) -> Result<(), WriteError> {
-        let writer = AAOrderResults::prepare_file(
+        let writer = Self::prepare_file(
             &filename,
             input_structure,
             input_trajectory,
             "yaml",
             overwrite,
+            true,
         )?;
 
         serde_yaml::to_writer(writer, self)
@@ -74,12 +75,13 @@ impl AAOrderResults {
         input_trajectory: &str,
         overwrite: bool,
     ) -> Result<(), WriteError> {
-        let mut writer = AAOrderResults::prepare_file(
+        let mut writer = Self::prepare_file(
             &filename,
             input_structure,
             input_trajectory,
             "tab",
             overwrite,
+            true,
         )?;
 
         for mol in self.molecules.iter() {
@@ -106,7 +108,7 @@ impl AAOrderResults {
     /// Write the results of the analysis for the individual order atoms into xvg files.
     pub(crate) fn write_xvg(
         &self,
-        file_pattern: &impl AsRef<Path>,
+        file_pattern: impl AsRef<Path>,
         input_structure: &str,
         input_trajectory: &str,
         overwrite: bool,
@@ -132,17 +134,78 @@ impl AAOrderResults {
 
             log::info!("Writing an xvg file '{}'...", filename);
 
-            let mut writer = AAOrderResults::prepare_file(
+            let mut writer = Self::prepare_file(
                 &filename,
                 input_structure,
                 input_trajectory,
                 "xvg",
                 overwrite,
+                true,
             )?;
 
             mol.write_xvg(&mut writer)?;
         }
 
+        Ok(())
+    }
+
+    /// Write the results into an csv file.
+    pub(crate) fn write_csv(
+        &self,
+        filename: impl AsRef<Path>,
+        overwrite: bool,
+    ) -> Result<(), WriteError> {
+        let mut writer = Self::prepare_file(&filename, "", "", "csv", overwrite, false)?;
+
+        let max_bonds = self
+            .molecules
+            .iter()
+            .map(|x| x.max_bonds())
+            .max()
+            .unwrap_or(0);
+        if max_bonds == 0 {
+            log::warn!(
+                "No atoms have any order bonds associated. Unable to write output csv. Aborting..."
+            );
+            return Ok(());
+        }
+
+        let leaflets = self.molecules.iter().any(|x| x.has_assigned_leaflets());
+
+        Self::write_csv_header(&mut writer, max_bonds, leaflets)?;
+
+        for molecule in self.molecules.iter() {
+            molecule.write_csv(&mut writer, max_bonds, leaflets)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_csv_header(
+        writer: &mut impl Write,
+        max_bonds: usize,
+        assigned_leaflets: bool,
+    ) -> Result<(), WriteError> {
+        write_result!(writer, "molecule,residue,atom,relative index");
+
+        if assigned_leaflets {
+            write_result!(
+                writer,
+                ",total full membrane,total upper leaflet,total lower leaflet"
+            );
+        } else {
+            write_result!(writer, ",total");
+        }
+
+        for i in 1..=max_bonds {
+            if assigned_leaflets {
+                write_result!(writer, ",hydrogen #{} full membrane,hydrogen #{} upper leaflet,hydrogen #{} lower leaflet", i, i, i);
+            } else {
+                write_result!(writer, ",hydrogen #{}", i);
+            }
+        }
+
+        write_result!(writer, "\n");
         Ok(())
     }
 
@@ -162,10 +225,13 @@ impl AAOrderResults {
         input_trajectory: &str,
         file_type: &str,
         overwrite: bool,
+        write_header: bool,
     ) -> Result<BufWriter<File>, WriteError> {
         AAOrderResults::try_backup_file(filename, overwrite, file_type)?;
         let mut writer = AAOrderResults::create_and_open_file(filename)?;
-        AAOrderResults::write_header(&mut writer, filename, input_structure, input_trajectory)?;
+        if write_header {
+            AAOrderResults::write_header(&mut writer, filename, input_structure, input_trajectory)?;
+        }
 
         Ok(writer)
     }
@@ -260,13 +326,11 @@ impl AAMoleculeResults {
     fn write_tab(&self, writer: &mut impl Write) -> Result<(), WriteError> {
         write_result!(writer, "\nMolecule type {}\n", self.molecule);
 
-        let max_bonds = match self.order.values().map(|x| x.bonds.len()).max() {
-            Some(x) => x,
-            None => {
-                log::warn!("No atoms have any order bonds associated. Unable to write output table. Aborting...");
-                return Ok(());
-            }
-        };
+        let max_bonds = self.max_bonds();
+        if max_bonds == 0 {
+            log::warn!("No atoms have any order bonds associated. Unable to write output table. Aborting...");
+            return Ok(());
+        }
 
         let leaflets = self.has_assigned_leaflets();
 
@@ -298,6 +362,15 @@ impl AAMoleculeResults {
         }
 
         Ok(())
+    }
+
+    /// Get the maximal number of order bonds associated with an order atom in this molecule.
+    fn max_bonds(&self) -> usize {
+        self.order
+            .values()
+            .map(|x| x.bonds.len())
+            .max()
+            .unwrap_or(0)
     }
 
     /// Write results for a single molecule in an xvg format. Only order parameters for atoms are written.
@@ -332,6 +405,25 @@ impl AAMoleculeResults {
     fn has_assigned_leaflets(&self) -> bool {
         self.order.values().map(|x| x.upper).any(|x| x.is_some())
             || self.order.values().map(|x| x.lower).any(|x| x.is_some())
+    }
+
+    fn write_csv(
+        &self,
+        writer: &mut impl Write,
+        max_bonds: usize,
+        assigned_leaflets: bool,
+    ) -> Result<(), WriteError> {
+        for (atom_type, order) in self.order.iter() {
+            order.write_csv(
+                writer,
+                atom_type,
+                &self.molecule,
+                max_bonds,
+                assigned_leaflets,
+            )?;
+        }
+
+        Ok(())
     }
 }
 
@@ -408,24 +500,27 @@ impl AAAtomResults {
     ) -> Result<(), WriteError> {
         write_result!(writer, "{:<8} ", atom_type.atom_name());
 
-        if let Some(val) = self.total {
-            write_result!(writer, " {: ^8.4} ", val);
+        match self.total {
+            Some(val) => {
+                write_result!(writer, " {: ^8.4} ", val);
 
-            if leaflets {
-                for value in [self.upper, self.lower] {
-                    match value {
-                        Some(unwrapped) => write_result!(writer, " {: ^8.4} ", unwrapped),
-                        None => write_result!(writer, "               "),
+                if leaflets {
+                    for value in [self.upper, self.lower] {
+                        match value {
+                            Some(unwrapped) => write_result!(writer, " {: ^8.4} ", unwrapped),
+                            None => write_result!(writer, "               "),
+                        }
                     }
                 }
-            }
 
-            write_result!(writer, "|");
-        } else {
-            if leaflets {
-                write_result!(writer, " {: ^28} |", "");
-            } else {
-                write_result!(writer, " {: ^8} |", "");
+                write_result!(writer, "|");
+            }
+            None => {
+                if leaflets {
+                    write_result!(writer, " {: ^28} |", "");
+                } else {
+                    write_result!(writer, " {: ^8} |", "");
+                }
             }
         }
 
@@ -452,19 +547,72 @@ impl AAAtomResults {
         &self,
         writer: &mut impl Write,
         number: usize,
-        name: &AtomType,
+        atom_type: &AtomType,
     ) -> Result<(), WriteError> {
+        write_result!(writer, "# Atom {}:\n", atom_type.atom_name());
         match self.total {
             Some(order) => {
-                write_result!(writer, "# Atom {}:\n", name.atom_name());
                 write_result!(writer, "{:<4} {: >8.4} ", number, order);
             }
-            None => return Ok(()),
+            None => {
+                write_result!(writer, "{:<4} NaN ", number);
+            }
         }
 
         for order in [self.upper, self.lower].into_iter() {
             if let Some(value) = order {
                 write_result!(writer, "{: >8.4} ", value);
+            }
+        }
+
+        write_result!(writer, "\n");
+
+        Ok(())
+    }
+
+    fn write_csv(
+        &self,
+        writer: &mut impl Write,
+        atom_type: &AtomType,
+        molecule_type: &str,
+        max_bonds: usize,
+        assigned_leaflets: bool,
+    ) -> Result<(), WriteError> {
+        write_result!(
+            writer,
+            "{},{},{},{}",
+            molecule_type,
+            atom_type.residue_name(),
+            atom_type.atom_name(),
+            atom_type.relative_index()
+        );
+
+        if let Some(val) = self.total {
+            write_result!(writer, ",{:.4}", val);
+        } else {
+            write_result!(writer, ",");
+        }
+
+        if assigned_leaflets {
+            for value in [self.upper, self.lower] {
+                match value {
+                    Some(unwrapped) => write_result!(writer, ",{:.4}", unwrapped),
+                    None => write_result!(writer, ","),
+                }
+            }
+        }
+
+        let mut bond_results = self.bonds.values();
+        for _ in 0..max_bonds {
+            match bond_results.next() {
+                Some(val) => val.write_csv(writer, assigned_leaflets)?,
+                None => {
+                    if assigned_leaflets {
+                        write_result!(writer, ",,,");
+                    } else {
+                        write_result!(writer, ",");
+                    }
+                }
             }
         }
 

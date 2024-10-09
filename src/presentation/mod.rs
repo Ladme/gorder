@@ -3,6 +3,8 @@
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
+use std::io::Write;
+
 use crate::{
     analysis::{
         molecule::{AtomType, Bond, MoleculeType},
@@ -48,11 +50,7 @@ impl From<&Bond> for BondResults {
 
 impl BondResults {
     /// Write results for a single bond in human readable table format.
-    fn write_tab(
-        &self,
-        writer: &mut impl std::io::Write,
-        leaflets: bool,
-    ) -> Result<(), WriteError> {
+    fn write_tab(&self, writer: &mut impl Write, leaflets: bool) -> Result<(), WriteError> {
         write_result!(writer, " {: ^8.4} ", self.total);
         if leaflets {
             for value in [self.upper, self.lower] {
@@ -64,6 +62,22 @@ impl BondResults {
         }
 
         write_result!(writer, "|");
+
+        Ok(())
+    }
+
+    /// Write results for a single bond in csv format.
+    fn write_csv(&self, writer: &mut impl Write, leaflets: bool) -> Result<(), WriteError> {
+        write_result!(writer, ",{:.4}", self.total);
+
+        if leaflets {
+            for value in [self.upper, self.lower] {
+                match value {
+                    Some(unwrapped) => write_result!(writer, ",{:.4}", unwrapped),
+                    None => write_result!(writer, ","),
+                }
+            }
+        }
 
         Ok(())
     }

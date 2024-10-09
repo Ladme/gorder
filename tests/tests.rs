@@ -103,6 +103,36 @@ fn test_aa_order_basic_xvg() {
 }
 
 #[test]
+fn test_aa_order_basic_csv() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let output_csv = NamedTempFile::new().unwrap();
+    let path_to_csv = output_csv.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_csv(path_to_csv)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let mut result = File::open(path_to_csv).unwrap();
+    let mut expected = File::open("tests/files/aa_order_basic.csv").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
 fn test_aa_order_basic_xvg_weird_names() {
     for name in ["order", ".this.is.a.weird.name.xvg"] {
         let output_yaml = NamedTempFile::new().unwrap();
@@ -322,6 +352,43 @@ fn test_aa_order_leaflets_xvg() {
 }
 
 #[test]
+fn test_aa_order_leaflets_csv() {
+    for method in [
+        LeafletClassification::global("@membrane", "name P"),
+        LeafletClassification::local("@membrane", "name P", 2.5),
+        LeafletClassification::individual("name P", "name C218 C316"),
+    ] {
+        let output_yaml = NamedTempFile::new().unwrap();
+        let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+        let output_csv = NamedTempFile::new().unwrap();
+        let path_to_csv = output_csv.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_yaml)
+            .output_csv(path_to_csv)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(method)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        let mut result = File::open(path_to_csv).unwrap();
+        let mut expected = File::open("tests/files/aa_order_leaflets.csv").unwrap();
+
+        assert!(file_diff::diff_files(&mut result, &mut expected));
+    }
+}
+
+#[test]
 fn test_aa_order_leaflets_yaml_supershort() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -375,6 +442,37 @@ fn test_aa_order_one_different_hydrogen_numbers_table() {
 
     let mut result = File::open(path_to_table).unwrap();
     let mut expected = File::open("tests/files/aa_order_different_hydrogen_numbers.tab").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
+fn test_aa_order_one_different_hydrogen_numbers_csv() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let output_csv = NamedTempFile::new().unwrap();
+    let path_to_csv = output_csv.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_csv(path_to_csv)
+        .analysis_type(AnalysisType::aaorder(
+            "(resname POPC and name C29 C210) or (resname POPE and element name carbon)",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let mut result = File::open(path_to_csv).unwrap();
+    let mut expected = File::open("tests/files/aa_order_different_hydrogen_numbers.csv").unwrap();
 
     assert!(file_diff::diff_files(&mut result, &mut expected));
 }
@@ -462,6 +560,38 @@ fn test_aa_order_leaflets_limit_tab() {
 
     let mut result = File::open(path_to_table).unwrap();
     let mut expected = File::open("tests/files/aa_order_leaflets_limit.tab").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+}
+
+#[test]
+fn test_aa_order_leaflets_limit_csv() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let output_csv = NamedTempFile::new().unwrap();
+    let path_to_csv = output_csv.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_csv(path_to_csv)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .min_samples(500)
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let mut result = File::open(path_to_csv).unwrap();
+    let mut expected = File::open("tests/files/aa_order_leaflets_limit.csv").unwrap();
 
     assert!(file_diff::diff_files(&mut result, &mut expected));
 }

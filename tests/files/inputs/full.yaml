@@ -6,6 +6,7 @@ type: !CGOrder
 output: order.yaml
 output_tab: order.dat
 output_xvg: order.xvg
+output_csv: order.csv
 membrane_normal: x
 begin: 100.0
 end: 10000.0
