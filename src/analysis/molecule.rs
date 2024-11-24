@@ -96,8 +96,8 @@ impl MoleculeType {
     ) -> Result<(), AnalysisError> {
         for bond_type in self.order_bonds.bonds.iter_mut() {
             for (molecule_index, (index1, index2)) in bond_type.bonds.iter().enumerate() {
-                let atom1 = unsafe { frame.get_atom_unchecked_as_ref(*index1) };
-                let atom2 = unsafe { frame.get_atom_unchecked_as_ref(*index2) };
+                let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
+                let atom2 = unsafe { frame.get_atom_unchecked(*index2) };
 
                 let pos1 = atom1
                     .get_position()
@@ -216,7 +216,7 @@ impl OrderBonds {
         bonds_sanity_check(bonds, min_index);
 
         let simbox = system
-            .get_box_as_ref()
+            .get_box()
             .ok_or_else(|| TopologyError::UndefinedBox)?;
 
         if !simbox.is_orthogonal() {
@@ -243,6 +243,20 @@ impl OrderBonds {
             );
             order_bonds.push(bond)
         }
+
+        // sort order bonds so that atoms with lower indices come first
+        order_bonds.sort_by(|b1, b2| {
+            b1.bond_type()
+                .atom1()
+                .relative_index()
+                .cmp(&b2.bond_type().atom1().relative_index())
+                .then_with(|| {
+                    b1.bond_type()
+                        .atom2()
+                        .relative_index()
+                        .cmp(&b2.bond_type().atom2().relative_index())
+                })
+        });
 
         Ok(OrderBonds { bonds: order_bonds })
     }
@@ -318,11 +332,11 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
 /// panicking with a suitable error message if these indices are out of range.
 fn get_atoms_from_bond(system: &System, index1: usize, index2: usize) -> (&Atom, &Atom) {
     let atom1 = system
-        .get_atom_as_ref(index1)
+        .get_atom(index1)
         .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | topology::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index1, PANIC_MESSAGE));
 
     let atom2 = system
-        .get_atom_as_ref(index2)
+        .get_atom(index2)
         .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | topology::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index2, PANIC_MESSAGE));
 
     (atom1, atom2)
@@ -342,12 +356,7 @@ impl OrderAtoms {
     pub(super) fn new(system: &System, atoms: &[usize], minimum_index: usize) -> Self {
         let mut converted_atoms = atoms
             .into_iter()
-            .map(|&x| {
-                AtomType::new(
-                    x - minimum_index,
-                    system.get_atom_as_ref(x).expect(PANIC_MESSAGE),
-                )
-            })
+            .map(|&x| AtomType::new(x - minimum_index, system.get_atom(x).expect(PANIC_MESSAGE)))
             .collect::<Vec<AtomType>>();
 
         converted_atoms.sort_by(|a, b| a.relative_index.cmp(&b.relative_index));
@@ -876,11 +885,11 @@ mod tests {
         let order_atoms = OrderAtoms::new(&system, &atoms, 125);
 
         let expected_atoms = [
-            AtomType::new(2, system.get_atom_as_ref(127).unwrap()),
-            AtomType::new(8, system.get_atom_as_ref(133).unwrap()),
-            AtomType::new(20, system.get_atom_as_ref(145).unwrap()),
-            AtomType::new(31, system.get_atom_as_ref(156).unwrap()),
-            AtomType::new(38, system.get_atom_as_ref(163).unwrap()),
+            AtomType::new(2, system.get_atom(127).unwrap()),
+            AtomType::new(8, system.get_atom(133).unwrap()),
+            AtomType::new(20, system.get_atom(145).unwrap()),
+            AtomType::new(31, system.get_atom(156).unwrap()),
+            AtomType::new(38, system.get_atom(163).unwrap()),
         ];
 
         for (atom, expected) in order_atoms.atoms.iter().zip(expected_atoms.iter()) {
@@ -892,33 +901,33 @@ mod tests {
         [
             BondType::new(
                 44,
-                system.get_atom_as_ref(169).unwrap(),
+                system.get_atom(169).unwrap(),
                 45,
-                system.get_atom_as_ref(170).unwrap(),
+                system.get_atom(170).unwrap(),
             ),
             BondType::new(
                 44,
-                system.get_atom_as_ref(169).unwrap(),
+                system.get_atom(169).unwrap(),
                 46,
-                system.get_atom_as_ref(171).unwrap(),
+                system.get_atom(171).unwrap(),
             ),
             BondType::new(
                 88,
-                system.get_atom_as_ref(213).unwrap(),
+                system.get_atom(213).unwrap(),
                 89,
-                system.get_atom_as_ref(214).unwrap(),
+                system.get_atom(214).unwrap(),
             ),
             BondType::new(
                 88,
-                system.get_atom_as_ref(213).unwrap(),
+                system.get_atom(213).unwrap(),
                 90,
-                system.get_atom_as_ref(215).unwrap(),
+                system.get_atom(215).unwrap(),
             ),
             BondType::new(
                 121,
-                system.get_atom_as_ref(246).unwrap(),
+                system.get_atom(246).unwrap(),
                 122,
-                system.get_atom_as_ref(247).unwrap(),
+                system.get_atom(247).unwrap(),
             ),
         ]
     }

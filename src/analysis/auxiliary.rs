@@ -149,7 +149,7 @@ fn process_molecule_dfs(
     let mut stack = vec![start_index];
 
     while let Some(index) = stack.pop() {
-        let atom = system.get_atom_as_ref(index).expect(PANIC_MESSAGE);
+        let atom = system.get_atom(index).expect(PANIC_MESSAGE);
         visited.insert(index);
         all_atom_indices.push(index);
 
@@ -1386,6 +1386,7 @@ mod tests {
                 35063, 35190, 35317,
             ],
         ];
+        let relative_indices = [(7, 8), (47, 49), (93, 94)];
 
         for (i, molecule) in molecules.into_iter().enumerate() {
             assert_eq!(molecule.name(), expected_names[i]);
@@ -1399,14 +1400,11 @@ mod tests {
 
             assert_eq!(order_bond_types, expected_order_bond_types[i]);
 
-            for (b, bond_instances) in order_bonds
-                .bonds()
-                .iter()
-                .map(|x| x.bonds().clone())
-                .enumerate()
-            {
+            for (b, bond_instances) in order_bonds.bonds().iter().map(|x| (x, x.bonds().clone())) {
                 assert_eq!(bond_instances.len(), expected_n_instances[i]);
-                if b == 0 {
+                if b.bond_type().atom1().relative_index() == relative_indices[i].0
+                    && b.bond_type().atom2().relative_index() == relative_indices[i].1
+                {
                     assert_eq!(bond_instances, expected_bond_instances[i]);
                 }
             }
@@ -2141,6 +2139,7 @@ mod tests {
                 [3451, 3455],
             ],
         ];
+        let relative_indices = [(2, 4), (3, 8)];
 
         assert_eq!(molecules.len(), 2);
 
@@ -2155,14 +2154,11 @@ mod tests {
                 .collect();
             assert_eq!(order_bond_types, expected_order_bond_types[i]);
 
-            for (b, bond_instances) in order_bonds
-                .bonds()
-                .iter()
-                .map(|x| x.bonds().clone())
-                .enumerate()
-            {
+            for (b, bond_instances) in order_bonds.bonds().iter().map(|x| (x, x.bonds().clone())) {
                 assert_eq!(bond_instances.len(), expected_n_instances[i]);
-                if b == 1 {
+                if b.bond_type().atom1().relative_index() == relative_indices[i].0
+                    && b.bond_type().atom2().relative_index() == relative_indices[i].1
+                {
                     assert_eq!(bond_instances, expected_bond_instances[i]);
                 }
             }

@@ -13,7 +13,7 @@ use crate::{
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
     errors::{AtomError, PositionError, SimBoxError},
-    prelude::{Cylinder, Dimension, MasterAtomIterator, Vector3D},
+    prelude::{AtomIteratorWithBox, Cylinder, Dimension, Vector3D},
     structures::group::Group,
     system::System,
 };
@@ -222,7 +222,7 @@ impl LocalClassification {
         membrane_normal: Dimension,
     ) -> Result<(), AnalysisError> {
         for (i, &index) in self.heads.iter().enumerate() {
-            let position = unsafe { system.get_atom_unchecked_as_ref(index) }
+            let position = unsafe { system.get_atom_unchecked(index) }
                 .get_position()
                 .ok_or_else(|| AnalysisError::UndefinedPosition(index + 1))?;
 
@@ -274,14 +274,14 @@ fn common_assign_to_leaflet(
     membrane_normal: Dimension,
 ) -> Result<Leaflet, AnalysisError> {
     let head_index = *heads.get(molecule_index).expect(PANIC_MESSAGE);
-    let head = unsafe { system.get_atom_unchecked_as_ref(head_index) };
+    let head = unsafe { system.get_atom_unchecked(head_index) };
 
     let distance = head
         .distance_from_point(
             membrane_center,
             membrane_normal,
             system
-                .get_box_as_ref()
+                .get_box()
                 .ok_or_else(|| AnalysisError::UndefinedBox)?,
         )
         .map_err(|_| AnalysisError::UndefinedPosition(head_index + 1))?;
