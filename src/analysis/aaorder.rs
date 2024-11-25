@@ -98,7 +98,7 @@ pub(super) fn analyze_atomistic(
 
     // if only empty molecules are detected, end the analysis
     for mol in molecules.iter() {
-        if mol.order_bonds().bonds().is_empty() {
+        if mol.order_bonds().bond_types().is_empty() {
             log::warn!("No bonds suitable for the analysis detected.");
             return Ok(());
         }
@@ -243,7 +243,7 @@ mod tests {
     use groan_rs::prelude::Dimension;
 
     use crate::{
-        analysis::molecule::{Bond, MoleculeType},
+        analysis::molecule::{BondType, MoleculeType},
         LeafletClassification,
     };
 
@@ -743,9 +743,14 @@ mod tests {
 
     fn collect_bond_data<T, F>(molecule: &MoleculeType, func: F) -> Vec<T>
     where
-        F: Fn(&Bond) -> T,
+        F: Fn(&BondType) -> T,
     {
-        molecule.order_bonds().bonds().iter().map(func).collect()
+        molecule
+            .order_bonds()
+            .bond_types()
+            .iter()
+            .map(func)
+            .collect()
     }
 
     #[test]
@@ -756,17 +761,17 @@ mod tests {
         let expected_total_orders = expected_total_orders();
 
         for (m, molecule) in data.molecules().iter().enumerate() {
-            let n_instances = molecule.order_bonds().bonds()[0].bonds().len();
+            let n_instances = molecule.order_bonds().bond_types()[0].bonds().len();
             let orders = molecule
                 .order_bonds()
-                .bonds()
+                .bond_types()
                 .iter()
                 .map(|b| b.total().order())
                 .collect::<Vec<f32>>();
 
             let samples = molecule
                 .order_bonds()
-                .bonds()
+                .bond_types()
                 .iter()
                 .map(|b| b.total().n_samples())
                 .collect::<Vec<usize>>();

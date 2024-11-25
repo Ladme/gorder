@@ -95,25 +95,29 @@ impl Map {
 }
 
 impl MoleculeType {
-    /// Write ordermaps constructed for all the bonds of this molecule type.
+    /// Write ordermaps constructed for all the bond types of this molecule type.
     fn write_ordermaps_bonds(&self) -> Result<(), OrderMapWriteError> {
-        for bond in self.order_bonds().bonds() {
+        for bond in self.order_bonds().bond_types() {
             if let Some(map) = bond.total_map() {
-                map.write_bond_map(bond.bond_type().atom1(), bond.bond_type().atom2(), None)?;
+                map.write_bond_map(
+                    bond.bond_topology().atom1(),
+                    bond.bond_topology().atom2(),
+                    None,
+                )?;
             }
 
             if let Some(map) = bond.upper_map() {
                 map.write_bond_map(
-                    bond.bond_type().atom1(),
-                    bond.bond_type().atom2(),
+                    bond.bond_topology().atom1(),
+                    bond.bond_topology().atom2(),
                     Some(Leaflet::Upper),
                 )?;
             }
 
             if let Some(map) = bond.lower_map() {
                 map.write_bond_map(
-                    bond.bond_type().atom1(),
-                    bond.bond_type().atom2(),
+                    bond.bond_topology().atom1(),
+                    bond.bond_topology().atom2(),
                     Some(Leaflet::Lower),
                 )?;
             }
@@ -126,7 +130,7 @@ impl MoleculeType {
         for heavy_atom in self.order_atoms().atoms() {
             let mut relevant_maps = Vec::new();
 
-            for bond in self.order_bonds().bonds() {
+            for bond in self.order_bonds().bond_types() {
                 if bond.contains(heavy_atom) {
                     relevant_maps.push((
                         bond.total_map().clone(),
@@ -211,7 +215,7 @@ impl SystemTopology {
         if let Some(map_unwrapped) = self
             .molecules()
             .iter()
-            .filter_map(|m| m.order_bonds().bonds().get(0))
+            .filter_map(|m| m.order_bonds().bond_types().get(0))
             .filter_map(|bond| bond.total_map().as_ref())
             .next()
         {

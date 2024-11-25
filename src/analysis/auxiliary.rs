@@ -211,7 +211,7 @@ fn select_order_bonds(
 #[cfg(test)]
 mod tests {
 
-    use crate::analysis::molecule::{AtomType, BondType, OrderAtoms};
+    use crate::analysis::molecule::{AtomType, BondTopology, OrderAtoms};
 
     use super::*;
 
@@ -344,7 +344,7 @@ mod tests {
         string2topology(string_representation)
     }
 
-    fn pope_order_bonds() -> HashSet<BondType> {
+    fn pope_order_bonds() -> HashSet<BondTopology> {
         let string_representation = "4 POPE C12 5 POPE H12A
 4 POPE C12 6 POPE H12B
 7 POPE C11 8 POPE H11A
@@ -604,7 +604,7 @@ mod tests {
         string2topology(string_representation)
     }
 
-    fn popc_order_bonds() -> HashSet<BondType> {
+    fn popc_order_bonds() -> HashSet<BondTopology> {
         let string_representation = "1 POPC C12 3 POPC H12B
 1 POPC C12 2 POPC H12A
 4 POPC C13 5 POPC H13A
@@ -869,7 +869,7 @@ mod tests {
         string2topology(string_representation)
     }
 
-    fn popg_order_bonds() -> HashSet<BondType> {
+    fn popg_order_bonds() -> HashSet<BondTopology> {
         let string_representation = "0 POPG C13 2 POPG H13B
 0 POPG C13 1 POPG H13A
 5 POPG C12 6 POPG H12A
@@ -998,7 +998,7 @@ mod tests {
         MoleculeTopology { bonds }
     }
 
-    fn string2bonds(string: &str) -> HashSet<BondType> {
+    fn string2bonds(string: &str) -> HashSet<BondTopology> {
         let string_representation = string.trim().split("\n");
 
         let mut bonds = HashSet::new();
@@ -1015,7 +1015,7 @@ mod tests {
             let atom1 = AtomType::new_raw(index1, resname1, atomname1);
             let atom2 = AtomType::new_raw(index2, resname2, atomname2);
 
-            let bond = BondType::new_from_types(atom1, atom2);
+            let bond = BondTopology::new_from_types(atom1, atom2);
             bonds.insert(bond);
         }
 
@@ -1069,7 +1069,7 @@ mod tests {
         .unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
         let expected_topology = [pope_topology(), popc_topology(), popg_topology()];
-        let expected_order_bond_types =
+        let expected_order_bond_topologies =
             [pope_order_bonds(), popc_order_bonds(), popg_order_bonds()];
         let expected_n_instances = [131, 128, 15];
         let expected_bond_instances = [
@@ -1392,18 +1392,22 @@ mod tests {
             assert_eq!(molecule.name(), expected_names[i]);
             assert_eq!(molecule.topology(), &expected_topology[i]);
             let order_bonds = molecule.order_bonds();
-            let order_bond_types: HashSet<BondType> = order_bonds
-                .bonds()
+            let order_bond_topologies: HashSet<BondTopology> = order_bonds
+                .bond_types()
                 .iter()
-                .map(|x| x.bond_type().clone())
+                .map(|x| x.bond_topology().clone())
                 .collect();
 
-            assert_eq!(order_bond_types, expected_order_bond_types[i]);
+            assert_eq!(order_bond_topologies, expected_order_bond_topologies[i]);
 
-            for (b, bond_instances) in order_bonds.bonds().iter().map(|x| (x, x.bonds().clone())) {
+            for (b, bond_instances) in order_bonds
+                .bond_types()
+                .iter()
+                .map(|x| (x, x.bonds().clone()))
+            {
                 assert_eq!(bond_instances.len(), expected_n_instances[i]);
-                if b.bond_type().atom1().relative_index() == relative_indices[i].0
-                    && b.bond_type().atom2().relative_index() == relative_indices[i].1
+                if b.bond_topology().atom1().relative_index() == relative_indices[i].0
+                    && b.bond_topology().atom2().relative_index() == relative_indices[i].1
                 {
                     assert_eq!(bond_instances, expected_bond_instances[i]);
                 }
@@ -1421,7 +1425,7 @@ mod tests {
         }
     }
 
-    fn pope_cg_bonds() -> HashSet<BondType> {
+    fn pope_cg_bonds() -> HashSet<BondTopology> {
         let string_representation = "
 0 POPE NH3 1 POPE PO4
 1 POPE PO4 2 POPE GL1
@@ -1456,7 +1460,7 @@ mod tests {
         string2atoms(string_representation)
     }
 
-    fn popg_cg_bonds() -> HashSet<BondType> {
+    fn popg_cg_bonds() -> HashSet<BondTopology> {
         let string_representation = "
 0 POPG GL0 1 POPG PO4
 1 POPG PO4 2 POPG GL1
@@ -1521,7 +1525,7 @@ mod tests {
                 bonds: popg_cg_bonds(),
             },
         ];
-        let expected_order_bond_types = [pope_cg_bonds(), popg_cg_bonds()];
+        let expected_order_bond_topologies = [pope_cg_bonds(), popg_cg_bonds()];
         let expected_n_instances = [216, 72];
         let expected_bond_instances = [
             vec![
@@ -2147,17 +2151,21 @@ mod tests {
             assert_eq!(molecule.name(), expected_names[i]);
             assert_eq!(molecule.topology(), &expected_topology[i]);
             let order_bonds = molecule.order_bonds();
-            let order_bond_types: HashSet<BondType> = order_bonds
-                .bonds()
+            let order_bond_topologies: HashSet<BondTopology> = order_bonds
+                .bond_types()
                 .iter()
-                .map(|x| x.bond_type().clone())
+                .map(|x| x.bond_topology().clone())
                 .collect();
-            assert_eq!(order_bond_types, expected_order_bond_types[i]);
+            assert_eq!(order_bond_topologies, expected_order_bond_topologies[i]);
 
-            for (b, bond_instances) in order_bonds.bonds().iter().map(|x| (x, x.bonds().clone())) {
+            for (b, bond_instances) in order_bonds
+                .bond_types()
+                .iter()
+                .map(|x| (x, x.bonds().clone()))
+            {
                 assert_eq!(bond_instances.len(), expected_n_instances[i]);
-                if b.bond_type().atom1().relative_index() == relative_indices[i].0
-                    && b.bond_type().atom2().relative_index() == relative_indices[i].1
+                if b.bond_topology().atom1().relative_index() == relative_indices[i].0
+                    && b.bond_topology().atom2().relative_index() == relative_indices[i].1
                 {
                     assert_eq!(bond_instances, expected_bond_instances[i]);
                 }

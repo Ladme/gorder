@@ -7,7 +7,7 @@ use std::io::Write;
 
 use crate::{
     analysis::{
-        molecule::{AtomType, Bond, MoleculeType},
+        molecule::{AtomType, BondType, MoleculeType},
         topology::SystemTopology,
     },
     errors::WriteError,
@@ -36,8 +36,8 @@ struct BondResults {
     lower: Option<f32>,
 }
 
-impl From<&Bond> for BondResults {
-    fn from(value: &Bond) -> Self {
+impl From<&BondType> for BondResults {
+    fn from(value: &BondType) -> Self {
         let (total, upper, lower) = value.calc_order();
 
         BondResults {
@@ -139,9 +139,9 @@ impl MoleculeType {
         log::info!(
             "Molecule type {}: {} order bonds, {} molecules.",
             self.name(),
-            self.order_bonds().bonds().len(),
+            self.order_bonds().bond_types().len(),
             self.order_bonds()
-                .bonds()
+                .bond_types()
                 .get(0)
                 .expect(PANIC_MESSAGE)
                 .bonds()

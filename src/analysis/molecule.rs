@@ -94,7 +94,7 @@ impl MoleculeType {
         simbox: &SimBox,
         membrane_normal: &Vector3D,
     ) -> Result<(), AnalysisError> {
-        for bond_type in self.order_bonds.bonds.iter_mut() {
+        for bond_type in self.order_bonds.bond_types.iter_mut() {
             for (molecule_index, (index1, index2)) in bond_type.bonds.iter().enumerate() {
                 let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
                 let atom2 = unsafe { frame.get_atom_unchecked(*index2) };
@@ -155,7 +155,7 @@ impl Add<MoleculeType> for MoleculeType {
 /// Collection of all bond types in a molecule describing its topology.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct MoleculeTopology {
-    pub(super) bonds: HashSet<BondType>,
+    pub(super) bonds: HashSet<BondTopology>,
 }
 
 impl MoleculeTopology {
@@ -175,7 +175,7 @@ impl MoleculeTopology {
         let mut converted_bonds = HashSet::new();
         for &(index1, index2) in bonds {
             let (atom1, atom2) = get_atoms_from_bond(system, index1, index2);
-            let bond = BondType::new(index1 - min_index, atom1, index2 - min_index, atom2);
+            let bond = BondTopology::new(index1 - min_index, atom1, index2 - min_index, atom2);
 
             if !converted_bonds.insert(bond) {
                 panic!(
@@ -195,7 +195,7 @@ impl MoleculeTopology {
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct OrderBonds {
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
-    bonds: Vec<Bond>,
+    bond_types: Vec<BondType>,
 }
 
 impl OrderBonds {
@@ -230,7 +230,7 @@ impl OrderBonds {
         let mut order_bonds = Vec::new();
         for &(index1, index2) in bonds.iter() {
             let (atom1, atom2) = get_atoms_from_bond(system, index1, index2);
-            let bond = Bond::new(
+            let bond = BondType::new(
                 index1,
                 atom1,
                 index2,
@@ -246,19 +246,21 @@ impl OrderBonds {
 
         // sort order bonds so that atoms with lower indices come first
         order_bonds.sort_by(|b1, b2| {
-            b1.bond_type()
+            b1.bond_topology()
                 .atom1()
                 .relative_index()
-                .cmp(&b2.bond_type().atom1().relative_index())
+                .cmp(&b2.bond_topology().atom1().relative_index())
                 .then_with(|| {
-                    b1.bond_type()
+                    b1.bond_topology()
                         .atom2()
                         .relative_index()
-                        .cmp(&b2.bond_type().atom2().relative_index())
+                        .cmp(&b2.bond_topology().atom2().relative_index())
                 })
         });
 
-        Ok(OrderBonds { bonds: order_bonds })
+        Ok(OrderBonds {
+            bond_types: order_bonds,
+        })
     }
 
     /// Insert new real bonds to already constructed order bonds.
@@ -272,12 +274,13 @@ impl OrderBonds {
 
         for &(index1, index2) in bonds.iter() {
             let (atom1, atom2) = get_atoms_from_bond(system, index1, index2);
-            let bond_type = BondType::new(index1 - min_index, atom1, index2 - min_index, atom2);
+            let bond_topology =
+                BondTopology::new(index1 - min_index, atom1, index2 - min_index, atom2);
 
             if let Some(order_bond) = self
-                .bonds
+                .bond_types
                 .iter_mut()
-                .find(|order_bond| order_bond.bond_type == bond_type)
+                .find(|order_bond| order_bond.bond_topology == bond_topology)
             {
                 order_bond.insert(index1, index2);
             } else {
@@ -295,12 +298,12 @@ impl Add<OrderBonds> for OrderBonds {
 
     fn add(self, rhs: OrderBonds) -> Self::Output {
         OrderBonds {
-            bonds: self
-                .bonds
+            bond_types: self
+                .bond_types
                 .into_iter()
-                .zip(rhs.bonds.into_iter())
+                .zip(rhs.bond_types.into_iter())
                 .map(|(a, b)| a + b)
-                .collect::<Vec<Bond>>(),
+                .collect::<Vec<BondType>>(),
         }
     }
 }
@@ -373,9 +376,9 @@ impl OrderAtoms {
 }
 
 #[derive(Debug, Clone, Getters, MutGetters)]
-pub(crate) struct Bond {
+pub(crate) struct BondType {
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    bond_type: BondType,
+    bond_topology: BondTopology,
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     bonds: Vec<(usize, usize)>,
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
@@ -394,7 +397,7 @@ pub(crate) struct Bond {
     lower_map: Option<Map>,
 }
 
-impl Bond {
+impl BondType {
     /// Create a new bond for the calculation of order parameters.
     pub(crate) fn new(
         abs_index_1: usize,
@@ -406,8 +409,8 @@ impl Bond {
         ordermap: Option<&OrderMap>,
         min_samples: usize,
         simbox: &SimBox,
-    ) -> Bond {
-        let bond_type = BondType::new(
+    ) -> Self {
+        let bond_topology = BondTopology::new(
             abs_index_1 - min_index,
             atom_1,
             abs_index_2 - min_index,
@@ -431,8 +434,8 @@ impl Bond {
             (None, None)
         };
 
-        Bond {
-            bond_type,
+        Self {
+            bond_topology,
             bonds: vec![real_bond],
             total: Order::default(),
             upper: leaflet_order.clone(),
@@ -455,13 +458,13 @@ impl Bond {
 
     /// Does this bond involve a specific atom type?
     pub(crate) fn contains(&self, atom: &AtomType) -> bool {
-        self.bond_type().contains(atom)
+        self.bond_topology().contains(atom)
     }
 
     /// Return the other atom involved in this bond.
     /// If the provided atom is not involved in the bond, return `None`.
     pub(crate) fn get_other_atom(&self, atom: &AtomType) -> Option<&AtomType> {
-        self.bond_type().get_other_atom(atom)
+        self.bond_topology().get_other_atom(atom)
     }
 
     /// Calculate average order parameter for the full membrane and optionally for
@@ -488,11 +491,11 @@ impl Bond {
     }
 }
 
-impl Add<Bond> for Bond {
-    type Output = Bond;
-    fn add(self, rhs: Bond) -> Self::Output {
-        Bond {
-            bond_type: self.bond_type,
+impl Add<BondType> for BondType {
+    type Output = BondType;
+    fn add(self, rhs: BondType) -> Self::Output {
+        BondType {
+            bond_topology: self.bond_topology,
             bonds: self.bonds,
             total: self.total + rhs.total,
             upper: merge_option_order(self.upper, rhs.upper),
@@ -506,15 +509,15 @@ impl Add<Bond> for Bond {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters)]
-pub(crate) struct BondType {
+pub(crate) struct BondTopology {
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     atom1: AtomType,
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     atom2: AtomType,
 }
 
-impl BondType {
-    /// Construct a new BondType.
+impl BondTopology {
+    /// Construct a new BondTopology.
     /// The provided atoms can be in any order. In the constructed structure, the atom
     /// with the smaller index will always be the `atom1`.
     pub(super) fn new(
@@ -522,14 +525,14 @@ impl BondType {
         atom_1: &Atom,
         relative_index_2: usize,
         atom_2: &Atom,
-    ) -> BondType {
+    ) -> BondTopology {
         if relative_index_1 < relative_index_2 {
-            BondType {
+            BondTopology {
                 atom1: AtomType::new(relative_index_1, atom_1),
                 atom2: AtomType::new(relative_index_2, atom_2),
             }
         } else {
-            BondType {
+            BondTopology {
                 atom1: AtomType::new(relative_index_2, atom_2),
                 atom2: AtomType::new(relative_index_1, atom_1),
             }
@@ -537,8 +540,8 @@ impl BondType {
     }
 
     #[allow(unused)]
-    pub(super) fn new_from_types(atom_type1: AtomType, atom_type2: AtomType) -> BondType {
-        BondType {
+    pub(super) fn new_from_types(atom_type1: AtomType, atom_type2: AtomType) -> BondTopology {
+        BondTopology {
             atom1: atom_type1,
             atom2: atom_type2,
         }
@@ -671,8 +674,8 @@ mod tests {
         let atom1 = Atom::new(1, "POPE", 1, "N");
         let atom2 = Atom::new(1, "POPE", 6, "HN");
 
-        let bond1 = BondType::new(0, &atom1, 5, &atom2);
-        let bond2 = BondType::new(5, &atom2, 0, &atom1);
+        let bond1 = BondTopology::new(0, &atom1, 5, &atom2);
+        let bond2 = BondTopology::new(5, &atom2, 0, &atom1);
 
         assert_eq!(bond1, bond2);
     }
@@ -682,7 +685,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let bond1 = Bond::new(
+        let bond1 = BondType::new(
             455,
             &atom1,
             460,
@@ -693,7 +696,7 @@ mod tests {
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
         );
-        let bond2 = Bond::new(
+        let bond2 = BondType::new(
             460,
             &atom2,
             455,
@@ -705,7 +708,7 @@ mod tests {
             &SimBox::from([10.0, 10.0, 10.0]),
         );
 
-        assert_eq!(bond1.bond_type, bond2.bond_type);
+        assert_eq!(bond1.bond_topology, bond2.bond_topology);
         assert_eq!(bond1.bonds.len(), 1);
         assert_eq!(bond2.bonds.len(), 1);
         assert_eq!(bond1.bonds[0], bond2.bonds[0]);
@@ -716,7 +719,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let bond = Bond::new(
+        let bond = BondType::new(
             455,
             &atom1,
             460,
@@ -743,7 +746,7 @@ mod tests {
             .output_directory(".")
             .build()
             .unwrap();
-        let bond = Bond::new(
+        let bond = BondType::new(
             455,
             &atom1,
             460,
@@ -773,7 +776,7 @@ mod tests {
             .output_directory(".")
             .build()
             .unwrap();
-        let bond = Bond::new(
+        let bond = BondType::new(
             455,
             &atom1,
             460,
@@ -797,7 +800,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let mut bond = Bond::new(
+        let mut bond = BondType::new(
             455,
             &atom1,
             460,
@@ -823,7 +826,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let mut bond = Bond::new(
+        let mut bond = BondType::new(
             455,
             &atom1,
             460,
@@ -850,7 +853,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let mut bond = Bond::new(
+        let mut bond = BondType::new(
             455,
             &atom1,
             460,
@@ -897,33 +900,33 @@ mod tests {
         }
     }
 
-    fn expected_bonds(system: &System) -> [BondType; 5] {
+    fn expected_bonds(system: &System) -> [BondTopology; 5] {
         [
-            BondType::new(
+            BondTopology::new(
                 44,
                 system.get_atom(169).unwrap(),
                 45,
                 system.get_atom(170).unwrap(),
             ),
-            BondType::new(
+            BondTopology::new(
                 44,
                 system.get_atom(169).unwrap(),
                 46,
                 system.get_atom(171).unwrap(),
             ),
-            BondType::new(
+            BondTopology::new(
                 88,
                 system.get_atom(213).unwrap(),
                 89,
                 system.get_atom(214).unwrap(),
             ),
-            BondType::new(
+            BondTopology::new(
                 88,
                 system.get_atom(213).unwrap(),
                 90,
                 system.get_atom(215).unwrap(),
             ),
-            BondType::new(
+            BondTopology::new(
                 121,
                 system.get_atom(246).unwrap(),
                 122,
@@ -942,11 +945,11 @@ mod tests {
         let expected_bonds = expected_bonds(&system);
 
         // bonds can be in any order inside `order_bonds`
-        for bond in order_bonds.bonds.iter() {
+        for bond in order_bonds.bond_types.iter() {
             let expected = expected_bonds
                 .iter()
                 .enumerate()
-                .find(|(_, expected)| &bond.bond_type == *expected);
+                .find(|(_, expected)| &bond.bond_topology == *expected);
 
             if let Some((i, _)) = expected {
                 assert_eq!(bond.bonds.len(), 1);
@@ -969,11 +972,11 @@ mod tests {
         order_bonds.insert(&system, &new_bonds_set, 875);
 
         let expected_bonds = expected_bonds(&system);
-        for bond in order_bonds.bonds.iter() {
+        for bond in order_bonds.bond_types.iter() {
             let expected = expected_bonds
                 .iter()
                 .enumerate()
-                .find(|(_, expected)| &bond.bond_type == *expected);
+                .find(|(_, expected)| &bond.bond_topology == *expected);
 
             if let Some((i, _)) = expected {
                 assert_eq!(bond.bonds.len(), 2);

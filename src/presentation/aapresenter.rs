@@ -16,7 +16,7 @@ use std::io::Write;
 
 use crate::{
     analysis::{
-        molecule::{AtomType, Bond, MoleculeType},
+        molecule::{AtomType, BondType, MoleculeType},
         topology::SystemTopology,
     },
     errors::WriteError,
@@ -300,7 +300,7 @@ impl From<&MoleculeType> for AAMoleculeResults {
         for heavy_atom in value.order_atoms().atoms() {
             let mut relevant_bonds = Vec::new();
 
-            for bond in value.order_bonds().bonds() {
+            for bond in value.order_bonds().bond_types() {
                 if bond.contains(heavy_atom) {
                     relevant_bonds.push(bond);
                 }
@@ -444,7 +444,7 @@ struct AAAtomResults {
 }
 
 impl AAAtomResults {
-    fn new(bonds: &[&Bond], heavy_atom: &AtomType) -> Self {
+    fn new(bonds: &[&BondType], heavy_atom: &AtomType) -> Self {
         let mut totals = Vec::new();
         let mut uppers = Vec::new();
         let mut lowers = Vec::new();
@@ -876,7 +876,7 @@ order:
         let hydrogen1 = Atom::new(1, "POPC", 3, "HA");
         let hydrogen2 = Atom::new(1, "POPC", 4, "HB");
 
-        let mut bond1 = Bond::new(
+        let mut bond1 = BondType::new(
             0,
             &heavy_atom,
             2,
@@ -887,7 +887,7 @@ order:
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
         );
-        let mut bond2 = Bond::new(
+        let mut bond2 = BondType::new(
             0,
             &heavy_atom,
             3,
@@ -938,7 +938,7 @@ order:
         let hydrogen1 = Atom::new(1, "POPC", 3, "HA");
         let hydrogen2 = Atom::new(1, "POPC", 4, "HB");
 
-        let mut bond1 = Bond::new(
+        let mut bond1 = BondType::new(
             0,
             &heavy_atom,
             2,
@@ -949,7 +949,7 @@ order:
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
         );
-        let mut bond2 = Bond::new(
+        let mut bond2 = BondType::new(
             0,
             &heavy_atom,
             3,
