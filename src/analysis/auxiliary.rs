@@ -1447,7 +1447,8 @@ mod tests {
 
             assert_eq!(molecule.order_atoms(), &expected_order_atoms[i]);
 
-            if let Some(MoleculeLeafletClassification::Local(x)) = molecule.leaflet_classification()
+            if let Some(MoleculeLeafletClassification::Local(x, _)) =
+                molecule.leaflet_classification()
             {
                 assert_eq!(x.heads(), &expected_heads[i]);
                 assert_eq!(x.radius(), 2.5);
@@ -2205,7 +2206,7 @@ mod tests {
 
             assert_eq!(molecule.order_atoms(), &expected_order_atoms[i]);
 
-            if let Some(MoleculeLeafletClassification::Individual(x)) =
+            if let Some(MoleculeLeafletClassification::Individual(x, _)) =
                 molecule.leaflet_classification()
             {
                 assert_eq!(x.heads(), &expected_heads[i]);

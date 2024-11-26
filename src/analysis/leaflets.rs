@@ -40,41 +40,41 @@ impl LeafletClassification {
     }
 }
 
-pub(super) trait LeafletClassifier {
-    /// Assign a molecule into the membrane leaflet.
-    fn assign_to_leaflet(
-        &self,
-        system: &System,
-        molecule_index: usize,
-    ) -> Result<Leaflet, AnalysisError>;
-}
-
 #[derive(Debug, Clone)]
 pub(super) enum MoleculeLeafletClassification {
-    Global(GlobalClassification),
-    Local(LocalClassification),
-    Individual(IndividualClassification),
+    Global(GlobalClassification, AssignedLeaflets),
+    Local(LocalClassification, AssignedLeaflets),
+    Individual(IndividualClassification, AssignedLeaflets),
 }
 
 impl MoleculeLeafletClassification {
     pub(super) fn new(params: &LeafletClassification, membrane_normal: Dimension) -> Self {
         match params {
-            LeafletClassification::Global(_) => Self::Global(GlobalClassification {
-                heads: Vec::new(),
-                membrane_center: Vector3D::new(0.0, 0.0, 0.0),
-                membrane_normal,
-            }),
-            LeafletClassification::Local(_) => Self::Local(LocalClassification {
-                heads: Vec::new(),
-                radius: params.get_radius().expect(PANIC_MESSAGE),
-                membrane_center: Vec::new(),
-                membrane_normal,
-            }),
-            LeafletClassification::Individual(_) => Self::Individual(IndividualClassification {
-                heads: Vec::new(),
-                methyls: Vec::new(),
-                membrane_normal,
-            }),
+            LeafletClassification::Global(_) => Self::Global(
+                GlobalClassification {
+                    heads: Vec::new(),
+                    membrane_center: Vector3D::new(0.0, 0.0, 0.0),
+                    membrane_normal,
+                },
+                AssignedLeaflets::default(),
+            ),
+            LeafletClassification::Local(_) => Self::Local(
+                LocalClassification {
+                    heads: Vec::new(),
+                    radius: params.get_radius().expect(PANIC_MESSAGE),
+                    membrane_center: Vec::new(),
+                    membrane_normal,
+                },
+                AssignedLeaflets::default(),
+            ),
+            LeafletClassification::Individual(_) => Self::Individual(
+                IndividualClassification {
+                    heads: Vec::new(),
+                    methyls: Vec::new(),
+                    membrane_normal,
+                },
+                AssignedLeaflets::default(),
+            ),
         }
     }
 
@@ -86,10 +86,21 @@ impl MoleculeLeafletClassification {
         system: &System,
     ) -> Result<(), TopologyError> {
         match self {
-            Self::Global(x) => x.insert(molecule, system),
-            Self::Local(x) => x.insert(molecule, system),
-            Self::Individual(x) => x.insert(molecule, system),
+            Self::Global(x, y) => {
+                x.insert(molecule, system)?;
+                y.assignment.push(None);
+            }
+            Self::Local(x, y) => {
+                x.insert(molecule, system)?;
+                y.assignment.push(None);
+            }
+            Self::Individual(x, y) => {
+                x.insert(molecule, system)?;
+                y.assignment.push(None);
+            }
         }
+
+        Ok(())
     }
 }
 
@@ -140,21 +151,61 @@ fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>
     Ok(atoms)
 }
 
-impl LeafletClassifier for MoleculeLeafletClassification {
+impl MoleculeLeafletClassification {
+    /// Identify leaflet in which the molecule with specified index is located.
     #[inline(always)]
-    fn assign_to_leaflet(
+    #[allow(unused)]
+    fn identify_leaflet(
         &self,
         system: &System,
         molecule_index: usize,
     ) -> Result<Leaflet, AnalysisError> {
         match self {
-            MoleculeLeafletClassification::Global(x) => x.assign_to_leaflet(system, molecule_index),
-            MoleculeLeafletClassification::Local(x) => x.assign_to_leaflet(system, molecule_index),
-            MoleculeLeafletClassification::Individual(x) => {
-                x.assign_to_leaflet(system, molecule_index)
+            MoleculeLeafletClassification::Global(x, _) => {
+                x.identify_leaflet(system, molecule_index)
+            }
+            MoleculeLeafletClassification::Local(x, _) => {
+                x.identify_leaflet(system, molecule_index)
+            }
+            MoleculeLeafletClassification::Individual(x, _) => {
+                x.identify_leaflet(system, molecule_index)
             }
         }
     }
+
+    /// Assign all lipids into their respective leaflets.
+    #[inline(always)]
+    pub(super) fn assign_lipids(&mut self, system: &System) -> Result<(), AnalysisError> {
+        match self {
+            MoleculeLeafletClassification::Global(x, y) => y.assign_lipids(system, x),
+            MoleculeLeafletClassification::Local(x, y) => y.assign_lipids(system, x),
+            MoleculeLeafletClassification::Individual(x, y) => y.assign_lipids(system, x),
+        }
+    }
+
+    /// Get the leaflet a molecule with target index is located in.
+    #[inline(always)]
+    pub(super) fn get_assigned_leaflet(&self, molecule_index: usize) -> Option<Leaflet> {
+        match self {
+            MoleculeLeafletClassification::Global(_, y)
+            | MoleculeLeafletClassification::Local(_, y)
+            | MoleculeLeafletClassification::Individual(_, y) => {
+                y.get_assigned_leaflet(molecule_index)
+            }
+        }
+    }
+}
+
+trait LeafletClassifier {
+    /// Caclulate membrane leaflet the specified molecule belongs to.
+    fn identify_leaflet(
+        &self,
+        system: &System,
+        molecule_index: usize,
+    ) -> Result<Leaflet, AnalysisError>;
+
+    /// Get the number of molecules in the system.
+    fn n_molecules(&self) -> usize;
 }
 
 #[derive(Debug, Clone, CopyGetters, Getters, MutGetters, Setters)]
@@ -179,20 +230,24 @@ impl GlobalClassification {
 }
 
 impl LeafletClassifier for GlobalClassification {
-    /// Assign a molecule into membrane leaflet.
     #[inline(always)]
-    fn assign_to_leaflet(
+    fn identify_leaflet(
         &self,
         system: &System,
         molecule_index: usize,
     ) -> Result<Leaflet, AnalysisError> {
-        common_assign_to_leaflet(
+        common_identify_leaflet(
             &self.heads,
             molecule_index,
             system,
             self.membrane_center(),
             self.membrane_normal(),
         )
+    }
+
+    #[inline(always)]
+    fn n_molecules(&self) -> usize {
+        self.heads.len()
     }
 }
 
@@ -252,14 +307,13 @@ impl LocalClassification {
 }
 
 impl LeafletClassifier for LocalClassification {
-    /// Assign a molecule into membrane leaflet.
-    #[inline]
-    fn assign_to_leaflet(
+    #[inline(always)]
+    fn identify_leaflet(
         &self,
         system: &System,
         molecule_index: usize,
     ) -> Result<Leaflet, AnalysisError> {
-        common_assign_to_leaflet(
+        common_identify_leaflet(
             &self.heads,
             molecule_index,
             system,
@@ -269,10 +323,15 @@ impl LeafletClassifier for LocalClassification {
             self.membrane_normal(),
         )
     }
+
+    #[inline(always)]
+    fn n_molecules(&self) -> usize {
+        self.heads.len()
+    }
 }
 
-/// Handles assignment of lipid into a membrane leaflet for the Global and Local classification.
-fn common_assign_to_leaflet(
+/// Handles classification of lipid into a membrane leaflet for the Global and Local classification.
+fn common_identify_leaflet(
     heads: &Vec<usize>,
     molecule_index: usize,
     system: &System,
@@ -335,8 +394,7 @@ impl IndividualClassification {
 }
 
 impl LeafletClassifier for IndividualClassification {
-    /// Assign a molecule into membrane leaflet.
-    fn assign_to_leaflet(
+    fn identify_leaflet(
         &self,
         system: &System,
         molecule_index: usize,
@@ -360,6 +418,45 @@ impl LeafletClassifier for IndividualClassification {
         } else {
             Ok(Leaflet::Lower)
         }
+    }
+
+    #[inline(always)]
+    fn n_molecules(&self) -> usize {
+        self.heads.len()
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub(super) struct AssignedLeaflets {
+    assignment: Vec<Option<Leaflet>>,
+}
+
+impl AssignedLeaflets {
+    /// Assign all lipids into membrane leaflets.
+    ///
+    /// ## Panic
+    /// Panics if the number of molecules in the classifier does not match the number of molecules in the assignment vector.
+    fn assign_lipids(
+        &mut self,
+        system: &System,
+        classifier: &impl LeafletClassifier,
+    ) -> Result<(), AnalysisError> {
+        assert_eq!(classifier.n_molecules(), self.assignment.len(), "FATAL GORDER ERROR | AssignedLeaflets::assign_lipids | Inconsistent number of molecules.");
+
+        self.assignment
+            .iter_mut()
+            .enumerate()
+            .try_for_each(|(index, assignment)| {
+                *assignment = Some(classifier.identify_leaflet(system, index)?);
+                Ok(())
+            })?;
+
+        Ok(())
+    }
+
+    /// Get the leaflet that was assigned to molecule of target index.
+    fn get_assigned_leaflet(&self, molecule_index: usize) -> Option<Leaflet> {
+        *self.assignment.get(molecule_index).expect(PANIC_MESSAGE)
     }
 }
 
@@ -385,7 +482,7 @@ mod tests {
         classifier.insert(&group2, &system).unwrap();
         classifier.insert(&group3, &system).unwrap();
 
-        if let MoleculeLeafletClassification::Global(x) = classifier {
+        if let MoleculeLeafletClassification::Global(x, _) = classifier {
             assert_eq!(x.heads, vec![760, 18002, 34047]);
         } else {
             panic!("Invalid classifier type.")
@@ -409,7 +506,7 @@ mod tests {
         classifier.insert(&group2, &system).unwrap();
         classifier.insert(&group3, &system).unwrap();
 
-        if let MoleculeLeafletClassification::Local(x) = classifier {
+        if let MoleculeLeafletClassification::Local(x, _) = classifier {
             assert_eq!(x.heads, vec![760, 18002, 34047]);
             assert_eq!(x.radius, 3.3);
         } else {
@@ -435,7 +532,7 @@ mod tests {
         classifier.insert(&group2, &system).unwrap();
         classifier.insert(&group3, &system).unwrap();
 
-        if let MoleculeLeafletClassification::Individual(x) = classifier {
+        if let MoleculeLeafletClassification::Individual(x, _) = classifier {
             assert_eq!(x.heads, vec![760, 18002, 34047]);
             assert_eq!(x.methyls, vec![[828, 871], [18070, 18113], [34115, 34158]]);
         } else {
@@ -627,7 +724,7 @@ mod tests {
             .unwrap();
 
         match &mut classifier {
-            MoleculeLeafletClassification::Global(x) => {
+            MoleculeLeafletClassification::Global(x, _) => {
                 x.heads_mut().push(1385);
                 x.heads_mut().push(11885);
                 x.set_membrane_center(membrane_center);
@@ -636,11 +733,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.assign_to_leaflet(&system, 0).unwrap(),
+            classifier.identify_leaflet(&system, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.assign_to_leaflet(&system, 1).unwrap(),
+            classifier.identify_leaflet(&system, 1).unwrap(),
             Leaflet::Lower
         );
     }
@@ -658,7 +755,7 @@ mod tests {
             .unwrap();
 
         match &mut classifier {
-            MoleculeLeafletClassification::Local(x) => {
+            MoleculeLeafletClassification::Local(x, _) => {
                 x.heads_mut().push(1385);
                 x.heads_mut().push(11885);
                 x.membrane_center_mut().push(Vector3D::new(0.0, 0.0, 0.0));
@@ -669,11 +766,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.assign_to_leaflet(&system, 0).unwrap(),
+            classifier.identify_leaflet(&system, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.assign_to_leaflet(&system, 1).unwrap(),
+            classifier.identify_leaflet(&system, 1).unwrap(),
             Leaflet::Lower
         );
     }
@@ -687,7 +784,7 @@ mod tests {
         );
 
         match &mut classifier {
-            MoleculeLeafletClassification::Individual(x) => {
+            MoleculeLeafletClassification::Individual(x, _) => {
                 x.heads_mut().push(1385);
                 x.heads_mut().push(11885);
                 x.methyls_mut().push(vec![1453, 1496]);
@@ -697,11 +794,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.assign_to_leaflet(&system, 0).unwrap(),
+            classifier.identify_leaflet(&system, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.assign_to_leaflet(&system, 1).unwrap(),
+            classifier.identify_leaflet(&system, 1).unwrap(),
             Leaflet::Lower
         );
     }

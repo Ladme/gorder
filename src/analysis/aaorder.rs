@@ -213,7 +213,7 @@ fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), Analys
             .expect(PANIC_MESSAGE)
             .leaflet_classification()
         {
-            Some(MoleculeLeafletClassification::Global(_)) => frame
+            Some(MoleculeLeafletClassification::Global(_, _)) => frame
                 .group_get_center(group_name!("Membrane"))
                 .map(Some)
                 .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter),
@@ -221,16 +221,21 @@ fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), Analys
         }
     }?;
 
+    // assign molecules to leaflets
     for molecule in data.molecule_types_mut().iter_mut() {
-        match molecule.leaflet_classification_mut() {
-            Some(MoleculeLeafletClassification::Global(x)) => {
-                x.set_membrane_center(membrane_center.clone().expect(PANIC_MESSAGE));
-            }
-            Some(MoleculeLeafletClassification::Local(x)) => {
-                x.set_membrane_center(frame, membrane_normal)?;
-            }
-            Some(MoleculeLeafletClassification::Individual(_)) | None => (),
-        };
+        if let Some(classifier) = molecule.leaflet_classification_mut() {
+            match classifier {
+                MoleculeLeafletClassification::Global(x, _) => {
+                    x.set_membrane_center(membrane_center.clone().expect(PANIC_MESSAGE));
+                }
+                MoleculeLeafletClassification::Local(x, _) => {
+                    x.set_membrane_center(frame, membrane_normal)?;
+                }
+                MoleculeLeafletClassification::Individual(_, _) => (),
+            };
+
+            classifier.assign_lipids(frame)?;
+        }
 
         molecule.analyze_frame(frame, &simbox, &membrane_normal.into())?;
     }

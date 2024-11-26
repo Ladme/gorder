@@ -21,7 +21,7 @@ use crate::{
 };
 
 use super::{
-    leaflets::{LeafletClassifier, MoleculeLeafletClassification},
+    leaflets::MoleculeLeafletClassification,
     ordermap::{merge_option_maps, Map},
 };
 
@@ -491,9 +491,12 @@ impl BondType {
                 map.add_order(sch, &((pos1 + pos2) / 2.0));
             }
 
-            // assign molecule to leaflet
+            // get the assignment of molecule (assignment is performed earlier)
             if let Some(classifier) = leaflet_classification {
-                match classifier.assign_to_leaflet(frame, molecule_index)? {
+                match classifier
+                    .get_assigned_leaflet(molecule_index)
+                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | BondType::analyze_frame | Molecule with internal gorder index '{}' is not assigned into a leaflet.", molecule_index)) 
+                {
                     Leaflet::Upper => {
                         *self.upper.as_mut().expect(PANIC_MESSAGE) += sch;
                         if let Some(map) = self.upper_map.as_mut() {
