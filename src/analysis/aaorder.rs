@@ -15,6 +15,7 @@ use groan_rs::{
     prelude::{ProgressPrinter, XtcReader},
     system::System,
 };
+use once_cell::unsync::OnceCell;
 
 /// Calculate the atomistic lipid order parameters.
 pub(super) fn analyze_atomistic(
@@ -206,27 +207,20 @@ fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), Analys
     }
 
     let membrane_normal = data.membrane_normal().into();
-    let membrane_center = {
-        match data
-            .molecule_types()
-            .get(0)
-            .expect(PANIC_MESSAGE)
-            .leaflet_classification()
-        {
-            Some(MoleculeLeafletClassification::Global(_, _)) => frame
-                .group_get_center(group_name!("Membrane"))
-                .map(Some)
-                .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter),
-            _ => Ok(None), // no applicable classification, return Ok with None
-        }
-    }?;
+    let membrane_center = OnceCell::new();
 
     // assign molecules to leaflets
     for molecule in data.molecule_types_mut().iter_mut() {
         if let Some(classifier) = molecule.leaflet_classification_mut() {
             match classifier {
                 MoleculeLeafletClassification::Global(x, _) => {
-                    x.set_membrane_center(membrane_center.clone().expect(PANIC_MESSAGE));
+                    let center = membrane_center.get_or_try_init(|| {
+                        frame
+                            .group_get_center(group_name!("Membrane"))
+                            .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
+                    })?;
+
+                    x.set_membrane_center(center.clone());
                 }
                 MoleculeLeafletClassification::Local(x, _) => {
                     x.set_membrane_center(frame, membrane_normal)?;
