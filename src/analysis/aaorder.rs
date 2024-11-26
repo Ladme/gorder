@@ -141,6 +141,7 @@ pub(super) fn analyze_atomistic(
 
     // write out the maps
     result.handle_ordermap_directory(analysis.overwrite())?;
+    result.prepare_directories()?;
     result.write_ordermaps_bonds()?;
     result.write_ordermaps_atoms()?;
 

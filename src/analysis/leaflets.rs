@@ -79,6 +79,7 @@ impl MoleculeLeafletClassification {
     }
 
     /// Insert new molecule into the classifier.
+    #[inline(always)]
     pub(super) fn insert(
         &mut self,
         molecule: &Group,
@@ -140,6 +141,7 @@ fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>
 }
 
 impl LeafletClassifier for MoleculeLeafletClassification {
+    #[inline(always)]
     fn assign_to_leaflet(
         &self,
         system: &System,
@@ -169,6 +171,7 @@ pub(super) struct GlobalClassification {
 }
 
 impl GlobalClassification {
+    #[inline(always)]
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
         self.heads.push(get_reference_head(molecule, system)?);
         Ok(())
@@ -177,6 +180,7 @@ impl GlobalClassification {
 
 impl LeafletClassifier for GlobalClassification {
     /// Assign a molecule into membrane leaflet.
+    #[inline(always)]
     fn assign_to_leaflet(
         &self,
         system: &System,
@@ -209,6 +213,7 @@ pub(super) struct LocalClassification {
 }
 
 impl LocalClassification {
+    #[inline(always)]
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
         self.heads.push(get_reference_head(molecule, system)?);
         self.membrane_center.push(Vector3D::new(0.0, 0.0, 0.0));
@@ -248,6 +253,7 @@ impl LocalClassification {
 
 impl LeafletClassifier for LocalClassification {
     /// Assign a molecule into membrane leaflet.
+    #[inline]
     fn assign_to_leaflet(
         &self,
         system: &System,

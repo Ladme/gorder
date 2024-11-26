@@ -68,6 +68,7 @@ impl MoleculeType {
     }
 
     /// Insert new bond instances to the molecule.
+    #[inline]
     pub(super) fn insert(
         &mut self,
         system: &System,
@@ -88,51 +89,24 @@ impl MoleculeType {
     }
 
     /// Calculate order parameters for bonds of a single molecule type from a single simulation frame.
+    #[inline]
     pub(super) fn analyze_frame(
         &mut self,
         frame: &System,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
     ) -> Result<(), AnalysisError> {
-        for bond_type in self.order_bonds.bond_types.iter_mut() {
-            for (molecule_index, (index1, index2)) in bond_type.bonds.iter().enumerate() {
-                let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
-                let atom2 = unsafe { frame.get_atom_unchecked(*index2) };
-
-                let pos1 = atom1
-                    .get_position()
-                    .ok_or_else(|| AnalysisError::UndefinedPosition(atom1.get_atom_number()))?;
-
-                let pos2 = atom2
-                    .get_position()
-                    .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_atom_number()))?;
-
-                let sch = super::calc_sch(pos1, pos2, simbox, membrane_normal);
-                bond_type.total += sch;
-
-                if let Some(map) = bond_type.total_map.as_mut() {
-                    map.add_order(sch, &((pos1 + pos2) / 2.0));
-                }
-
-                // assign molecule to leaflet
-                if let Some(classifier) = &self.leaflet_classification {
-                    match classifier.assign_to_leaflet(frame, molecule_index)? {
-                        Leaflet::Upper => {
-                            *bond_type.upper.as_mut().expect(PANIC_MESSAGE) += sch;
-                            if let Some(map) = bond_type.upper_map.as_mut() {
-                                map.add_order(sch, &((pos1 + pos2) / 2.0));
-                            }
-                        }
-                        Leaflet::Lower => {
-                            *bond_type.lower.as_mut().expect(PANIC_MESSAGE) += sch;
-                            if let Some(map) = bond_type.lower_map.as_mut() {
-                                map.add_order(sch, &((pos1 + pos2) / 2.0));
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        self.order_bonds
+            .bond_types
+            .iter_mut()
+            .try_for_each(|bond_type| {
+                bond_type.analyze_frame(
+                    frame,
+                    self.leaflet_classification.as_ref(),
+                    simbox,
+                    membrane_normal,
+                )
+            })?;
 
         Ok(())
     }
@@ -141,6 +115,7 @@ impl MoleculeType {
 impl Add<MoleculeType> for MoleculeType {
     type Output = Self;
 
+    #[inline(always)]
     fn add(self, rhs: Self) -> Self::Output {
         Self {
             name: self.name,
@@ -289,6 +264,7 @@ impl OrderBonds {
 impl Add<OrderBonds> for OrderBonds {
     type Output = OrderBonds;
 
+    #[inline(always)]
     fn add(self, rhs: OrderBonds) -> Self::Output {
         OrderBonds {
             bond_types: self
@@ -363,6 +339,7 @@ impl OrderAtoms {
     }
 
     #[allow(unused)]
+    #[inline(always)]
     pub(super) fn new_raw(atoms: Vec<AtomType>) -> Self {
         OrderAtoms { atoms }
     }
@@ -441,6 +418,7 @@ impl BondType {
     }
 
     /// Insert new real bond to the current order bond.
+    #[inline(always)]
     pub(super) fn insert(&mut self, abs_index_1: usize, abs_index_2: usize) {
         if abs_index_1 < abs_index_2 {
             self.bonds.push((abs_index_1, abs_index_2));
@@ -486,12 +464,61 @@ impl BondType {
         self.bond_topology().get_other_atom(atom)
     }
 
+    /// Calculate the current order parameter for this bond type.
+    fn analyze_frame(
+        &mut self,
+        frame: &System,
+        leaflet_classification: Option<&MoleculeLeafletClassification>,
+        simbox: &SimBox,
+        membrane_normal: &Vector3D,
+    ) -> Result<(), AnalysisError> {
+        for (molecule_index, (index1, index2)) in self.bonds.iter().enumerate() {
+            let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
+            let atom2 = unsafe { frame.get_atom_unchecked(*index2) };
+
+            let pos1 = atom1
+                .get_position()
+                .ok_or_else(|| AnalysisError::UndefinedPosition(atom1.get_atom_number()))?;
+
+            let pos2 = atom2
+                .get_position()
+                .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_atom_number()))?;
+
+            let sch = super::calc_sch(pos1, pos2, simbox, membrane_normal);
+            self.total += sch;
+
+            if let Some(map) = self.total_map.as_mut() {
+                map.add_order(sch, &((pos1 + pos2) / 2.0));
+            }
+
+            // assign molecule to leaflet
+            if let Some(classifier) = leaflet_classification {
+                match classifier.assign_to_leaflet(frame, molecule_index)? {
+                    Leaflet::Upper => {
+                        *self.upper.as_mut().expect(PANIC_MESSAGE) += sch;
+                        if let Some(map) = self.upper_map.as_mut() {
+                            map.add_order(sch, &((pos1 + pos2) / 2.0));
+                        }
+                    }
+                    Leaflet::Lower => {
+                        *self.lower.as_mut().expect(PANIC_MESSAGE) += sch;
+                        if let Some(map) = self.lower_map.as_mut() {
+                            map.add_order(sch, &((pos1 + pos2) / 2.0));
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Calculate average order parameter for the full membrane and optionally for
     /// the upper and lower leaflet from the collected data.
     pub(crate) fn calc_order(&self) -> (f32, Option<f32>, Option<f32>) {
         let checked_min_samples = NonZeroUsize::new(self.min_samples).unwrap_or_else(|| {
             panic!(
-                "FATAL GORDER ERROR | Bond::calc_order | 'min_samples' is ZERO. {}",
+                "FATAL GORDER ERROR | BondType::calc_order | 'min_samples' is ZERO. {}",
                 PANIC_MESSAGE
             )
         });
@@ -512,6 +539,8 @@ impl BondType {
 
 impl Add<BondType> for BondType {
     type Output = BondType;
+
+    #[inline]
     fn add(self, rhs: BondType) -> Self::Output {
         BondType {
             bond_topology: self.bond_topology,
@@ -539,6 +568,7 @@ impl BondTopology {
     /// Construct a new BondTopology.
     /// The provided atoms can be in any order. In the constructed structure, the atom
     /// with the smaller index will always be the `atom1`.
+    #[inline]
     pub(super) fn new(
         relative_index_1: usize,
         atom_1: &Atom,
@@ -559,6 +589,7 @@ impl BondTopology {
     }
 
     #[allow(unused)]
+    #[inline(always)]
     pub(super) fn new_from_types(atom_type1: AtomType, atom_type2: AtomType) -> BondTopology {
         BondTopology {
             atom1: atom_type1,
@@ -567,12 +598,14 @@ impl BondTopology {
     }
 
     /// Does this bond type involve the provided atom type?
+    #[inline(always)]
     fn contains(&self, atom: &AtomType) -> bool {
         self.atom1() == atom || self.atom2() == atom
     }
 
     /// Return the other atom involved in this bond.
     /// If the provided atom is not involved in the bond, return `None`.
+    #[inline(always)]
     fn get_other_atom(&self, atom: &AtomType) -> Option<&AtomType> {
         if self.atom1() == atom {
             Some(self.atom2())
@@ -595,6 +628,7 @@ pub(crate) struct AtomType {
 }
 
 impl AtomType {
+    #[inline(always)]
     pub(super) fn new(relative_index: usize, atom: &Atom) -> AtomType {
         AtomType {
             relative_index,
@@ -604,6 +638,7 @@ impl AtomType {
     }
 
     #[allow(unused)]
+    #[inline(always)]
     pub(crate) fn new_raw(relative_index: usize, residue_name: &str, atom_name: &str) -> AtomType {
         AtomType {
             relative_index,
@@ -614,6 +649,7 @@ impl AtomType {
 }
 
 impl fmt::Display for AtomType {
+    #[inline(always)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -635,6 +671,7 @@ pub(crate) struct Order {
 
 impl Order {
     #[allow(unused)]
+    #[inline(always)]
     pub(super) fn new(order: f32, n_samples: usize) -> Order {
         Order { order, n_samples }
     }
@@ -642,6 +679,7 @@ impl Order {
     /// Calculate average order from the collected data.
     ///
     /// Return `f32::NAN` if the number of samples is lower than the required minimal number.
+    #[inline(always)]
     pub(crate) fn calc_order(&self, min_samples: NonZeroUsize) -> f32 {
         if self.n_samples < min_samples.into() {
             f32::NAN
@@ -653,6 +691,8 @@ impl Order {
 
 impl Add<Order> for Order {
     type Output = Order;
+
+    #[inline(always)]
     fn add(self, rhs: Order) -> Self::Output {
         Order {
             order: self.order + rhs.order,
@@ -662,6 +702,7 @@ impl Add<Order> for Order {
 }
 
 impl AddAssign<f32> for Order {
+    #[inline(always)]
     fn add_assign(&mut self, rhs: f32) {
         self.order += rhs;
         self.n_samples += 1;
@@ -669,6 +710,7 @@ impl AddAssign<f32> for Order {
 }
 
 /// Helper function for merging optional Orders.
+#[inline]
 fn merge_option_order(lhs: Option<Order>, rhs: Option<Order>) -> Option<Order> {
     match (lhs, rhs) {
         (Some(x), Some(y)) => Some(x + y),

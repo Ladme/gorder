@@ -59,6 +59,7 @@ impl Map {
     }
 
     /// Add sampled order parameter to the correct position. Ignore if out of range.
+    #[inline(always)]
     pub(super) fn add_order(&mut self, order: f32, bond_pos: &Vector3D) {
         if let (Some(valbin), Some(samplebin)) = (
             self.values.get_mut_at(bond_pos.x, bond_pos.y),
@@ -92,6 +93,7 @@ impl Add<Map> for Map {
 }
 
 /// Helper function for merging optional Maps.
+#[inline]
 pub(super) fn merge_option_maps(lhs: Option<Map>, rhs: Option<Map>) -> Option<Map> {
     match (lhs, rhs) {
         (Some(x), Some(y)) => Some(x + y),

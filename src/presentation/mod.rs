@@ -37,6 +37,7 @@ struct BondResults {
 }
 
 impl From<&BondType> for BondResults {
+    #[inline(always)]
     fn from(value: &BondType) -> Self {
         let (total, upper, lower) = value.calc_order();
 
@@ -99,6 +100,7 @@ impl Serialize for AtomType {
 }
 
 /// Assumes that `None` value is ignored.
+#[inline(always)]
 fn round_serialize_option_f32<S>(x: &Option<f32>, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -106,6 +108,7 @@ where
     s.serialize_f32((x.expect(PANIC_MESSAGE) * 10000.0).round() / 10000.0)
 }
 
+#[inline(always)]
 fn round_serialize_f32<S>(x: &f32, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -135,6 +138,7 @@ impl Analysis {
 
 impl MoleculeType {
     /// Print basic information about the molecule type for the user.
+    #[inline(always)]
     fn info(&self) {
         log::info!(
             "Molecule type {}: {} order bonds, {} molecules.",
@@ -152,6 +156,7 @@ impl MoleculeType {
 
 impl SystemTopology {
     /// Print basic information about the system topology for the user.
+    #[inline(always)]
     pub(crate) fn info(&self) {
         log::info!(
             "Detected {} relevant molecule type(s).",

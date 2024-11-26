@@ -16,6 +16,7 @@ pub(crate) mod topology;
 
 impl Analysis {
     /// Perform the analysis and write out the results.
+    #[inline(always)]
     pub fn run(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         self.info();
         match self.analysis_type() {
@@ -32,6 +33,7 @@ impl Analysis {
 
 /// Calculate instantenous value of order parameter of a bond defined by two atoms.
 /// Simulation box must be valid and orthogonal.
+#[inline(always)]
 pub(super) fn calc_sch(
     pos1: &Vector3D,
     pos2: &Vector3D,

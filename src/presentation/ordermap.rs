@@ -16,10 +16,12 @@ use crate::{GORDER_VERSION, PANIC_MESSAGE};
 impl Map {
     /// Write the map of order parameters for a single heavy atom into an output file.
     /// Leaflet `None` corresponds to ordermap for the full membrane.
+    #[inline]
     pub(crate) fn write_atom_map(
         &self,
         atom: &AtomType,
         leaflet: Option<Leaflet>,
+        molname: &str,
     ) -> Result<(), OrderMapWriteError> {
         let filename = match leaflet {
             Some(Leaflet::Upper) => format!("ordermap_{}_upper.dat", atom),
@@ -29,16 +31,18 @@ impl Map {
 
         let comment = format!("# Map of average order parameters calculated for bonds involving atom type {}.\n# Calculated with 'gorder v{}'.", atom, GORDER_VERSION);
 
-        self.write_ordermap(&filename, &comment)
+        self.write_ordermap(&filename, molname, &comment)
     }
 
     /// Write the map of order parameters for a single bond into an output file.
     /// Leaflet `None` corresponds to ordermap for the full membrane.
+    #[inline]
     pub(crate) fn write_bond_map(
         &self,
         atom1: &AtomType,
         atom2: &AtomType,
         leaflet: Option<Leaflet>,
+        molname: &str,
     ) -> Result<(), OrderMapWriteError> {
         let filename = match leaflet {
             Some(Leaflet::Upper) => format!("ordermap_{}--{}_upper.dat", atom1, atom2),
@@ -48,14 +52,19 @@ impl Map {
 
         let comment = format!("# Map of average order parameters calculated for bonds between atom types {} and {}.\n# Calculated with 'gorder v{}'.", atom1, atom2, GORDER_VERSION);
 
-        self.write_ordermap(&filename, &comment)
+        self.write_ordermap(&filename, molname, &comment)
     }
 
-    fn write_ordermap(&self, filename: &str, comment: &str) -> Result<(), OrderMapWriteError> {
+    fn write_ordermap(
+        &self,
+        filename: &str,
+        molname: &str,
+        comment: &str,
+    ) -> Result<(), OrderMapWriteError> {
         // directory must already exist
         let directory = self.params().output_directory();
 
-        let full_path = format!("{}/{}", directory, filename);
+        let full_path = format!("{}/{}/{}", directory, molname, filename);
         let output_file = File::create(&full_path).map_err(|_| {
             OrderMapWriteError::CouldNotCreateFile(Box::from(Path::new(&full_path)))
         })?;
@@ -95,26 +104,45 @@ impl Map {
 }
 
 impl MoleculeType {
+    /// Create output directory for ordermaps of a single molecule.
+    fn create_molecule_dir(&self) -> Result<(), OrderMapWriteError> {
+        if let Some(map) = self
+            .order_bonds()
+            .bond_types()
+            .get(0)
+            .and_then(|bond| bond.total_map().as_ref())
+        {
+            let dirname = format!("{}/{}", map.params().output_directory(), self.name());
+            let path = Path::new(&dirname);
+
+            std::fs::create_dir(&path).map_err(|_| {
+                OrderMapWriteError::CouldNotCreateDirectory(Box::from(Path::new(path)))
+            })?;
+        }
+
+        Ok(())
+    }
+
     /// Write ordermaps constructed for all the bond types of this molecule type.
-    fn write_ordermaps_bonds(&self) -> Result<(), OrderMapWriteError> {
+    fn write_ordermaps_bonds(&self, molname: &str) -> Result<(), OrderMapWriteError> {
         for bond in self.order_bonds().bond_types() {
             if let Some(map) = bond.total_map() {
-                map.write_bond_map(bond.atom1(), bond.atom2(), None)?;
+                map.write_bond_map(bond.atom1(), bond.atom2(), None, molname)?;
             }
 
             if let Some(map) = bond.upper_map() {
-                map.write_bond_map(bond.atom1(), bond.atom2(), Some(Leaflet::Upper))?;
+                map.write_bond_map(bond.atom1(), bond.atom2(), Some(Leaflet::Upper), molname)?;
             }
 
             if let Some(map) = bond.lower_map() {
-                map.write_bond_map(bond.atom1(), bond.atom2(), Some(Leaflet::Lower))?;
+                map.write_bond_map(bond.atom1(), bond.atom2(), Some(Leaflet::Lower), molname)?;
             }
         }
 
         Ok(())
     }
 
-    fn write_ordermaps_atoms(&self) -> Result<(), OrderMapWriteError> {
+    fn write_ordermaps_atoms(&self, molname: &str) -> Result<(), OrderMapWriteError> {
         for heavy_atom in self.order_atoms().atoms() {
             let mut relevant_maps = Vec::new();
 
@@ -131,15 +159,15 @@ impl MoleculeType {
             let (total_total, total_upper, total_lower) = MoleculeType::merge_maps(relevant_maps);
 
             if let Some(map) = total_total {
-                map.write_atom_map(heavy_atom, None)?;
+                map.write_atom_map(heavy_atom, None, molname)?;
             }
 
             if let Some(map) = total_upper {
-                map.write_atom_map(heavy_atom, Some(Leaflet::Upper))?;
+                map.write_atom_map(heavy_atom, Some(Leaflet::Upper), molname)?;
             }
 
             if let Some(map) = total_lower {
-                map.write_atom_map(heavy_atom, Some(Leaflet::Lower))?;
+                map.write_atom_map(heavy_atom, Some(Leaflet::Lower), molname)?;
             }
         }
 
@@ -178,21 +206,28 @@ impl MoleculeType {
 }
 
 impl SystemTopology {
-    /// Write all ordermaps consturcted for all bonds of this topology.
-    pub(crate) fn write_ordermaps_bonds(&self) -> Result<(), OrderMapWriteError> {
-        for molecule in self.molecule_types() {
-            molecule.write_ordermaps_bonds()?;
-        }
-
-        Ok(())
+    /// Prepare output directories for the individual molecules.
+    #[inline(always)]
+    pub(crate) fn prepare_directories(&self) -> Result<(), OrderMapWriteError> {
+        self.molecule_types()
+            .iter()
+            .try_for_each(|mol| mol.create_molecule_dir())
     }
 
-    pub(crate) fn write_ordermaps_atoms(&self) -> Result<(), OrderMapWriteError> {
-        for molecule in self.molecule_types() {
-            molecule.write_ordermaps_atoms()?;
-        }
+    /// Write all ordermaps constructed for all bonds of this topology.
+    #[inline(always)]
+    pub(crate) fn write_ordermaps_bonds(&self) -> Result<(), OrderMapWriteError> {
+        self.molecule_types()
+            .iter()
+            .try_for_each(|mol| mol.write_ordermaps_bonds(mol.name()))
+    }
 
-        Ok(())
+    /// Write all ordermaps constructed for all atoms of this topology.
+    #[inline(always)]
+    pub(crate) fn write_ordermaps_atoms(&self) -> Result<(), OrderMapWriteError> {
+        self.molecule_types()
+            .iter()
+            .try_for_each(|mol| mol.write_ordermaps_atoms(mol.name()))
     }
 
     /// Create or back up the directory for the ordermaps.
@@ -259,6 +294,8 @@ mod tests {
     fn test_write_map() {
         let directory = TempDir::new().unwrap();
         let path = directory.path().to_str().unwrap();
+        let path_to_inner = format!("{}/{}", path, "molecule");
+        std::fs::create_dir(&path_to_inner).unwrap();
 
         let params = OrderMap::new()
             .output_directory(path)
@@ -288,15 +325,18 @@ mod tests {
         let atom1 = AtomType::new_raw(4, "POPC", "C22");
         let atom2 = AtomType::new_raw(6, "POPC", "H22");
 
-        map.write_bond_map(&atom1, &atom2, None).unwrap();
-        map.write_bond_map(&atom1, &atom2, Some(Leaflet::Upper))
+        map.write_bond_map(&atom1, &atom2, None, "molecule")
             .unwrap();
-        map.write_bond_map(&atom1, &atom2, Some(Leaflet::Lower))
+        map.write_bond_map(&atom1, &atom2, Some(Leaflet::Upper), "molecule")
+            .unwrap();
+        map.write_bond_map(&atom1, &atom2, Some(Leaflet::Lower), "molecule")
             .unwrap();
 
-        map.write_atom_map(&atom1, None).unwrap();
-        map.write_atom_map(&atom1, Some(Leaflet::Upper)).unwrap();
-        map.write_atom_map(&atom1, Some(Leaflet::Lower)).unwrap();
+        map.write_atom_map(&atom1, None, "molecule").unwrap();
+        map.write_atom_map(&atom1, Some(Leaflet::Upper), "molecule")
+            .unwrap();
+        map.write_atom_map(&atom1, Some(Leaflet::Lower), "molecule")
+            .unwrap();
 
         let results_bonds = [
             "ordermap_POPC-C22-4--POPC-H22-6_total.dat",
@@ -311,7 +351,7 @@ mod tests {
         ];
 
         for result_file in results_bonds.iter() {
-            let full_path = format!("{}/{}", path, result_file);
+            let full_path = format!("{}/{}", path_to_inner, result_file);
             let mut result = File::open(&full_path).unwrap();
             let mut expected = File::open("tests/files/ordermap_bonds_expected.dat").unwrap();
 
@@ -319,7 +359,7 @@ mod tests {
         }
 
         for result_file in results_atom.iter() {
-            let full_path = format!("{}/{}", path, result_file);
+            let full_path = format!("{}/{}", path_to_inner, result_file);
             let mut result = File::open(&full_path).unwrap();
             let mut expected = File::open("tests/files/ordermap_atom_expected.dat").unwrap();
 

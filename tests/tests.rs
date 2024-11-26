@@ -732,7 +732,7 @@ fn test_aa_order_maps_basic() {
     ];
 
     for file in expected_file_names {
-        let real_file = format!("{}/{}", path_to_dir, file);
+        let real_file = format!("{}/POPC/{}", path_to_dir, file);
         let test_file = format!("tests/files/ordermaps/{}", file);
         compare_ordermaps(real_file, test_file);
     }
@@ -815,7 +815,7 @@ fn test_aa_order_maps_leaflets() {
         ];
 
         for file in expected_file_names {
-            let real_file = format!("{}/{}", path_to_dir, file);
+            let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
             compare_ordermaps(real_file, test_file);
         }
@@ -875,7 +875,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
         ];
 
         for file in expected_file_names {
-            let real_file = format!("{}/{}", path_to_dir, file);
+            let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
             compare_ordermaps(real_file, test_file);
         }

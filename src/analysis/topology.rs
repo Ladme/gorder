@@ -16,6 +16,7 @@ pub(crate) struct SystemTopology {
 }
 
 impl SystemTopology {
+    #[inline(always)]
     pub(crate) fn new(
         molecule_types: Vec<MoleculeType>,
         membrane_normal: Dimension,
@@ -29,6 +30,8 @@ impl SystemTopology {
 
 impl Add<SystemTopology> for SystemTopology {
     type Output = Self;
+
+    #[inline]
     fn add(self, rhs: SystemTopology) -> Self::Output {
         Self {
             molecule_types: self

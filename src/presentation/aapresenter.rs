@@ -32,6 +32,7 @@ pub(crate) struct AAOrderResults {
 }
 
 impl From<SystemTopology> for AAOrderResults {
+    #[inline(always)]
     fn from(value: SystemTopology) -> Self {
         AAOrderResults {
             molecules: value
@@ -45,6 +46,7 @@ impl From<SystemTopology> for AAOrderResults {
 
 impl AAOrderResults {
     /// Write the results of the analysis into a new yaml file with the specified name.
+    #[inline]
     pub(crate) fn write_yaml(
         &self,
         filename: impl AsRef<Path>,
@@ -68,6 +70,7 @@ impl AAOrderResults {
     }
 
     /// Write the results of the analysis in form of a table.
+    #[inline]
     pub(crate) fn write_tab(
         &self,
         filename: impl AsRef<Path>,
@@ -91,6 +94,7 @@ impl AAOrderResults {
         Ok(())
     }
 
+    #[inline(always)]
     fn rename_duplicates(strings: &mut [String]) {
         let mut seen: HashMap<String, usize> = HashMap::new();
 
@@ -209,6 +213,7 @@ impl AAOrderResults {
         Ok(())
     }
 
+    #[inline(always)]
     fn strip_extension(file_path: &Path) -> PathBuf {
         if let Some(stem) = file_path.file_stem() {
             if let Some(parent) = file_path.parent() {
@@ -219,6 +224,7 @@ impl AAOrderResults {
     }
 
     /// Back up a file, create a new one and write a header into it.
+    #[inline(always)]
     fn prepare_file(
         filename: &impl AsRef<Path>,
         input_structure: &str,
@@ -237,6 +243,7 @@ impl AAOrderResults {
     }
 
     /// Write header into an output file.
+    #[inline(always)]
     fn write_header(
         writer: &mut BufWriter<File>,
         filename: &impl AsRef<Path>,
@@ -252,6 +259,7 @@ impl AAOrderResults {
     }
 
     /// Create and open file for buffered writing.
+    #[inline(always)]
     fn create_and_open_file(filename: &impl AsRef<Path>) -> Result<BufWriter<File>, WriteError> {
         let file = File::create(filename.as_ref())
             .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
@@ -365,6 +373,7 @@ impl AAMoleculeResults {
     }
 
     /// Get the maximal number of order bonds associated with an order atom in this molecule.
+    #[inline(always)]
     fn max_bonds(&self) -> usize {
         self.order
             .values()
@@ -402,11 +411,13 @@ impl AAMoleculeResults {
     }
 
     /// Check whether order parameters for individual membrane leaflets have been calculated for at least one order bond.
+    #[inline(always)]
     fn has_assigned_leaflets(&self) -> bool {
         self.order.values().map(|x| x.upper).any(|x| x.is_some())
             || self.order.values().map(|x| x.lower).any(|x| x.is_some())
     }
 
+    #[inline(always)]
     fn write_csv(
         &self,
         writer: &mut impl Write,
@@ -486,6 +497,7 @@ impl AAAtomResults {
         }
     }
 
+    #[inline(always)]
     fn is_empty(&self) -> bool {
         self.bonds.is_empty()
     }

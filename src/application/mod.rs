@@ -84,6 +84,7 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     result
 }
 
+#[inline(always)]
 fn display_result(result: &Result<(), Box<dyn std::error::Error + Send + Sync>>) {
     match result {
         Ok(_) => {
