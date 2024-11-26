@@ -35,7 +35,7 @@ impl From<SystemTopology> for AAOrderResults {
     fn from(value: SystemTopology) -> Self {
         AAOrderResults {
             molecules: value
-                .molecules()
+                .molecule_types()
                 .iter()
                 .map(|m| AAMoleculeResults::from(m))
                 .collect(),

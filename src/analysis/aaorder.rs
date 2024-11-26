@@ -9,6 +9,7 @@ use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aapresenter::AAOrderResults;
 use crate::{Analysis, PANIC_MESSAGE};
 
+use groan_rs::prelude::OrderedAtomIterator;
 use groan_rs::{
     files::FileType,
     prelude::{ProgressPrinter, XtcReader},
@@ -53,24 +54,24 @@ pub(super) fn analyze_atomistic(
     );
 
     // check that heavy_atoms and hydrogens do not overlap
-    let _ = system.group_intersection(
-        group_name!("HeavyAtoms"),
-        group_name!("Hydrogens"),
-        group_name!("Intersection"),
-    );
-    if system
-        .group_get_n_atoms(group_name!("Intersection"))
+    let n_overlapping = system
+        .group_iter(group_name!("HeavyAtoms"))
         .expect(PANIC_MESSAGE)
-        != 0
-    {
+        .intersection(
+            system
+                .group_iter(group_name!("Hydrogens"))
+                .expect(PANIC_MESSAGE),
+        )
+        .count();
+    if n_overlapping > 0 {
         return Err(Box::from(TopologyError::AtomsOverlap {
+            n_overlapping,
             name1: "HeavyAtoms".to_owned(),
             query1: analysis.heavy_atoms().expect(PANIC_MESSAGE).clone(),
             name2: "Hydrogens".to_owned(),
             query2: analysis.hydrogens().expect(PANIC_MESSAGE).clone(),
         }));
     }
-
     // prepare system for leaflet classification
     if let Some(leaflet) = analysis.leaflets() {
         leaflet.prepare_system(&mut system)?;
@@ -206,7 +207,7 @@ fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), Analys
     let membrane_normal = data.membrane_normal().into();
     let membrane_center = {
         match data
-            .molecules()
+            .molecule_types()
             .get(0)
             .expect(PANIC_MESSAGE)
             .leaflet_classification()
@@ -219,7 +220,7 @@ fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), Analys
         }
     }?;
 
-    for molecule in data.molecules_mut().iter_mut() {
+    for molecule in data.molecule_types_mut().iter_mut() {
         match molecule.leaflet_classification_mut() {
             Some(MoleculeLeafletClassification::Global(x)) => {
                 x.set_membrane_center(membrane_center.clone().expect(PANIC_MESSAGE));
@@ -760,7 +761,7 @@ mod tests {
         analyze_frame(&system, &mut data).unwrap();
         let expected_total_orders = expected_total_orders();
 
-        for (m, molecule) in data.molecules().iter().enumerate() {
+        for (m, molecule) in data.molecule_types().iter().enumerate() {
             let n_instances = molecule.order_bonds().bond_types()[0].bonds().len();
             let orders = molecule
                 .order_bonds()
@@ -801,7 +802,7 @@ mod tests {
         let expected_upper_samples = [65, 64, 8];
         let expected_lower_samples = [66, 64, 7];
 
-        for (m, molecule) in data.molecules().iter().enumerate() {
+        for (m, molecule) in data.molecule_types().iter().enumerate() {
             let total_orders = collect_bond_data(&molecule, |b| b.total().order());
             let upper_orders =
                 collect_bond_data(&molecule, |b| b.upper().as_ref().unwrap().order());

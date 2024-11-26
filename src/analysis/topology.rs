@@ -10,15 +10,18 @@ use std::ops::Add;
 #[derive(Debug, Clone, CopyGetters, Getters, MutGetters)]
 pub(crate) struct SystemTopology {
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
-    molecules: Vec<MoleculeType>,
+    molecule_types: Vec<MoleculeType>,
     #[getset(get_copy = "pub(super)")]
     membrane_normal: Dimension,
 }
 
 impl SystemTopology {
-    pub(crate) fn new(molecules: Vec<MoleculeType>, membrane_normal: Dimension) -> SystemTopology {
+    pub(crate) fn new(
+        molecule_types: Vec<MoleculeType>,
+        membrane_normal: Dimension,
+    ) -> SystemTopology {
         SystemTopology {
-            molecules,
+            molecule_types,
             membrane_normal,
         }
     }
@@ -28,10 +31,10 @@ impl Add<SystemTopology> for SystemTopology {
     type Output = Self;
     fn add(self, rhs: SystemTopology) -> Self::Output {
         Self {
-            molecules: self
-                .molecules
+            molecule_types: self
+                .molecule_types
                 .into_iter()
-                .zip(rhs.molecules.into_iter())
+                .zip(rhs.molecule_types.into_iter())
                 .map(|(a, b)| a + b)
                 .collect::<Vec<MoleculeType>>(),
             membrane_normal: self.membrane_normal,

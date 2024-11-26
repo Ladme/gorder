@@ -24,8 +24,9 @@ pub enum TopologyError {
     #[error("{} group '{}' is empty", "error:".red().bold(), .0.yellow())]
     EmptyGroup(String),
 
-    #[error("{} some atoms are part of both '{}' (query: '{}') and '{}' (query: '{}')", "error:".red().bold(), .name1.yellow(), .query1.yellow(), .name2.yellow(), .query2.yellow())]
+    #[error("{} {} atoms are part of both '{}' (query: '{}') and '{}' (query: '{}')", "error:".red().bold(), .n_overlapping.to_string().yellow(), .name1.yellow(), .query1.yellow(), .name2.yellow(), .query2.yellow())]
     AtomsOverlap {
+        n_overlapping: usize,
         name1: String,
         query1: String,
         name2: String,

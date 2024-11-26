@@ -42,8 +42,8 @@ pub(crate) struct MoleculeType {
 impl MoleculeType {
     pub(super) fn new(
         system: &System,
-        name: &str,
-        topology: &MoleculeTopology,
+        name: String,
+        topology: MoleculeTopology,
         order_bonds: &HashSet<(usize, usize)>,
         order_atoms: &[usize],
         min_index: usize,
@@ -52,8 +52,8 @@ impl MoleculeType {
         min_samples: usize,
     ) -> Result<Self, TopologyError> {
         Ok(Self {
-            name: name.to_owned(),
-            topology: topology.to_owned(),
+            name: name,
+            topology: topology,
             order_bonds: OrderBonds::new(
                 system,
                 order_bonds,
@@ -246,16 +246,9 @@ impl OrderBonds {
 
         // sort order bonds so that atoms with lower indices come first
         order_bonds.sort_by(|b1, b2| {
-            b1.bond_topology()
-                .atom1()
-                .relative_index()
-                .cmp(&b2.bond_topology().atom1().relative_index())
-                .then_with(|| {
-                    b1.bond_topology()
-                        .atom2()
-                        .relative_index()
-                        .cmp(&b2.bond_topology().atom2().relative_index())
-                })
+            b1.atom1_index()
+                .cmp(&b2.atom1_index())
+                .then_with(|| b1.atom2_index().cmp(&b2.atom2_index()))
         });
 
         Ok(OrderBonds {
@@ -456,13 +449,39 @@ impl BondType {
         }
     }
 
+    /// Get the first atom of this bond type from BondTopology.
+    #[inline(always)]
+    pub(crate) fn atom1(&self) -> &AtomType {
+        self.bond_topology().atom1()
+    }
+
+    /// Get the second atom of this bond type from BondTopology.
+    #[inline(always)]
+    pub(crate) fn atom2(&self) -> &AtomType {
+        self.bond_topology().atom2()
+    }
+
+    /// Get the relative index of the first atom of this bond type.
+    #[inline(always)]
+    pub(crate) fn atom1_index(&self) -> usize {
+        self.atom1().relative_index
+    }
+
+    /// Get the relative index of the second atom of this bond type.
+    #[inline(always)]
+    pub(crate) fn atom2_index(&self) -> usize {
+        self.atom2().relative_index
+    }
+
     /// Does this bond involve a specific atom type?
+    #[inline(always)]
     pub(crate) fn contains(&self, atom: &AtomType) -> bool {
         self.bond_topology().contains(atom)
     }
 
     /// Return the other atom involved in this bond.
     /// If the provided atom is not involved in the bond, return `None`.
+    #[inline(always)]
     pub(crate) fn get_other_atom(&self, atom: &AtomType) -> Option<&AtomType> {
         self.bond_topology().get_other_atom(atom)
     }

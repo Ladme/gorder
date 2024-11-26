@@ -99,27 +99,15 @@ impl MoleculeType {
     fn write_ordermaps_bonds(&self) -> Result<(), OrderMapWriteError> {
         for bond in self.order_bonds().bond_types() {
             if let Some(map) = bond.total_map() {
-                map.write_bond_map(
-                    bond.bond_topology().atom1(),
-                    bond.bond_topology().atom2(),
-                    None,
-                )?;
+                map.write_bond_map(bond.atom1(), bond.atom2(), None)?;
             }
 
             if let Some(map) = bond.upper_map() {
-                map.write_bond_map(
-                    bond.bond_topology().atom1(),
-                    bond.bond_topology().atom2(),
-                    Some(Leaflet::Upper),
-                )?;
+                map.write_bond_map(bond.atom1(), bond.atom2(), Some(Leaflet::Upper))?;
             }
 
             if let Some(map) = bond.lower_map() {
-                map.write_bond_map(
-                    bond.bond_topology().atom1(),
-                    bond.bond_topology().atom2(),
-                    Some(Leaflet::Lower),
-                )?;
+                map.write_bond_map(bond.atom1(), bond.atom2(), Some(Leaflet::Lower))?;
             }
         }
 
@@ -192,7 +180,7 @@ impl MoleculeType {
 impl SystemTopology {
     /// Write all ordermaps consturcted for all bonds of this topology.
     pub(crate) fn write_ordermaps_bonds(&self) -> Result<(), OrderMapWriteError> {
-        for molecule in self.molecules() {
+        for molecule in self.molecule_types() {
             molecule.write_ordermaps_bonds()?;
         }
 
@@ -200,7 +188,7 @@ impl SystemTopology {
     }
 
     pub(crate) fn write_ordermaps_atoms(&self) -> Result<(), OrderMapWriteError> {
-        for molecule in self.molecules() {
+        for molecule in self.molecule_types() {
             molecule.write_ordermaps_atoms()?;
         }
 
@@ -213,7 +201,7 @@ impl SystemTopology {
         overwrite: bool,
     ) -> Result<(), OrderMapWriteError> {
         if let Some(map_unwrapped) = self
-            .molecules()
+            .molecule_types()
             .iter()
             .filter_map(|m| m.order_bonds().bond_types().get(0))
             .filter_map(|bond| bond.total_map().as_ref())

@@ -59,9 +59,6 @@ pub(super) fn create_group(
 
 /// Classifies molecules in the system into distinct types based on their topology
 /// and returns a list of classified molecule types.
-///
-/// ## Warning
-/// Only works if the `System` originates from a tpr file.
 pub(super) fn classify_molecules(
     system: &System,
     group1: &str,
@@ -78,52 +75,40 @@ pub(super) fn classify_molecules(
     let mut molecules: Vec<MoleculeType> = Vec::new();
 
     for atom in system.group_iter(&group1_name).expect(PANIC_MESSAGE) {
-        let index = atom.get_atom_number() - 1;
+        let index = atom.get_index();
         if !visited.insert(index) {
             continue;
         }
 
-        let (all_bonds, residues, order_atoms, all_atom_indices) =
-            process_molecule_dfs(system, &group1_name, index, &mut visited);
+        // get residues and order atoms
+        let (all_atom_indices, order_atoms, residues) =
+            extract_atoms(system, &group1_name, index, &mut visited);
 
-        let order_bonds = select_order_bonds(system, &group1_name, &group2_name, &all_bonds);
-
+        // get topology of the molecule
+        let (all_bonds, order_bonds) = extract_bonds(system, &group1_name, &group2_name, index);
         let topology = MoleculeTopology::new(
             system,
             &all_bonds,
             all_atom_indices.get_atoms().first().expect(PANIC_MESSAGE),
         );
 
-        if let Some(existing_molecule) = molecules.iter_mut().find(|m| *m.topology() == topology) {
-            existing_molecule.insert(system, &order_bonds, all_atom_indices)?;
+        // check whether this molecule type already exists
+        if let Some(existing_molecule_type) =
+            molecules.iter_mut().find(|m| *m.topology() == topology)
+        {
+            // add a new molecule to this molecule type
+            existing_molecule_type.insert(system, &order_bonds, all_atom_indices)?;
         } else {
-            let name = residues.join("-");
-
-            // construct a leaflet classifier
-            let classifier = if let Some(params) = leaflet_classification {
-                let mut leaflet_classifier =
-                    MoleculeLeafletClassification::new(params, membrane_normal);
-                leaflet_classifier.insert(&all_atom_indices, &system)?;
-
-                Some(leaflet_classifier)
-            } else {
-                None
-            };
-
-            let minimum_index = all_atom_indices
-                .get_atoms()
-                .first()
-                .unwrap_or_else(
-                    || panic!("FATAL GORDER ERROR | auxiliary::classify_molecules | No atom indices detected in a molecule. {}", PANIC_MESSAGE));
-
-            molecules.push(MoleculeType::new(
+            // create new molecule type
+            molecules.push(create_new_molecule_type(
                 system,
-                &name,
-                &topology,
+                topology,
+                &residues,
                 &order_bonds,
-                &order_atoms,
-                minimum_index,
-                classifier,
+                order_atoms,
+                &all_atom_indices,
+                membrane_normal,
+                leaflet_classification,
                 ordermap_params,
                 min_samples,
             )?);
@@ -133,55 +118,57 @@ pub(super) fn classify_molecules(
     Ok(molecules)
 }
 
-/// Uses DFS to traverse a molecule, collecting bonds, residues, order atoms,
-/// and determining the minimum atom index.
-fn process_molecule_dfs(
+/// Extract atom indices, residues, and atoms for which order parameters should be calculated from a molecule.
+fn extract_atoms(
     system: &System,
     group_name: &str,
     start_index: usize,
     visited: &mut HashSet<usize>,
-) -> (HashSet<(usize, usize)>, Vec<String>, Vec<usize>, Group) {
-    let mut all_bonds = HashSet::new();
+) -> (Group, Vec<usize>, Vec<String>) {
     let mut residues = Vec::new();
     let mut order_atoms = Vec::new();
     let mut all_atom_indices = Vec::new();
+    for atom in system.molecule_iter(start_index).expect(PANIC_MESSAGE) {
+        let res = atom.get_residue_name();
+        let a_index = atom.get_index();
 
-    let mut stack = vec![start_index];
-
-    while let Some(index) = stack.pop() {
-        let atom = system.get_atom(index).expect(PANIC_MESSAGE);
-        visited.insert(index);
-        all_atom_indices.push(index);
-
-        if !residues.contains(&atom.get_residue_name().to_owned()) {
-            residues.push(atom.get_residue_name().to_owned());
+        if !residues.contains(res) {
+            residues.push(res.to_owned());
         }
 
-        if system.group_isin(group_name, index).expect(PANIC_MESSAGE) {
-            order_atoms.push(index);
+        if system.group_isin(group_name, a_index).expect(PANIC_MESSAGE) {
+            order_atoms.push(a_index);
         }
 
-        for bonded in system.bonded_atoms_iter(index).expect(PANIC_MESSAGE) {
-            let bonded_index = bonded.get_atom_number() - 1;
-            if visited.contains(&bonded_index) {
-                continue;
-            }
-
-            all_bonds.insert((index, bonded_index));
-            stack.push(bonded_index);
-        }
+        all_atom_indices.push(a_index);
+        visited.insert(a_index);
     }
 
     (
-        all_bonds,
-        residues,
-        order_atoms,
         Group::from_indices(all_atom_indices, usize::MAX),
+        order_atoms,
+        residues,
     )
 }
 
-/// Selects bonds between two groups that should be considered as order bonds,
-/// ensuring they appear only once in the molecule.
+/// Extract 1) all bonds and 2) bonds for which order parameters should be calculated from a molecule.
+fn extract_bonds(
+    system: &System,
+    group1_name: &str,
+    group2_name: &str,
+    start_index: usize,
+) -> (HashSet<(usize, usize)>, HashSet<(usize, usize)>) {
+    let all_bonds = system
+        .molecule_bonds_iter(start_index)
+        .expect(PANIC_MESSAGE)
+        .map(|(a1, a2)| (a1.get_index(), a2.get_index()))
+        .collect::<HashSet<(usize, usize)>>();
+
+    let order_bonds = select_order_bonds(system, group1_name, group2_name, &all_bonds);
+    (all_bonds, order_bonds)
+}
+
+/// Select bonds that should be considered as order bonds ensuring they appear only once in the molecule.
 fn select_order_bonds(
     system: &System,
     group1_name: &str,
@@ -206,6 +193,51 @@ fn select_order_bonds(
     }
 
     order_bonds
+}
+
+/// Create a new molecule type.
+fn create_new_molecule_type(
+    system: &System,
+    molecule_topology: MoleculeTopology,
+    residues: &[String],
+    order_bonds: &HashSet<(usize, usize)>,
+    order_atoms: Vec<usize>,
+    all_atom_indices: &Group,
+    membrane_normal: Dimension,
+    leaflet_classification: Option<&LeafletClassification>,
+    ordermap_params: Option<&OrderMap>,
+    min_samples: usize,
+) -> Result<MoleculeType, TopologyError> {
+    // create a name of the molecule
+    let name = residues.join("-");
+
+    // construct a leaflet classifier
+    let classifier = if let Some(params) = leaflet_classification {
+        let mut leaflet_classifier = MoleculeLeafletClassification::new(params, membrane_normal);
+        leaflet_classifier.insert(all_atom_indices, system)?;
+
+        Some(leaflet_classifier)
+    } else {
+        None
+    };
+
+    let minimum_index = all_atom_indices
+                .get_atoms()
+                .first()
+                .unwrap_or_else(
+                    || panic!("FATAL GORDER ERROR | auxiliary::create_new_molecule_type | No atom indices detected in a molecule. {}", PANIC_MESSAGE));
+
+    MoleculeType::new(
+        system,
+        name,
+        molecule_topology,
+        &order_bonds,
+        &order_atoms,
+        minimum_index,
+        classifier,
+        ordermap_params,
+        min_samples,
+    )
 }
 
 #[cfg(test)]
@@ -1406,8 +1438,8 @@ mod tests {
                 .map(|x| (x, x.bonds().clone()))
             {
                 assert_eq!(bond_instances.len(), expected_n_instances[i]);
-                if b.bond_topology().atom1().relative_index() == relative_indices[i].0
-                    && b.bond_topology().atom2().relative_index() == relative_indices[i].1
+                if b.atom1_index() == relative_indices[i].0
+                    && b.atom2_index() == relative_indices[i].1
                 {
                     assert_eq!(bond_instances, expected_bond_instances[i]);
                 }
@@ -2164,8 +2196,8 @@ mod tests {
                 .map(|x| (x, x.bonds().clone()))
             {
                 assert_eq!(bond_instances.len(), expected_n_instances[i]);
-                if b.bond_topology().atom1().relative_index() == relative_indices[i].0
-                    && b.bond_topology().atom2().relative_index() == relative_indices[i].1
+                if b.atom1_index() == relative_indices[i].0
+                    && b.atom2_index() == relative_indices[i].1
                 {
                     assert_eq!(bond_instances, expected_bond_instances[i]);
                 }

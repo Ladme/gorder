@@ -155,10 +155,10 @@ impl SystemTopology {
     pub(crate) fn info(&self) {
         log::info!(
             "Detected {} relevant molecule type(s).",
-            self.molecules().len()
+            self.molecule_types().len()
         );
 
-        for molecule in self.molecules() {
+        for molecule in self.molecule_types() {
             molecule.info();
         }
     }
