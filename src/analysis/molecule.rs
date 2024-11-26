@@ -478,11 +478,11 @@ impl BondType {
 
             let pos1 = atom1
                 .get_position()
-                .ok_or_else(|| AnalysisError::UndefinedPosition(atom1.get_atom_number()))?;
+                .ok_or_else(|| AnalysisError::UndefinedPosition(atom1.get_index()))?;
 
             let pos2 = atom2
                 .get_position()
-                .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_atom_number()))?;
+                .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_index()))?;
 
             let sch = super::calc_sch(pos1, pos2, simbox, membrane_normal);
             self.total += sch;

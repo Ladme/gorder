@@ -284,7 +284,7 @@ impl LocalClassification {
         for (i, &index) in self.heads.iter().enumerate() {
             let position = unsafe { system.get_atom_unchecked(index) }
                 .get_position()
-                .ok_or_else(|| AnalysisError::UndefinedPosition(index + 1))?;
+                .ok_or_else(|| AnalysisError::UndefinedPosition(index))?;
 
             let cylinder = Cylinder::new(
                 position.clone(),
@@ -297,7 +297,7 @@ impl LocalClassification {
                 .expect(PANIC_MESSAGE)
                 .filter_geometry(cylinder)
                 .get_center()
-                .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index + 1))?;
+                .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index))?;
 
             self.membrane_center[i] = center;
         }
@@ -349,7 +349,7 @@ fn common_identify_leaflet(
                 .get_box()
                 .ok_or_else(|| AnalysisError::UndefinedBox)?,
         )
-        .map_err(|_| AnalysisError::UndefinedPosition(head_index + 1))?;
+        .map_err(|_| AnalysisError::UndefinedPosition(head_index))?;
 
     if distance >= 0.0 {
         Ok(Leaflet::Upper)

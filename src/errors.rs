@@ -33,28 +33,16 @@ pub enum TopologyError {
         query2: String,
     },
 
-    #[error("{} residue number '{}' has an inconsistent name ('{}' vs '{}')", "error:".red().bold(), .0.to_string().yellow(), .1.yellow(), .2.yellow())]
-    ResidueInconsistency(usize, String, String),
-
-    #[error("{} molecule contains multiple atoms of the same name ('{}') of the same residue name ('{}')", "error:".red().bold(), .0.to_string().yellow(), .1.yellow())]
-    DuplicateAtoms(usize, String),
-
-    #[error("{} multiple bonds detected between atoms '{}' and '{}'", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
-    DuplicateBonds(usize, usize),
-
-    #[error("{} \"hydrogen\" atom '{}' is bonded to two or more heavy atoms (the second heavy atom has a number '{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
-    MultiBinding(usize, usize),
-
-    #[error("{} molecule starting with atom number '{}' contains multiple head group atoms", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} molecule starting with atom index '{}' contains multiple head group atoms", "error:".red().bold(), .0.to_string().yellow())]
     MultipleHeads(usize),
 
-    #[error("{} molecule starting with atom number '{}' contains no head group atom", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} molecule starting with atom index '{}' contains no head group atom", "error:".red().bold(), .0.to_string().yellow())]
     NoHead(usize),
 
-    #[error("{} molecule starting with atom number '{}' contains no methyl group atom", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} molecule starting with atom index '{}' contains no methyl group atom", "error:".red().bold(), .0.to_string().yellow())]
     NoMethyl(usize),
 
-    #[error("{} molecule starting with atom number '{}' contains a number of methyl group atoms ('{}') not consistent with other molecules ('{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+    #[error("{} molecule starting with atom index '{}' contains a number of methyl group atoms ('{}') not consistent with other molecules ('{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
     InconsistentNumberOfMethyls(usize, usize, usize),
 
     #[error("{} system has undefined simulation box", "error:".red().bold())]
@@ -79,13 +67,13 @@ pub enum AnalysisError {
     #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
     ZeroBox,
 
-    #[error("{} atom with atom number '{}' has an undefined position", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} atom with atom index '{}' has an undefined position", "error:".red().bold(), .0.to_string().yellow())]
     UndefinedPosition(usize),
 
     #[error("{} could not calculate global membrane center", "error:".red().bold())]
     InvalidGlobalMembraneCenter,
 
-    #[error("{} could not calculate local membrane center for molecule with a head identifier number '{}'", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} could not calculate local membrane center for molecule with a head identifier index '{}'", "error:".red().bold(), .0.to_string().yellow())]
     InvalidLocalMembraneCenter(usize),
 }
 
