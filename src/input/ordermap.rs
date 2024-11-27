@@ -3,13 +3,68 @@
 
 //! Contains structures and methods for the construction of maps of order parameters.
 
+use std::fmt;
+
 use derive_builder::Builder;
-use getset::{CopyGetters, Getters};
+use getset::{CopyGetters, Getters, Setters};
+use groan_rs::prelude::{SimBox, Vector3D};
 use serde::Deserialize;
 
 use crate::errors::{GridSpanError, OrderMapConfigError};
 
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Deserialize)]
+/// Orientation of the order map. Should correspond to the plane in which the membrane is built.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+pub enum Plane {
+    #[default]
+    #[serde(alias = "xy")]
+    XY,
+    #[serde(alias = "xz")]
+    XZ,
+    #[serde(alias = "yz")]
+    YZ,
+}
+
+impl Plane {
+    /// Get the dimensions of the map from the simulation box dimensions.
+    pub(crate) fn dimensions_from_simbox(&self, simbox: &SimBox) -> (f32, f32) {
+        match self {
+            Plane::XY => (simbox.x, simbox.y),
+            Plane::XZ => (simbox.x, simbox.z),
+            Plane::YZ => (simbox.z, simbox.y),
+        }
+    }
+
+    /// Get projection of the position to the plane.
+    pub(crate) fn projection2plane(&self, position: &Vector3D) -> (f32, f32) {
+        match self {
+            Plane::XY => (position.x, position.y),
+            Plane::XZ => (position.x, position.z),
+            Plane::YZ => (position.z, position.y),
+        }
+    }
+
+    /// Get labels for the axes of the ordermap.
+    pub(crate) fn get_labels(&self) -> (char, char) {
+        match self {
+            Plane::XY => ('x', 'y'),
+            Plane::XZ => ('x', 'z'),
+            Plane::YZ => ('z', 'y'),
+        }
+    }
+}
+
+impl fmt::Display for Plane {
+    /// Print Plane.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::XY => write!(f, "xy"),
+            Self::XZ => write!(f, "xz"),
+            Self::YZ => write!(f, "yz"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct OrderMap {
@@ -24,28 +79,33 @@ pub struct OrderMap {
     #[serde(default = "default_min_samples")]
     #[getset(get_copy = "pub")]
     min_samples: usize,
-    /// Span of the grid along the x-axis.
+    /// Span of the grid along the primary axis.
     #[builder(default)]
     #[serde(default = "default_gridspan")]
     #[getset(get_copy = "pub")]
     dim_x: GridSpan,
-    /// Span of the grid along the z-axis.
+    /// Span of the grid along the secondary axis.
     #[builder(default)]
     #[serde(default = "default_gridspan")]
     #[getset(get_copy = "pub")]
     dim_y: GridSpan,
-    /// The size of the grid bin along the x-axis.
+    /// The size of the grid bin along the primary axis.
     /// If not specified, the default value is 0.1 nm.
     #[builder(default = "0.1")]
     #[serde(default = "default_bin_size")]
     #[getset(get_copy = "pub")]
     bin_size_x: f32,
-    /// The size of the grid bin along the y-axis.
+    /// The size of the grid bin along the secondary axis.
     /// If not specified, the default value is 0.1 nm.
     #[builder(default = "0.1")]
     #[serde(default = "default_bin_size")]
     #[getset(get_copy = "pub")]
     bin_size_y: f32,
+    /// Plane in which the ordermaps should be constructed.
+    /// If not specified, the plane is parallel to membrane normal.
+    #[builder(setter(strip_option), default)]
+    #[getset(get_copy = "pub", set = "pub(crate)")]
+    plane: Option<Plane>,
 }
 
 fn default_bin_size() -> f32 {

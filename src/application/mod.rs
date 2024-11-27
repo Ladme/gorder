@@ -55,7 +55,9 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     };
 
-    if !analysis.silent() {
+    let silent = analysis.silent();
+
+    if !silent {
         analysis.set_silent(args.silent);
     }
 
@@ -63,7 +65,7 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         analysis.set_overwrite(args.overwrite);
     }
 
-    if analysis.silent() {
+    if silent {
         log::set_max_level(log::LevelFilter::Error);
     } else {
         let header = format!(">>> GORDER v{} <<<", GORDER_VERSION).bold();
@@ -77,7 +79,7 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         log::error!("{}", e);
     }
 
-    if !analysis.silent() {
+    if !silent {
         display_result(&result);
     }
 

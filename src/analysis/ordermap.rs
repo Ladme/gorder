@@ -29,13 +29,23 @@ impl Map {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();
 
+        let (auto_x, auto_y) = params
+            .plane()
+            .unwrap_or_else(|| {
+                panic!(
+                    "FATAL GORDER ERROR | Map::new | Ordermap plane should be already set. {}",
+                    PANIC_MESSAGE
+                )
+            })
+            .dimensions_from_simbox(simbox);
+
         let (xmin, xmax) = match params.dim_x() {
-            GridSpan::Auto => (0.0, simbox.x),
+            GridSpan::Auto => (0.0, auto_x),
             GridSpan::Manual { start, end } => (start, end),
         };
 
         let (ymin, ymax) = match params.dim_y() {
-            GridSpan::Auto => (0.0, simbox.y),
+            GridSpan::Auto => (0.0, auto_y),
             GridSpan::Manual { start, end } => (start, end),
         };
 
@@ -63,10 +73,15 @@ impl Map {
     /// Add sampled order parameter to the correct position. Ignore if out of range.
     #[inline(always)]
     pub(super) fn add_order(&mut self, order: f32, bond_pos: &Vector3D) {
-        if let (Some(valbin), Some(samplebin)) = (
-            self.values.get_mut_at(bond_pos.x, bond_pos.y),
-            self.samples.get_mut_at(bond_pos.x, bond_pos.y),
-        ) {
+        let (x, y) = self
+            .params()
+            .plane()
+            .expect(PANIC_MESSAGE)
+            .projection2plane(bond_pos);
+
+        if let (Some(valbin), Some(samplebin)) =
+            (self.values.get_mut_at(x, y), self.samples.get_mut_at(x, y))
+        {
             *valbin += order;
             *samplebin += 1;
         }
@@ -143,7 +158,7 @@ where
 mod tests {
     use approx::assert_relative_eq;
 
-    use crate::analysis::molecule::Order;
+    use crate::{analysis::molecule::Order, input::ordermap::Plane};
 
     use super::*;
 
@@ -154,6 +169,7 @@ mod tests {
             .output_directory(".")
             .bin_size_y(0.2)
             .bin_size_x(0.05)
+            .plane(Plane::XY)
             .build()
             .unwrap();
 
@@ -181,6 +197,7 @@ mod tests {
                 start: 1.5,
                 end: 4.5,
             })
+            .plane(Plane::XY)
             .build()
             .unwrap();
 
@@ -202,6 +219,7 @@ mod tests {
             .output_directory(".")
             .bin_size_y(5.0)
             .bin_size_x(1.0)
+            .plane(Plane::XY)
             .build()
             .unwrap();
 

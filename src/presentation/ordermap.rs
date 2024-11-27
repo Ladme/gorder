@@ -73,9 +73,11 @@ impl Map {
         writeln!(output, "{}", comment)
             .map_err(|_| OrderMapWriteError::CouldNotWriteLine(Box::from(Path::new(&full_path))))?;
 
+        let (label_x, label_y) = self.params().plane().expect(PANIC_MESSAGE).get_labels();
+
         writeln!(
             output,
-            "@ xlabel x-dimension [nm]\n@ ylabel y-dimension [nm]\n@ zrange -1 1 0.2"
+            "@ xlabel {label_x}-dimension [nm]\n@ ylabel {label_y}-dimension [nm]\n@ zrange -1 1 0.2"
         )
         .map_err(|_| OrderMapWriteError::CouldNotWriteLine(Box::from(Path::new(&full_path))))?;
 
@@ -282,13 +284,31 @@ impl SystemTopology {
 
 #[cfg(test)]
 mod tests {
+    use std::io::{BufRead, BufReader};
+
     use approx::assert_relative_eq;
     use groan_rs::prelude::SimBox;
     use tempfile::TempDir;
 
-    use crate::OrderMap;
+    use crate::{input::ordermap::Plane, OrderMap};
 
     use super::*;
+
+    /// Test utility. Diff the contents of two files without the first `skip` lines.
+    pub(crate) fn diff_files_ignore_first(file1: &str, file2: &str, skip: usize) -> bool {
+        let content1 = read_file_without_first_lines(file1, skip);
+        let content2 = read_file_without_first_lines(file2, skip);
+        content1 == content2
+    }
+
+    fn read_file_without_first_lines(file: &str, skip: usize) -> Vec<String> {
+        let reader = BufReader::new(File::open(file).unwrap());
+        reader
+            .lines()
+            .skip(skip) // Skip the first line
+            .map(|line| line.unwrap())
+            .collect()
+    }
 
     #[test]
     fn test_write_map() {
@@ -302,6 +322,7 @@ mod tests {
             .bin_size_x(1.0)
             .bin_size_y(1.0)
             .min_samples(10)
+            .plane(Plane::XY)
             .build()
             .unwrap();
 
@@ -352,18 +373,22 @@ mod tests {
 
         for result_file in results_bonds.iter() {
             let full_path = format!("{}/{}", path_to_inner, result_file);
-            let mut result = File::open(&full_path).unwrap();
-            let mut expected = File::open("tests/files/ordermap_bonds_expected.dat").unwrap();
 
-            assert!(file_diff::diff_files(&mut result, &mut expected));
+            assert!(diff_files_ignore_first(
+                &full_path,
+                "tests/files/ordermap_bonds_expected.dat",
+                2
+            ));
         }
 
         for result_file in results_atom.iter() {
             let full_path = format!("{}/{}", path_to_inner, result_file);
-            let mut result = File::open(&full_path).unwrap();
-            let mut expected = File::open("tests/files/ordermap_atom_expected.dat").unwrap();
 
-            assert!(file_diff::diff_files(&mut result, &mut expected));
+            assert!(diff_files_ignore_first(
+                &full_path,
+                "tests/files/ordermap_atom_expected.dat",
+                2
+            ));
         }
     }
 
@@ -374,6 +399,7 @@ mod tests {
             .bin_size_x(1.0)
             .bin_size_y(1.0)
             .min_samples(10)
+            .plane(Plane::XY)
             .build()
             .unwrap();
 

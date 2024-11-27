@@ -32,7 +32,7 @@ pub(super) fn analyze_atomistic(
     )?;
 
     log::info!(
-        "Detected {} heavy atoms using query '{}'.",
+        "Detected {} heavy atoms using a query '{}'.",
         system
             .group_get_n_atoms(group_name!("HeavyAtoms"))
             .expect(PANIC_MESSAGE),
@@ -47,7 +47,7 @@ pub(super) fn analyze_atomistic(
     )?;
 
     log::info!(
-        "Detected {} hydrogen atoms using query '{}'.",
+        "Detected {} hydrogen atoms using a query '{}'.",
         system
             .group_get_n_atoms(group_name!("Hydrogens"))
             .expect(PANIC_MESSAGE),

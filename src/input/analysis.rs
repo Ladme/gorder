@@ -7,8 +7,8 @@ use std::fs::read_to_string;
 use std::path::Path;
 
 use derive_builder::Builder;
-use getset::Setters;
 use getset::{CopyGetters, Getters};
+use getset::{MutGetters, Setters};
 use serde::Deserialize;
 
 use crate::errors::ConfigError;
@@ -55,7 +55,7 @@ impl AnalysisType {
 }
 
 /// Structure holding all the information necessary to perform the specified analysis.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize)]
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, MutGetters, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
@@ -143,7 +143,7 @@ pub struct Analysis {
     /// If provided, specifies the properties of an ordermap that shall be calculated.
     /// If not specified, no map will be calculated.
     #[builder(setter(strip_option), default)]
-    #[getset(get = "pub")]
+    #[getset(get = "pub", get_mut = "pub(crate)")]
     map: Option<OrderMap>,
     /// Be silent. Print nothing to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
@@ -328,7 +328,10 @@ impl AnalysisBuilder {
 mod tests_yaml {
     use approx::assert_relative_eq;
 
-    use crate::{errors::OrderMapConfigError, input::GridSpan};
+    use crate::{
+        errors::OrderMapConfigError,
+        input::{ordermap::Plane, GridSpan},
+    };
 
     use super::*;
 
@@ -400,6 +403,7 @@ mod tests_yaml {
         assert_eq!(map.min_samples(), 10);
         assert_eq!(map.bin_size_x(), 0.05);
         assert_eq!(map.bin_size_y(), 0.02);
+        assert_eq!(map.plane().unwrap(), Plane::XY);
     }
 
     #[test]
@@ -523,6 +527,8 @@ mod tests_builder {
 
     use approx::assert_relative_eq;
 
+    use crate::input::ordermap::Plane;
+
     use super::super::GridSpan;
     use super::*;
 
@@ -596,6 +602,7 @@ mod tests_builder {
                     .min_samples(10)
                     .bin_size_x(0.05)
                     .bin_size_y(0.02)
+                    .plane(Plane::XY)
                     .build()
                     .unwrap(),
             )
@@ -634,6 +641,7 @@ mod tests_builder {
         assert_eq!(map.min_samples(), 10);
         assert_eq!(map.bin_size_x(), 0.05);
         assert_eq!(map.bin_size_y(), 0.02);
+        assert_eq!(map.plane().unwrap(), Plane::XY);
     }
 
     #[test]

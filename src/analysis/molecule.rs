@@ -732,7 +732,7 @@ fn merge_option_order(lhs: Option<Order>, rhs: Option<Order>) -> Option<Order> {
 mod tests {
     use approx::assert_relative_eq;
 
-    use crate::input::GridSpan;
+    use crate::input::{ordermap::Plane, GridSpan};
 
     use super::*;
 
@@ -814,6 +814,7 @@ mod tests {
             .dim_x(GridSpan::Auto)
             .dim_y(GridSpan::Auto)
             .output_directory(".")
+            .plane(Plane::XY)
             .build()
             .unwrap();
         let bond = BondType::new(
@@ -845,6 +846,7 @@ mod tests {
             .dim_x(GridSpan::Auto)
             .dim_y(GridSpan::Auto)
             .output_directory(".")
+            .plane(Plane::XY)
             .build()
             .unwrap();
         let bond = BondType::new(

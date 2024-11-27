@@ -120,8 +120,15 @@ impl Analysis {
     /// Print basic information about the analysis for the user.
     pub(crate) fn info(&self) {
         log::info!("Will calculate {}.", self.analysis_type().name());
+        log::info!(
+            "Membrane normal expected to be oriented along the {} axis.",
+            self.membrane_normal()
+        );
         if self.map().is_some() {
-            log::info!("Will calculate order maps.");
+            log::info!(
+                "Will calculate ordermaps in the {} plane.",
+                self.map().as_ref().unwrap().plane().expect(PANIC_MESSAGE)
+            );
         }
         if self.leaflets().is_some() {
             log::info!(
@@ -129,10 +136,6 @@ impl Analysis {
                 self.leaflets().as_ref().expect(PANIC_MESSAGE)
             )
         }
-        log::info!(
-            "Membrane normal expected to be oriented along the {} axis.",
-            self.membrane_normal()
-        );
     }
 }
 

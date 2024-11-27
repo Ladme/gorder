@@ -10,6 +10,8 @@ use serde::Deserialize;
 
 use crate::PANIC_MESSAGE;
 
+use super::ordermap::Plane;
+
 /// X, Y, or Z axis.
 #[derive(Debug, Clone, PartialEq, Eq, Copy, Deserialize)]
 pub enum Axis {
@@ -19,6 +21,17 @@ pub enum Axis {
     Y,
     #[serde(alias = "z")]
     Z,
+}
+
+impl Axis {
+    /// Return a plane perpendicular to this axis.
+    pub(crate) fn perpendicular(&self) -> Plane {
+        match self {
+            Axis::X => Plane::YZ,
+            Axis::Y => Plane::XZ,
+            Axis::Z => Plane::XY,
+        }
+    }
 }
 
 impl fmt::Display for Axis {

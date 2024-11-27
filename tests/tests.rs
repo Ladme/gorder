@@ -5,7 +5,7 @@
 
 use std::{
     fs::File,
-    io::Read,
+    io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
 };
 
@@ -14,6 +14,22 @@ use gorder::prelude::*;
 use groan_rs::prelude::GridMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
+
+/// Test utility. Diff the contents of two files without the first `skip` lines.
+pub(crate) fn diff_files_ignore_first(file1: &str, file2: &str, skip: usize) -> bool {
+    let content1 = read_file_without_first_lines(file1, skip);
+    let content2 = read_file_without_first_lines(file2, skip);
+    content1 == content2
+}
+
+fn read_file_without_first_lines(file: &str, skip: usize) -> Vec<String> {
+    let reader = BufReader::new(File::open(file).unwrap());
+    reader
+        .lines()
+        .skip(skip) // Skip the first line
+        .map(|line| line.unwrap())
+        .collect()
+}
 
 #[test]
 fn test_aa_order_basic_yaml() {
@@ -35,10 +51,11 @@ fn test_aa_order_basic_yaml() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_output).unwrap();
-    let mut expected = File::open("tests/files/aa_order_basic.yaml").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_basic.yaml",
+        1
+    ));
 }
 
 #[test]
@@ -89,10 +106,11 @@ fn test_aa_order_basic_table() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_table).unwrap();
-    let mut expected = File::open("tests/files/aa_order_basic.tab").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_table,
+        "tests/files/aa_order_basic.tab",
+        1
+    ));
 }
 
 #[test]
@@ -124,10 +142,8 @@ fn test_aa_order_basic_xvg() {
     for molecule in ["POPC", "POPE", "POPG"] {
         let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
         let path_expected = format!("tests/files/aa_order_basic_{}.xvg", molecule);
-        let mut result = File::open(path).unwrap();
-        let mut expected = File::open(path_expected).unwrap();
 
-        assert!(file_diff::diff_files(&mut result, &mut expected));
+        assert!(diff_files_ignore_first(&path, &path_expected, 1));
     }
 }
 
@@ -155,10 +171,11 @@ fn test_aa_order_basic_csv() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_csv).unwrap();
-    let mut expected = File::open("tests/files/aa_order_basic.csv").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_csv,
+        "tests/files/aa_order_basic.csv",
+        0
+    ));
 }
 
 #[test]
@@ -194,13 +211,9 @@ fn test_aa_order_basic_xvg_weird_names() {
             } else {
                 format!("{}/order_{}", path_to_dir, molecule)
             };
-            println!("{:?}", path);
 
             let path_expected = format!("tests/files/aa_order_basic_{}.xvg", molecule);
-            let mut result = File::open(path).unwrap();
-            let mut expected = File::open(path_expected).unwrap();
-
-            assert!(file_diff::diff_files(&mut result, &mut expected));
+            assert!(diff_files_ignore_first(&path, &path_expected, 1));
         }
     }
 }
@@ -227,10 +240,11 @@ fn test_aa_order_basic_yaml_multiple_threads() {
 
         analysis.run().unwrap();
 
-        let mut result = File::open(path_to_output).unwrap();
-        let mut expected = File::open("tests/files/aa_order_basic.yaml").unwrap();
-
-        assert!(file_diff::diff_files(&mut result, &mut expected));
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_basic.yaml",
+            1
+        ));
     }
 }
 
@@ -260,10 +274,11 @@ fn test_aa_order_basic_table_multiple_threads() {
 
         analysis.run().unwrap();
 
-        let mut result = File::open(path_to_table).unwrap();
-        let mut expected = File::open("tests/files/aa_order_basic.tab").unwrap();
-
-        assert!(file_diff::diff_files(&mut result, &mut expected));
+        assert!(diff_files_ignore_first(
+            path_to_table,
+            "tests/files/aa_order_basic.tab",
+            1
+        ));
     }
 }
 
@@ -293,10 +308,55 @@ fn test_aa_order_leaflets_yaml() {
 
         analysis.run().unwrap();
 
-        let mut result = File::open(path_to_output).unwrap();
-        let mut expected = File::open("tests/files/aa_order_leaflets.yaml").unwrap();
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
 
-        assert!(file_diff::diff_files(&mut result, &mut expected));
+#[test]
+fn test_aa_order_leaflets_yaml_different_membrane_normals() {
+    for (input_traj, normal) in [
+        "tests/files/pcpepg_switched_xy.xtc",
+        "tests/files/pcpepg_switched_xz.xtc",
+        "tests/files/pcpepg_switched_yz.xtc",
+    ]
+    .into_iter()
+    .zip([Axis::Z, Axis::X, Axis::Y].into_iter())
+    {
+        for method in [
+            LeafletClassification::global("@membrane", "name P"),
+            LeafletClassification::local("@membrane", "name P", 2.5),
+            LeafletClassification::individual("name P", "name C218 C316"),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::new()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory(input_traj)
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(method)
+                .membrane_normal(normal)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap();
+
+            assert!(diff_files_ignore_first(
+                &path_to_output,
+                "tests/files/aa_order_leaflets.yaml",
+                1
+            ));
+        }
     }
 }
 
@@ -330,10 +390,11 @@ fn test_aa_order_leaflets_table() {
 
         analysis.run().unwrap();
 
-        let mut result = File::open(path_to_table).unwrap();
-        let mut expected = File::open("tests/files/aa_order_leaflets.tab").unwrap();
-
-        assert!(file_diff::diff_files(&mut result, &mut expected));
+        assert!(diff_files_ignore_first(
+            path_to_table,
+            "tests/files/aa_order_leaflets.tab",
+            1
+        ));
     }
 }
 
@@ -372,10 +433,8 @@ fn test_aa_order_leaflets_xvg() {
         for molecule in ["POPC", "POPE", "POPG"] {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
             let path_expected = format!("tests/files/aa_order_leaflets_{}.xvg", molecule);
-            let mut result = File::open(path).unwrap();
-            let mut expected = File::open(path_expected).unwrap();
 
-            assert!(file_diff::diff_files(&mut result, &mut expected));
+            assert!(diff_files_ignore_first(&path, &path_expected, 1));
         }
     }
 }
@@ -410,10 +469,11 @@ fn test_aa_order_leaflets_csv() {
 
         analysis.run().unwrap();
 
-        let mut result = File::open(path_to_csv).unwrap();
-        let mut expected = File::open("tests/files/aa_order_leaflets.csv").unwrap();
-
-        assert!(file_diff::diff_files(&mut result, &mut expected));
+        assert!(diff_files_ignore_first(
+            path_to_csv,
+            "tests/files/aa_order_leaflets.csv",
+            0
+        ));
     }
 }
 
@@ -438,10 +498,11 @@ fn test_aa_order_leaflets_yaml_supershort() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_output).unwrap();
-    let mut expected = File::open("tests/files/aa_order_selected.yaml").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_selected.yaml",
+        1
+    ));
 }
 
 #[test]
@@ -469,10 +530,11 @@ fn test_aa_order_one_different_hydrogen_numbers_table() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_table).unwrap();
-    let mut expected = File::open("tests/files/aa_order_different_hydrogen_numbers.tab").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_table,
+        "tests/files/aa_order_different_hydrogen_numbers.tab",
+        1
+    ));
 }
 
 #[test]
@@ -500,10 +562,11 @@ fn test_aa_order_one_different_hydrogen_numbers_csv() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_csv).unwrap();
-    let mut expected = File::open("tests/files/aa_order_different_hydrogen_numbers.csv").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_csv,
+        "tests/files/aa_order_different_hydrogen_numbers.csv",
+        0
+    ));
 }
 
 #[test]
@@ -527,10 +590,11 @@ fn test_aa_order_limit_yaml() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_output).unwrap();
-    let mut expected = File::open("tests/files/aa_order_limit.yaml").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_limit.yaml",
+        1
+    ));
 }
 
 #[test]
@@ -555,10 +619,11 @@ fn test_aa_order_leaflets_limit_yaml() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_output).unwrap();
-    let mut expected = File::open("tests/files/aa_order_leaflets_limit.yaml").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_leaflets_limit.yaml",
+        1
+    ));
 }
 
 #[test]
@@ -587,10 +652,11 @@ fn test_aa_order_leaflets_limit_tab() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_table).unwrap();
-    let mut expected = File::open("tests/files/aa_order_leaflets_limit.tab").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_table,
+        "tests/files/aa_order_leaflets_limit.tab",
+        1
+    ));
 }
 
 #[test]
@@ -619,10 +685,11 @@ fn test_aa_order_leaflets_limit_csv() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_csv).unwrap();
-    let mut expected = File::open("tests/files/aa_order_leaflets_limit.csv").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_csv,
+        "tests/files/aa_order_leaflets_limit.csv",
+        0
+    ));
 }
 
 #[test]
@@ -649,10 +716,11 @@ fn test_aa_order_begin_end_step_yaml() {
 
     analysis.run().unwrap();
 
-    let mut result = File::open(path_to_output).unwrap();
-    let mut expected = File::open("tests/files/aa_order_begin_end_step.yaml").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_begin_end_step.yaml",
+        1
+    ));
 }
 
 #[test]
@@ -775,9 +843,7 @@ fn test_aa_order_basic_all_formats_backup() {
     ];
 
     for (expected, result) in &all_files {
-        let mut result_file = File::open(result).unwrap();
-        let mut expected_file = File::open(expected).unwrap();
-        assert!(file_diff::diff_files(&mut result_file, &mut expected_file));
+        assert!(diff_files_ignore_first(result, expected, 1));
     }
 
     read_and_compare_files(
@@ -858,10 +924,11 @@ fn test_aa_order_maps_basic() {
         compare_ordermaps(real_file, test_file);
     }
 
-    let mut result = File::open(path_to_output).unwrap();
-    let mut expected = File::open("tests/files/aa_order_small.yaml").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_small.yaml",
+        1
+    ));
 }
 
 #[test]
@@ -941,10 +1008,105 @@ fn test_aa_order_maps_leaflets() {
             compare_ordermaps(real_file, test_file);
         }
 
-        let mut result = File::open(path_to_output).unwrap();
-        let mut expected = File::open("tests/files/aa_order_leaflets_small.yaml").unwrap();
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets_small.yaml",
+            1
+        ));
+    }
+}
 
-        assert!(file_diff::diff_files(&mut result, &mut expected));
+#[test]
+fn test_aa_order_maps_leaflets_different_membrane_normals() {
+    for (input_traj, normal) in [
+        "tests/files/pcpepg_switched_xz.xtc",
+        "tests/files/pcpepg_switched_yz.xtc",
+    ]
+    .into_iter()
+    .zip([Axis::X, Axis::Y].into_iter())
+    {
+        for method in [
+            LeafletClassification::global("@membrane", "name P"),
+            LeafletClassification::local("@membrane", "name P", 2.0),
+            LeafletClassification::individual("name P", "name C218 C316"),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let directory = TempDir::new().unwrap();
+            let path_to_dir = directory.path().to_str().unwrap();
+
+            let analysis = Analysis::new()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory(input_traj)
+                .membrane_normal(normal)
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "resname POPC and name C22 C24 C218",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(method)
+                .map(
+                    OrderMap::new()
+                        .bin_size_y(4.0)
+                        .bin_size_y(4.0)
+                        .output_directory(path_to_dir)
+                        .min_samples(5)
+                        .build()
+                        .unwrap(),
+                )
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap();
+
+            let expected_file_names = [
+                "ordermap_POPC-C218-87_lower.dat",
+                "ordermap_POPC-C218-87--POPC-H18S-89_upper.dat",
+                "ordermap_POPC-C22-32_lower.dat",
+                "ordermap_POPC-C22-32--POPC-H2S-34_upper.dat",
+                "ordermap_POPC-C24-47--POPC-H4R-48_upper.dat",
+                "ordermap_POPC-C218-87--POPC-H18R-88_lower.dat",
+                "ordermap_POPC-C218-87--POPC-H18T-90_lower.dat",
+                "ordermap_POPC-C22-32--POPC-H2R-33_lower.dat",
+                "ordermap_POPC-C22-32_total.dat",
+                "ordermap_POPC-C24-47--POPC-H4S-49_lower.dat",
+                "ordermap_POPC-C218-87--POPC-H18R-88_total.dat",
+                "ordermap_POPC-C218-87--POPC-H18T-90_total.dat",
+                "ordermap_POPC-C22-32--POPC-H2R-33_total.dat",
+                "ordermap_POPC-C22-32_upper.dat",
+                "ordermap_POPC-C24-47--POPC-H4S-49_total.dat",
+                "ordermap_POPC-C218-87--POPC-H18R-88_upper.dat",
+                "ordermap_POPC-C218-87--POPC-H18T-90_upper.dat",
+                "ordermap_POPC-C22-32--POPC-H2R-33_upper.dat",
+                "ordermap_POPC-C24-47_lower.dat",
+                "ordermap_POPC-C24-47--POPC-H4S-49_upper.dat",
+                "ordermap_POPC-C218-87--POPC-H18S-89_lower.dat",
+                "ordermap_POPC-C218-87_total.dat",
+                "ordermap_POPC-C22-32--POPC-H2S-34_lower.dat",
+                "ordermap_POPC-C24-47--POPC-H4R-48_lower.dat",
+                "ordermap_POPC-C24-47_total.dat",
+                "ordermap_POPC-C218-87--POPC-H18S-89_total.dat",
+                "ordermap_POPC-C218-87_upper.dat",
+                "ordermap_POPC-C22-32--POPC-H2S-34_total.dat",
+                "ordermap_POPC-C24-47--POPC-H4R-48_total.dat",
+                "ordermap_POPC-C24-47_upper.dat",
+            ];
+
+            for file in expected_file_names {
+                let real_file = format!("{}/POPC/{}", path_to_dir, file);
+                let test_file = format!("tests/files/ordermaps/{}", file);
+                compare_ordermaps(real_file, test_file);
+            }
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_leaflets_small.yaml",
+                1
+            ));
+        }
     }
 }
 
@@ -1001,10 +1163,11 @@ fn test_aa_order_maps_basic_multiple_threads() {
             compare_ordermaps(real_file, test_file);
         }
 
-        let mut result = File::open(path_to_output).unwrap();
-        let mut expected = File::open("tests/files/aa_order_small.yaml").unwrap();
-
-        assert!(file_diff::diff_files(&mut result, &mut expected));
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_small.yaml",
+            1
+        ));
     }
 }
 
@@ -1133,10 +1296,11 @@ fn test_aa_order_maps_basic_backup() {
         compare_ordermaps(real_file, test_file);
     }
 
-    let mut result = File::open(path_to_output).unwrap();
-    let mut expected = File::open("tests/files/aa_order_small.yaml").unwrap();
-
-    assert!(file_diff::diff_files(&mut result, &mut expected));
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_small.yaml",
+        1
+    ));
 
     // check backed up directory
     let directories = std::fs::read_dir(path_to_outer_dir)

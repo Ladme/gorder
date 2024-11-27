@@ -5,7 +5,7 @@
 
 use groan_rs::prelude::{SimBox, Vector3D};
 
-use crate::{Analysis, AnalysisType};
+use crate::{Analysis, AnalysisType, Axis};
 
 mod aaorder;
 mod auxiliary;
@@ -17,15 +17,26 @@ pub(crate) mod topology;
 impl Analysis {
     /// Perform the analysis and write out the results.
     #[inline(always)]
-    pub fn run(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub fn run(mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.init_ordermap(self.membrane_normal());
+
         self.info();
         match self.analysis_type() {
             AnalysisType::AAOrder {
                 heavy_atoms: _,
                 hydrogens: _,
-            } => crate::analysis::aaorder::analyze_atomistic(self),
+            } => crate::analysis::aaorder::analyze_atomistic(&self),
             AnalysisType::CGOrder { atoms: _ } => {
                 todo!("CG Order calculation is not yet implemented.")
+            }
+        }
+    }
+
+    /// Finish the ordermap plane initialization.
+    fn init_ordermap(&mut self, membrane_normal: Axis) {
+        if let Some(map) = self.map_mut().as_mut() {
+            if map.plane().is_none() {
+                map.set_plane(Some(membrane_normal.perpendicular()));
             }
         }
     }

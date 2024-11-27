@@ -23,3 +23,4 @@ map:
   min_samples: 10
   bin_size_x: 0.05
   bin_size_y: 0.02
+  plane: xy
