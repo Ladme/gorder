@@ -3,11 +3,16 @@
 
 //! Integration tests for the `gorder` library.
 
-use std::{fs::File, path::Path};
+use std::{
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 use approx::assert_relative_eq;
 use gorder::prelude::*;
 use groan_rs::prelude::GridMap;
+use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
 #[test]
@@ -690,6 +695,98 @@ fn test_aa_order_empty_molecules() {
     assert!(!Path::new("THIS_FILE_SHOULD_NOT_BE_CREATED_2").exists());
 }
 
+macro_rules! create_file_for_backup {
+    ($path:expr) => {{
+        File::create($path)
+            .unwrap()
+            .write_all("This file will be backed up.".as_bytes())
+            .unwrap()
+    }};
+}
+
+fn read_and_compare_files(dir: &str, exclude_paths: &[&str], expected_content: &str) {
+    let mut count = 0;
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+
+        if path.is_dir() || exclude_paths.contains(&path.to_str().unwrap()) {
+            continue;
+        }
+
+        count += 1;
+
+        let mut file_content = String::new();
+        File::open(&path)
+            .unwrap()
+            .read_to_string(&mut file_content)
+            .unwrap();
+
+        assert_eq!(file_content, expected_content);
+    }
+
+    assert_eq!(count, 6);
+}
+
+#[test]
+fn test_aa_order_basic_all_formats_backup() {
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let file_paths = [
+        format!("{}/order.yaml", path_to_dir),
+        format!("{}/order.tab", path_to_dir),
+        format!("{}/order.csv", path_to_dir),
+        format!("{}/order_POPC.xvg", path_to_dir),
+        format!("{}/order_POPE.xvg", path_to_dir),
+        format!("{}/order_POPG.xvg", path_to_dir),
+    ];
+
+    for path in &file_paths {
+        create_file_for_backup!(path);
+    }
+
+    let xvg_pattern = format!("{}/order.xvg", path_to_dir);
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(&file_paths[0])
+        .output_tab(&file_paths[1])
+        .output_csv(&file_paths[2])
+        .output_xvg(&xvg_pattern)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let all_files = [
+        ("tests/files/aa_order_basic.yaml", &file_paths[0]),
+        ("tests/files/aa_order_basic.tab", &file_paths[1]),
+        ("tests/files/aa_order_basic.csv", &file_paths[2]),
+        ("tests/files/aa_order_basic_POPC.xvg", &file_paths[3]),
+        ("tests/files/aa_order_basic_POPE.xvg", &file_paths[4]),
+        ("tests/files/aa_order_basic_POPG.xvg", &file_paths[5]),
+    ];
+
+    for (expected, result) in &all_files {
+        let mut result_file = File::open(result).unwrap();
+        let mut expected_file = File::open(expected).unwrap();
+        assert!(file_diff::diff_files(&mut result_file, &mut expected_file));
+    }
+
+    read_and_compare_files(
+        &path_to_dir,
+        &file_paths.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+        "This file will be backed up.",
+    );
+}
+
 fn parse_float(string: &str) -> Option<f32> {
     string.parse::<f32>().ok()
 }
@@ -978,4 +1075,84 @@ fn test_aa_order_maps_basic_weird_molecules() {
         let real_file = format!("{}/{}", path_to_dir, file);
         assert!(Path::new(&real_file).exists());
     }
+}
+
+#[test]
+fn test_aa_order_maps_basic_backup() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let outer_directory = TempDir::new().unwrap();
+    let path_to_outer_dir = outer_directory.path().to_str().unwrap();
+
+    let directory = TempDir::new_in(&path_to_outer_dir).unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let backup_file = format!("{}/to_backup.txt", path_to_dir);
+    create_file_for_backup!(&backup_file);
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "resname POPC and name C22 C24 C218",
+            "@membrane and element name hydrogen",
+        ))
+        .map(
+            OrderMap::new()
+                .bin_size_y(4.0)
+                .bin_size_y(4.0)
+                .output_directory(path_to_dir)
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let expected_file_names = [
+        "ordermap_POPC-C218-87--POPC-H18R-88_total.dat",
+        "ordermap_POPC-C218-87--POPC-H18S-89_total.dat",
+        "ordermap_POPC-C218-87--POPC-H18T-90_total.dat",
+        "ordermap_POPC-C218-87_total.dat",
+        "ordermap_POPC-C22-32--POPC-H2R-33_total.dat",
+        "ordermap_POPC-C22-32--POPC-H2S-34_total.dat",
+        "ordermap_POPC-C22-32_total.dat",
+        "ordermap_POPC-C24-47--POPC-H4R-48_total.dat",
+        "ordermap_POPC-C24-47--POPC-H4S-49_total.dat",
+        "ordermap_POPC-C24-47_total.dat",
+    ];
+
+    for file in expected_file_names {
+        let real_file = format!("{}/POPC/{}", path_to_dir, file);
+        let test_file = format!("tests/files/ordermaps/{}", file);
+        compare_ordermaps(real_file, test_file);
+    }
+
+    let mut result = File::open(path_to_output).unwrap();
+    let mut expected = File::open("tests/files/aa_order_small.yaml").unwrap();
+
+    assert!(file_diff::diff_files(&mut result, &mut expected));
+
+    // check backed up directory
+    let directories = std::fs::read_dir(path_to_outer_dir)
+        .unwrap()
+        .map(|x| x.unwrap().path())
+        .filter(|x| x.is_dir() && x.to_str().unwrap() != path_to_dir)
+        .collect::<Vec<PathBuf>>();
+
+    assert_eq!(directories.len(), 1);
+
+    let file_path = format!("{}/to_backup.txt", directories[0].display());
+    let mut file_content = String::new();
+    File::open(&file_path)
+        .unwrap()
+        .read_to_string(&mut file_content)
+        .unwrap();
+
+    assert_eq!(file_content, "This file will be backed up.");
 }
