@@ -26,7 +26,7 @@ impl Analysis {
                 heavy_atoms: _,
                 hydrogens: _,
             } => crate::analysis::aaorder::analyze_atomistic(&self),
-            AnalysisType::CGOrder { atoms: _ } => {
+            AnalysisType::CGOrder { beads: _ } => {
                 todo!("CG Order calculation is not yet implemented.")
             }
         }

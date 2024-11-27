@@ -25,7 +25,8 @@ pub enum AnalysisType {
         hydrogens: String,
     },
     CGOrder {
-        atoms: String,
+        #[serde(alias = "atoms")]
+        beads: String,
     },
 }
 
@@ -37,9 +38,9 @@ impl AnalysisType {
         }
     }
 
-    pub fn cgorder(atoms: &str) -> Self {
+    pub fn cgorder(beads: &str) -> Self {
         Self::CGOrder {
-            atoms: atoms.to_owned(),
+            beads: beads.to_owned(),
         }
     }
 
@@ -49,7 +50,7 @@ impl AnalysisType {
                 heavy_atoms: _,
                 hydrogens: _,
             } => "all-atom order parameters",
-            Self::CGOrder { atoms: _ } => "coarse-grained order parameters",
+            Self::CGOrder { beads: _ } => "coarse-grained order parameters",
         }
     }
 }
@@ -244,7 +245,7 @@ impl Analysis {
 
     pub fn heavy_atoms(&self) -> Option<&String> {
         match &self.analysis_type {
-            AnalysisType::CGOrder { atoms: _ } => None,
+            AnalysisType::CGOrder { beads: _ } => None,
             AnalysisType::AAOrder {
                 heavy_atoms,
                 hydrogens: _,
@@ -254,7 +255,7 @@ impl Analysis {
 
     pub fn hydrogens(&self) -> Option<&String> {
         match &self.analysis_type {
-            AnalysisType::CGOrder { atoms: _ } => None,
+            AnalysisType::CGOrder { beads: _ } => None,
             AnalysisType::AAOrder {
                 heavy_atoms: _,
                 hydrogens,
@@ -262,14 +263,19 @@ impl Analysis {
         }
     }
 
-    pub fn atoms(&self) -> Option<&String> {
+    pub fn beads(&self) -> Option<&String> {
         match &self.analysis_type {
-            AnalysisType::CGOrder { atoms } => Some(atoms),
+            AnalysisType::CGOrder { beads } => Some(beads),
             AnalysisType::AAOrder {
                 heavy_atoms: _,
                 hydrogens: _,
             } => None,
         }
+    }
+
+    #[inline(always)]
+    pub fn atoms(&self) -> Option<&String> {
+        self.beads()
     }
 
     /// Alias for `output_yaml`.
