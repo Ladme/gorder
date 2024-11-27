@@ -37,6 +37,30 @@ fn test_aa_order_basic_yaml() {
 }
 
 #[test]
+fn test_aa_order_basic_fail_overlap() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon or serial 876 to 1234",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Function should have failed."),
+        Err(e) => assert!(e.to_string().contains("are part of both")),
+    }
+}
+
+#[test]
 fn test_aa_order_basic_table() {
     let output_yaml = NamedTempFile::new().unwrap();
     let path_to_yaml = output_yaml.path().to_str().unwrap();
@@ -884,5 +908,74 @@ fn test_aa_order_maps_basic_multiple_threads() {
         let mut expected = File::open("tests/files/aa_order_small.yaml").unwrap();
 
         assert!(file_diff::diff_files(&mut result, &mut expected));
+    }
+}
+
+#[test]
+fn test_aa_order_maps_basic_weird_molecules() {
+    // calculation of ordermaps for system with molecules sharing their name and being composed of multiple residues
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/multiple_resid_same_name.tpr")
+        .trajectory("tests/files/multiple_resid_same_name.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "resname POPC POPE and name C1A C3A C1B C3B",
+            "resname POPC POPE and name D2A C4A C2B C4B",
+        ))
+        .map(
+            OrderMap::new()
+                .bin_size_y(4.0)
+                .bin_size_y(4.0)
+                .output_directory(path_to_dir)
+                .min_samples(1)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    let expected_file_names = [
+        "POPC-POPE1/ordermap_POPC-C1A-4--POPC-D2A-5_total.dat",
+        "POPC-POPE1/ordermap_POPC-D2A-5--POPE-C3A-6_total.dat",
+        "POPC-POPE1/ordermap_POPE-C3A-6--POPE-C4A-7_total.dat",
+        "POPC-POPE1/ordermap_POPE-C1B-8--POPE-C2B-9_total.dat",
+        "POPC-POPE1/ordermap_POPE-C2B-9--POPE-C3B-10_total.dat",
+        "POPC-POPE1/ordermap_POPE-C3B-10--POPE-C4B-11_total.dat",
+        "POPC-POPE1/ordermap_POPC-C1A-4_total.dat",
+        "POPC-POPE1/ordermap_POPE-C3A-6_total.dat",
+        "POPC-POPE1/ordermap_POPE-C1B-8_total.dat",
+        "POPC-POPE1/ordermap_POPE-C3B-10_total.dat",
+        "POPC-POPE2/ordermap_POPC-C1A-4--POPC-D2A-5_total.dat",
+        "POPC-POPE2/ordermap_POPC-D2A-5--POPE-C3A-6_total.dat",
+        "POPC-POPE2/ordermap_POPE-C3A-6--POPE-C4A-7_total.dat",
+        "POPC-POPE2/ordermap_POPE-C3B-10--POPE-C4B-11_total.dat",
+        "POPC-POPE2/ordermap_POPC-C1A-4_total.dat",
+        "POPC-POPE2/ordermap_POPE-C3A-6_total.dat",
+        "POPC-POPE2/ordermap_POPE-C3B-10_total.dat",
+        "POPC-POPE1/ordermap_POPC-C1A-4--POPC-D2A-5_total.dat",
+        "POPC/ordermap_POPC-D2A-5--POPC-C3A-6_total.dat",
+        "POPC/ordermap_POPC-C3A-6--POPC-C4A-7_total.dat",
+        "POPC/ordermap_POPC-C1B-8--POPC-C2B-9_total.dat",
+        "POPC/ordermap_POPC-C2B-9--POPC-C3B-10_total.dat",
+        "POPC/ordermap_POPC-C3B-10--POPC-C4B-11_total.dat",
+        "POPC/ordermap_POPC-C1A-4_total.dat",
+        "POPC/ordermap_POPC-C3A-6_total.dat",
+        "POPC/ordermap_POPC-C1B-8_total.dat",
+        "POPC/ordermap_POPC-C3B-10_total.dat",
+    ];
+
+    for file in expected_file_names {
+        let real_file = format!("{}/{}", path_to_dir, file);
+        assert!(Path::new(&real_file).exists());
     }
 }

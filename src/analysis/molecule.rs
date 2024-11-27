@@ -27,7 +27,7 @@ use super::{
 
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct MoleculeType {
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     name: String,
     #[getset(get = "pub(super)")]
     topology: MoleculeTopology,
@@ -215,7 +215,7 @@ impl OrderBonds {
                 ordermap,
                 min_samples,
                 simbox,
-            );
+            )?;
             order_bonds.push(bond)
         }
 
@@ -379,7 +379,7 @@ impl BondType {
         ordermap: Option<&OrderMap>,
         min_samples: usize,
         simbox: &SimBox,
-    ) -> Self {
+    ) -> Result<Self, TopologyError> {
         let bond_topology = BondTopology::new(
             abs_index_1 - min_index,
             atom_1,
@@ -393,7 +393,10 @@ impl BondType {
         };
 
         let optional_map = if let Some(map_params) = ordermap {
-            Some(Map::new(map_params.to_owned(), simbox))
+            Some(
+                Map::new(map_params.to_owned(), simbox)
+                    .map_err(|e| TopologyError::OrderMapError(e))?,
+            )
         } else {
             None
         };
@@ -404,7 +407,7 @@ impl BondType {
             (None, None)
         };
 
-        Self {
+        Ok(Self {
             bond_topology,
             bonds: vec![real_bond],
             total: Order::default(),
@@ -414,7 +417,7 @@ impl BondType {
             total_map: optional_map,
             upper_map: leaflet_map.clone(),
             lower_map: leaflet_map,
-        }
+        })
     }
 
     /// Insert new real bond to the current order bond.
@@ -759,7 +762,8 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
         let bond2 = BondType::new(
             460,
             &atom2,
@@ -770,7 +774,8 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         assert_eq!(bond1.bond_topology, bond2.bond_topology);
         assert_eq!(bond1.bonds.len(), 1);
@@ -793,7 +798,8 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         assert!(bond.lower.is_some());
         assert!(bond.upper.is_some());
@@ -820,7 +826,8 @@ mod tests {
             Some(&ordermap_params),
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         assert!(bond.lower.is_none());
         assert!(bond.upper.is_none());
@@ -850,7 +857,8 @@ mod tests {
             Some(&ordermap_params),
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         assert!(bond.lower.is_some());
         assert!(bond.upper.is_some());
@@ -874,7 +882,8 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         bond.insert(1354, 1359);
         bond.insert(1676, 1671);
@@ -900,7 +909,8 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         bond.total.n_samples = 17;
         bond.total.order = 3.978;
@@ -927,7 +937,8 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         bond.total.n_samples = 17;
         bond.total.order = 3.978;

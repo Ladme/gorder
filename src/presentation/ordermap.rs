@@ -305,7 +305,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let mut map = Map::new(params, &SimBox::from([3.0, 3.0, 10.0]));
+        let mut map = Map::new(params, &SimBox::from([3.0, 3.0, 10.0])).unwrap();
 
         *(map.values_mut().get_mut_at(0.0, 0.0).unwrap()) = 2.618;
         *(map.samples_mut().get_mut_at(0.0, 0.0).unwrap()) = 17;
@@ -377,7 +377,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let mut map1 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0]));
+        let mut map1 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0])).unwrap();
         *(map1.values_mut().get_mut_at(0.0, 0.0).unwrap()) = 2.618;
         *(map1.samples_mut().get_mut_at(0.0, 0.0).unwrap()) = 17;
 
@@ -393,7 +393,7 @@ mod tests {
         *(map1.values_mut().get_mut_at(3.0, 1.0).unwrap()) = 8.826;
         *(map1.samples_mut().get_mut_at(3.0, 1.0).unwrap()) = 15;
 
-        let mut map2 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0]));
+        let mut map2 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0])).unwrap();
         *(map2.values_mut().get_mut_at(0.0, 0.0).unwrap()) = 4.174;
         *(map2.samples_mut().get_mut_at(0.0, 0.0).unwrap()) = 35;
 
@@ -409,7 +409,7 @@ mod tests {
         *(map2.values_mut().get_mut_at(3.0, 2.0).unwrap()) = -3.453;
         *(map2.samples_mut().get_mut_at(3.0, 2.0).unwrap()) = 15;
 
-        let mut map3 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0]));
+        let mut map3 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0])).unwrap();
         *(map3.values_mut().get_mut_at(1.0, 0.0).unwrap()) = 2.764;
         *(map3.samples_mut().get_mut_at(1.0, 0.0).unwrap()) = 14;
 

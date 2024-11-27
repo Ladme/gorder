@@ -53,6 +53,9 @@ pub enum TopologyError {
 
     #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
     ZeroBox,
+
+    #[error("{}", .0)]
+    OrderMapError(OrderMapConfigError),
 }
 
 /// Errors that can occur while analyzing the trajectory.
@@ -155,4 +158,12 @@ pub enum OrderMapConfigError {
             "ordermap".yellow(), 
             .0.to_string().yellow())]
     InvalidBinSize(f32),
+    #[error("{} invalid bin size of '{}': bin size of '{}x{}' is larger than grid span of '{}x{}'",
+            "error:".red().bold(),
+            "ordermap".yellow(),
+            .0.0.to_string().yellow(),
+            .0.1.to_string().yellow(),
+            .1.0.to_string().yellow(),
+            .1.1.to_string().yellow())]
+    BinTooLarge((f32, f32), (f32, f32)),
 }

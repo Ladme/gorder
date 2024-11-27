@@ -9,7 +9,7 @@ use crate::{errors::TopologyError, LeafletClassification};
 use crate::{OrderMap, PANIC_MESSAGE};
 use groan_rs::prelude::Dimension;
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use std::usize;
 
 /// A prefix used as an identifier for Gorder groups.
@@ -115,6 +115,9 @@ pub(super) fn classify_molecules(
         }
     }
 
+    // rename molecules that share names
+    solve_name_conflicts(&mut molecules);
+
     Ok(molecules)
 }
 
@@ -132,6 +135,11 @@ fn extract_atoms(
         let res = atom.get_residue_name();
         let a_index = atom.get_index();
 
+        // the residues are input into the `residues` vector in the order in which they are visited
+        // this might in some specific scenarios lead to situations where the same molecule is
+        // identified as two different molecules because their atoms (and consequently residues)
+        // are visited in different order; this is however very unlikely to happen unless the user
+        // intentionally tries to make it so
         if !residues.contains(res) {
             residues.push(res.to_owned());
         }
@@ -238,6 +246,36 @@ fn create_new_molecule_type(
         ordermap_params,
         min_samples,
     )
+}
+
+/// Rename all molecules that have the same name.
+fn solve_name_conflicts(molecules: &mut Vec<MoleculeType>) {
+    let mut counts: HashMap<String, usize> = HashMap::new();
+
+    // count the number of individual names
+    for name in molecules.iter().map(|mol| mol.name()) {
+        *counts.entry(name.clone()).or_insert(0) += 1;
+    }
+
+    // remove entries with the count of 1
+    counts.retain(|_, &mut count| count > 1);
+
+    if counts.len() == 0 {
+        return;
+    }
+
+    for (name, count) in counts.iter() {
+        log::warn!("There are {} types of entities consisting of residue(s) '{}' that are actually different molecule types and will be treated as such.", count, name.replace("-", " "));
+    }
+
+    // rename molecules in conflict
+    for mol in molecules.iter_mut().rev() {
+        let name = mol.name_mut();
+        if let Some(count) = counts.get_mut(name) {
+            *name = format!("{}{}", name, count);
+            *count -= 1;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2217,14 +2255,90 @@ mod tests {
         }
     }
 
-    //#[test]
+    #[test]
     fn test_classify_molecules_shared_name() {
-        todo!("Test classification of molecules composed of the residue of the same name.")
-        // also the atoms inside a single molecule should have the same name
+        let mut system = System::from_file("tests/files/same_name.tpr").unwrap();
+        create_group(&mut system, "Atoms", "resname POPC").unwrap();
+
+        let molecules =
+            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+
+        let expected_names = ["POPC1", "POPC2"];
+        let expected_n_instances = [2, 1];
+
+        for (i, molecule) in molecules.into_iter().enumerate() {
+            assert_eq!(molecule.name(), expected_names[i]);
+
+            for bond_instances in molecule
+                .order_bonds()
+                .bond_types()
+                .iter()
+                .map(|x| x.bonds().clone())
+            {
+                assert_eq!(bond_instances.len(), expected_n_instances[i]);
+            }
+        }
     }
 
-    //#[test]
+    #[test]
     fn test_classify_molecules_multiple_residues() {
-        todo!("Test classification of molecules composed of multiple residues.")
+        let mut system = System::from_file("tests/files/multiple_resid.tpr").unwrap();
+        create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
+
+        let molecules =
+            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+
+        let expected_names = ["POPC-POPE", "POPC"];
+        let expected_n_instances = [2, 1];
+
+        for (i, molecule) in molecules.into_iter().enumerate() {
+            assert_eq!(molecule.name(), expected_names[i]);
+
+            for bond_instances in molecule
+                .order_bonds()
+                .bond_types()
+                .iter()
+                .map(|x| x.bonds().clone())
+            {
+                assert_eq!(bond_instances.len(), expected_n_instances[i]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_classify_molecules_shared_name_multiple_residues() {
+        let mut system = System::from_file("tests/files/multiple_resid_same_name.tpr").unwrap();
+        create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
+
+        let molecules =
+            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+
+        let expected_names = ["POPC-POPE1", "POPC-POPE2", "POPC"];
+        let expected_n_instances = [1, 1, 1];
+
+        for (i, molecule) in molecules.into_iter().enumerate() {
+            assert_eq!(molecule.name(), expected_names[i]);
+
+            for bond_instances in molecule
+                .order_bonds()
+                .bond_types()
+                .iter()
+                .map(|x| x.bonds().clone())
+            {
+                assert_eq!(bond_instances.len(), expected_n_instances[i]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_classify_molecules_cyclic_molecule() {
+        let mut system = System::from_file("tests/files/cyclic.tpr").unwrap();
+        create_group(&mut system, "Atoms", "resname POPC").unwrap();
+
+        let molecules =
+            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+
+        assert_eq!(molecules.len(), 1);
+        assert_eq!(molecules[0].order_bonds().bond_types().len(), 14);
     }
 }

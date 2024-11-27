@@ -9,7 +9,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use hashbrown::HashMap;
 use indexmap::IndexMap;
 use serde::Serialize;
 use std::io::Write;
@@ -94,21 +93,6 @@ impl AAOrderResults {
         Ok(())
     }
 
-    #[inline(always)]
-    fn rename_duplicates(strings: &mut [String]) {
-        let mut seen: HashMap<String, usize> = HashMap::new();
-
-        for s in strings.iter_mut() {
-            let count = seen.entry(s.clone()).or_insert(0);
-
-            if *count > 0 {
-                *s = format!("{}{}", s, *count + 1);
-            }
-
-            *count += 1;
-        }
-    }
-
     /// Write the results of the analysis for the individual order atoms into xvg files.
     pub(crate) fn write_xvg(
         &self,
@@ -127,8 +111,8 @@ impl AAOrderResults {
         let path_buf = Self::strip_extension(file_pattern.as_ref());
         let file_path = path_buf.to_str().expect(PANIC_MESSAGE);
 
-        let mut names: Vec<String> = self.molecules.iter().map(|x| x.molecule.clone()).collect();
-        Self::rename_duplicates(&mut names);
+        // all molecule names must be unique
+        let names: Vec<String> = self.molecules.iter().map(|x| x.molecule.clone()).collect();
 
         for (i, mol) in self.molecules.iter().enumerate() {
             let filename = match extension {
@@ -898,7 +882,8 @@ order:
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
         let mut bond2 = BondType::new(
             0,
             &heavy_atom,
@@ -909,7 +894,8 @@ order:
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         *bond1.total_mut() += 0.234;
         *bond1.total_mut() += 0.176;
@@ -960,7 +946,8 @@ order:
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
         let mut bond2 = BondType::new(
             0,
             &heavy_atom,
@@ -971,7 +958,8 @@ order:
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
-        );
+        )
+        .unwrap();
 
         *bond1.total_mut() += 0.234;
         *bond1.total_mut() += 0.176;

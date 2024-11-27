@@ -7,11 +7,12 @@ use std::ops::Add;
 
 use getset::{Getters, MutGetters};
 use groan_rs::{
+    errors::GridMapError,
     prelude::{GridMap, SimBox, Vector3D},
     structures::gridmap::DataOrder,
 };
 
-use crate::{input::GridSpan, OrderMap, PANIC_MESSAGE};
+use crate::{errors::OrderMapConfigError, input::GridSpan, OrderMap, PANIC_MESSAGE};
 
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct Map {
@@ -24,7 +25,7 @@ pub(crate) struct Map {
 }
 
 impl Map {
-    pub(crate) fn new(params: OrderMap, simbox: &SimBox) -> Map {
+    pub(crate) fn new(params: OrderMap, simbox: &SimBox) -> Result<Map, OrderMapConfigError> {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();
 
@@ -38,24 +39,25 @@ impl Map {
             GridSpan::Manual { start, end } => (start, end),
         };
 
-        Map {
+        let values = match GridMap::new((xmin, xmax), (ymin, ymax), (binx, biny), f32::clone as fn(&f32) -> f32) {
+            Ok(x) => x,
+            Err(GridMapError::InvalidGridTile) => return Err(OrderMapConfigError::BinTooLarge((binx, biny), (xmax, ymax))),
+            Err(e) => panic!("FATAL GORDER ERROR | Map::new | Could not create gridmap for values. Unexpected error {}. {}", e, PANIC_MESSAGE),
+        };
+
+        let samples = GridMap::new(
+            (xmin, xmax),
+            (ymin, ymax),
+            (binx, biny),
+            usize::clone as fn(&usize) -> usize,
+        ).unwrap_or_else(|e|
+             panic!("FATAL GORDER ERROR | Map::new | Could not create gridmap for samples. Unexpected error: {}. {}", e, PANIC_MESSAGE));
+
+        Ok(Map {
             params,
-            values: GridMap::new(
-                (xmin, xmax),
-                (ymin, ymax),
-                (binx, biny),
-                f32::clone as fn(&f32) -> f32,
-            )
-            .unwrap_or_else(|e|
-                 panic!("FATAL GORDER ERROR | Map::new | Could not create gridmap for values. Error: {}. {}", e, PANIC_MESSAGE)),
-            samples: GridMap::new(
-                (xmin, xmax),
-                (ymin, ymax),
-                (binx, biny),
-                usize::clone as fn(&usize) -> usize,
-            ).unwrap_or_else(|e|
-                 panic!("FATAL GORDER ERROR | Map::new | Could not create gridmap for samples. Error: {}. {}", e, PANIC_MESSAGE))
-        }
+            values,
+            samples,
+        })
     }
 
     /// Add sampled order parameter to the correct position. Ignore if out of range.
@@ -155,7 +157,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let map = Map::new(params, &simbox);
+        let map = Map::new(params, &simbox).unwrap();
 
         assert_eq!(map.samples.span_x(), (0.0, 10.0));
         assert_eq!(map.samples.span_y(), (0.0, 5.0));
@@ -182,7 +184,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let map = Map::new(params, &simbox);
+        let map = Map::new(params, &simbox).unwrap();
 
         assert_eq!(map.samples.span_x(), (-4.0, 8.0));
         assert_eq!(map.samples.span_y(), (1.5, 4.5));
@@ -191,6 +193,28 @@ mod tests {
         assert_eq!(map.values.span_x(), (-4.0, 8.0));
         assert_eq!(map.values.span_y(), (1.5, 4.5));
         assert_eq!(map.values.tile_dim(), (0.1, 0.1));
+    }
+
+    #[test]
+    fn new_map_fail_bin_size() {
+        let simbox = SimBox::from([10.0, 3.0, 6.0]);
+        let params = OrderMap::new()
+            .output_directory(".")
+            .bin_size_y(5.0)
+            .bin_size_x(1.0)
+            .build()
+            .unwrap();
+
+        match Map::new(params, &simbox) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(OrderMapConfigError::BinTooLarge((a, b), (x, y))) => {
+                assert_eq!(a, 1.0);
+                assert_eq!(b, 5.0);
+                assert_eq!(x, 10.0);
+                assert_eq!(y, 3.0);
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
     }
 
     #[test]
