@@ -34,7 +34,9 @@ impl Div<usize> for OrderValue {
     type Output = OrderValue;
 
     fn div(self, rhs: usize) -> Self::Output {
-        OrderValue(self.0 / rhs as i64)
+        OrderValue(self.0 / TryInto::<i64>::try_into(rhs)
+            .unwrap_or_else(|e| panic!("FATAL GORDER ERROR | OrderValue::div | Conversion of usize to i64 failed. {}. Value of '{}' cannot be converted. {}", e, rhs, PANIC_MESSAGE))
+        )
     }
 }
 
