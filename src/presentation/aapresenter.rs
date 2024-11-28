@@ -905,7 +905,7 @@ order:
         *bond2.total_mut() += 0.112;
         *bond2.total_mut() += 0.245;
         *bond2.total_mut() += -0.013;
-        // average: 0.11466666
+        // average: 0.114666
 
         let heavy_atom_type = AtomType::new_raw(0, "POPC", "C2");
         let hydrogen1_atom_type = AtomType::new_raw(2, "POPC", "HA");
@@ -921,11 +921,11 @@ order:
         assert!(bond1_results.lower.is_none());
 
         let bond1_results = results.bonds.get(&hydrogen2_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, 0.11466666);
+        assert_relative_eq!(bond1_results.total, 0.114666);
         assert!(bond1_results.upper.is_none());
         assert!(bond1_results.lower.is_none());
 
-        assert_relative_eq!(results.total.unwrap(), 0.14433333);
+        assert_relative_eq!(results.total.unwrap(), 0.144333);
         assert!(results.upper.is_none());
         assert!(results.lower.is_none());
     }
@@ -969,17 +969,17 @@ order:
         *bond1.upper_mut().as_mut().unwrap() += 0.115;
         *bond1.upper_mut().as_mut().unwrap() += 0.325;
         *bond1.upper_mut().as_mut().unwrap() += 0.008;
-        // average: 0.14933333
+        // average: 0.149333
 
         *bond2.total_mut() += 0.112;
         *bond2.total_mut() += 0.245;
         *bond2.total_mut() += -0.013;
-        // average: 0.11466666
+        // average: 0.114666
 
         *bond2.lower_mut().as_mut().unwrap() += 0.332;
         *bond2.lower_mut().as_mut().unwrap() += 0.087;
         *bond2.lower_mut().as_mut().unwrap() += 0.125;
-        // average: 0.18133333
+        // average: 0.181333
 
         let heavy_atom_type = AtomType::new_raw(0, "POPC", "C2");
         let hydrogen1_atom_type = AtomType::new_raw(2, "POPC", "HA");
@@ -991,17 +991,17 @@ order:
 
         let bond1_results = results.bonds.get(&hydrogen1_atom_type).unwrap();
         assert_relative_eq!(bond1_results.total, 0.174);
-        assert_relative_eq!(bond1_results.upper.unwrap(), 0.14933333);
+        assert_relative_eq!(bond1_results.upper.unwrap(), 0.149333);
         assert!(bond1_results.lower.unwrap().is_nan()); // no values for the lower leaflet
 
         let bond1_results = results.bonds.get(&hydrogen2_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, 0.11466666);
+        assert_relative_eq!(bond1_results.total, 0.114666);
         assert!(bond1_results.upper.unwrap().is_nan()); // no values for the upper leaflet
-        assert_relative_eq!(bond1_results.lower.unwrap(), 0.18133333);
+        assert_relative_eq!(bond1_results.lower.unwrap(), 0.181333);
 
-        assert_relative_eq!(results.total.unwrap(), 0.14433333);
-        assert_relative_eq!(results.upper.unwrap(), 0.14933333);
-        assert_relative_eq!(results.lower.unwrap(), 0.18133333);
+        assert_relative_eq!(results.total.unwrap(), 0.144333);
+        assert_relative_eq!(results.upper.unwrap(), 0.149333);
+        assert_relative_eq!(results.lower.unwrap(), 0.181333);
     }
 
     #[test]

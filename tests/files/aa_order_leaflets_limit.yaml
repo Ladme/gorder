@@ -933,7 +933,7 @@
       bonds:
         POPC H11X (116):
           total: 0.2057
-          upper: 0.1959
+          upper: 0.1958
           lower: 0.2155
         POPC H11Y (117):
           total: 0.1952
@@ -953,7 +953,7 @@
           upper: 0.188
           lower: 0.1846
     POPC C313 (121):
-      total: 0.1692
+      total: 0.1691
       upper: 0.1602
       lower: 0.1781
       bonds:

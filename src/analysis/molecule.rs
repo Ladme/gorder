@@ -23,6 +23,7 @@ use crate::{
 use super::{
     leaflets::MoleculeLeafletClassification,
     ordermap::{merge_option_maps, Map},
+    orderval::OrderValue,
 };
 
 #[derive(Debug, Clone, Getters, MutGetters)]
@@ -670,7 +671,7 @@ impl fmt::Display for AtomType {
 #[derive(Debug, Clone, Default, CopyGetters)]
 pub(crate) struct Order {
     #[getset(get_copy = "pub(super)")]
-    order: f32,
+    order: OrderValue,
     #[getset(get_copy = "pub(super)")]
     n_samples: usize,
 }
@@ -679,7 +680,10 @@ impl Order {
     #[allow(unused)]
     #[inline(always)]
     pub(super) fn new(order: f32, n_samples: usize) -> Order {
-        Order { order, n_samples }
+        Order {
+            order: OrderValue::from(order),
+            n_samples,
+        }
     }
 
     /// Calculate average order from the collected data.
@@ -690,7 +694,7 @@ impl Order {
         if self.n_samples < min_samples.into() {
             f32::NAN
         } else {
-            self.order / self.n_samples as f32
+            f32::from(self.order / self.n_samples)
         }
     }
 }
@@ -915,7 +919,7 @@ mod tests {
         .unwrap();
 
         bond.total.n_samples = 17;
-        bond.total.order = 3.978;
+        bond.total.order = OrderValue::from(3.978);
 
         let (total, upper, lower) = bond.calc_order();
 
@@ -943,13 +947,13 @@ mod tests {
         .unwrap();
 
         bond.total.n_samples = 17;
-        bond.total.order = 3.978;
+        bond.total.order = OrderValue::from(3.978);
 
         bond.upper.as_mut().unwrap().n_samples = 8;
-        bond.upper.as_mut().unwrap().order = 1.976;
+        bond.upper.as_mut().unwrap().order = OrderValue::from(1.976);
 
         bond.lower.as_mut().unwrap().n_samples = 9;
-        bond.lower.as_mut().unwrap().order = 1.989;
+        bond.lower.as_mut().unwrap().order = OrderValue::from(1.989);
 
         let (total, upper, lower) = bond.calc_order();
 

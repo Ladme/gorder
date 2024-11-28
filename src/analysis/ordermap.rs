@@ -243,7 +243,7 @@ mod tests {
 
         let merged = order1 + order2;
 
-        assert_relative_eq!(merged.order(), 1.21);
+        assert_relative_eq!(f32::from(merged.order()), 1.21);
         assert_eq!(merged.n_samples(), 45);
     }
 
