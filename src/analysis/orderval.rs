@@ -7,6 +7,8 @@ use std::ops::{Add, AddAssign, Div};
 
 use serde::Deserialize;
 
+use crate::PANIC_MESSAGE;
+
 const PRECISION: f64 = 1_000_000.0;
 
 /// Value of the order parameter x PRECISION rounded to the nearest integer.
@@ -17,6 +19,7 @@ pub(super) struct OrderValue(i64);
 
 impl From<f32> for OrderValue {
     fn from(value: f32) -> Self {
+        // we do not check for overflow here as `value` should never be larger than 1.0
         OrderValue((value as f64 * PRECISION).round() as i64)
     }
 }
@@ -39,13 +42,17 @@ impl Add<OrderValue> for OrderValue {
     type Output = OrderValue;
 
     fn add(self, rhs: OrderValue) -> Self::Output {
-        OrderValue(self.0 + rhs.0)
+        OrderValue(
+            self.0.checked_add(rhs.0)
+                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | OrderValue::Add | OrderValue overflowed. Tried adding '{}' and '{}'. {}", self.0, rhs.0, PANIC_MESSAGE))
+        )
     }
 }
 
 impl AddAssign<OrderValue> for OrderValue {
     fn add_assign(&mut self, rhs: OrderValue) {
-        self.0 += rhs.0;
+        self.0 = self.0.checked_add(rhs.0)
+            .unwrap_or_else(|| panic!("FATAL GORDER ERROR | OrderValue::AddAssign | OrderValue overflowed. Tried adding '{}' and '{}'. {}", self.0, rhs.0, PANIC_MESSAGE));
     }
 }
 
