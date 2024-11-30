@@ -1,5 +1,5 @@
 # Map of average order parameters calculated for bonds involving atom type POPC-C24-47.
-# Calculated with 'gorder v0.1.0'.
+# Calculated with 'gorder v0.2.0-dev.1'.
 @ xlabel x-dimension [nm]
 @ ylabel y-dimension [nm]
 @ zrange -1 1 0.2

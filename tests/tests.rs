@@ -899,7 +899,7 @@ fn test_aa_order_maps_basic() {
     for file in expected_file_names {
         let real_file = format!("{}/POPC/{}", path_to_dir, file);
         let test_file = format!("tests/files/ordermaps/{}", file);
-        diff_files_ignore_first(&real_file, &test_file, 2);
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 
     assert!(diff_files_ignore_first(
@@ -983,7 +983,7 @@ fn test_aa_order_maps_leaflets() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
-            diff_files_ignore_first(&real_file, &test_file, 2);
+            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
         assert!(diff_files_ignore_first(
@@ -996,13 +996,20 @@ fn test_aa_order_maps_leaflets() {
 
 #[test]
 fn test_aa_order_maps_leaflets_different_membrane_normals() {
-    for (input_traj, normal) in [
+    for (input_traj, (normal, structure)) in [
         "tests/files/pcpepg_switched_xz.xtc",
         "tests/files/pcpepg_switched_yz.xtc",
     ]
     .into_iter()
-    .zip([Axis::X, Axis::Y].into_iter())
-    {
+    .zip(
+        [Axis::X, Axis::Y].into_iter().zip(
+            [
+                "tests/files/pcpepg_switched_xz.tpr",
+                "tests/files/pcpepg_switched_yz.tpr",
+            ]
+            .into_iter(),
+        ),
+    ) {
         for method in [
             LeafletClassification::global("@membrane", "name P"),
             LeafletClassification::local("@membrane", "name P", 2.0),
@@ -1015,7 +1022,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
             let path_to_dir = directory.path().to_str().unwrap();
 
             let analysis = Analysis::new()
-                .structure("tests/files/pcpepg.tpr")
+                .structure(structure)
                 .trajectory(input_traj)
                 .membrane_normal(normal)
                 .output(path_to_output)
@@ -1076,7 +1083,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
             for file in expected_file_names {
                 let real_file = format!("{}/POPC/{}", path_to_dir, file);
                 let test_file = format!("tests/files/ordermaps/{}", file);
-                diff_files_ignore_first(&real_file, &test_file, 2);
+                assert!(diff_files_ignore_first(&real_file, &test_file, 4));
             }
 
             assert!(diff_files_ignore_first(
@@ -1138,7 +1145,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
-            diff_files_ignore_first(&real_file, &test_file, 2);
+            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
         assert!(diff_files_ignore_first(
@@ -1271,7 +1278,7 @@ fn test_aa_order_maps_basic_backup() {
     for file in expected_file_names {
         let real_file = format!("{}/POPC/{}", path_to_dir, file);
         let test_file = format!("tests/files/ordermaps/{}", file);
-        diff_files_ignore_first(&real_file, &test_file, 2);
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 
     assert!(diff_files_ignore_first(

@@ -1,5 +1,5 @@
 # Map of average order parameters calculated for bonds between atom types POPC-C22-32 and POPC-H2S-34.
-# Calculated with 'gorder v0.1.0'.
+# Calculated with 'gorder v0.2.0-dev.1'.
 @ xlabel x-dimension [nm]
 @ ylabel y-dimension [nm]
 @ zrange -1 1 0.2
@@ -277,7 +277,7 @@ $ colormap seismic_r
 8.9000 8.0000 0.3981
 9.0000 0.0000 0.3364
 9.0000 4.0000 0.1420
-9.0000 8.0000 0.2898
+9.0000 8.0000 0.2899
 9.1000 0.0000 NaN
 9.1000 4.0000 -0.1391
 9.1000 8.0000 0.3576
