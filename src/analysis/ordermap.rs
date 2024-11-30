@@ -39,7 +39,7 @@ impl Map {
             .plane()
             .unwrap_or_else(|| {
                 panic!(
-                    "FATAL GORDER ERROR | Map::new | Ordermap plane should be already set. {}",
+                    "FATAL GORDER ERROR | Map::new | Ordermap plane should already be set. {}",
                     PANIC_MESSAGE
                 )
             })

@@ -488,11 +488,15 @@ impl BondType {
                 .get_position()
                 .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_index()))?;
 
-            let sch = super::calc_sch(pos1, pos2, simbox, membrane_normal);
+            let vec = pos1.vector_to(&pos2, simbox);
+            let sch = super::calc_sch(&vec, membrane_normal);
             self.total += sch;
 
+            // get the coordinates of the bond
+            let bond_pos = pos1 + (vec / 2.0);
+
             if let Some(map) = self.total_map.as_mut() {
-                map.add_order(sch, &((pos1 + pos2) / 2.0));
+                map.add_order(sch, &bond_pos);
             }
 
             // get the assignment of molecule (assignment is performed earlier)
@@ -504,13 +508,13 @@ impl BondType {
                     Leaflet::Upper => {
                         *self.upper.as_mut().expect(PANIC_MESSAGE) += sch;
                         if let Some(map) = self.upper_map.as_mut() {
-                            map.add_order(sch, &((pos1 + pos2) / 2.0));
+                            map.add_order(sch, &bond_pos);
                         }
                     }
                     Leaflet::Lower => {
                         *self.lower.as_mut().expect(PANIC_MESSAGE) += sch;
                         if let Some(map) = self.lower_map.as_mut() {
-                            map.add_order(sch, &((pos1 + pos2) / 2.0));
+                            map.add_order(sch, &bond_pos);
                         }
                     }
                 }

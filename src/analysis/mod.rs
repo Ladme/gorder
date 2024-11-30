@@ -3,7 +3,7 @@
 
 //! This module contains the implementation of the analysis logic.
 
-use groan_rs::prelude::{SimBox, Vector3D};
+use groan_rs::prelude::Vector3D;
 
 use crate::{Analysis, AnalysisType, Axis};
 
@@ -43,16 +43,10 @@ impl Analysis {
     }
 }
 
-/// Calculate instantenous value of order parameter of a bond defined by two atoms.
+/// Calculate instantenous value of order parameter of a bond defined by a vector going from atom1 to atom2.
 /// Simulation box must be valid and orthogonal.
 #[inline(always)]
-pub(super) fn calc_sch(
-    pos1: &Vector3D,
-    pos2: &Vector3D,
-    simbox: &SimBox,
-    membrane_normal: &Vector3D,
-) -> f32 {
-    let vector = pos1.vector_to(pos2, simbox);
+pub(super) fn calc_sch(vector: &Vector3D, membrane_normal: &Vector3D) -> f32 {
     let angle = vector.angle(membrane_normal);
 
     let cos = angle.cos();
@@ -65,7 +59,7 @@ pub(super) fn calc_sch(
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
-    use groan_rs::prelude::Dimension;
+    use groan_rs::prelude::{Dimension, SimBox};
 
     #[test]
     fn test_calc_sch() {
@@ -75,7 +69,7 @@ mod tests {
         let simbox = SimBox::from([10.0, 10.0, 10.0]);
 
         assert_relative_eq!(
-            calc_sch(&pos1, &pos2, &simbox, &Dimension::Z.into()),
+            calc_sch(&(pos1.vector_to(&pos2, &simbox)), &Dimension::Z.into()),
             -0.8544775
         );
     }
