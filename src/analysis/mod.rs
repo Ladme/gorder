@@ -12,7 +12,7 @@ mod auxiliary;
 mod leaflets;
 pub(crate) mod molecule;
 pub(crate) mod ordermap;
-mod orderval;
+pub(crate) mod orderval;
 pub(crate) mod topology;
 
 impl Analysis {

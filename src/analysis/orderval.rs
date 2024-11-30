@@ -15,7 +15,7 @@ const PRECISION: f64 = 1_000_000.0;
 /// Avoids issues with floating point precision.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Deserialize, Default)]
 #[serde(transparent)]
-pub(super) struct OrderValue(i64);
+pub(crate) struct OrderValue(i64);
 
 impl From<f32> for OrderValue {
     fn from(value: f32) -> Self {

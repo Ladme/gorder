@@ -14,14 +14,20 @@ use groan_rs::{
 
 use crate::{errors::OrderMapConfigError, input::GridSpan, OrderMap, PANIC_MESSAGE};
 
+use super::orderval::OrderValue;
+
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct Map {
     #[getset(get = "pub(crate)")]
     params: OrderMap,
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    values: GridMap<f32, f32, fn(&f32) -> f32>,
+    values: GridMap<OrderValue, f32, fn(&OrderValue) -> f32>,
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     samples: GridMap<usize, usize, fn(&usize) -> usize>,
+}
+
+fn from_order_value(value: &OrderValue) -> f32 {
+    f32::from(*value)
 }
 
 impl Map {
@@ -49,7 +55,7 @@ impl Map {
             GridSpan::Manual { start, end } => (start, end),
         };
 
-        let values = match GridMap::new((xmin, xmax), (ymin, ymax), (binx, biny), f32::clone as fn(&f32) -> f32) {
+        let values = match GridMap::new((xmin, xmax), (ymin, ymax), (binx, biny), from_order_value as fn(&OrderValue) -> f32) {
             Ok(x) => x,
             Err(GridMapError::InvalidGridTile) => return Err(OrderMapConfigError::BinTooLarge((binx, biny), (xmax, ymax))),
             Err(e) => panic!("FATAL GORDER ERROR | Map::new | Could not create gridmap for values. Unexpected error {}. {}", e, PANIC_MESSAGE),
@@ -92,8 +98,11 @@ impl Add<Map> for Map {
     type Output = Map;
 
     fn add(self, rhs: Map) -> Self::Output {
-        let joined_values_map =
-            merge_grid_maps(self.values, rhs.values, f32::clone as fn(&f32) -> f32);
+        let joined_values_map = merge_grid_maps(
+            self.values,
+            rhs.values,
+            from_order_value as fn(&OrderValue) -> f32,
+        );
 
         let joined_samples_map = merge_grid_maps(
             self.samples,
@@ -249,14 +258,17 @@ mod tests {
 
     #[test]
     fn merge_map() {
-        let values = vec![1.0, 2.5, 3.0, 4.2, 5.3, 6.1, 7.3, 8.9];
+        let values = vec![1.0, 2.5, 3.0, 4.2, 5.3, 6.1, 7.3, 8.9]
+            .into_iter()
+            .map(|x| OrderValue::from(x))
+            .collect::<Vec<OrderValue>>();
         let map1_values = GridMap::from_vec(
             (1.0, 2.0),
             (1.0, 2.5),
             (1.0, 0.5),
             values,
             DataOrder::RowMajor,
-            f32::to_owned as fn(&f32) -> f32,
+            from_order_value as fn(&OrderValue) -> f32,
         )
         .unwrap();
 
@@ -277,14 +289,17 @@ mod tests {
             samples: map1_samples,
         };
 
-        let values = vec![0.7, 1.4, 2.1, 1.4, 2.3, 3.1, 3.3, 1.9];
+        let values = vec![0.7, 1.4, 2.1, 1.4, 2.3, 3.1, 3.3, 1.9]
+            .into_iter()
+            .map(|x| OrderValue::from(x))
+            .collect::<Vec<OrderValue>>();
         let map2_values = GridMap::from_vec(
             (1.0, 2.0),
             (1.0, 2.5),
             (1.0, 0.5),
             values,
             DataOrder::RowMajor,
-            f32::to_owned as fn(&f32) -> f32,
+            from_order_value as fn(&OrderValue) -> f32,
         )
         .unwrap();
 
@@ -313,7 +328,7 @@ mod tests {
         let values = map
             .values
             .extract_raw()
-            .map(|(_, _, &x)| x)
+            .map(|(_, _, &x)| x.into())
             .collect::<Vec<f32>>();
         let samples = map
             .samples

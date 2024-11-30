@@ -9,9 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use approx::assert_relative_eq;
 use gorder::prelude::*;
-use groan_rs::prelude::GridMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
@@ -853,26 +851,6 @@ fn test_aa_order_basic_all_formats_backup() {
     );
 }
 
-fn parse_float(string: &str) -> Option<f32> {
-    string.parse::<f32>().ok()
-}
-
-fn compare_ordermaps(file1: impl AsRef<Path>, file2: impl AsRef<Path>) {
-    let map2 =
-        GridMap::from_file(file2, f32::clone, &[' '], parse_float, &["#", "$", "@"]).unwrap();
-
-    let map1 =
-        GridMap::from_file(file1, f32::clone, &[' '], parse_float, &["#", "$", "@"]).unwrap();
-
-    for ((x1, y1, z1), (x2, y2, z2)) in map1.extract_convert().zip(map2.extract_convert()) {
-        assert_relative_eq!(x1, x2);
-        assert_relative_eq!(y1, y2);
-        if !z1.is_nan() || !z2.is_nan() {
-            assert_relative_eq!(z1, z2, epsilon = 0.0002);
-        }
-    }
-}
-
 #[test]
 fn test_aa_order_maps_basic() {
     let output = NamedTempFile::new().unwrap();
@@ -921,7 +899,7 @@ fn test_aa_order_maps_basic() {
     for file in expected_file_names {
         let real_file = format!("{}/POPC/{}", path_to_dir, file);
         let test_file = format!("tests/files/ordermaps/{}", file);
-        compare_ordermaps(real_file, test_file);
+        diff_files_ignore_first(&real_file, &test_file, 2);
     }
 
     assert!(diff_files_ignore_first(
@@ -1005,7 +983,7 @@ fn test_aa_order_maps_leaflets() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
-            compare_ordermaps(real_file, test_file);
+            diff_files_ignore_first(&real_file, &test_file, 2);
         }
 
         assert!(diff_files_ignore_first(
@@ -1098,7 +1076,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
             for file in expected_file_names {
                 let real_file = format!("{}/POPC/{}", path_to_dir, file);
                 let test_file = format!("tests/files/ordermaps/{}", file);
-                compare_ordermaps(real_file, test_file);
+                diff_files_ignore_first(&real_file, &test_file, 2);
             }
 
             assert!(diff_files_ignore_first(
@@ -1160,7 +1138,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
-            compare_ordermaps(real_file, test_file);
+            diff_files_ignore_first(&real_file, &test_file, 2);
         }
 
         assert!(diff_files_ignore_first(
@@ -1293,7 +1271,7 @@ fn test_aa_order_maps_basic_backup() {
     for file in expected_file_names {
         let real_file = format!("{}/POPC/{}", path_to_dir, file);
         let test_file = format!("tests/files/ordermaps/{}", file);
-        compare_ordermaps(real_file, test_file);
+        diff_files_ignore_first(&real_file, &test_file, 2);
     }
 
     assert!(diff_files_ignore_first(

@@ -290,7 +290,7 @@ mod tests {
     use groan_rs::prelude::SimBox;
     use tempfile::TempDir;
 
-    use crate::{input::ordermap::Plane, OrderMap};
+    use crate::{analysis::orderval::OrderValue, input::ordermap::Plane, OrderMap};
 
     use super::*;
 
@@ -328,19 +328,19 @@ mod tests {
 
         let mut map = Map::new(params, &SimBox::from([3.0, 3.0, 10.0])).unwrap();
 
-        *(map.values_mut().get_mut_at(0.0, 0.0).unwrap()) = 2.618;
+        *(map.values_mut().get_mut_at(0.0, 0.0).unwrap()) = OrderValue::from(2.618);
         *(map.samples_mut().get_mut_at(0.0, 0.0).unwrap()) = 17;
 
-        *(map.values_mut().get_mut_at(0.0, 1.0).unwrap()) = -2.262;
+        *(map.values_mut().get_mut_at(0.0, 1.0).unwrap()) = OrderValue::from(-2.262);
         *(map.samples_mut().get_mut_at(0.0, 1.0).unwrap()) = 10;
 
-        *(map.values_mut().get_mut_at(1.0, 0.0).unwrap()) = 0.364;
+        *(map.values_mut().get_mut_at(1.0, 0.0).unwrap()) = OrderValue::from(0.364);
         *(map.samples_mut().get_mut_at(1.0, 0.0).unwrap()) = 2;
 
-        *(map.values_mut().get_mut_at(2.0, 2.0).unwrap()) = 0.764;
+        *(map.values_mut().get_mut_at(2.0, 2.0).unwrap()) = OrderValue::from(0.764);
         *(map.samples_mut().get_mut_at(2.0, 2.0).unwrap()) = 9;
 
-        *(map.values_mut().get_mut_at(3.0, 1.0).unwrap()) = 8.826;
+        *(map.values_mut().get_mut_at(3.0, 1.0).unwrap()) = OrderValue::from(8.826);
         *(map.samples_mut().get_mut_at(3.0, 1.0).unwrap()) = 15;
 
         let atom1 = AtomType::new_raw(4, "POPC", "C22");
@@ -404,48 +404,48 @@ mod tests {
             .unwrap();
 
         let mut map1 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0])).unwrap();
-        *(map1.values_mut().get_mut_at(0.0, 0.0).unwrap()) = 2.618;
+        *(map1.values_mut().get_mut_at(0.0, 0.0).unwrap()) = OrderValue::from(2.618);
         *(map1.samples_mut().get_mut_at(0.0, 0.0).unwrap()) = 17;
 
-        *(map1.values_mut().get_mut_at(0.0, 1.0).unwrap()) = -2.262;
+        *(map1.values_mut().get_mut_at(0.0, 1.0).unwrap()) = OrderValue::from(-2.262);
         *(map1.samples_mut().get_mut_at(0.0, 1.0).unwrap()) = 10;
 
-        *(map1.values_mut().get_mut_at(1.0, 0.0).unwrap()) = 0.364;
+        *(map1.values_mut().get_mut_at(1.0, 0.0).unwrap()) = OrderValue::from(0.364);
         *(map1.samples_mut().get_mut_at(1.0, 0.0).unwrap()) = 2;
 
-        *(map1.values_mut().get_mut_at(2.0, 2.0).unwrap()) = 0.764;
+        *(map1.values_mut().get_mut_at(2.0, 2.0).unwrap()) = OrderValue::from(0.764);
         *(map1.samples_mut().get_mut_at(2.0, 2.0).unwrap()) = 9;
 
-        *(map1.values_mut().get_mut_at(3.0, 1.0).unwrap()) = 8.826;
+        *(map1.values_mut().get_mut_at(3.0, 1.0).unwrap()) = OrderValue::from(8.826);
         *(map1.samples_mut().get_mut_at(3.0, 1.0).unwrap()) = 15;
 
         let mut map2 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0])).unwrap();
-        *(map2.values_mut().get_mut_at(0.0, 0.0).unwrap()) = 4.174;
+        *(map2.values_mut().get_mut_at(0.0, 0.0).unwrap()) = OrderValue::from(4.174);
         *(map2.samples_mut().get_mut_at(0.0, 0.0).unwrap()) = 35;
 
-        *(map2.values_mut().get_mut_at(1.0, 1.0).unwrap()) = 1.654;
+        *(map2.values_mut().get_mut_at(1.0, 1.0).unwrap()) = OrderValue::from(1.654);
         *(map2.samples_mut().get_mut_at(1.0, 1.0).unwrap()) = 4;
 
-        *(map2.values_mut().get_mut_at(1.0, 0.0).unwrap()) = 0.549;
+        *(map2.values_mut().get_mut_at(1.0, 0.0).unwrap()) = OrderValue::from(0.549);
         *(map2.samples_mut().get_mut_at(1.0, 0.0).unwrap()) = 5;
 
-        *(map2.values_mut().get_mut_at(2.0, 2.0).unwrap()) = 1.677;
+        *(map2.values_mut().get_mut_at(2.0, 2.0).unwrap()) = OrderValue::from(1.677);
         *(map2.samples_mut().get_mut_at(2.0, 2.0).unwrap()) = 12;
 
-        *(map2.values_mut().get_mut_at(3.0, 2.0).unwrap()) = -3.453;
+        *(map2.values_mut().get_mut_at(3.0, 2.0).unwrap()) = OrderValue::from(-3.453);
         *(map2.samples_mut().get_mut_at(3.0, 2.0).unwrap()) = 15;
 
         let mut map3 = Map::new(params.clone(), &SimBox::from([3.0, 3.0, 10.0])).unwrap();
-        *(map3.values_mut().get_mut_at(1.0, 0.0).unwrap()) = 2.764;
+        *(map3.values_mut().get_mut_at(1.0, 0.0).unwrap()) = OrderValue::from(2.764);
         *(map3.samples_mut().get_mut_at(1.0, 0.0).unwrap()) = 14;
 
-        *(map3.values_mut().get_mut_at(1.0, 1.0).unwrap()) = 0.874;
+        *(map3.values_mut().get_mut_at(1.0, 1.0).unwrap()) = OrderValue::from(0.874);
         *(map3.samples_mut().get_mut_at(1.0, 1.0).unwrap()) = 8;
 
-        *(map3.values_mut().get_mut_at(2.0, 2.0).unwrap()) = -0.123;
+        *(map3.values_mut().get_mut_at(2.0, 2.0).unwrap()) = OrderValue::from(-0.123);
         *(map3.samples_mut().get_mut_at(2.0, 2.0).unwrap()) = 41;
 
-        *(map3.values_mut().get_mut_at(3.0, 0.0).unwrap()) = 0.434;
+        *(map3.values_mut().get_mut_at(3.0, 0.0).unwrap()) = OrderValue::from(0.434);
         *(map3.samples_mut().get_mut_at(3.0, 0.0).unwrap()) = 3;
 
         // total_a = map1 + map2 + map3
@@ -477,7 +477,7 @@ mod tests {
         ];
 
         for &((x, y), expected) in &expected_values {
-            assert_relative_eq!(*values_a.get_at(x, y).unwrap(), expected);
+            assert_relative_eq!(values_a.get_at_convert(x, y).unwrap(), expected);
         }
 
         let samples_a = total_a.as_ref().unwrap().samples();
@@ -517,7 +517,7 @@ mod tests {
         ];
 
         for &((x, y), expected) in &expected_values {
-            assert_relative_eq!(*values_b.get_at(x, y).unwrap(), expected);
+            assert_relative_eq!(values_b.get_at_convert(x, y).unwrap(), expected);
         }
 
         let samples_b = total_b.as_ref().unwrap().samples();
@@ -557,7 +557,7 @@ mod tests {
         ];
 
         for &((x, y), expected) in &expected_values {
-            assert_relative_eq!(*values_c.get_at(x, y).unwrap(), expected);
+            assert_relative_eq!(values_c.get_at_convert(x, y).unwrap(), expected);
         }
 
         let samples_c = total_c.as_ref().unwrap().samples();
