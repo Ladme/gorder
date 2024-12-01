@@ -1,0 +1,7 @@
+# Test file for binary application.
+structure: tests/files/pcpepg.tpr
+trajectory: tests/files/pcpepg.xtc
+type: !AAOrder
+  heavy_atoms: "@membrane and element name carbon or serial 876 to 1234"
+  hydrogens: "@membrane and element name hydrogen"
+output_yaml: temp_aa_order.yaml

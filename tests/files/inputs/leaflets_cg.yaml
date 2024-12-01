@@ -1,0 +1,9 @@
+# Test file for binary application.
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
+type: !CGOrder
+  beads: "@membrane"
+output_yaml: temp_cg_order.yaml
+output_tab: temp_cg_order.tab
+leaflets: !Individual { heads: "name PO4", methyls: "name C4A C4B" }
+silent: true

@@ -1,0 +1,12 @@
+# Test file for binary application.
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
+type: !CGOrder
+  beads: "resname POPC and name C1B C2B C3B C4B"
+output_yaml: temp_cg_order_maps.yaml
+n_threads: 4
+silent: true
+ordermaps:
+  output_directory: temp_cg_ordermaps
+  bin_size: [1.0, 1.0]
+  min_samples: 10
