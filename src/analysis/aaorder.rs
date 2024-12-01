@@ -7,6 +7,7 @@ use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{analyze_frame, sanity_check_molecules, write_results};
 use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aapresenter::AAOrderResults;
+use crate::presentation::AAOrder;
 use crate::{Analysis, PANIC_MESSAGE};
 
 use groan_rs::prelude::OrderedAtomIterator;
@@ -131,8 +132,8 @@ pub(super) fn analyze_atomistic(
     // write out the maps
     result.handle_ordermap_directory(analysis.overwrite())?;
     result.prepare_directories()?;
-    result.write_ordermaps_bonds()?;
-    result.write_ordermaps_atoms()?;
+    result.write_ordermaps_bonds::<AAOrder>()?;
+    result.write_ordermaps_atoms::<AAOrder>()?;
 
     // write out the results
     let results = AAOrderResults::from(result);
@@ -354,7 +355,7 @@ mod tests {
 
             assert_eq!(orders.len(), expected_total_orders[m].len());
             for (real, expected) in orders.iter().zip(expected_total_orders[m].iter()) {
-                assert_relative_eq!(real, expected);
+                assert_relative_eq!(-real, expected);
             }
 
             for sample in samples {
@@ -378,7 +379,7 @@ mod tests {
         let expected_lower_samples = [66, 64, 7];
 
         for (m, molecule) in data.molecule_types().iter().enumerate() {
-            let total_orders = collect_bond_data(&molecule, |b| b.total().order().into());
+            let total_orders: Vec<f32> = collect_bond_data(&molecule, |b| b.total().order().into());
             let upper_orders =
                 collect_bond_data(&molecule, |b| b.upper().as_ref().unwrap().order().into());
             let lower_orders =
@@ -388,9 +389,6 @@ mod tests {
                 collect_bond_data(&molecule, |b| b.upper().as_ref().unwrap().n_samples());
             let lower_samples =
                 collect_bond_data(&molecule, |b| b.lower().as_ref().unwrap().n_samples());
-
-            println!("{:?}", upper_orders);
-            println!("{:?}", lower_orders);
 
             for (order, samples, expected_order, expected_samples) in [
                 (
@@ -414,7 +412,7 @@ mod tests {
             ] {
                 assert_eq!(order.len(), expected_order.len());
                 for (real, expected) in order.iter().zip(expected_order.iter()) {
-                    assert_relative_eq!(real, expected);
+                    assert_relative_eq!(-real, expected);
                 }
 
                 for &sample in samples {

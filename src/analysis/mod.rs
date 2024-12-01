@@ -51,7 +51,7 @@ pub(super) fn calc_sch(vector: &Vector3D, membrane_normal: &Vector3D) -> f32 {
     let angle = vector.angle(membrane_normal);
 
     let cos = angle.cos();
-    let sch = 0.5 - (1.5 * cos * cos);
+    let sch = (1.5 * cos * cos) - 0.5;
 
     sch
 }
@@ -71,7 +71,7 @@ mod tests {
 
         assert_relative_eq!(
             calc_sch(&(pos1.vector_to(&pos2, &simbox)), &Dimension::Z.into()),
-            -0.8544775
+            0.8544775
         );
     }
 }

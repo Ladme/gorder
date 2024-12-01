@@ -15,7 +15,7 @@ use crate::{
         topology::SystemTopology,
     },
     errors::AnalysisError,
-    presentation::cgpresenter::CGOrderResults,
+    presentation::{cgpresenter::CGOrderResults, CGOrder},
     Analysis, PANIC_MESSAGE,
 };
 
@@ -100,7 +100,7 @@ pub(super) fn analyze_coarse_grained(
     // write out the maps
     result.handle_ordermap_directory(analysis.overwrite())?;
     result.prepare_directories()?;
-    result.write_ordermaps_bonds()?;
+    result.write_ordermaps_bonds::<CGOrder>()?;
 
     // write out the results
     let results = CGOrderResults::from(result);

@@ -13,11 +13,13 @@ use crate::{
 };
 use crate::{GORDER_VERSION, PANIC_MESSAGE};
 
+use super::OrderType;
+
 impl Map {
     /// Write the map of order parameters for a single heavy atom into an output file.
     /// Leaflet `None` corresponds to ordermap for the full membrane.
     #[inline]
-    pub(crate) fn write_atom_map(
+    pub(crate) fn write_atom_map<O: OrderType>(
         &self,
         atom: &AtomType,
         leaflet: Option<Leaflet>,
@@ -31,13 +33,13 @@ impl Map {
 
         let comment = format!("# Map of average order parameters calculated for bonds involving atom type {}.\n# Calculated with 'gorder v{}'.", atom, GORDER_VERSION);
 
-        self.write_ordermap(&filename, molname, &comment)
+        self.write_ordermap::<O>(&filename, molname, &comment)
     }
 
     /// Write the map of order parameters for a single bond into an output file.
     /// Leaflet `None` corresponds to ordermap for the full membrane.
     #[inline]
-    pub(crate) fn write_bond_map(
+    pub(crate) fn write_bond_map<O: OrderType>(
         &self,
         atom1: &AtomType,
         atom2: &AtomType,
@@ -52,10 +54,10 @@ impl Map {
 
         let comment = format!("# Map of average order parameters calculated for bonds between atom types {} and {}.\n# Calculated with 'gorder v{}'.", atom1, atom2, GORDER_VERSION);
 
-        self.write_ordermap(&filename, molname, &comment)
+        self.write_ordermap::<O>(&filename, molname, &comment)
     }
 
-    fn write_ordermap(
+    fn write_ordermap<O: OrderType>(
         &self,
         filename: &str,
         molname: &str,
@@ -93,7 +95,7 @@ impl Map {
             let average = if samples.2 < self.params().min_samples() {
                 f32::NAN
             } else {
-                value.2 / samples.2 as f32
+                O::convert(value.2 / samples.2 as f32)
             };
 
             writeln!(output, "{:.4} {:.4} {:.4}", value.0, value.1, average).map_err(|_| {
@@ -126,25 +128,25 @@ impl MoleculeType {
     }
 
     /// Write ordermaps constructed for all the bond types of this molecule type.
-    fn write_ordermaps_bonds(&self, molname: &str) -> Result<(), OrderMapWriteError> {
+    fn write_ordermaps_bonds<O: OrderType>(&self, molname: &str) -> Result<(), OrderMapWriteError> {
         for bond in self.order_bonds().bond_types() {
             if let Some(map) = bond.total_map() {
-                map.write_bond_map(bond.atom1(), bond.atom2(), None, molname)?;
+                map.write_bond_map::<O>(bond.atom1(), bond.atom2(), None, molname)?;
             }
 
             if let Some(map) = bond.upper_map() {
-                map.write_bond_map(bond.atom1(), bond.atom2(), Some(Leaflet::Upper), molname)?;
+                map.write_bond_map::<O>(bond.atom1(), bond.atom2(), Some(Leaflet::Upper), molname)?;
             }
 
             if let Some(map) = bond.lower_map() {
-                map.write_bond_map(bond.atom1(), bond.atom2(), Some(Leaflet::Lower), molname)?;
+                map.write_bond_map::<O>(bond.atom1(), bond.atom2(), Some(Leaflet::Lower), molname)?;
             }
         }
 
         Ok(())
     }
 
-    fn write_ordermaps_atoms(&self, molname: &str) -> Result<(), OrderMapWriteError> {
+    fn write_ordermaps_atoms<O: OrderType>(&self, molname: &str) -> Result<(), OrderMapWriteError> {
         for heavy_atom in self.order_atoms().atoms() {
             let mut relevant_maps = Vec::new();
 
@@ -161,15 +163,15 @@ impl MoleculeType {
             let (total_total, total_upper, total_lower) = MoleculeType::merge_maps(relevant_maps);
 
             if let Some(map) = total_total {
-                map.write_atom_map(heavy_atom, None, molname)?;
+                map.write_atom_map::<O>(heavy_atom, None, molname)?;
             }
 
             if let Some(map) = total_upper {
-                map.write_atom_map(heavy_atom, Some(Leaflet::Upper), molname)?;
+                map.write_atom_map::<O>(heavy_atom, Some(Leaflet::Upper), molname)?;
             }
 
             if let Some(map) = total_lower {
-                map.write_atom_map(heavy_atom, Some(Leaflet::Lower), molname)?;
+                map.write_atom_map::<O>(heavy_atom, Some(Leaflet::Lower), molname)?;
             }
         }
 
@@ -218,18 +220,18 @@ impl SystemTopology {
 
     /// Write all ordermaps constructed for all bonds of this topology.
     #[inline(always)]
-    pub(crate) fn write_ordermaps_bonds(&self) -> Result<(), OrderMapWriteError> {
+    pub(crate) fn write_ordermaps_bonds<O: OrderType>(&self) -> Result<(), OrderMapWriteError> {
         self.molecule_types()
             .iter()
-            .try_for_each(|mol| mol.write_ordermaps_bonds(mol.name()))
+            .try_for_each(|mol| mol.write_ordermaps_bonds::<O>(mol.name()))
     }
 
     /// Write all ordermaps constructed for all atoms of this topology.
     #[inline(always)]
-    pub(crate) fn write_ordermaps_atoms(&self) -> Result<(), OrderMapWriteError> {
+    pub(crate) fn write_ordermaps_atoms<O: OrderType>(&self) -> Result<(), OrderMapWriteError> {
         self.molecule_types()
             .iter()
-            .try_for_each(|mol| mol.write_ordermaps_atoms(mol.name()))
+            .try_for_each(|mol| mol.write_ordermaps_atoms::<O>(mol.name()))
     }
 
     /// Create or back up the directory for the ordermaps.
@@ -290,7 +292,9 @@ mod tests {
     use groan_rs::prelude::SimBox;
     use tempfile::TempDir;
 
-    use crate::{analysis::orderval::OrderValue, input::ordermap::Plane, OrderMap};
+    use crate::{
+        analysis::orderval::OrderValue, input::ordermap::Plane, presentation::CGOrder, OrderMap,
+    };
 
     use super::*;
 
@@ -345,17 +349,18 @@ mod tests {
         let atom1 = AtomType::new_raw(4, "POPC", "C22");
         let atom2 = AtomType::new_raw(6, "POPC", "H22");
 
-        map.write_bond_map(&atom1, &atom2, None, "molecule")
+        map.write_bond_map::<CGOrder>(&atom1, &atom2, None, "molecule")
             .unwrap();
-        map.write_bond_map(&atom1, &atom2, Some(Leaflet::Upper), "molecule")
+        map.write_bond_map::<CGOrder>(&atom1, &atom2, Some(Leaflet::Upper), "molecule")
             .unwrap();
-        map.write_bond_map(&atom1, &atom2, Some(Leaflet::Lower), "molecule")
+        map.write_bond_map::<CGOrder>(&atom1, &atom2, Some(Leaflet::Lower), "molecule")
             .unwrap();
 
-        map.write_atom_map(&atom1, None, "molecule").unwrap();
-        map.write_atom_map(&atom1, Some(Leaflet::Upper), "molecule")
+        map.write_atom_map::<CGOrder>(&atom1, None, "molecule")
             .unwrap();
-        map.write_atom_map(&atom1, Some(Leaflet::Lower), "molecule")
+        map.write_atom_map::<CGOrder>(&atom1, Some(Leaflet::Upper), "molecule")
+            .unwrap();
+        map.write_atom_map::<CGOrder>(&atom1, Some(Leaflet::Lower), "molecule")
             .unwrap();
 
         let results_bonds = [

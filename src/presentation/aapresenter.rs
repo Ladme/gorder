@@ -16,7 +16,7 @@ use crate::{
     PANIC_MESSAGE,
 };
 
-use super::{BondResults, MoleculeResults, ResultsPresenter};
+use super::{AAOrder, BondResults, MoleculeResults, ResultsPresenter};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
@@ -241,7 +241,7 @@ impl AAAtomResults {
 
         let mut results = IndexMap::new();
         for bond in bonds {
-            let bond_results = BondResults::from(*bond);
+            let bond_results = BondResults::convert_from::<AAOrder>(*bond);
             totals.push(bond_results.total.clone());
             uppers.push(bond_results.upper.clone());
             lowers.push(bond_results.lower.clone());
@@ -711,16 +711,16 @@ order:
         assert_eq!(results.bonds.len(), 2);
 
         let bond1_results = results.bonds.get(&hydrogen1_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, 0.174);
+        assert_relative_eq!(bond1_results.total, -0.174);
         assert!(bond1_results.upper.is_none());
         assert!(bond1_results.lower.is_none());
 
         let bond1_results = results.bonds.get(&hydrogen2_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, 0.114666);
+        assert_relative_eq!(bond1_results.total, -0.114666);
         assert!(bond1_results.upper.is_none());
         assert!(bond1_results.lower.is_none());
 
-        assert_relative_eq!(results.total.unwrap(), 0.144333);
+        assert_relative_eq!(results.total.unwrap(), -0.144333);
         assert!(results.upper.is_none());
         assert!(results.lower.is_none());
     }
@@ -785,18 +785,18 @@ order:
         assert_eq!(results.bonds.len(), 2);
 
         let bond1_results = results.bonds.get(&hydrogen1_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, 0.174);
-        assert_relative_eq!(bond1_results.upper.unwrap(), 0.149333);
+        assert_relative_eq!(bond1_results.total, -0.174);
+        assert_relative_eq!(bond1_results.upper.unwrap(), -0.149333);
         assert!(bond1_results.lower.unwrap().is_nan()); // no values for the lower leaflet
 
         let bond1_results = results.bonds.get(&hydrogen2_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, 0.114666);
+        assert_relative_eq!(bond1_results.total, -0.114666);
         assert!(bond1_results.upper.unwrap().is_nan()); // no values for the upper leaflet
-        assert_relative_eq!(bond1_results.lower.unwrap(), 0.181333);
+        assert_relative_eq!(bond1_results.lower.unwrap(), -0.181333);
 
-        assert_relative_eq!(results.total.unwrap(), 0.144333);
-        assert_relative_eq!(results.upper.unwrap(), 0.149333);
-        assert_relative_eq!(results.lower.unwrap(), 0.181333);
+        assert_relative_eq!(results.total.unwrap(), -0.144333);
+        assert_relative_eq!(results.upper.unwrap(), -0.149333);
+        assert_relative_eq!(results.lower.unwrap(), -0.181333);
     }
 
     #[test]

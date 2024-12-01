@@ -10,7 +10,9 @@ use serde::{Serialize, Serializer};
 
 use crate::{analysis::molecule::BondTopology, errors::WriteError};
 
-use super::{BondResults, MoleculeResults, MoleculeType, ResultsPresenter, SystemTopology};
+use super::{
+    BondResults, CGOrder, MoleculeResults, MoleculeType, ResultsPresenter, SystemTopology,
+};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
@@ -82,7 +84,7 @@ impl From<&MoleculeType> for CGMoleculeResults {
     fn from(value: &MoleculeType) -> Self {
         let mut order = IndexMap::new();
         for bond in value.order_bonds().bond_types() {
-            let results = BondResults::from(bond);
+            let results = BondResults::convert_from::<CGOrder>(bond);
             order.insert(bond.bond_topology().clone(), results);
         }
 
@@ -122,7 +124,11 @@ impl MoleculeResults for CGMoleculeResults {
         }
 
         for (bond, results) in self.order.iter() {
-            let name = format!("{}-{}", bond.atom1().atom_name(), bond.atom2().atom_name());
+            let name = format!(
+                "{} - {}",
+                bond.atom1().atom_name(),
+                bond.atom2().atom_name()
+            );
             write_result!(writer, "{:<16}", name);
             results.write_tab(writer, leaflets)?;
             write_result!(writer, "\n");
@@ -161,7 +167,7 @@ impl MoleculeResults for CGMoleculeResults {
         );
         write_result!(
             writer,
-            "@    xaxis label \"Bond\"\n@    yaxis label \"-Scd\"\n"
+            "@    xaxis label \"Bond\"\n@    yaxis label \"P2\"\n"
         );
 
         write_result!(writer, "@    s0 legend \"Full membrane\"\n");

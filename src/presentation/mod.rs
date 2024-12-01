@@ -284,15 +284,42 @@ struct BondResults {
     lower: Option<f32>,
 }
 
-impl From<&BondType> for BondResults {
+/// Empty struct used as a marker.
+pub(crate) struct AAOrder {}
+/// Empty struct used as a marker.
+pub(crate) struct CGOrder {}
+
+/// Trait implemented only by `AAOrder` and `CGOrder` structs.
+pub(crate) trait OrderType {
+    /// Used to convert an order parameter to its final value depending on the analysis type.
+    /// Atomistic order parameters are reported as -S_CD.
+    /// Coarse grained order parameters are reported as P2.
+    fn convert(order: f32) -> f32;
+}
+
+impl OrderType for AAOrder {
     #[inline(always)]
-    fn from(value: &BondType) -> Self {
+    fn convert(order: f32) -> f32 {
+        -order
+    }
+}
+
+impl OrderType for CGOrder {
+    #[inline(always)]
+    fn convert(order: f32) -> f32 {
+        order
+    }
+}
+
+impl BondResults {
+    #[inline(always)]
+    fn convert_from<O: OrderType>(value: &BondType) -> Self {
         let (total, upper, lower) = value.calc_order();
 
         BondResults {
-            total,
-            upper,
-            lower,
+            total: O::convert(total),
+            upper: upper.map(|x| O::convert(x)),
+            lower: lower.map(|x| O::convert(x)),
         }
     }
 }
@@ -340,7 +367,7 @@ impl BondResults {
     ) -> Result<(), WriteError> {
         write_result!(
             writer,
-            "# Bond {}-{}:\n",
+            "# Bond {} - {}:\n",
             bond_topology.atom1().atom_name(),
             bond_topology.atom2().atom_name()
         );
