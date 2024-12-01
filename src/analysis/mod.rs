@@ -8,7 +8,8 @@ use groan_rs::prelude::Vector3D;
 use crate::{Analysis, AnalysisType, Axis};
 
 mod aaorder;
-mod auxiliary;
+mod cgorder;
+mod common;
 mod leaflets;
 pub(crate) mod molecule;
 pub(crate) mod ordermap;
@@ -28,7 +29,7 @@ impl Analysis {
                 hydrogens: _,
             } => crate::analysis::aaorder::analyze_atomistic(&self),
             AnalysisType::CGOrder { beads: _ } => {
-                todo!("CG Order calculation is not yet implemented.")
+                crate::analysis::cgorder::analyze_coarse_grained(&self)
             }
         }
     }

@@ -5,7 +5,7 @@
 
 use core::f32;
 
-use super::auxiliary::{create_group, macros::group_name};
+use super::common::{create_group, macros::group_name};
 use crate::{
     errors::{AnalysisError, TopologyError},
     Leaflet, LeafletClassification, PANIC_MESSAGE,
@@ -462,7 +462,7 @@ impl AssignedLeaflets {
 
 #[cfg(test)]
 mod tests {
-    use super::super::auxiliary::macros::group_name;
+    use super::super::common::macros::group_name;
     use super::*;
 
     #[test]

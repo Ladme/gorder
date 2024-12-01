@@ -1,5 +1,5 @@
 # Order parameters calculated with 'gorder v0.1.0' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
-@    title "Order parameters for molecule type POPG"
+@    title "Atomistic order parameters for molecule type POPG"
 @    xaxis label "Atom"
 @    yaxis label "-Scd"
 @    s0 legend "Full membrane"

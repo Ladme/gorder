@@ -3,12 +3,6 @@
 
 //! Structures and methods for presenting the results of the analysis of all-atom order parameters.
 
-use std::{
-    fs::File,
-    io::BufWriter,
-    path::{Path, PathBuf},
-};
-
 use indexmap::IndexMap;
 use serde::Serialize;
 use std::io::Write;
@@ -22,7 +16,7 @@ use crate::{
     PANIC_MESSAGE,
 };
 
-use super::BondResults;
+use super::{BondResults, MoleculeResults, ResultsPresenter};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
@@ -43,130 +37,10 @@ impl From<SystemTopology> for AAOrderResults {
     }
 }
 
-impl AAOrderResults {
-    /// Write the results of the analysis into a new yaml file with the specified name.
-    #[inline]
-    pub(crate) fn write_yaml(
-        &self,
-        filename: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let writer = Self::prepare_file(
-            &filename,
-            input_structure,
-            input_trajectory,
-            "yaml",
-            overwrite,
-            true,
-        )?;
-
-        serde_yaml::to_writer(writer, self)
-            .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))?;
-
-        Ok(())
-    }
-
-    /// Write the results of the analysis in form of a table.
-    #[inline]
-    pub(crate) fn write_tab(
-        &self,
-        filename: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let mut writer = Self::prepare_file(
-            &filename,
-            input_structure,
-            input_trajectory,
-            "tab",
-            overwrite,
-            true,
-        )?;
-
-        for mol in self.molecules.iter() {
-            mol.write_tab(&mut writer)?;
-        }
-
-        Ok(())
-    }
-
-    /// Write the results of the analysis for the individual order atoms into xvg files.
-    pub(crate) fn write_xvg(
-        &self,
-        file_pattern: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let extension = file_pattern
-            .as_ref()
-            .extension()
-            .and_then(|x| x.to_str())
-            .map(Some)
-            .unwrap_or(None);
-
-        let path_buf = Self::strip_extension(file_pattern.as_ref());
-        let file_path = path_buf.to_str().expect(PANIC_MESSAGE);
-
-        // all molecule names must be unique
-        let names: Vec<String> = self.molecules.iter().map(|x| x.molecule.clone()).collect();
-
-        for (i, mol) in self.molecules.iter().enumerate() {
-            let filename = match extension {
-                Some(x) => format!("{}_{}.{}", file_path, names[i], x),
-                None => format!("{}_{}", file_path, names[i]),
-            };
-
-            log::info!("Writing an xvg file '{}'...", filename);
-
-            let mut writer = Self::prepare_file(
-                &filename,
-                input_structure,
-                input_trajectory,
-                "xvg",
-                overwrite,
-                true,
-            )?;
-
-            mol.write_xvg(&mut writer)?;
-        }
-
-        Ok(())
-    }
-
-    /// Write the results into an csv file.
-    pub(crate) fn write_csv(
-        &self,
-        filename: impl AsRef<Path>,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let mut writer = Self::prepare_file(&filename, "", "", "csv", overwrite, false)?;
-
-        let max_bonds = self
-            .molecules
-            .iter()
-            .map(|x| x.max_bonds())
-            .max()
-            .unwrap_or(0);
-        if max_bonds == 0 {
-            log::warn!(
-                "No atoms have any order bonds associated. Unable to write output csv. Aborting..."
-            );
-            return Ok(());
-        }
-
-        let leaflets = self.molecules.iter().any(|x| x.has_assigned_leaflets());
-
-        Self::write_csv_header(&mut writer, max_bonds, leaflets)?;
-
-        for molecule in self.molecules.iter() {
-            molecule.write_csv(&mut writer, max_bonds, leaflets)?;
-        }
-
-        Ok(())
+impl ResultsPresenter for AAOrderResults {
+    #[inline(always)]
+    fn molecules(&self) -> &[impl MoleculeResults] {
+        &self.molecules
     }
 
     fn write_csv_header(
@@ -194,87 +68,6 @@ impl AAOrderResults {
         }
 
         write_result!(writer, "\n");
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn strip_extension(file_path: &Path) -> PathBuf {
-        if let Some(stem) = file_path.file_stem() {
-            if let Some(parent) = file_path.parent() {
-                return parent.join(stem);
-            }
-        }
-        file_path.to_path_buf()
-    }
-
-    /// Back up a file, create a new one and write a header into it.
-    #[inline(always)]
-    fn prepare_file(
-        filename: &impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        file_type: &str,
-        overwrite: bool,
-        write_header: bool,
-    ) -> Result<BufWriter<File>, WriteError> {
-        AAOrderResults::try_backup_file(filename, overwrite, file_type)?;
-        let mut writer = AAOrderResults::create_and_open_file(filename)?;
-        if write_header {
-            AAOrderResults::write_header(&mut writer, filename, input_structure, input_trajectory)?;
-        }
-
-        Ok(writer)
-    }
-
-    /// Write header into an output file.
-    #[inline(always)]
-    fn write_header(
-        writer: &mut BufWriter<File>,
-        filename: &impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-    ) -> Result<(), WriteError> {
-        writeln!(
-            writer,
-            "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.",
-            crate::GORDER_VERSION, input_structure, input_trajectory
-        )
-        .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))
-    }
-
-    /// Create and open file for buffered writing.
-    #[inline(always)]
-    fn create_and_open_file(filename: &impl AsRef<Path>) -> Result<BufWriter<File>, WriteError> {
-        let file = File::create(filename.as_ref())
-            .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
-
-        Ok(BufWriter::new(file))
-    }
-
-    /// Back up an output file, if it is necessary and if it is requested.
-    fn try_backup_file(
-        filename: &impl AsRef<Path>,
-        overwrite: bool,
-        file_type: &str,
-    ) -> Result<(), WriteError> {
-        if filename.as_ref().exists() {
-            if !overwrite {
-                log::warn!(
-                    "Output {} file '{}' already exists. Backing it up.",
-                    file_type,
-                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
-                );
-                backitup::backup(filename.as_ref())
-                    .map_err(|_| WriteError::CouldNotBackupFile(Box::from(filename.as_ref())))?;
-            } else {
-                log::warn!(
-                    "Output {} file '{}' already exists. It will be overwritten as requested.",
-                    file_type,
-                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
-                );
-            }
-        }
-
         Ok(())
     }
 }
@@ -313,8 +106,12 @@ impl From<&MoleculeType> for AAMoleculeResults {
     }
 }
 
-impl AAMoleculeResults {
-    /// Write results for a single molecule in human readable table format.
+impl MoleculeResults for AAMoleculeResults {
+    #[inline(always)]
+    fn name(&self) -> &str {
+        &self.molecule
+    }
+
     fn write_tab(&self, writer: &mut impl Write) -> Result<(), WriteError> {
         write_result!(writer, "\nMolecule type {}\n", self.molecule);
 
@@ -356,7 +153,6 @@ impl AAMoleculeResults {
         Ok(())
     }
 
-    /// Get the maximal number of order bonds associated with an order atom in this molecule.
     #[inline(always)]
     fn max_bonds(&self) -> usize {
         self.order
@@ -371,7 +167,7 @@ impl AAMoleculeResults {
     fn write_xvg(&self, writer: &mut impl Write) -> Result<(), WriteError> {
         write_result!(
             writer,
-            "@    title \"Order parameters for molecule type {}\"\n",
+            "@    title \"Atomistic order parameters for molecule type {}\"\n",
             self.molecule
         );
         write_result!(
@@ -394,7 +190,6 @@ impl AAMoleculeResults {
         Ok(())
     }
 
-    /// Check whether order parameters for individual membrane leaflets have been calculated for at least one order bond.
     #[inline(always)]
     fn has_assigned_leaflets(&self) -> bool {
         self.order.values().map(|x| x.upper).any(|x| x.is_some())

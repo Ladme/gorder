@@ -1,15 +1,19 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-//! Implementations of some commonly used functions.
+//! Implementations of function used by both AAOrder and CGorder calculations.
 
 use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
+use super::topology::SystemTopology;
+use crate::errors::{AnalysisError, WriteError};
+use crate::presentation::ResultsPresenter;
 use crate::{errors::TopologyError, LeafletClassification};
-use crate::{OrderMap, PANIC_MESSAGE};
+use crate::{Analysis, OrderMap, PANIC_MESSAGE};
 use groan_rs::prelude::Dimension;
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
+use once_cell::unsync::OnceCell;
 use std::usize;
 
 /// A prefix used as an identifier for Gorder groups.
@@ -119,6 +123,123 @@ pub(super) fn classify_molecules(
     solve_name_conflicts(&mut molecules);
 
     Ok(molecules)
+}
+
+/// Check whether there are any molecules that can be analyzed.
+pub(super) fn sanity_check_molecules(molecules: &[MoleculeType]) -> bool {
+    // if no molecules are detected, end the analysis
+    if molecules.len() == 0 {
+        log::warn!("No molecules suitable for the analysis detected.");
+        return false;
+    }
+
+    // if only empty molecules are detected, end the analysis
+    for mol in molecules.iter() {
+        if mol.order_bonds().bond_types().is_empty() {
+            log::warn!("No bonds suitable for the analysis detected.");
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Analyze order parameters in a single simulation frame.
+pub(super) fn analyze_frame(
+    frame: &System,
+    data: &mut SystemTopology,
+) -> Result<(), AnalysisError> {
+    let simbox = frame.get_box().ok_or(AnalysisError::UndefinedBox)?;
+
+    if !simbox.is_orthogonal() {
+        return Err(AnalysisError::NotOrthogonalBox);
+    }
+
+    if simbox.is_zero() {
+        return Err(AnalysisError::ZeroBox);
+    }
+
+    let membrane_normal = data.membrane_normal().into();
+    let membrane_center = OnceCell::new();
+
+    // assign molecules to leaflets
+    for molecule in data.molecule_types_mut().iter_mut() {
+        if let Some(classifier) = molecule.leaflet_classification_mut() {
+            match classifier {
+                MoleculeLeafletClassification::Global(x, _) => {
+                    let center = membrane_center.get_or_try_init(|| {
+                        frame
+                            .group_get_center(group_name!("Membrane"))
+                            .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
+                    })?;
+
+                    x.set_membrane_center(center.clone());
+                }
+                MoleculeLeafletClassification::Local(x, _) => {
+                    x.set_membrane_center(frame, membrane_normal)?;
+                }
+                MoleculeLeafletClassification::Individual(_, _) => (),
+            };
+
+            classifier.assign_lipids(frame)?;
+        }
+
+        molecule.analyze_frame(frame, &simbox, &membrane_normal.into())?;
+    }
+
+    Ok(())
+}
+
+/// Write the results of the analysis into the requested output files.
+/// Note that writing of the ordermaps is handled elsewhere.
+pub(super) fn write_results(
+    results: impl ResultsPresenter,
+    analysis: &Analysis,
+) -> Result<(), WriteError> {
+    log::info!(
+        "Writing the order parameters into a yaml file '{}'...",
+        analysis.output()
+    );
+    log::logger().flush();
+
+    results.write_yaml(
+        analysis.output(),
+        analysis.structure(),
+        analysis.trajectory(),
+        analysis.overwrite(),
+    )?;
+
+    if let Some(tab) = analysis.output_tab() {
+        log::info!("Writing the order parameters into a table '{}'...", tab);
+
+        log::logger().flush();
+        results.write_tab(
+            tab,
+            analysis.structure(),
+            analysis.trajectory(),
+            analysis.overwrite(),
+        )?;
+    };
+
+    if let Some(xvg) = analysis.output_xvg() {
+        log::info!("Writing the order parameters into xvg file(s)...");
+
+        log::logger().flush();
+        results.write_xvg(
+            xvg,
+            analysis.structure(),
+            analysis.trajectory(),
+            analysis.overwrite(),
+        )?;
+    }
+
+    if let Some(csv) = analysis.output_csv() {
+        log::info!("Writing the order parameters into a csv file '{}'...", csv);
+        log::logger().flush();
+        results.write_csv(csv, analysis.overwrite())?;
+    }
+
+    Ok(())
 }
 
 /// Extract atom indices, residues, and atoms for which order parameters should be calculated from a molecule.

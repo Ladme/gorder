@@ -3,8 +3,8 @@
 
 //! Contains the implementation of the calculation of the atomistic lipid order parameters.
 
-use super::leaflets::MoleculeLeafletClassification;
-use super::{auxiliary::macros::group_name, topology::SystemTopology};
+use super::{common::macros::group_name, topology::SystemTopology};
+use crate::analysis::common::{analyze_frame, sanity_check_molecules, write_results};
 use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aapresenter::AAOrderResults;
 use crate::{Analysis, PANIC_MESSAGE};
@@ -15,8 +15,6 @@ use groan_rs::{
     prelude::{ProgressPrinter, XtcReader},
     system::System,
 };
-use once_cell::unsync::OnceCell;
-
 /// Calculate the atomistic lipid order parameters.
 pub(super) fn analyze_atomistic(
     analysis: &Analysis,
@@ -24,7 +22,7 @@ pub(super) fn analyze_atomistic(
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
     log::info!("Read molecular topology from '{}'.", analysis.structure());
 
-    super::auxiliary::create_group(
+    super::common::create_group(
         &mut system,
         "HeavyAtoms",
         analysis.heavy_atoms().as_ref().unwrap_or_else(||
@@ -39,7 +37,7 @@ pub(super) fn analyze_atomistic(
         analysis.heavy_atoms().as_ref().expect(PANIC_MESSAGE)
     );
 
-    super::auxiliary::create_group(
+    super::common::create_group(
         &mut system,
         "Hydrogens", 
         analysis.hydrogens().as_ref().unwrap_or_else(||
@@ -82,7 +80,7 @@ pub(super) fn analyze_atomistic(
     log::logger().flush();
 
     // get the relevant molecules
-    let molecules = super::auxiliary::classify_molecules(
+    let molecules = super::common::classify_molecules(
         &system,
         "HeavyAtoms",
         "Hydrogens",
@@ -92,18 +90,8 @@ pub(super) fn analyze_atomistic(
         analysis.min_samples(),
     )?;
 
-    // if no molecules are detected, end the analysis
-    if molecules.len() == 0 {
-        log::warn!("No molecules suitable for the analysis detected.");
+    if !sanity_check_molecules(&molecules) {
         return Ok(());
-    }
-
-    // if only empty molecules are detected, end the analysis
-    for mol in molecules.iter() {
-        if mol.order_bonds().bond_types().is_empty() {
-            log::warn!("No bonds suitable for the analysis detected.");
-            return Ok(());
-        }
     }
 
     let data = SystemTopology::new(molecules, analysis.membrane_normal().into());
@@ -147,92 +135,8 @@ pub(super) fn analyze_atomistic(
     result.write_ordermaps_atoms()?;
 
     // write out the results
-    log::info!(
-        "Writing the order parameters into a yaml file '{}'...",
-        analysis.output()
-    );
-    log::logger().flush();
-
     let results = AAOrderResults::from(result);
-    results.write_yaml(
-        analysis.output(),
-        analysis.structure(),
-        analysis.trajectory(),
-        analysis.overwrite(),
-    )?;
-
-    if let Some(tab) = analysis.output_tab() {
-        log::info!("Writing the order parameters into a table '{}'...", tab);
-
-        log::logger().flush();
-        results.write_tab(
-            tab,
-            analysis.structure(),
-            analysis.trajectory(),
-            analysis.overwrite(),
-        )?;
-    };
-
-    if let Some(xvg) = analysis.output_xvg() {
-        log::info!("Writing the order parameters into xvg file(s)...");
-
-        log::logger().flush();
-        results.write_xvg(
-            xvg,
-            analysis.structure(),
-            analysis.trajectory(),
-            analysis.overwrite(),
-        )?;
-    }
-
-    if let Some(csv) = analysis.output_csv() {
-        log::info!("Writing the order parameters into a csv file '{}'...", csv);
-        log::logger().flush();
-        results.write_csv(csv, analysis.overwrite())?;
-    }
-
-    Ok(())
-}
-
-/// Analyze order parameters in a single simulation frame.
-fn analyze_frame(frame: &System, data: &mut SystemTopology) -> Result<(), AnalysisError> {
-    let simbox = frame.get_box().ok_or(AnalysisError::UndefinedBox)?;
-
-    if !simbox.is_orthogonal() {
-        return Err(AnalysisError::NotOrthogonalBox);
-    }
-
-    if simbox.is_zero() {
-        return Err(AnalysisError::ZeroBox);
-    }
-
-    let membrane_normal = data.membrane_normal().into();
-    let membrane_center = OnceCell::new();
-
-    // assign molecules to leaflets
-    for molecule in data.molecule_types_mut().iter_mut() {
-        if let Some(classifier) = molecule.leaflet_classification_mut() {
-            match classifier {
-                MoleculeLeafletClassification::Global(x, _) => {
-                    let center = membrane_center.get_or_try_init(|| {
-                        frame
-                            .group_get_center(group_name!("Membrane"))
-                            .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
-                    })?;
-
-                    x.set_membrane_center(center.clone());
-                }
-                MoleculeLeafletClassification::Local(x, _) => {
-                    x.set_membrane_center(frame, membrane_normal)?;
-                }
-                MoleculeLeafletClassification::Individual(_, _) => (),
-            };
-
-            classifier.assign_lipids(frame)?;
-        }
-
-        molecule.analyze_frame(frame, &simbox, &membrane_normal.into())?;
-    }
+    write_results(results, &analysis)?;
 
     Ok(())
 }
@@ -273,7 +177,7 @@ mod tests {
             leaflet.prepare_system(&mut system).unwrap();
         }
 
-        let molecules = super::super::auxiliary::classify_molecules(
+        let molecules = super::super::common::classify_molecules(
             &system,
             "HeavyAtoms",
             "Hydrogens",
