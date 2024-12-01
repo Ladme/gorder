@@ -1,0 +1,139 @@
+# Order parameters calculated with 'gorder v0.2.0-dev.4' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+- molecule: POPC
+  order:
+    POPC NC3 (0) - POPC PO4 (1):
+      total: -0.1276
+      upper: -0.125
+      lower: -0.1301
+    POPC PO4 (1) - POPC GL1 (2):
+      total: 0.5851
+      upper: 0.5876
+      lower: 0.5825
+    POPC GL1 (2) - POPC GL2 (3):
+      total: -0.1849
+      upper: -0.1878
+      lower: -0.182
+    POPC GL1 (2) - POPC C1A (4):
+      total: 0.3884
+      upper: 0.3756
+      lower: 0.4012
+    POPC GL2 (3) - POPC C1B (8):
+      total: 0.4871
+      upper: 0.4915
+      lower: 0.4826
+    POPC C1A (4) - POPC D2A (5):
+      total: 0.3603
+      upper: 0.332
+      lower: 0.3886
+    POPC D2A (5) - POPC C3A (6):
+      total: 0.2828
+      upper: 0.2965
+      lower: 0.2692
+    POPC C3A (6) - POPC C4A (7):
+      total: 0.2394
+      upper: 0.2465
+      lower: 0.2323
+    POPC C1B (8) - POPC C2B (9):
+      total: 0.4983
+      upper: 0.5216
+      lower: 0.475
+    POPC C2B (9) - POPC C3B (10):
+      total: 0.4122
+      upper: 0.4373
+      lower: 0.3871
+    POPC C3B (10) - POPC C4B (11):
+      total: 0.2674
+      upper: 0.2852
+      lower: 0.2496
+- molecule: POPE
+  order:
+    POPE NH3 (0) - POPE PO4 (1):
+      total: -0.1419
+      upper: -0.1396
+      lower: -0.1442
+    POPE PO4 (1) - POPE GL1 (2):
+      total: 0.61
+      upper: 0.6083
+      lower: 0.6118
+    POPE GL1 (2) - POPE GL2 (3):
+      total: -0.1943
+      upper: -0.19
+      lower: -0.1986
+    POPE GL1 (2) - POPE C1A (4):
+      total: 0.4118
+      upper: 0.4187
+      lower: 0.4049
+    POPE GL2 (3) - POPE C1B (8):
+      total: 0.4941
+      upper: 0.4949
+      lower: 0.4932
+    POPE C1A (4) - POPE D2A (5):
+      total: 0.3867
+      upper: 0.3774
+      lower: 0.3961
+    POPE D2A (5) - POPE C3A (6):
+      total: 0.3043
+      upper: 0.2989
+      lower: 0.3098
+    POPE C3A (6) - POPE C4A (7):
+      total: 0.2491
+      upper: 0.2445
+      lower: 0.2537
+    POPE C1B (8) - POPE C2B (9):
+      total: 0.4887
+      upper: 0.4901
+      lower: 0.4874
+    POPE C2B (9) - POPE C3B (10):
+      total: 0.4034
+      upper: 0.402
+      lower: 0.4048
+    POPE C3B (10) - POPE C4B (11):
+      total: 0.2635
+      upper: 0.2683
+      lower: 0.2586
+- molecule: POPG
+  order:
+    POPG GL0 (0) - POPG PO4 (1):
+      total: -0.0071
+      upper: -0.048
+      lower: 0.0338
+    POPG PO4 (1) - POPG GL1 (2):
+      total: 0.5768
+      upper: 0.5436
+      lower: 0.61
+    POPG GL1 (2) - POPG GL2 (3):
+      total: -0.205
+      upper: -0.1955
+      lower: -0.2145
+    POPG GL1 (2) - POPG C1A (4):
+      total: 0.4437
+      upper: 0.4618
+      lower: 0.4255
+    POPG GL2 (3) - POPG C1B (8):
+      total: 0.4733
+      upper: 0.4484
+      lower: 0.4983
+    POPG C1A (4) - POPG D2A (5):
+      total: 0.3701
+      upper: 0.4011
+      lower: 0.339
+    POPG D2A (5) - POPG C3A (6):
+      total: 0.3189
+      upper: 0.2908
+      lower: 0.3471
+    POPG C3A (6) - POPG C4A (7):
+      total: 0.2866
+      upper: 0.2532
+      lower: 0.32
+    POPG C1B (8) - POPG C2B (9):
+      total: 0.4909
+      upper: 0.4644
+      lower: 0.5174
+    POPG C2B (9) - POPG C3B (10):
+      total: 0.4176
+      upper: 0.3868
+      lower: 0.4484
+    POPG C3B (10) - POPG C4B (11):
+      total: 0.3216
+      upper: 0.3051
+      lower: 0.3381

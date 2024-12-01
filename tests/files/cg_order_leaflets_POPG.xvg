@@ -1,0 +1,30 @@
+# Order parameters calculated with 'gorder v0.2.0-dev.4' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+@    title "Coarse-grained order parameters for molecule type POPG"
+@    xaxis label "Bond"
+@    yaxis label "P2"
+@    s0 legend "Full membrane"
+@    s1 legend "Upper leaflet"
+@    s2 legend "Lower leaflet"
+@TYPE xy
+# Bond GL0 - PO4:
+0     -0.0149  -0.0237  -0.0061 
+# Bond PO4 - GL1:
+1      0.6046   0.5942   0.6150 
+# Bond GL1 - GL2:
+2     -0.2053  -0.2234  -0.1873 
+# Bond GL1 - C1A:
+3      0.4208   0.4404   0.4012 
+# Bond GL2 - C1B:
+4      0.4750   0.4723   0.4778 
+# Bond C1A - D2A:
+5      0.3789   0.4129   0.3449 
+# Bond D2A - C3A:
+6      0.2965   0.2994   0.2937 
+# Bond C3A - C4A:
+7      0.2409   0.2488   0.2329 
+# Bond C1B - C2B:
+8      0.4936   0.4884   0.4988 
+# Bond C2B - C3B:
+9      0.4083   0.4183   0.3982 
+# Bond C3B - C4B:
+10     0.2669   0.2663   0.2674 

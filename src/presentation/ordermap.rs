@@ -28,7 +28,7 @@ impl Map {
         let filename = match leaflet {
             Some(Leaflet::Upper) => format!("ordermap_{}_upper.dat", atom),
             Some(Leaflet::Lower) => format!("ordermap_{}_lower.dat", atom),
-            None => format!("ordermap_{}_total.dat", atom),
+            None => format!("ordermap_{}_full.dat", atom),
         };
 
         let comment = format!("# Map of average order parameters calculated for bonds involving atom type {}.\n# Calculated with 'gorder v{}'.", atom, GORDER_VERSION);
@@ -49,7 +49,7 @@ impl Map {
         let filename = match leaflet {
             Some(Leaflet::Upper) => format!("ordermap_{}--{}_upper.dat", atom1, atom2),
             Some(Leaflet::Lower) => format!("ordermap_{}--{}_lower.dat", atom1, atom2),
-            None => format!("ordermap_{}--{}_total.dat", atom1, atom2),
+            None => format!("ordermap_{}--{}_full.dat", atom1, atom2),
         };
 
         let comment = format!("# Map of average order parameters calculated for bonds between atom types {} and {}.\n# Calculated with 'gorder v{}'.", atom1, atom2, GORDER_VERSION);
@@ -364,13 +364,13 @@ mod tests {
             .unwrap();
 
         let results_bonds = [
-            "ordermap_POPC-C22-4--POPC-H22-6_total.dat",
+            "ordermap_POPC-C22-4--POPC-H22-6_full.dat",
             "ordermap_POPC-C22-4--POPC-H22-6_upper.dat",
             "ordermap_POPC-C22-4--POPC-H22-6_lower.dat",
         ];
 
         let results_atom = [
-            "ordermap_POPC-C22-4_total.dat",
+            "ordermap_POPC-C22-4_full.dat",
             "ordermap_POPC-C22-4_upper.dat",
             "ordermap_POPC-C22-4_lower.dat",
         ];

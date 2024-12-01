@@ -331,7 +331,7 @@ mod tests {
     }
 
     #[test]
-    fn test_analyze_frame_basic() {
+    fn test_aaorder_analyze_frame_basic() {
         let (system, mut data) = prepare_data_for_tests(None);
 
         analyze_frame(&system, &mut data).unwrap();
@@ -365,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    fn test_analyze_frame_leaflets() {
+    fn test_aaorder_analyze_frame_leaflets() {
         let classifier = LeafletClassification::global("@membrane", "name P");
 
         let (system, mut data) = prepare_data_for_tests(Some(classifier));

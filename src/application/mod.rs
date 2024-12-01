@@ -55,15 +55,15 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         }
     };
 
-    let silent = analysis.silent();
-
-    if !silent {
+    if !analysis.silent() {
         analysis.set_silent(args.silent);
     }
 
     if !analysis.overwrite() {
         analysis.set_overwrite(args.overwrite);
     }
+
+    let silent = analysis.silent();
 
     if silent {
         log::set_max_level(log::LevelFilter::Error);
