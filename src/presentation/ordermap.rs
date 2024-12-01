@@ -319,8 +319,7 @@ mod tests {
 
         let params = OrderMap::new()
             .output_directory(path)
-            .bin_size_x(1.0)
-            .bin_size_y(1.0)
+            .bin_size([1.0, 1.0])
             .min_samples(10)
             .plane(Plane::XY)
             .build()
@@ -396,8 +395,7 @@ mod tests {
     fn test_merge_maps() {
         let params = OrderMap::new()
             .output_directory(".")
-            .bin_size_x(1.0)
-            .bin_size_y(1.0)
+            .bin_size([1.0, 1.0])
             .min_samples(10)
             .plane(Plane::XY)
             .build()

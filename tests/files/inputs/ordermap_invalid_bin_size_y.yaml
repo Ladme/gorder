@@ -6,4 +6,4 @@ type: !AAOrder
 output: order.yaml
 map:
   output_dir: ordermaps
-  bin_size_y: -0.1
+  bin_size: [0.1, -0.1]

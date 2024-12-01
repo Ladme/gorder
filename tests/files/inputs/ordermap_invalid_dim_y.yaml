@@ -6,4 +6,6 @@ type: !AAOrder
 output: order.yaml
 map:
   output_dir: ordermaps
-  dim_y: !Manual { start: 10.0, end: 7.5 }
+  dim:
+    - !Auto 
+    - !Manual { start: 10.0, end: 7.5 }

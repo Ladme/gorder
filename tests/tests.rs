@@ -869,8 +869,7 @@ fn test_aa_order_maps_basic() {
         ))
         .map(
             OrderMap::new()
-                .bin_size_y(4.0)
-                .bin_size_y(4.0)
+                .bin_size([0.1, 4.0])
                 .output_directory(path_to_dir)
                 .min_samples(5)
                 .build()
@@ -933,8 +932,7 @@ fn test_aa_order_maps_leaflets() {
             .leaflets(method)
             .map(
                 OrderMap::new()
-                    .bin_size_y(4.0)
-                    .bin_size_y(4.0)
+                    .bin_size([0.1, 4.0])
                     .output_directory(path_to_dir)
                     .min_samples(5)
                     .build()
@@ -1033,8 +1031,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
                 .leaflets(method)
                 .map(
                     OrderMap::new()
-                        .bin_size_y(4.0)
-                        .bin_size_y(4.0)
+                        .bin_size([0.1, 4.0])
                         .output_directory(path_to_dir)
                         .min_samples(5)
                         .build()
@@ -1115,8 +1112,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
             .n_threads(n_threads)
             .map(
                 OrderMap::new()
-                    .bin_size_y(4.0)
-                    .bin_size_y(4.0)
+                    .bin_size([0.1, 4.0])
                     .output_directory(path_to_dir)
                     .min_samples(5)
                     .build()
@@ -1175,8 +1171,7 @@ fn test_aa_order_maps_basic_weird_molecules() {
         ))
         .map(
             OrderMap::new()
-                .bin_size_y(4.0)
-                .bin_size_y(4.0)
+                .bin_size([0.1, 4.0])
                 .output_directory(path_to_dir)
                 .min_samples(1)
                 .build()
@@ -1249,8 +1244,7 @@ fn test_aa_order_maps_basic_backup() {
         ))
         .map(
             OrderMap::new()
-                .bin_size_y(4.0)
-                .bin_size_y(4.0)
+                .bin_size([0.1, 4.0])
                 .output_directory(path_to_dir)
                 .min_samples(5)
                 .build()

@@ -176,8 +176,7 @@ mod tests {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
         let params = OrderMap::new()
             .output_directory(".")
-            .bin_size_y(0.2)
-            .bin_size_x(0.05)
+            .bin_size([0.05, 0.2])
             .plane(Plane::XY)
             .build()
             .unwrap();
@@ -198,14 +197,16 @@ mod tests {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
         let params = OrderMap::new()
             .output_directory(".")
-            .dim_x(GridSpan::Manual {
-                start: -4.0,
-                end: 8.0,
-            })
-            .dim_y(GridSpan::Manual {
-                start: 1.5,
-                end: 4.5,
-            })
+            .dim([
+                GridSpan::Manual {
+                    start: -4.0,
+                    end: 8.0,
+                },
+                GridSpan::Manual {
+                    start: 1.5,
+                    end: 4.5,
+                },
+            ])
             .plane(Plane::XY)
             .build()
             .unwrap();
@@ -226,8 +227,7 @@ mod tests {
         let simbox = SimBox::from([10.0, 3.0, 6.0]);
         let params = OrderMap::new()
             .output_directory(".")
-            .bin_size_y(5.0)
-            .bin_size_x(1.0)
+            .bin_size([1.0, 5.0])
             .plane(Plane::XY)
             .build()
             .unwrap();

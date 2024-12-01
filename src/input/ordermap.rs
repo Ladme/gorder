@@ -79,28 +79,22 @@ pub struct OrderMap {
     #[serde(default = "default_min_samples")]
     #[getset(get_copy = "pub")]
     min_samples: usize,
-    /// Span of the grid along the primary axis.
+    /// Span of the grid along the axes.
+    /// The first span corresponds to either x axis (if the map is in the xy or xz plane) or to z axis (if the map is in the yz plane).
+    /// The second span corresponds to either y axis (if the map is in the xy or yz plane) or to z axis (if the map is in the xz plane).
+    /// If not specified, the span of the map is taken from the box size of the input structure.
     #[builder(default)]
     #[serde(default = "default_gridspan")]
     #[getset(get_copy = "pub")]
-    dim_x: GridSpan,
-    /// Span of the grid along the secondary axis.
-    #[builder(default)]
-    #[serde(default = "default_gridspan")]
-    #[getset(get_copy = "pub")]
-    dim_y: GridSpan,
-    /// The size of the grid bin along the primary axis.
-    /// If not specified, the default value is 0.1 nm.
-    #[builder(default = "0.1")]
+    dim: [GridSpan; 2],
+    /// The size of the grid bin along the axes.
+    /// The first bin dimension corresponds to either x axis (if the map is in the xy or xz plane) or to z axis (if the map is in the yz plane).
+    /// The second bin dimension corresponds to either y axis (if the map is in the xy or yz plane) or to z axis (if the map is in the xz plane).
+    /// If not specified, the default value is 0.1x0.1 nm.
+    #[builder(default = "[0.1, 0.1]")]
     #[serde(default = "default_bin_size")]
     #[getset(get_copy = "pub")]
-    bin_size_x: f32,
-    /// The size of the grid bin along the secondary axis.
-    /// If not specified, the default value is 0.1 nm.
-    #[builder(default = "0.1")]
-    #[serde(default = "default_bin_size")]
-    #[getset(get_copy = "pub")]
-    bin_size_y: f32,
+    bin_size: [f32; 2],
     /// Plane in which the ordermaps should be constructed.
     /// If not specified, the plane is parallel to membrane normal.
     #[builder(setter(strip_option), default)]
@@ -108,16 +102,38 @@ pub struct OrderMap {
     plane: Option<Plane>,
 }
 
-fn default_bin_size() -> f32 {
-    0.1
+impl OrderMap {
+    /// Get the bin size of the map along the primary axis.
+    pub(crate) fn bin_size_x(&self) -> f32 {
+        self.bin_size[0]
+    }
+
+    /// Get the bin size of the map along the secondary axis.
+    pub(crate) fn bin_size_y(&self) -> f32 {
+        self.bin_size[1]
+    }
+
+    /// Get the span of the grid along the primary axis.
+    pub(crate) fn dim_x(&self) -> GridSpan {
+        self.dim[0]
+    }
+
+    /// Get the span of the grid along the secondary axis.
+    pub(crate) fn dim_y(&self) -> GridSpan {
+        self.dim[1]
+    }
+}
+
+fn default_bin_size() -> [f32; 2] {
+    [0.1, 0.1]
 }
 
 fn default_min_samples() -> usize {
     1
 }
 
-fn default_gridspan() -> GridSpan {
-    GridSpan::Auto
+fn default_gridspan() -> [GridSpan; 2] {
+    [GridSpan::Auto, GridSpan::Auto]
 }
 
 fn validate_min_samples(samples: usize) -> Result<(), OrderMapConfigError> {
@@ -128,22 +144,26 @@ fn validate_min_samples(samples: usize) -> Result<(), OrderMapConfigError> {
     }
 }
 
-fn validate_gridspan(gridspan: &GridSpan) -> Result<(), OrderMapConfigError> {
-    if let GridSpan::Manual { start, end } = gridspan {
-        if start > end {
-            return Err(OrderMapConfigError::InvalidGridSpan(*start, *end));
+fn validate_gridspan(gridspan: &[GridSpan; 2]) -> Result<(), OrderMapConfigError> {
+    for span in gridspan {
+        if let GridSpan::Manual { start, end } = span {
+            if start > end {
+                return Err(OrderMapConfigError::InvalidGridSpan(*start, *end));
+            }
         }
     }
 
     Ok(())
 }
 
-fn validate_bin_size(size: f32) -> Result<(), OrderMapConfigError> {
-    if size <= 0.0 {
-        Err(OrderMapConfigError::InvalidBinSize(size))
-    } else {
-        Ok(())
+fn validate_bin_size(size: [f32; 2]) -> Result<(), OrderMapConfigError> {
+    for dimension in size {
+        if dimension <= 0.0 {
+            return Err(OrderMapConfigError::InvalidBinSize(dimension));
+        }
     }
+
+    Ok(())
 }
 
 impl OrderMap {
@@ -154,10 +174,8 @@ impl OrderMap {
     /// Check that the OrderMap is valid. This is used after deserializing the structure from the yaml config file.
     pub(crate) fn validate(&self) -> Result<(), OrderMapConfigError> {
         validate_min_samples(self.min_samples)?;
-        validate_gridspan(&self.dim_x)?;
-        validate_gridspan(&self.dim_y)?;
-        validate_bin_size(self.bin_size_x)?;
-        validate_bin_size(self.bin_size_y)?;
+        validate_gridspan(&self.dim)?;
+        validate_bin_size(self.bin_size)?;
         Ok(())
     }
 }
@@ -168,12 +186,8 @@ impl OrderMapBuilder {
             validate_min_samples(min_samples).map_err(|e| e.to_string())?;
         }
 
-        if let Some(bin_x) = self.bin_size_x {
-            validate_bin_size(bin_x).map_err(|e| e.to_string())?;
-        }
-
-        if let Some(bin_y) = self.bin_size_y {
-            validate_bin_size(bin_y).map_err(|e| e.to_string())?;
+        if let Some(bin) = self.bin_size {
+            validate_bin_size(bin).map_err(|e| e.to_string())?;
         }
 
         // no need to validate GridSpan as that is guaranteed to be valid
@@ -247,10 +261,8 @@ mod ordermap {
     fn test_ordermap_pass_full() {
         let map = OrderMap::new()
             .output_directory("ordermaps")
-            .bin_size_x(0.2)
-            .bin_size_y(0.01)
-            .dim_x(GridSpan::manual(-5.0, 10.0).unwrap())
-            .dim_y(GridSpan::Auto)
+            .bin_size([0.2, 0.01])
+            .dim([GridSpan::manual(-5.0, 10.0).unwrap(), GridSpan::Auto])
             .min_samples(10)
             .build()
             .unwrap();
@@ -295,7 +307,7 @@ mod ordermap {
     fn test_ordermap_fail_invalid_bin_size_x() {
         match OrderMap::new()
             .output_directory("ordermaps")
-            .bin_size_x(0.0)
+            .bin_size([0.0, 0.1])
             .build()
         {
             Ok(_) => panic!("Function should have failed but it succeeded."),
@@ -310,7 +322,7 @@ mod ordermap {
     fn test_ordermap_fail_invalid_bin_size_y() {
         match OrderMap::new()
             .output_directory("ordermaps")
-            .bin_size_y(-0.3)
+            .bin_size([0.1, -0.3])
             .build()
         {
             Ok(_) => panic!("Function should have failed but it succeeded."),

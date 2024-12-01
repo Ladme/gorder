@@ -600,14 +600,15 @@ mod tests_builder {
             .map(
                 OrderMap::new()
                     .output_directory(".")
-                    .dim_x(GridSpan::Manual {
-                        start: 0.5,
-                        end: 10.5,
-                    })
-                    .dim_y(GridSpan::Auto)
+                    .dim([
+                        GridSpan::Manual {
+                            start: 0.5,
+                            end: 10.5,
+                        },
+                        GridSpan::Auto,
+                    ])
                     .min_samples(10)
-                    .bin_size_x(0.05)
-                    .bin_size_y(0.02)
+                    .bin_size([0.05, 0.02])
                     .plane(Plane::XY)
                     .build()
                     .unwrap(),
