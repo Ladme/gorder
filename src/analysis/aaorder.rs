@@ -112,7 +112,7 @@ pub(super) fn analyze_atomistic(
     let progress_printer = if analysis.silent() {
         None
     } else {
-        Some(ProgressPrinter::new())
+        Some(ProgressPrinter::new().with_print_freq(100 / analysis.n_threads()))
     };
 
     log::info!(
