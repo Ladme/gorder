@@ -218,7 +218,7 @@ fn test_aa_order_basic_xvg_weird_names() {
 
 #[test]
 fn test_aa_order_basic_yaml_multiple_threads() {
-    for n_threads in [3, 5, 8, 12, 16, 64] {
+    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
@@ -248,7 +248,7 @@ fn test_aa_order_basic_yaml_multiple_threads() {
 
 #[test]
 fn test_aa_order_basic_table_multiple_threads() {
-    for n_threads in [3, 5, 8, 12, 16, 64] {
+    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
         let output_yaml = NamedTempFile::new().unwrap();
         let path_to_yaml = output_yaml.path().to_str().unwrap();
 
@@ -1097,7 +1097,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
 
 #[test]
 fn test_aa_order_maps_basic_multiple_threads() {
-    for n_threads in [3, 5, 8, 12, 16, 64] {
+    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
