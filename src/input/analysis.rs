@@ -144,6 +144,7 @@ pub struct Analysis {
     /// If provided, specifies the properties of an ordermap that shall be calculated.
     /// If not specified, no map will be calculated.
     #[builder(setter(strip_option), default)]
+    #[serde(alias = "maps", alias = "ordermap", alias = "ordermaps")]
     #[getset(get = "pub", get_mut = "pub(crate)")]
     map: Option<OrderMap>,
     /// Be silent. Print nothing to the standard output during the analysis.
@@ -304,6 +305,24 @@ impl AnalysisBuilder {
     #[inline(always)]
     pub fn output(&mut self, value: &str) -> &mut Self {
         self.output_yaml(value)
+    }
+
+    /// Alias for `map`.
+    #[inline(always)]
+    pub fn maps(&mut self, value: OrderMap) -> &mut Self {
+        self.map(value)
+    }
+
+    /// Alias for `map`.
+    #[inline(always)]
+    pub fn ordermap(&mut self, value: OrderMap) -> &mut Self {
+        self.map(value)
+    }
+
+    /// Alias for `map`.
+    #[inline(always)]
+    pub fn ordermaps(&mut self, value: OrderMap) -> &mut Self {
+        self.map(value)
     }
 
     /// Validate the process of analysis building.
