@@ -11,4 +11,4 @@ pub mod ordermap;
 pub use analysis::{Analysis, AnalysisType};
 pub use axis::Axis;
 pub use leaflets::LeafletClassification;
-pub use ordermap::{GridSpan, OrderMap};
+pub use ordermap::{GridSpan, OrderMap, Plane};

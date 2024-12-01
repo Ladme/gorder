@@ -1,0 +1,1498 @@
+# Order parameters calculated with 'gorder v0.2.0-dev.3' using structure file 'pcpepg.tpr' and trajectory file 'pcpepg_b450000_e450200_s1.xtc'.
+- molecule: POPE
+  order:
+    POPE C12 (4):
+      total: -0.0163
+      upper: -0.0408
+      lower: 0.0078
+      bonds:
+        POPE H12A (5):
+          total: 0.0196
+          upper: -0.0014
+          lower: 0.0403
+        POPE H12B (6):
+          total: -0.0522
+          upper: -0.0801
+          lower: -0.0248
+    POPE C11 (7):
+      total: -0.0756
+      upper: -0.1087
+      lower: -0.0429
+      bonds:
+        POPE H11A (8):
+          total: -0.0934
+          upper: -0.1308
+          lower: -0.0567
+        POPE H11B (9):
+          total: -0.0577
+          upper: -0.0866
+          lower: -0.0292
+    POPE C1 (15):
+      total: 0.2134
+      upper: 0.2363
+      lower: 0.1909
+      bonds:
+        POPE HA (16):
+          total: 0.2064
+          upper: 0.2249
+          lower: 0.1882
+        POPE HB (17):
+          total: 0.2204
+          upper: 0.2476
+          lower: 0.1936
+    POPE C2 (18):
+      total: 0.1844
+      upper: 0.2003
+      lower: 0.1686
+      bonds:
+        POPE HS (19):
+          total: 0.1844
+          upper: 0.2003
+          lower: 0.1686
+    POPE C22 (23):
+      total: 0.1004
+      upper: 0.1039
+      lower: 0.097
+      bonds:
+        POPE H2R (24):
+          total: 0.0877
+          upper: 0.0579
+          lower: 0.117
+        POPE H2S (25):
+          total: 0.1132
+          upper: 0.15
+          lower: 0.0771
+    POPE C3 (26):
+      total: 0.0868
+      upper: 0.0891
+      lower: 0.0846
+      bonds:
+        POPE HX (27):
+          total: 0.1607
+          upper: 0.1427
+          lower: 0.1785
+        POPE HY (28):
+          total: 0.0129
+          upper: 0.0355
+          lower: -0.0093
+    POPE C32 (32):
+      total: 0.2309
+      upper: 0.215
+      lower: 0.2466
+      bonds:
+        POPE H2X (33):
+          total: 0.2553
+          upper: 0.2347
+          lower: 0.2756
+        POPE H2Y (34):
+          total: 0.2066
+          upper: 0.1953
+          lower: 0.2177
+    POPE C23 (35):
+      total: 0.1854
+      upper: 0.189
+      lower: 0.1818
+      bonds:
+        POPE H3R (36):
+          total: 0.1808
+          upper: 0.1767
+          lower: 0.1848
+        POPE H3S (37):
+          total: 0.19
+          upper: 0.2013
+          lower: 0.1789
+    POPE C24 (38):
+      total: 0.2023
+      upper: 0.1831
+      lower: 0.2212
+      bonds:
+        POPE H4R (39):
+          total: 0.2109
+          upper: 0.1934
+          lower: 0.2282
+        POPE H4S (40):
+          total: 0.1936
+          upper: 0.1728
+          lower: 0.2141
+    POPE C25 (41):
+      total: 0.2201
+      upper: 0.2183
+      lower: 0.2219
+      bonds:
+        POPE H5R (42):
+          total: 0.2287
+          upper: 0.2241
+          lower: 0.2332
+        POPE H5S (43):
+          total: 0.2116
+          upper: 0.2126
+          lower: 0.2107
+    POPE C26 (44):
+      total: 0.1846
+      upper: 0.1822
+      lower: 0.1869
+      bonds:
+        POPE H6R (45):
+          total: 0.1915
+          upper: 0.1984
+          lower: 0.1848
+        POPE H6S (46):
+          total: 0.1776
+          upper: 0.166
+          lower: 0.1891
+    POPE C27 (47):
+      total: 0.1768
+      upper: 0.175
+      lower: 0.1786
+      bonds:
+        POPE H7R (48):
+          total: 0.1839
+          upper: 0.1826
+          lower: 0.1853
+        POPE H7S (49):
+          total: 0.1697
+          upper: 0.1675
+          lower: 0.1718
+    POPE C28 (50):
+      total: 0.1001
+      upper: 0.0926
+      lower: 0.1074
+      bonds:
+        POPE H8R (51):
+          total: 0.1015
+          upper: 0.0666
+          lower: 0.136
+        POPE H8S (52):
+          total: 0.0986
+          upper: 0.1187
+          lower: 0.0789
+    POPE C29 (53):
+      total: 0.0477
+      upper: 0.0277
+      lower: 0.0673
+      bonds:
+        POPE H91 (54):
+          total: 0.0477
+          upper: 0.0277
+          lower: 0.0673
+    POPE C210 (55):
+      total: 0.0477
+      upper: 0.0814
+      lower: 0.0146
+      bonds:
+        POPE H101 (56):
+          total: 0.0477
+          upper: 0.0814
+          lower: 0.0146
+    POPE C211 (57):
+      total: 0.0803
+      upper: 0.0842
+      lower: 0.0765
+      bonds:
+        POPE H11R (58):
+          total: 0.0673
+          upper: 0.0918
+          lower: 0.0432
+        POPE H11S (59):
+          total: 0.0932
+          upper: 0.0765
+          lower: 0.1098
+    POPE C212 (60):
+      total: 0.1321
+      upper: 0.1412
+      lower: 0.1232
+      bonds:
+        POPE H12R (61):
+          total: 0.1399
+          upper: 0.1635
+          lower: 0.1167
+        POPE H12S (62):
+          total: 0.1243
+          upper: 0.1189
+          lower: 0.1297
+    POPE C213 (63):
+      total: 0.1421
+      upper: 0.1554
+      lower: 0.129
+      bonds:
+        POPE H13R (64):
+          total: 0.1405
+          upper: 0.1603
+          lower: 0.1209
+        POPE H13S (65):
+          total: 0.1437
+          upper: 0.1504
+          lower: 0.1371
+    POPE C214 (66):
+      total: 0.1407
+      upper: 0.154
+      lower: 0.1277
+      bonds:
+        POPE H14R (67):
+          total: 0.1275
+          upper: 0.1364
+          lower: 0.1186
+        POPE H14S (68):
+          total: 0.154
+          upper: 0.1715
+          lower: 0.1368
+    POPE C215 (69):
+      total: 0.1312
+      upper: 0.1438
+      lower: 0.1187
+      bonds:
+        POPE H15R (70):
+          total: 0.1262
+          upper: 0.143
+          lower: 0.1096
+        POPE H15S (71):
+          total: 0.1362
+          upper: 0.1447
+          lower: 0.1278
+    POPE C216 (72):
+      total: 0.1275
+      upper: 0.141
+      lower: 0.1143
+      bonds:
+        POPE H16R (73):
+          total: 0.1287
+          upper: 0.1529
+          lower: 0.1048
+        POPE H16S (74):
+          total: 0.1264
+          upper: 0.1291
+          lower: 0.1237
+    POPE C217 (75):
+      total: 0.0979
+      upper: 0.1087
+      lower: 0.0873
+      bonds:
+        POPE H17R (76):
+          total: 0.0807
+          upper: 0.0838
+          lower: 0.0776
+        POPE H17S (77):
+          total: 0.1151
+          upper: 0.1336
+          lower: 0.0969
+    POPE C218 (78):
+      total: 0.0287
+      upper: 0.0226
+      lower: 0.0347
+      bonds:
+        POPE H18R (79):
+          total: 0.031
+          upper: 0.027
+          lower: 0.0349
+        POPE H18S (80):
+          total: 0.0213
+          upper: 0.0062
+          lower: 0.0363
+        POPE H18T (81):
+          total: 0.0338
+          upper: 0.0347
+          lower: 0.0329
+    POPE C33 (82):
+      total: 0.1764
+      upper: 0.1627
+      lower: 0.1899
+      bonds:
+        POPE H3X (83):
+          total: 0.1617
+          upper: 0.1748
+          lower: 0.1488
+        POPE H3Y (84):
+          total: 0.1912
+          upper: 0.1507
+          lower: 0.231
+    POPE C34 (85):
+      total: 0.202
+      upper: 0.1805
+      lower: 0.2233
+      bonds:
+        POPE H4X (86):
+          total: 0.1831
+          upper: 0.1855
+          lower: 0.1808
+        POPE H4Y (87):
+          total: 0.221
+          upper: 0.1755
+          lower: 0.2657
+    POPE C35 (88):
+      total: 0.2282
+      upper: 0.2161
+      lower: 0.24
+      bonds:
+        POPE H5X (89):
+          total: 0.2328
+          upper: 0.2252
+          lower: 0.2403
+        POPE H5Y (90):
+          total: 0.2235
+          upper: 0.2071
+          lower: 0.2396
+    POPE C36 (91):
+      total: 0.2407
+      upper: 0.2482
+      lower: 0.2333
+      bonds:
+        POPE H6X (92):
+          total: 0.2466
+          upper: 0.2491
+          lower: 0.2441
+        POPE H6Y (93):
+          total: 0.2348
+          upper: 0.2473
+          lower: 0.2225
+    POPE C37 (94):
+      total: 0.2531
+      upper: 0.2699
+      lower: 0.2364
+      bonds:
+        POPE H7X (95):
+          total: 0.2556
+          upper: 0.2624
+          lower: 0.2489
+        POPE H7Y (96):
+          total: 0.2506
+          upper: 0.2775
+          lower: 0.224
+    POPE C38 (97):
+      total: 0.2537
+      upper: 0.283
+      lower: 0.2249
+      bonds:
+        POPE H8X (98):
+          total: 0.2506
+          upper: 0.2749
+          lower: 0.2267
+        POPE H8Y (99):
+          total: 0.2568
+          upper: 0.2911
+          lower: 0.2231
+    POPE C39 (100):
+      total: 0.2395
+      upper: 0.2791
+      lower: 0.2005
+      bonds:
+        POPE H9X (101):
+          total: 0.2367
+          upper: 0.2922
+          lower: 0.1821
+        POPE H9Y (102):
+          total: 0.2422
+          upper: 0.2659
+          lower: 0.2189
+    POPE C310 (103):
+      total: 0.2324
+      upper: 0.2547
+      lower: 0.2105
+      bonds:
+        POPE H10X (104):
+          total: 0.2289
+          upper: 0.2555
+          lower: 0.2026
+        POPE H10Y (105):
+          total: 0.2359
+          upper: 0.2538
+          lower: 0.2183
+    POPE C311 (106):
+      total: 0.2179
+      upper: 0.2354
+      lower: 0.2006
+      bonds:
+        POPE H11X (107):
+          total: 0.2231
+          upper: 0.245
+          lower: 0.2015
+        POPE H11Y (108):
+          total: 0.2126
+          upper: 0.2258
+          lower: 0.1997
+    POPE C312 (109):
+      total: 0.1966
+      upper: 0.2036
+      lower: 0.1896
+      bonds:
+        POPE H12X (110):
+          total: 0.1985
+          upper: 0.2024
+          lower: 0.1947
+        POPE H12Y (111):
+          total: 0.1946
+          upper: 0.2049
+          lower: 0.1845
+    POPE C313 (112):
+      total: 0.1625
+      upper: 0.1626
+      lower: 0.1623
+      bonds:
+        POPE H13X (113):
+          total: 0.1759
+          upper: 0.1719
+          lower: 0.1799
+        POPE H13Y (114):
+          total: 0.149
+          upper: 0.1534
+          lower: 0.1448
+    POPE C314 (115):
+      total: 0.1525
+      upper: 0.147
+      lower: 0.1579
+      bonds:
+        POPE H14X (116):
+          total: 0.1516
+          upper: 0.1491
+          lower: 0.1541
+        POPE H14Y (117):
+          total: 0.1534
+          upper: 0.1449
+          lower: 0.1618
+    POPE C315 (118):
+      total: 0.1103
+      upper: 0.0998
+      lower: 0.1207
+      bonds:
+        POPE H15X (119):
+          total: 0.1159
+          upper: 0.1025
+          lower: 0.1291
+        POPE H15Y (120):
+          total: 0.1048
+          upper: 0.0971
+          lower: 0.1124
+    POPE C316 (121):
+      total: 0.0268
+      upper: 0.0341
+      lower: 0.0196
+      bonds:
+        POPE H16X (122):
+          total: 0.0517
+          upper: 0.0657
+          lower: 0.0379
+        POPE H16Y (123):
+          total: 0.0091
+          upper: 0.0124
+          lower: 0.0058
+        POPE H16Z (124):
+          total: 0.0196
+          upper: 0.0241
+          lower: 0.0152
+- molecule: POPC
+  order:
+    POPC C12 (1):
+      total: 0.0934
+      upper: 0.1018
+      lower: 0.085
+      bonds:
+        POPC H12A (2):
+          total: 0.1029
+          upper: 0.1333
+          lower: 0.0725
+        POPC H12B (3):
+          total: 0.084
+          upper: 0.0704
+          lower: 0.0976
+    POPC C13 (4):
+      total: -0.0229
+      upper: -0.0156
+      lower: -0.0303
+      bonds:
+        POPC H13A (5):
+          total: -0.0645
+          upper: -0.0523
+          lower: -0.0766
+        POPC H13B (6):
+          total: -0.0128
+          upper: 0.0272
+          lower: -0.0528
+        POPC H13C (7):
+          total: 0.0084
+          upper: -0.0216
+          lower: 0.0384
+    POPC C14 (8):
+      total: -0.0188
+      upper: -0.0323
+      lower: -0.0052
+      bonds:
+        POPC H14A (9):
+          total: 0.0202
+          upper: 0.0247
+          lower: 0.0157
+        POPC H14B (10):
+          total: -0.0406
+          upper: -0.0659
+          lower: -0.0152
+        POPC H14C (11):
+          total: -0.0359
+          upper: -0.0559
+          lower: -0.016
+    POPC C15 (12):
+      total: -0.0126
+      upper: -0.0117
+      lower: -0.0136
+      bonds:
+        POPC H15A (13):
+          total: -0.0131
+          upper: 0.0144
+          lower: -0.0406
+        POPC H15B (14):
+          total: 0.0133
+          upper: 0.0008
+          lower: 0.0257
+        POPC H15C (15):
+          total: -0.0381
+          upper: -0.0503
+          lower: -0.0259
+    POPC C11 (16):
+      total: -0.0563
+      upper: -0.0615
+      lower: -0.051
+      bonds:
+        POPC H11A (17):
+          total: -0.0827
+          upper: -0.1153
+          lower: -0.0501
+        POPC H11B (18):
+          total: -0.0298
+          upper: -0.0078
+          lower: -0.0519
+    POPC C1 (24):
+      total: 0.24
+      upper: 0.2607
+      lower: 0.2192
+      bonds:
+        POPC HA (25):
+          total: 0.2464
+          upper: 0.275
+          lower: 0.2177
+        POPC HB (26):
+          total: 0.2335
+          upper: 0.2464
+          lower: 0.2207
+    POPC C2 (27):
+      total: 0.2129
+      upper: 0.1897
+      lower: 0.2362
+      bonds:
+        POPC HS (28):
+          total: 0.2129
+          upper: 0.1897
+          lower: 0.2362
+    POPC C22 (32):
+      total: 0.1028
+      upper: 0.0813
+      lower: 0.1244
+      bonds:
+        POPC H2R (33):
+          total: 0.0837
+          upper: 0.083
+          lower: 0.0843
+        POPC H2S (34):
+          total: 0.122
+          upper: 0.0796
+          lower: 0.1644
+    POPC C3 (35):
+      total: 0.1053
+      upper: 0.0992
+      lower: 0.1113
+      bonds:
+        POPC HX (36):
+          total: 0.1848
+          upper: 0.1464
+          lower: 0.2232
+        POPC HY (37):
+          total: 0.0257
+          upper: 0.052
+          lower: -0.0005
+    POPC C32 (41):
+      total: 0.2393
+      upper: 0.2367
+      lower: 0.2419
+      bonds:
+        POPC H2X (42):
+          total: 0.2552
+          upper: 0.2321
+          lower: 0.2783
+        POPC H2Y (43):
+          total: 0.2234
+          upper: 0.2412
+          lower: 0.2056
+    POPC C23 (44):
+      total: 0.2023
+      upper: 0.1992
+      lower: 0.2054
+      bonds:
+        POPC H3R (45):
+          total: 0.2036
+          upper: 0.2202
+          lower: 0.187
+        POPC H3S (46):
+          total: 0.201
+          upper: 0.1782
+          lower: 0.2238
+    POPC C24 (47):
+      total: 0.1948
+      upper: 0.1943
+      lower: 0.1953
+      bonds:
+        POPC H4R (48):
+          total: 0.1849
+          upper: 0.2112
+          lower: 0.1586
+        POPC H4S (49):
+          total: 0.2047
+          upper: 0.1774
+          lower: 0.2321
+    POPC C25 (50):
+      total: 0.2018
+      upper: 0.209
+      lower: 0.1945
+      bonds:
+        POPC H5R (51):
+          total: 0.2052
+          upper: 0.2141
+          lower: 0.1964
+        POPC H5S (52):
+          total: 0.1983
+          upper: 0.2039
+          lower: 0.1927
+    POPC C26 (53):
+      total: 0.2003
+      upper: 0.1988
+      lower: 0.2019
+      bonds:
+        POPC H6R (54):
+          total: 0.2022
+          upper: 0.2205
+          lower: 0.1839
+        POPC H6S (55):
+          total: 0.1984
+          upper: 0.177
+          lower: 0.2198
+    POPC C27 (56):
+      total: 0.1924
+      upper: 0.201
+      lower: 0.1839
+      bonds:
+        POPC H7R (57):
+          total: 0.1873
+          upper: 0.2147
+          lower: 0.16
+        POPC H7S (58):
+          total: 0.1975
+          upper: 0.1873
+          lower: 0.2077
+    POPC C28 (59):
+      total: 0.1082
+      upper: 0.1294
+      lower: 0.087
+      bonds:
+        POPC H8R (60):
+          total: 0.0984
+          upper: 0.1118
+          lower: 0.0849
+        POPC H8S (61):
+          total: 0.118
+          upper: 0.1469
+          lower: 0.089
+    POPC C29 (62):
+      total: 0.0499
+      upper: 0.0599
+      lower: 0.0399
+      bonds:
+        POPC H91 (63):
+          total: 0.0499
+          upper: 0.0599
+          lower: 0.0399
+    POPC C210 (64):
+      total: 0.0285
+      upper: 0.0197
+      lower: 0.0374
+      bonds:
+        POPC H101 (65):
+          total: 0.0285
+          upper: 0.0197
+          lower: 0.0374
+    POPC C211 (66):
+      total: 0.0802
+      upper: 0.0682
+      lower: 0.0923
+      bonds:
+        POPC H11R (67):
+          total: 0.0972
+          upper: 0.0862
+          lower: 0.1082
+        POPC H11S (68):
+          total: 0.0633
+          upper: 0.0501
+          lower: 0.0764
+    POPC C212 (69):
+      total: 0.1286
+      upper: 0.1195
+      lower: 0.1377
+      bonds:
+        POPC H12R (70):
+          total: 0.1147
+          upper: 0.1027
+          lower: 0.1267
+        POPC H12S (71):
+          total: 0.1425
+          upper: 0.1363
+          lower: 0.1487
+    POPC C213 (72):
+      total: 0.1556
+      upper: 0.1566
+      lower: 0.1546
+      bonds:
+        POPC H13R (73):
+          total: 0.1528
+          upper: 0.1414
+          lower: 0.1643
+        POPC H13S (74):
+          total: 0.1585
+          upper: 0.1719
+          lower: 0.145
+    POPC C214 (75):
+      total: 0.1591
+      upper: 0.1507
+      lower: 0.1675
+      bonds:
+        POPC H14R (76):
+          total: 0.1441
+          upper: 0.1262
+          lower: 0.1619
+        POPC H14S (77):
+          total: 0.1741
+          upper: 0.1752
+          lower: 0.173
+    POPC C215 (78):
+      total: 0.1468
+      upper: 0.1424
+      lower: 0.1512
+      bonds:
+        POPC H15R (79):
+          total: 0.1403
+          upper: 0.1303
+          lower: 0.1504
+        POPC H15S (80):
+          total: 0.1533
+          upper: 0.1545
+          lower: 0.1521
+    POPC C216 (81):
+      total: 0.1321
+      upper: 0.1292
+      lower: 0.1351
+      bonds:
+        POPC H16R (82):
+          total: 0.1303
+          upper: 0.1331
+          lower: 0.1275
+        POPC H16S (83):
+          total: 0.1339
+          upper: 0.1252
+          lower: 0.1426
+    POPC C217 (84):
+      total: 0.1071
+      upper: 0.1008
+      lower: 0.1134
+      bonds:
+        POPC H17R (85):
+          total: 0.1092
+          upper: 0.1197
+          lower: 0.0986
+        POPC H17S (86):
+          total: 0.105
+          upper: 0.0818
+          lower: 0.1283
+    POPC C218 (87):
+      total: 0.0361
+      upper: 0.0425
+      lower: 0.0298
+      bonds:
+        POPC H18R (88):
+          total: 0.042
+          upper: 0.0587
+          lower: 0.0253
+        POPC H18S (89):
+          total: 0.0248
+          upper: 0.0216
+          lower: 0.028
+        POPC H18T (90):
+          total: 0.0416
+          upper: 0.0473
+          lower: 0.0359
+    POPC C33 (91):
+      total: 0.2075
+      upper: 0.2155
+      lower: 0.1996
+      bonds:
+        POPC H3X (92):
+          total: 0.216
+          upper: 0.219
+          lower: 0.2129
+        POPC H3Y (93):
+          total: 0.1991
+          upper: 0.2119
+          lower: 0.1862
+    POPC C34 (94):
+      total: 0.2387
+      upper: 0.2483
+      lower: 0.2292
+      bonds:
+        POPC H4X (95):
+          total: 0.219
+          upper: 0.2282
+          lower: 0.2097
+        POPC H4Y (96):
+          total: 0.2585
+          upper: 0.2684
+          lower: 0.2487
+    POPC C35 (97):
+      total: 0.2317
+      upper: 0.2412
+      lower: 0.2221
+      bonds:
+        POPC H5X (98):
+          total: 0.214
+          upper: 0.2321
+          lower: 0.1959
+        POPC H5Y (99):
+          total: 0.2493
+          upper: 0.2502
+          lower: 0.2483
+    POPC C36 (100):
+      total: 0.2464
+      upper: 0.2503
+      lower: 0.2425
+      bonds:
+        POPC H6X (101):
+          total: 0.2337
+          upper: 0.2493
+          lower: 0.2181
+        POPC H6Y (102):
+          total: 0.259
+          upper: 0.2513
+          lower: 0.2668
+    POPC C37 (103):
+      total: 0.2444
+      upper: 0.2428
+      lower: 0.2459
+      bonds:
+        POPC H7X (104):
+          total: 0.2453
+          upper: 0.2525
+          lower: 0.238
+        POPC H7Y (105):
+          total: 0.2435
+          upper: 0.2331
+          lower: 0.2539
+    POPC C38 (106):
+      total: 0.2459
+      upper: 0.2374
+      lower: 0.2543
+      bonds:
+        POPC H8X (107):
+          total: 0.2445
+          upper: 0.2339
+          lower: 0.2551
+        POPC H8Y (108):
+          total: 0.2472
+          upper: 0.2408
+          lower: 0.2536
+    POPC C39 (109):
+      total: 0.2143
+      upper: 0.1964
+      lower: 0.2322
+      bonds:
+        POPC H9X (110):
+          total: 0.2157
+          upper: 0.1846
+          lower: 0.2469
+        POPC H9Y (111):
+          total: 0.2128
+          upper: 0.2081
+          lower: 0.2174
+    POPC C310 (112):
+      total: 0.2052
+      upper: 0.1894
+      lower: 0.2209
+      bonds:
+        POPC H10X (113):
+          total: 0.2108
+          upper: 0.1793
+          lower: 0.2422
+        POPC H10Y (114):
+          total: 0.1995
+          upper: 0.1995
+          lower: 0.1996
+    POPC C311 (115):
+      total: 0.1858
+      upper: 0.1728
+      lower: 0.1989
+      bonds:
+        POPC H11X (116):
+          total: 0.1753
+          upper: 0.1487
+          lower: 0.2018
+        POPC H11Y (117):
+          total: 0.1964
+          upper: 0.1969
+          lower: 0.1959
+    POPC C312 (118):
+      total: 0.1752
+      upper: 0.1732
+      lower: 0.1773
+      bonds:
+        POPC H12X (119):
+          total: 0.1644
+          upper: 0.1613
+          lower: 0.1675
+        POPC H12Y (120):
+          total: 0.186
+          upper: 0.185
+          lower: 0.187
+    POPC C313 (121):
+      total: 0.1608
+      upper: 0.1593
+      lower: 0.1623
+      bonds:
+        POPC H13X (122):
+          total: 0.1518
+          upper: 0.1522
+          lower: 0.1514
+        POPC H13Y (123):
+          total: 0.1698
+          upper: 0.1665
+          lower: 0.1732
+    POPC C314 (124):
+      total: 0.1356
+      upper: 0.125
+      lower: 0.1462
+      bonds:
+        POPC H14X (125):
+          total: 0.1392
+          upper: 0.1413
+          lower: 0.1372
+        POPC H14Y (126):
+          total: 0.1319
+          upper: 0.1087
+          lower: 0.1552
+    POPC C315 (127):
+      total: 0.1066
+      upper: 0.0967
+      lower: 0.1165
+      bonds:
+        POPC H15X (128):
+          total: 0.109
+          upper: 0.1073
+          lower: 0.1107
+        POPC H15Y (129):
+          total: 0.1041
+          upper: 0.086
+          lower: 0.1222
+    POPC C316 (130):
+      total: 0.0366
+      upper: 0.0334
+      lower: 0.0398
+      bonds:
+        POPC H16X (131):
+          total: 0.0405
+          upper: 0.0351
+          lower: 0.046
+        POPC H16Y (132):
+          total: 0.0267
+          upper: 0.0193
+          lower: 0.034
+        POPC H16Z (133):
+          total: 0.0426
+          upper: 0.0457
+          lower: 0.0394
+- molecule: POPG
+  order:
+    POPG C13 (0):
+      total: -0.0291
+      upper: -0.051
+      lower: -0.0041
+      bonds:
+        POPG H13A (1):
+          total: -0.0677
+          upper: -0.1201
+          lower: -0.0077
+        POPG H13B (2):
+          total: 0.0095
+          upper: 0.0181
+          lower: -0.0004
+    POPG C12 (5):
+      total: -0.0353
+      upper: -0.0018
+      lower: -0.0735
+      bonds:
+        POPG H12A (6):
+          total: -0.0353
+          upper: -0.0018
+          lower: -0.0735
+    POPG C11 (9):
+      total: -0.0041
+      upper: 0.0248
+      lower: -0.037
+      bonds:
+        POPG H11A (10):
+          total: -0.069
+          upper: -0.0936
+          lower: -0.0409
+        POPG H11B (11):
+          total: 0.0608
+          upper: 0.1431
+          lower: -0.0332
+    POPG C1 (17):
+      total: 0.2827
+      upper: 0.3417
+      lower: 0.2153
+      bonds:
+        POPG HA (18):
+          total: 0.2844
+          upper: 0.3212
+          lower: 0.2422
+        POPG HB (19):
+          total: 0.2811
+          upper: 0.3621
+          lower: 0.1885
+    POPG C2 (20):
+      total: 0.2395
+      upper: 0.3391
+      lower: 0.1257
+      bonds:
+        POPG HS (21):
+          total: 0.2395
+          upper: 0.3391
+          lower: 0.1257
+    POPG C22 (25):
+      total: 0.0418
+      upper: 0.0764
+      lower: 0.0022
+      bonds:
+        POPG H2R (26):
+          total: 0.1494
+          upper: 0.1637
+          lower: 0.1331
+        POPG H2S (27):
+          total: -0.0659
+          upper: -0.0109
+          lower: -0.1287
+    POPG C3 (28):
+      total: 0.1103
+      upper: 0.1762
+      lower: 0.035
+      bonds:
+        POPG HX (29):
+          total: 0.0197
+          upper: 0.1346
+          lower: -0.1116
+        POPG HY (30):
+          total: 0.2009
+          upper: 0.2179
+          lower: 0.1815
+    POPG C32 (34):
+      total: 0.1486
+      upper: 0.221
+      lower: 0.0659
+      bonds:
+        POPG H2X (35):
+          total: 0.1608
+          upper: 0.2401
+          lower: 0.0701
+        POPG H2Y (36):
+          total: 0.1365
+          upper: 0.2019
+          lower: 0.0617
+    POPG C23 (37):
+      total: 0.2547
+      upper: 0.2369
+      lower: 0.2751
+      bonds:
+        POPG H3R (38):
+          total: 0.3014
+          upper: 0.3352
+          lower: 0.2628
+        POPG H3S (39):
+          total: 0.2081
+          upper: 0.1387
+          lower: 0.2874
+    POPG C24 (40):
+      total: 0.2272
+      upper: 0.1814
+      lower: 0.2795
+      bonds:
+        POPG H4R (41):
+          total: 0.2661
+          upper: 0.2881
+          lower: 0.241
+        POPG H4S (42):
+          total: 0.1882
+          upper: 0.0746
+          lower: 0.318
+    POPG C25 (43):
+      total: 0.2634
+      upper: 0.2613
+      lower: 0.2657
+      bonds:
+        POPG H5R (44):
+          total: 0.269
+          upper: 0.3348
+          lower: 0.1938
+        POPG H5S (45):
+          total: 0.2577
+          upper: 0.1878
+          lower: 0.3376
+    POPG C26 (46):
+      total: 0.207
+      upper: 0.1905
+      lower: 0.2259
+      bonds:
+        POPG H6R (47):
+          total: 0.2323
+          upper: 0.2691
+          lower: 0.1903
+        POPG H6S (48):
+          total: 0.1818
+          upper: 0.112
+          lower: 0.2616
+    POPG C27 (49):
+      total: 0.1767
+      upper: 0.1254
+      lower: 0.2354
+      bonds:
+        POPG H7R (50):
+          total: 0.1651
+          upper: 0.1264
+          lower: 0.2092
+        POPG H7S (51):
+          total: 0.1884
+          upper: 0.1244
+          lower: 0.2615
+    POPG C28 (52):
+      total: 0.1818
+      upper: 0.1501
+      lower: 0.218
+      bonds:
+        POPG H8R (53):
+          total: 0.2234
+          upper: 0.2012
+          lower: 0.2486
+        POPG H8S (54):
+          total: 0.1402
+          upper: 0.0989
+          lower: 0.1874
+    POPG C29 (55):
+      total: 0.1131
+      upper: 0.1341
+      lower: 0.0892
+      bonds:
+        POPG H91 (56):
+          total: 0.1131
+          upper: 0.1341
+          lower: 0.0892
+    POPG C210 (57):
+      total: 0.0666
+      upper: 0.0621
+      lower: 0.0717
+      bonds:
+        POPG H101 (58):
+          total: 0.0666
+          upper: 0.0621
+          lower: 0.0717
+    POPG C211 (59):
+      total: 0.0944
+      upper: 0.0451
+      lower: 0.1508
+      bonds:
+        POPG H11R (60):
+          total: 0.0986
+          upper: 0.0728
+          lower: 0.1282
+        POPG H11S (61):
+          total: 0.0902
+          upper: 0.0173
+          lower: 0.1734
+    POPG C212 (62):
+      total: 0.1774
+      upper: 0.1906
+      lower: 0.1623
+      bonds:
+        POPG H12R (63):
+          total: 0.1745
+          upper: 0.1917
+          lower: 0.1549
+        POPG H12S (64):
+          total: 0.1802
+          upper: 0.1894
+          lower: 0.1697
+    POPG C213 (65):
+      total: 0.1951
+      upper: 0.2043
+      lower: 0.1847
+      bonds:
+        POPG H13R (66):
+          total: 0.2203
+          upper: 0.227
+          lower: 0.2127
+        POPG H13S (67):
+          total: 0.17
+          upper: 0.1815
+          lower: 0.1567
+    POPG C214 (68):
+      total: 0.1903
+      upper: 0.1948
+      lower: 0.1851
+      bonds:
+        POPG H14R (69):
+          total: 0.1739
+          upper: 0.1798
+          lower: 0.1671
+        POPG H14S (70):
+          total: 0.2067
+          upper: 0.2098
+          lower: 0.2031
+    POPG C215 (71):
+      total: 0.162
+      upper: 0.2025
+      lower: 0.1158
+      bonds:
+        POPG H15R (72):
+          total: 0.139
+          upper: 0.2042
+          lower: 0.0646
+        POPG H15S (73):
+          total: 0.185
+          upper: 0.2008
+          lower: 0.167
+    POPG C216 (74):
+      total: 0.12
+      upper: 0.144
+      lower: 0.0925
+      bonds:
+        POPG H16R (75):
+          total: 0.1391
+          upper: 0.1568
+          lower: 0.1187
+        POPG H16S (76):
+          total: 0.1009
+          upper: 0.1312
+          lower: 0.0662
+    POPG C217 (77):
+      total: 0.0968
+      upper: 0.1274
+      lower: 0.0618
+      bonds:
+        POPG H17R (78):
+          total: 0.106
+          upper: 0.1241
+          lower: 0.0854
+        POPG H17S (79):
+          total: 0.0876
+          upper: 0.1308
+          lower: 0.0382
+    POPG C218 (80):
+      total: 0.0577
+      upper: 0.0651
+      lower: 0.0493
+      bonds:
+        POPG H18R (81):
+          total: 0.0712
+          upper: 0.0707
+          lower: 0.0719
+        POPG H18S (82):
+          total: 0.0715
+          upper: 0.1156
+          lower: 0.0213
+        POPG H18T (83):
+          total: 0.0304
+          upper: 0.009
+          lower: 0.0549
+    POPG C33 (84):
+      total: 0.1656
+      upper: 0.1562
+      lower: 0.1765
+      bonds:
+        POPG H3X (85):
+          total: 0.1496
+          upper: 0.1653
+          lower: 0.1315
+        POPG H3Y (86):
+          total: 0.1817
+          upper: 0.147
+          lower: 0.2214
+    POPG C34 (87):
+      total: 0.2426
+      upper: 0.2271
+      lower: 0.2603
+      bonds:
+        POPG H4X (88):
+          total: 0.2359
+          upper: 0.2105
+          lower: 0.2649
+        POPG H4Y (89):
+          total: 0.2493
+          upper: 0.2438
+          lower: 0.2557
+    POPG C35 (90):
+      total: 0.2381
+      upper: 0.2092
+      lower: 0.271
+      bonds:
+        POPG H5X (91):
+          total: 0.2842
+          upper: 0.266
+          lower: 0.3051
+        POPG H5Y (92):
+          total: 0.1919
+          upper: 0.1524
+          lower: 0.237
+    POPG C36 (93):
+      total: 0.2327
+      upper: 0.2179
+      lower: 0.2496
+      bonds:
+        POPG H6X (94):
+          total: 0.2394
+          upper: 0.22
+          lower: 0.2615
+        POPG H6Y (95):
+          total: 0.226
+          upper: 0.2159
+          lower: 0.2376
+    POPG C37 (96):
+      total: 0.2297
+      upper: 0.2222
+      lower: 0.2384
+      bonds:
+        POPG H7X (97):
+          total: 0.241
+          upper: 0.2478
+          lower: 0.2333
+        POPG H7Y (98):
+          total: 0.2185
+          upper: 0.1965
+          lower: 0.2435
+    POPG C38 (99):
+      total: 0.1936
+      upper: 0.1618
+      lower: 0.2299
+      bonds:
+        POPG H8X (100):
+          total: 0.1566
+          upper: 0.071
+          lower: 0.2545
+        POPG H8Y (101):
+          total: 0.2305
+          upper: 0.2525
+          lower: 0.2054
+    POPG C39 (102):
+      total: 0.1468
+      upper: 0.0654
+      lower: 0.2399
+      bonds:
+        POPG H9X (103):
+          total: 0.1455
+          upper: 0.0374
+          lower: 0.2691
+        POPG H9Y (104):
+          total: 0.1482
+          upper: 0.0934
+          lower: 0.2108
+    POPG C310 (105):
+      total: 0.1308
+      upper: 0.0601
+      lower: 0.2117
+      bonds:
+        POPG H10X (106):
+          total: 0.146
+          upper: 0.053
+          lower: 0.2521
+        POPG H10Y (107):
+          total: 0.1157
+          upper: 0.0671
+          lower: 0.1713
+    POPG C311 (108):
+      total: 0.1491
+      upper: 0.1055
+      lower: 0.1989
+      bonds:
+        POPG H11X (109):
+          total: 0.1614
+          upper: 0.1087
+          lower: 0.2216
+        POPG H11Y (110):
+          total: 0.1368
+          upper: 0.1023
+          lower: 0.1763
+    POPG C312 (111):
+      total: 0.1523
+      upper: 0.1184
+      lower: 0.191
+      bonds:
+        POPG H12X (112):
+          total: 0.1451
+          upper: 0.095
+          lower: 0.2025
+        POPG H12Y (113):
+          total: 0.1594
+          upper: 0.1418
+          lower: 0.1795
+    POPG C313 (114):
+      total: 0.1569
+      upper: 0.1469
+      lower: 0.1683
+      bonds:
+        POPG H13X (115):
+          total: 0.1383
+          upper: 0.1043
+          lower: 0.1772
+        POPG H13Y (116):
+          total: 0.1754
+          upper: 0.1895
+          lower: 0.1593
+    POPG C314 (117):
+      total: 0.1329
+      upper: 0.136
+      lower: 0.1293
+      bonds:
+        POPG H14X (118):
+          total: 0.1466
+          upper: 0.1451
+          lower: 0.1483
+        POPG H14Y (119):
+          total: 0.1192
+          upper: 0.1269
+          lower: 0.1103
+    POPG C315 (120):
+      total: 0.0687
+      upper: 0.0702
+      lower: 0.067
+      bonds:
+        POPG H15X (121):
+          total: 0.0732
+          upper: 0.074
+          lower: 0.0722
+        POPG H15Y (122):
+          total: 0.0643
+          upper: 0.0665
+          lower: 0.0617
+    POPG C316 (123):
+      total: 0.0318
+      upper: 0.0325
+      lower: 0.0311
+      bonds:
+        POPG H16X (124):
+          total: 0.0647
+          upper: 0.0823
+          lower: 0.0446
+        POPG H16Y (125):
+          total: 0.0062
+          upper: -0.0419
+          lower: 0.0613
+        POPG H16Z (126):
+          total: 0.0245
+          upper: 0.057
+          lower: -0.0126

@@ -722,6 +722,103 @@ fn test_aa_order_begin_end_step_yaml() {
 }
 
 #[test]
+fn test_aa_order_begin_end_step_yaml_multiple_threads() {
+    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .begin(450_000.0)
+            .end(450_200.0)
+            .step(3)
+            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_begin_end_step.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_begin_end_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .begin(450_000.0)
+        .end(450_200.0)
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_begin_end.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_begin_end_yaml_multiple_threads() {
+    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .begin(450_000.0)
+            .end(450_200.0)
+            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_begin_end.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_aa_order_no_molecules() {
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
@@ -1298,4 +1395,48 @@ fn test_aa_order_maps_basic_backup() {
         .unwrap();
 
     assert_eq!(file_content, "This file will be backed up.");
+}
+
+#[test]
+fn test_aa_order_maps_basic_different_plane() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "resname POPC and name C22 C24 C218",
+            "@membrane and element name hydrogen",
+        ))
+        .map(
+            OrderMap::new()
+                .bin_size([4.0, 0.1])
+                .output_directory(path_to_dir)
+                .min_samples(5)
+                .plane(Plane::XZ)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    // only test one file
+    let real_file = format!("{}/POPC/ordermap_POPC-C218-87_total.dat", path_to_dir);
+    let test_file = "tests/files/ordermaps/ordermap_xz.dat";
+    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_small.yaml",
+        1
+    ));
 }

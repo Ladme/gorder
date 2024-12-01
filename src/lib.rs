@@ -36,6 +36,7 @@ pub use input::AnalysisType;
 pub use input::Axis;
 pub use input::LeafletClassification;
 pub use input::OrderMap;
+pub use input::Plane;
 
 pub mod prelude {
     pub use super::Analysis;
@@ -43,4 +44,5 @@ pub mod prelude {
     pub use super::Axis;
     pub use super::LeafletClassification;
     pub use super::OrderMap;
+    pub use super::Plane;
 }
