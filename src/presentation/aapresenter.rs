@@ -172,7 +172,7 @@ impl MoleculeResults for AAMoleculeResults {
         );
         write_result!(
             writer,
-            "@    xaxis label \"Atom\"\n@    yaxis label \"-Scd\"\n"
+            "@    xaxis label \"Atom\"\n@    yaxis label \"-Sch\"\n"
         );
 
         write_result!(writer, "@    s0 legend \"Full membrane\"\n");
