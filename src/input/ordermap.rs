@@ -228,7 +228,7 @@ impl GridSpan {
 }
 
 #[cfg(test)]
-mod grid_span {
+mod test_grid_span {
     use super::*;
 
     #[test]
@@ -244,7 +244,7 @@ mod grid_span {
 }
 
 #[cfg(test)]
-mod ordermap {
+mod test_ordermap {
     use approx::assert_relative_eq;
 
     use super::*;

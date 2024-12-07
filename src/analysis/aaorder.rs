@@ -389,16 +389,16 @@ mod tests {
         let expected_lower_samples = [66, 64, 7];
 
         for (m, molecule) in data.molecule_types().iter().enumerate() {
-            let total_orders: Vec<f32> = collect_bond_data(&molecule, |b| b.total().order().into());
+            let total_orders: Vec<f32> = collect_bond_data(molecule, |b| b.total().order().into());
             let upper_orders =
-                collect_bond_data(&molecule, |b| b.upper().as_ref().unwrap().order().into());
+                collect_bond_data(molecule, |b| b.upper().as_ref().unwrap().order().into());
             let lower_orders =
-                collect_bond_data(&molecule, |b| b.lower().as_ref().unwrap().order().into());
-            let total_samples = collect_bond_data(&molecule, |b| b.total().n_samples());
+                collect_bond_data(molecule, |b| b.lower().as_ref().unwrap().order().into());
+            let total_samples = collect_bond_data(molecule, |b| b.total().n_samples());
             let upper_samples =
-                collect_bond_data(&molecule, |b| b.upper().as_ref().unwrap().n_samples());
+                collect_bond_data(molecule, |b| b.upper().as_ref().unwrap().n_samples());
             let lower_samples =
-                collect_bond_data(&molecule, |b| b.lower().as_ref().unwrap().n_samples());
+                collect_bond_data(molecule, |b| b.lower().as_ref().unwrap().n_samples());
 
             for (order, samples, expected_order, expected_samples) in [
                 (

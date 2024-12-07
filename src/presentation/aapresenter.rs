@@ -600,7 +600,7 @@ bonds:
         let molecule_results = AAMoleculeResults {
             molecule: "POPE".to_owned(),
             order: IndexMap::from_iter(
-                [(atom_type_1, atom_results_1), (atom_type_2, atom_results_2)].into_iter(),
+                [(atom_type_1, atom_results_1), (atom_type_2, atom_results_2)],
             ),
         };
 
@@ -642,7 +642,7 @@ order:
         let molecule_results = AAMoleculeResults {
             molecule: "POPE".to_owned(),
             order: IndexMap::from_iter(
-                [(atom_type_1, atom_results_1), (atom_type_2, atom_results_2)].into_iter(),
+                [(atom_type_1, atom_results_1), (atom_type_2, atom_results_2)],
             ),
         };
         let results = AAOrderResults {

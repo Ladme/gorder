@@ -412,7 +412,7 @@ fn test_aa_order_leaflets_yaml_different_membrane_normals() {
             analysis.run().unwrap();
 
             assert!(diff_files_ignore_first(
-                &path_to_output,
+                path_to_output,
                 "tests/files/aa_order_leaflets.yaml",
                 1
             ));
@@ -1004,7 +1004,7 @@ fn test_aa_order_basic_all_formats_backup() {
     }
 
     read_and_compare_files(
-        &path_to_dir,
+        path_to_dir,
         &file_paths.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
         "This file will be backed up.",
     );
@@ -1387,7 +1387,7 @@ fn test_aa_order_maps_basic_backup() {
     let outer_directory = TempDir::new().unwrap();
     let path_to_outer_dir = outer_directory.path().to_str().unwrap();
 
-    let directory = TempDir::new_in(&path_to_outer_dir).unwrap();
+    let directory = TempDir::new_in(path_to_outer_dir).unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
     let backup_file = format!("{}/to_backup.txt", path_to_dir);

@@ -267,7 +267,7 @@ mod tests {
     fn merge_map() {
         let values = vec![1.0, 2.5, 3.0, 4.2, 5.3, 6.1, 7.3, 8.9]
             .into_iter()
-            .map(|x| OrderValue::from(x))
+            .map(OrderValue::from)
             .collect::<Vec<OrderValue>>();
         let map1_values = GridMap::from_vec(
             (1.0, 2.0),
@@ -298,7 +298,7 @@ mod tests {
 
         let values = vec![0.7, 1.4, 2.1, 1.4, 2.3, 3.1, 3.3, 1.9]
             .into_iter()
-            .map(|x| OrderValue::from(x))
+            .map(OrderValue::from)
             .collect::<Vec<OrderValue>>();
         let map2_values = GridMap::from_vec(
             (1.0, 2.0),
@@ -329,8 +329,8 @@ mod tests {
 
         let map = map1 + map2;
 
-        let expected_values = vec![1.7, 3.9, 5.1, 5.6, 7.6, 9.2, 10.6, 10.8];
-        let expected_samples = vec![3, 3, 7, 7, 7, 7, 7, 10];
+        let expected_values = [1.7, 3.9, 5.1, 5.6, 7.6, 9.2, 10.6, 10.8];
+        let expected_samples = [3, 3, 7, 7, 7, 7, 7, 10];
 
         let values = map
             .values

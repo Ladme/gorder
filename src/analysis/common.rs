@@ -1194,7 +1194,7 @@ mod tests {
 
         let mut bonds = HashSet::new();
         for bond in string_representation.into_iter() {
-            let split: Vec<&str> = bond.split_whitespace().into_iter().collect();
+            let split: Vec<&str> = bond.split_whitespace().collect();
             let index1 = split[0].parse::<usize>().unwrap();
             let resname1 = split[1];
             let atomname1 = split[2];
@@ -1218,7 +1218,7 @@ mod tests {
 
         let mut atoms = Vec::new();
         for atom in string_representation.into_iter() {
-            let split: Vec<&str> = atom.split_whitespace().into_iter().collect();
+            let split: Vec<&str> = atom.split_whitespace().collect();
             let relative_index = split[0].parse::<usize>().unwrap();
             let residue_name = split[1];
             let atom_name = split[2];

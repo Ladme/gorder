@@ -1054,7 +1054,7 @@ mod tests {
     fn order_bonds_new() {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
-        let bonds_set = HashSet::from(bonds.clone());
+        let bonds_set = HashSet::from(bonds);
         let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1).unwrap();
 
         let expected_bonds = expected_bonds(&system);
@@ -1079,11 +1079,11 @@ mod tests {
     fn order_bonds_add() {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
-        let bonds_set = HashSet::from(bonds.clone());
+        let bonds_set = HashSet::from(bonds);
         let mut order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1).unwrap();
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
-        let new_bonds_set = HashSet::from(new_bonds.clone());
+        let new_bonds_set = HashSet::from(new_bonds);
         order_bonds.insert(&system, &new_bonds_set, 875);
 
         let expected_bonds = expected_bonds(&system);
@@ -1107,7 +1107,7 @@ mod tests {
     fn molecule_topology_new() {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
-        let bonds_set = HashSet::from(bonds.clone());
+        let bonds_set = HashSet::from(bonds);
         let topology = MoleculeTopology::new(&system, &bonds_set, 125);
 
         let expected_bonds = expected_bonds(&system);
