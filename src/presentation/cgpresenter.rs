@@ -29,7 +29,7 @@ impl From<SystemTopology> for CGOrderResults {
             molecules: value
                 .molecule_types()
                 .iter()
-                .map(|m| CGMoleculeResults::from(m))
+                .map(CGMoleculeResults::from)
                 .collect(),
         }
     }

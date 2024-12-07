@@ -14,7 +14,6 @@ use groan_rs::prelude::Dimension;
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
 use once_cell::unsync::OnceCell;
-use std::usize;
 
 /// A prefix used as an identifier for Gorder groups.
 pub(super) const GORDER_GROUP_PREFIX: &str = "xxxGorderReservedxxx-";
@@ -128,7 +127,7 @@ pub(super) fn classify_molecules(
 /// Check whether there are any molecules that can be analyzed.
 pub(super) fn sanity_check_molecules(molecules: &[MoleculeType]) -> bool {
     // if no molecules are detected, end the analysis
-    if molecules.len() == 0 {
+    if molecules.is_empty() {
         log::warn!("No molecules suitable for the analysis detected.");
         return false;
     }
@@ -159,7 +158,7 @@ pub(super) fn analyze_frame(
         return Err(AnalysisError::ZeroBox);
     }
 
-    let membrane_normal = data.membrane_normal().into();
+    let membrane_normal = data.membrane_normal();
     let membrane_center = OnceCell::new();
 
     // assign molecules to leaflets
@@ -184,7 +183,7 @@ pub(super) fn analyze_frame(
             classifier.assign_lipids(frame)?;
         }
 
-        molecule.analyze_frame(frame, &simbox, &membrane_normal.into())?;
+        molecule.analyze_frame(frame, simbox, &membrane_normal.into())?;
     }
 
     Ok(())
@@ -281,6 +280,7 @@ fn extract_atoms(
 }
 
 /// Extract 1) all bonds and 2) bonds for which order parameters should be calculated from a molecule.
+#[allow(clippy::type_complexity)]
 fn extract_bonds(
     system: &System,
     group1_name: &str,
@@ -307,17 +307,16 @@ fn select_order_bonds(
     let mut order_bonds = HashSet::new();
 
     for &(a1, a2) in all_bonds.iter() {
-        if (system.group_isin(group1_name, a1).expect(PANIC_MESSAGE)
+        if ((system.group_isin(group1_name, a1).expect(PANIC_MESSAGE)
             && system.group_isin(group2_name, a2).expect(PANIC_MESSAGE))
             || (system.group_isin(group2_name, a1).expect(PANIC_MESSAGE)
-                && system.group_isin(group1_name, a2).expect(PANIC_MESSAGE))
+                && system.group_isin(group1_name, a2).expect(PANIC_MESSAGE)))
+            && !order_bonds.insert((a1, a2))
         {
-            if !order_bonds.insert((a1, a2)) {
-                panic!(
-                    "FATAL GORDER ERROR | common::select_order_bonds | Order bond between '{}' and '{}' encountered multiple times in the molecule. {}",
-                    a1, a2, PANIC_MESSAGE
-                );
-            }
+            panic!(
+                "FATAL GORDER ERROR | common::select_order_bonds | Order bond between '{}' and '{}' encountered multiple times in the molecule. {}",
+                a1, a2, PANIC_MESSAGE
+            );
         }
     }
 
@@ -325,6 +324,7 @@ fn select_order_bonds(
 }
 
 /// Create a new molecule type.
+#[allow(clippy::too_many_arguments)]
 fn create_new_molecule_type(
     system: &System,
     molecule_topology: MoleculeTopology,
@@ -360,7 +360,7 @@ fn create_new_molecule_type(
         system,
         name,
         molecule_topology,
-        &order_bonds,
+        order_bonds,
         &order_atoms,
         minimum_index,
         classifier,
@@ -370,7 +370,7 @@ fn create_new_molecule_type(
 }
 
 /// Rename all molecules that have the same name.
-fn solve_name_conflicts(molecules: &mut Vec<MoleculeType>) {
+fn solve_name_conflicts(molecules: &mut [MoleculeType]) {
     let mut counts: HashMap<String, usize> = HashMap::new();
 
     // count the number of individual names
@@ -381,7 +381,7 @@ fn solve_name_conflicts(molecules: &mut Vec<MoleculeType>) {
     // remove entries with the count of 1
     counts.retain(|_, &mut count| count > 1);
 
-    if counts.len() == 0 {
+    if counts.is_empty() {
         return;
     }
 

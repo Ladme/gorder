@@ -115,7 +115,7 @@ pub(super) fn analyze_coarse_grained(
 
     // write out the results
     let results = CGOrderResults::from(result);
-    write_results(results, &analysis)?;
+    write_results(results, analysis)?;
 
     Ok(())
 }

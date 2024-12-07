@@ -117,7 +117,7 @@ fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, Topolo
         }
     }
 
-    if atoms.len() == 0 {
+    if atoms.is_empty() {
         return Err(TopologyError::NoHead(
                 molecule
                     .get_atoms()
@@ -131,7 +131,7 @@ fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, Topolo
         ));
     }
 
-    Ok(*atoms.get(0).expect(PANIC_MESSAGE))
+    Ok(*atoms.first().expect(PANIC_MESSAGE))
 }
 
 /// Get indices of atoms representing the methyls (or ends of tails) of the given lipid molecule.
@@ -145,7 +145,7 @@ fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>
         }
     }
 
-    if atoms.len() == 0 {
+    if atoms.is_empty() {
         return Err(TopologyError::NoMethyl(
             molecule
                 .get_atoms()
@@ -294,7 +294,7 @@ impl LocalClassification {
         for (i, &index) in self.heads.iter().enumerate() {
             let position = unsafe { system.get_atom_unchecked(index) }
                 .get_position()
-                .ok_or_else(|| AnalysisError::UndefinedPosition(index))?;
+                .ok_or(AnalysisError::UndefinedPosition(index))?;
 
             let cylinder = Cylinder::new(
                 position.clone(),
@@ -342,7 +342,7 @@ impl LeafletClassifier for LocalClassification {
 
 /// Handles classification of lipid into a membrane leaflet for the Global and Local classification.
 fn common_identify_leaflet(
-    heads: &Vec<usize>,
+    heads: &[usize],
     molecule_index: usize,
     system: &System,
     membrane_center: &Vector3D,
@@ -355,9 +355,7 @@ fn common_identify_leaflet(
         .distance_from_point(
             membrane_center,
             membrane_normal,
-            system
-                .get_box()
-                .ok_or_else(|| AnalysisError::UndefinedBox)?,
+            system.get_box().ok_or(AnalysisError::UndefinedBox)?,
         )
         .map_err(|_| AnalysisError::UndefinedPosition(head_index))?;
 

@@ -115,14 +115,13 @@ impl MoleculeType {
     fn create_molecule_dir(&self) -> Result<(), OrderMapWriteError> {
         if let Some(map) = self
             .order_bonds()
-            .bond_types()
-            .get(0)
+            .bond_types().first()
             .and_then(|bond| bond.total_map().as_ref())
         {
             let dirname = format!("{}/{}", map.params().output_directory(), self.name());
             let path = Path::new(&dirname);
 
-            std::fs::create_dir(&path).map_err(|_| {
+            std::fs::create_dir(path).map_err(|_| {
                 OrderMapWriteError::CouldNotCreateDirectory(Box::from(Path::new(path)))
             })?;
         }
@@ -247,7 +246,7 @@ impl SystemTopology {
         if let Some(map_unwrapped) = self
             .molecule_types()
             .iter()
-            .filter_map(|m| m.order_bonds().bond_types().get(0))
+            .filter_map(|m| m.order_bonds().bond_types().first())
             .filter_map(|bond| bond.total_map().as_ref())
             .next()
         {

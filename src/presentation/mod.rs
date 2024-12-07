@@ -376,10 +376,8 @@ impl BondResults {
 
         write_result!(writer, "{:<4} {: >8.4} ", number, self.total);
 
-        for order in [self.upper, self.lower].into_iter() {
-            if let Some(value) = order {
-                write_result!(writer, "{: >8.4} ", value);
-            }
+        for order in [self.upper, self.lower].into_iter().flatten() {
+            write_result!(writer, "{: >8.4} ", order);
         }
 
         Ok(())
@@ -451,7 +449,7 @@ impl MoleculeType {
             self.order_bonds().bond_types().len(),
             self.order_bonds()
                 .bond_types()
-                .get(0)
+                .first()
                 .expect(PANIC_MESSAGE)
                 .bonds()
                 .len()

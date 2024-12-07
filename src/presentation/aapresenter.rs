@@ -34,7 +34,7 @@ impl From<SystemTopology> for AAOrderResults {
             molecules: value
                 .molecule_types()
                 .iter()
-                .map(|m| AAMoleculeResults::from(m))
+                .map(AAMoleculeResults::from)
                 .collect(),
         }
     }
@@ -253,10 +253,10 @@ impl AAAtomResults {
 
         let mut results = IndexMap::new();
         for bond in bonds {
-            let bond_results = BondResults::convert_from::<AAOrder>(*bond);
-            totals.push(bond_results.total.clone());
-            uppers.push(bond_results.upper.clone());
-            lowers.push(bond_results.lower.clone());
+            let bond_results = BondResults::convert_from::<AAOrder>(bond);
+            totals.push(bond_results.total);
+            uppers.push(bond_results.upper);
+            lowers.push(bond_results.lower);
 
             let hydrogen = bond.get_other_atom(heavy_atom).unwrap_or_else(|| {
                 panic!(
@@ -364,10 +364,8 @@ impl AAAtomResults {
             }
         }
 
-        for order in [self.upper, self.lower].into_iter() {
-            if let Some(value) = order {
-                write_result!(writer, "{: >8.4} ", value);
-            }
+        for order in [self.upper, self.lower].into_iter().flatten() {
+            write_result!(writer, "{: >8.4} ", order);
         }
 
         write_result!(writer, "\n");

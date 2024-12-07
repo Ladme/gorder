@@ -173,6 +173,7 @@ fn validate_bin_size(size: [f32; 2]) -> Result<(), OrderMapConfigError> {
 
 impl OrderMap {
     /// Start providing ordermap parameters.
+    #[allow(clippy::new_ret_no_self)]
     pub fn new() -> OrderMapBuilder {
         OrderMapBuilder::default()
     }

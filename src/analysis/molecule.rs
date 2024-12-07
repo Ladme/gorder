@@ -52,6 +52,7 @@ pub(crate) struct MoleculeType {
 
 impl MoleculeType {
     /// Create new molecule type.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
         system: &System,
         name: String,
@@ -64,8 +65,8 @@ impl MoleculeType {
         min_samples: usize,
     ) -> Result<Self, TopologyError> {
         Ok(Self {
-            name: name,
-            topology: topology,
+            name,
+            topology,
             order_bonds: OrderBonds::new(
                 system,
                 order_bonds,
@@ -202,9 +203,7 @@ impl OrderBonds {
     ) -> Result<Self, TopologyError> {
         bonds_sanity_check(bonds, min_index);
 
-        let simbox = system
-            .get_box()
-            .ok_or_else(|| TopologyError::UndefinedBox)?;
+        let simbox = system.get_box().ok_or(TopologyError::UndefinedBox)?;
 
         if !simbox.is_orthogonal() {
             return Err(TopologyError::NotOrthogonalBox);
@@ -282,7 +281,7 @@ impl Add<OrderBonds> for OrderBonds {
             bond_types: self
                 .bond_types
                 .into_iter()
-                .zip(rhs.bond_types.into_iter())
+                .zip(rhs.bond_types)
                 .map(|(a, b)| a + b)
                 .collect::<Vec<BondType>>(),
         }
@@ -340,7 +339,7 @@ impl OrderAtoms {
     /// Create a new list of atoms involved in the order calculations.
     pub(super) fn new(system: &System, atoms: &[usize], minimum_index: usize) -> Self {
         let mut converted_atoms = atoms
-            .into_iter()
+            .iter()
             .map(|&x| AtomType::new(x - minimum_index, system.get_atom(x).expect(PANIC_MESSAGE)))
             .collect::<Vec<AtomType>>();
 
@@ -394,6 +393,7 @@ pub(crate) struct BondType {
 
 impl BondType {
     /// Create a new bond for the calculation of order parameters.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         abs_index_1: usize,
         atom_1: &Atom,
@@ -418,10 +418,7 @@ impl BondType {
         };
 
         let optional_map = if let Some(map_params) = ordermap {
-            Some(
-                Map::new(map_params.to_owned(), simbox)
-                    .map_err(|e| TopologyError::OrderMapError(e))?,
-            )
+            Some(Map::new(map_params.to_owned(), simbox).map_err(TopologyError::OrderMapError)?)
         } else {
             None
         };
@@ -438,7 +435,7 @@ impl BondType {
             total: Order::default(),
             upper: leaflet_order.clone(),
             lower: leaflet_order,
-            min_samples: min_samples,
+            min_samples,
             total_map: optional_map,
             upper_map: leaflet_map.clone(),
             lower_map: leaflet_map,
@@ -512,7 +509,7 @@ impl BondType {
                 .get_position()
                 .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_index()))?;
 
-            let vec = pos1.vector_to(&pos2, simbox);
+            let vec = pos1.vector_to(pos2, simbox);
             let sch = super::calc_sch(&vec, membrane_normal);
             self.total += sch;
 

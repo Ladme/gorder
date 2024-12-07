@@ -147,7 +147,7 @@ pub(super) fn analyze_atomistic(
 
     // write out the results
     let results = AAOrderResults::from(result);
-    write_results(results, &analysis)?;
+    write_results(results, analysis)?;
 
     Ok(())
 }

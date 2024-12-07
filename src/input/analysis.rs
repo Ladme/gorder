@@ -249,6 +249,7 @@ fn validate_begin_end(begin: f32, end: f32) -> Result<(), ConfigError> {
 
 impl Analysis {
     /// Start providing the analysis parameters.
+    #[allow(clippy::new_ret_no_self)]
     pub fn new() -> AnalysisBuilder {
         AnalysisBuilder::default()
     }
@@ -275,8 +276,7 @@ impl Analysis {
 
         // check the validity of the order map, if present
         if let Some(ref map) = self.map {
-            map.validate()
-                .map_err(|e| ConfigError::InvalidOrderMap(e))?;
+            map.validate().map_err(ConfigError::InvalidOrderMap)?;
         }
 
         Ok(())

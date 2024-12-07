@@ -51,9 +51,9 @@ pub(super) fn calc_sch(vector: &Vector3D, membrane_normal: &Vector3D) -> f32 {
     let angle = vector.angle(membrane_normal);
 
     let cos = angle.cos();
-    let sch = (1.5 * cos * cos) - 0.5;
+    
 
-    sch
+    (1.5 * cos * cos) - 0.5
 }
 
 #[cfg(test)]

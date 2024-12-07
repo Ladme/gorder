@@ -39,7 +39,7 @@ impl Add<SystemTopology> for SystemTopology {
             molecule_types: self
                 .molecule_types
                 .into_iter()
-                .zip(rhs.molecule_types.into_iter())
+                .zip(rhs.molecule_types)
                 .map(|(a, b)| a + b)
                 .collect::<Vec<MoleculeType>>(),
             membrane_normal: self.membrane_normal,
