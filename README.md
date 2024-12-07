@@ -2,6 +2,8 @@
 
 Command line tool for calculating atomistic or coarse-grained lipid order parameters from Gromacs simulations.
 
+⚠️ `gorder` is currently in BETA. Therefore you will not be able to install it using the instructions below. If you want to try the program, use `cargo install gorder --version 0.2.0-beta`, but it might be better to wait for a bit more stable and validated version. ⚠️
+
 ## Installation
 
 1. [Install Rust](https://www.rust-lang.org/tools/install)
