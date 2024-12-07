@@ -5,7 +5,7 @@
 
 use clap::Parser;
 use colored::Colorize;
-use gorder::{Analysis, GORDER_VERSION};
+use gorder::{prelude::Analysis, GORDER_VERSION};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -42,6 +42,7 @@ This option can also be specified in the configuration file."
     pub overwrite: bool,
 }
 
+/// Get arguments, parse input file, and run the analysis.
 pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let args = Args::parse();
 

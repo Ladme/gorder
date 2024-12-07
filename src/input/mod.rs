@@ -1,7 +1,7 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-//! This module contains structures and methods for specifying settings of the analysis.
+//! This module contains structures and methods for specifying parameters of the analysis.
 
 pub mod analysis;
 pub mod axis;

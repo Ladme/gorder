@@ -5,7 +5,7 @@
 
 use groan_rs::prelude::Vector3D;
 
-use crate::{Analysis, AnalysisType, Axis};
+use crate::input::{Analysis, AnalysisType, Axis};
 
 mod aaorder;
 mod cgorder;

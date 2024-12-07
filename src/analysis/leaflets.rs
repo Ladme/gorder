@@ -8,7 +8,8 @@ use core::f32;
 use super::common::{create_group, macros::group_name};
 use crate::{
     errors::{AnalysisError, TopologyError},
-    Leaflet, LeafletClassification, PANIC_MESSAGE,
+    input::LeafletClassification,
+    Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
@@ -19,7 +20,7 @@ use groan_rs::{
 };
 
 impl LeafletClassification {
-    /// Prepare the system for leaflet classification.
+    /// Create groups in the system that are required for leaflet classification.
     pub(super) fn prepare_system(&self, system: &mut System) -> Result<(), TopologyError> {
         match self {
             Self::Global(params) => {
@@ -40,6 +41,7 @@ impl LeafletClassification {
     }
 }
 
+/// Type of leaflet classification method used for a molecule.
 #[derive(Debug, Clone)]
 pub(super) enum MoleculeLeafletClassification {
     Global(GlobalClassification, AssignedLeaflets),
@@ -48,6 +50,7 @@ pub(super) enum MoleculeLeafletClassification {
 }
 
 impl MoleculeLeafletClassification {
+    /// Convert the input `LeafletClassification` into an enum that is used in the analysis.
     pub(super) fn new(params: &LeafletClassification, membrane_normal: Dimension) -> Self {
         match params {
             LeafletClassification::Global(_) => Self::Global(
@@ -78,7 +81,7 @@ impl MoleculeLeafletClassification {
         }
     }
 
-    /// Insert new molecule into the classifier.
+    /// Insert new molecule into the leaflet classifier.
     #[inline(always)]
     pub(super) fn insert(
         &mut self,
@@ -104,6 +107,7 @@ impl MoleculeLeafletClassification {
     }
 }
 
+/// Get index of an atom that represents the head of the given lipid molecule.
 fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, TopologyError> {
     let group_name = group_name!("Heads");
     let mut atoms = Vec::new();
@@ -118,7 +122,7 @@ fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, Topolo
                 molecule
                     .get_atoms()
                     .first()
-                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | topology::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
+                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | leaflets::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
     }
 
     if atoms.len() > 1 {
@@ -130,6 +134,7 @@ fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, Topolo
     Ok(*atoms.get(0).expect(PANIC_MESSAGE))
 }
 
+/// Get indices of atoms representing the methyls (or ends of tails) of the given lipid molecule.
 fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>, TopologyError> {
     let group_name = group_name!("Methyls");
     let mut atoms = Vec::new();
@@ -145,14 +150,14 @@ fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>
             molecule
                 .get_atoms()
                 .first()
-                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | topology::get_reference_methyls | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
+                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | leaflets::get_reference_methyls | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
     }
 
     Ok(atoms)
 }
 
 impl MoleculeLeafletClassification {
-    /// Identify leaflet in which the molecule with specified index is located.
+    /// Identify leaflet in which the molecule with the specified index is located.
     #[inline(always)]
     #[allow(unused)]
     fn identify_leaflet(
@@ -184,6 +189,7 @@ impl MoleculeLeafletClassification {
     }
 
     /// Get the leaflet a molecule with target index is located in.
+    /// This performs no calculation, this only returns the already calculated leaflet assignment.
     #[inline(always)]
     pub(super) fn get_assigned_leaflet(&self, molecule_index: usize) -> Option<Leaflet> {
         match self {
@@ -196,6 +202,7 @@ impl MoleculeLeafletClassification {
     }
 }
 
+/// Trait implemented by all leaflet classification methods.
 trait LeafletClassifier {
     /// Caclulate membrane leaflet the specified molecule belongs to.
     fn identify_leaflet(
@@ -208,6 +215,7 @@ trait LeafletClassifier {
     fn n_molecules(&self) -> usize;
 }
 
+/// Leaflet classification method that uses positions of lipid heads and the global membrane center of geometry.
 #[derive(Debug, Clone, CopyGetters, Getters, MutGetters, Setters)]
 pub(super) struct GlobalClassification {
     /// Indices of headgroup identifiers (one per molecule).
@@ -222,6 +230,7 @@ pub(super) struct GlobalClassification {
 }
 
 impl GlobalClassification {
+    /// Insert a new molecule into the classifier.
     #[inline(always)]
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
         self.heads.push(get_reference_head(molecule, system)?);
@@ -251,6 +260,7 @@ impl LeafletClassifier for GlobalClassification {
     }
 }
 
+/// Leaflet classification method that uses positions of lipid heads and the local membrane center of geometry.
 #[derive(Debug, Clone, Getters, CopyGetters, MutGetters)]
 pub(super) struct LocalClassification {
     /// Indices of headgroup identifiers (one per molecule).
@@ -358,6 +368,7 @@ fn common_identify_leaflet(
     }
 }
 
+/// Leaflet classification method that uses positions of lipid heads and tail ends.
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct IndividualClassification {
     /// Indices of headgroup identifiers (one per molecule).
@@ -405,11 +416,11 @@ impl LeafletClassifier for IndividualClassification {
         for methyl_index in self.methyls.get(molecule_index).expect(PANIC_MESSAGE) {
             total_distance += match system.atoms_distance(*head_index, *methyl_index, self.membrane_normal) {
                 Ok(x) => x,
-                Err(AtomError::OutOfRange(x)) => panic!("FATAL GORDER ERROR | IndividualClassification::assign_to_leaflet | Index '{}' out of range. {}", x, PANIC_MESSAGE),
+                Err(AtomError::OutOfRange(x)) => panic!("FATAL GORDER ERROR | IndividualClassification::identify_leaflet | Index '{}' out of range. {}", x, PANIC_MESSAGE),
                 Err(AtomError::InvalidSimBox(SimBoxError::DoesNotExist)) => return Err(AnalysisError::UndefinedBox),
                 Err(AtomError::InvalidSimBox(SimBoxError::NotOrthogonal)) => return Err(AnalysisError::NotOrthogonalBox),
                 Err(AtomError::InvalidPosition(PositionError::NoPosition(x))) => return Err(AnalysisError::UndefinedPosition(x)),
-                Err(e) => panic!("FATAL GORDER ERROR | IndividualClassification::assign_to_leaflet | Unexpected error type '{}' returned. {}", e, PANIC_MESSAGE),
+                Err(e) => panic!("FATAL GORDER ERROR | IndividualClassification::identify_leaflet | Unexpected error type '{}' returned. {}", e, PANIC_MESSAGE),
             };
         }
 

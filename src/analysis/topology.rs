@@ -1,12 +1,14 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
+//! Implementation of a structure describing the topology of the entire system.
+
 use super::molecule::MoleculeType;
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::prelude::Dimension;
 use std::ops::Add;
 
-/// Structure used in parallel analysis of the trajectory file.
+/// Structure describing the topology of the system.
 #[derive(Debug, Clone, CopyGetters, Getters, MutGetters)]
 pub(crate) struct SystemTopology {
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]

@@ -1,15 +1,15 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-//! Implementations of function used by both AAOrder and CGorder calculations.
+//! Implementations of common function used by both AAOrder and CGOrder calculations.
 
 use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
 use super::topology::SystemTopology;
 use crate::errors::{AnalysisError, WriteError};
 use crate::presentation::ResultsPresenter;
-use crate::{errors::TopologyError, LeafletClassification};
-use crate::{Analysis, OrderMap, PANIC_MESSAGE};
+use crate::{errors::TopologyError, input::LeafletClassification};
+use crate::{input::Analysis, input::OrderMap, PANIC_MESSAGE};
 use groan_rs::prelude::Dimension;
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
@@ -30,7 +30,7 @@ pub(crate) mod macros {
     pub(crate) use group_name;
 }
 
-/// Create group handling all potential errors. Also check that the group is not empty.
+/// Create a group while handling all potential errors. Also check that the group is not empty.
 pub(super) fn create_group(
     system: &mut System,
     group: &str,
@@ -44,14 +44,14 @@ pub(super) fn create_group(
             return Err(TopologyError::InvalidQuery(e))
         }
         Err(e) => panic!(
-            "FATAL GORDER ERROR | auxiliary::create_group | Unexpected error `{}` returned when selecting '{}' using the query '{}'. {}",
+            "FATAL GORDER ERROR | common::create_group | Unexpected error `{}` returned when selecting '{}' using the query '{}'. {}",
             e, group, query, PANIC_MESSAGE
         ),
     }
 
     if system.group_isempty(&group_name).unwrap_or_else(|_| {
         panic!(
-            "FATAL GORDER ERROR | auxiliary::create_group | Group '{}' should exist. {}",
+            "FATAL GORDER ERROR | common::create_group | Group '{}' should exist. {}",
             group, PANIC_MESSAGE,
         )
     }) {
@@ -61,8 +61,8 @@ pub(super) fn create_group(
     }
 }
 
-/// Classifies molecules in the system into distinct types based on their topology
-/// and returns a list of classified molecule types.
+/// Classifies molecules in the system based on their topology and returns a list of molecule types,
+/// along with information about the atoms that form each molecule.
 pub(super) fn classify_molecules(
     system: &System,
     group1: &str,
@@ -144,7 +144,7 @@ pub(super) fn sanity_check_molecules(molecules: &[MoleculeType]) -> bool {
     true
 }
 
-/// Analyze order parameters in a single simulation frame.
+/// Calculate order parameters in a single simulation frame.
 pub(super) fn analyze_frame(
     frame: &System,
     data: &mut SystemTopology,
@@ -314,7 +314,7 @@ fn select_order_bonds(
         {
             if !order_bonds.insert((a1, a2)) {
                 panic!(
-                    "FATAL GORDER ERROR | auxiliary::select_order_bonds | Order bond between '{}' and '{}' encountered multiple times in the molecule. {}",
+                    "FATAL GORDER ERROR | common::select_order_bonds | Order bond between '{}' and '{}' encountered multiple times in the molecule. {}",
                     a1, a2, PANIC_MESSAGE
                 );
             }
@@ -354,7 +354,7 @@ fn create_new_molecule_type(
                 .get_atoms()
                 .first()
                 .unwrap_or_else(
-                    || panic!("FATAL GORDER ERROR | auxiliary::create_new_molecule_type | No atom indices detected in a molecule. {}", PANIC_MESSAGE));
+                    || panic!("FATAL GORDER ERROR | common::create_new_molecule_type | No atom indices detected in a molecule. {}", PANIC_MESSAGE));
 
     MoleculeType::new(
         system,

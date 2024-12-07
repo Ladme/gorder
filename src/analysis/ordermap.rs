@@ -12,25 +12,32 @@ use groan_rs::{
     structures::gridmap::DataOrder,
 };
 
-use crate::{errors::OrderMapConfigError, input::GridSpan, OrderMap, PANIC_MESSAGE};
+use crate::{errors::OrderMapConfigError, input::GridSpan, input::OrderMap, PANIC_MESSAGE};
 
 use super::orderval::OrderValue;
 
+/// Order parameter map. Stores order parameters calculated for a specific bond/atom
+/// and for each tile of a grid covering the membrane.
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct Map {
+    /// Calculation parameters.
     #[getset(get = "pub(crate)")]
     params: OrderMap,
+    /// Cumulative order parameters calculated over the analysis for each tile of the grid.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     values: GridMap<OrderValue, f32, fn(&OrderValue) -> f32>,
+    /// Number of samples calculated for each tile of the grid.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     samples: GridMap<usize, usize, fn(&usize) -> usize>,
 }
 
+/// Convert `OrderValue` to f32.
 fn from_order_value(value: &OrderValue) -> f32 {
     f32::from(*value)
 }
 
 impl Map {
+    /// Construct a new ordermap.
     pub(crate) fn new(params: OrderMap, simbox: &SimBox) -> Result<Map, OrderMapConfigError> {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();
@@ -125,7 +132,7 @@ pub(super) fn merge_option_maps(lhs: Option<Map>, rhs: Option<Map>) -> Option<Ma
         (Some(x), Some(y)) => Some(x + y),
         (None, None) => None,
         (Some(_), None) | (None, Some(_)) => panic!(
-            "FATAL GORDER ERROR | merge_option_maps | Inconsistent option value. {}",
+            "FATAL GORDER ERROR | ordermap::merge_option_maps | Inconsistent option value. {}",
             PANIC_MESSAGE
         ),
     }
@@ -157,7 +164,7 @@ where
     )
     .unwrap_or_else(|_| {
         panic!(
-            "FATAL GORDER ERROR | merge_grid_maps | Could not construct merged map. {}",
+            "FATAL GORDER ERROR | ordermap::merge_grid_maps | Could not construct merged map. {}",
             PANIC_MESSAGE
         )
     })

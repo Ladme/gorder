@@ -1,6 +1,8 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
+//! Structures and methods for constructing and working with topology of a molecule type.
+
 use core::fmt;
 use std::{
     num::NonZeroUsize,
@@ -17,7 +19,8 @@ use hashbrown::HashSet;
 
 use crate::{
     errors::{AnalysisError, TopologyError},
-    Leaflet, OrderMap, PANIC_MESSAGE,
+    input::OrderMap,
+    Leaflet, PANIC_MESSAGE,
 };
 
 use super::{
@@ -26,21 +29,29 @@ use super::{
     orderval::OrderValue,
 };
 
+/// Represents a specific type of molecule with all its atoms and bonds.
+/// Contains indices of all atoms that are part of molecules of this type.
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct MoleculeType {
+    /// Name of the molecule.
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     name: String,
+    /// Topology of the molecule (set of all bonds).
     #[getset(get = "pub(super)")]
     topology: MoleculeTopology,
+    /// List of all bonds for which order parameter should be calculated.
     #[getset(get = "pub(crate)")]
     order_bonds: OrderBonds,
+    /// List of all atoms for which order parameter should be calculated (all atoms for CG, heavy atoms for AA).
     #[getset(get = "pub(crate)")]
     order_atoms: OrderAtoms,
+    /// Method to use to assign this molecule to membrane leaflet.
     #[getset(get = "pub(super)", get_mut = "pub(super)")]
     leaflet_classification: Option<MoleculeLeafletClassification>,
 }
 
 impl MoleculeType {
+    /// Create new molecule type.
     pub(super) fn new(
         system: &System,
         name: String,
@@ -232,7 +243,7 @@ impl OrderBonds {
         })
     }
 
-    /// Insert new real bonds to already constructed order bonds.
+    /// Insert new instances of bonds to an already constructed list of order bonds.
     pub(super) fn insert(
         &mut self,
         system: &System,
@@ -254,7 +265,7 @@ impl OrderBonds {
                 order_bond.insert(index1, index2);
             } else {
                 panic!(
-                    "FATAL GORDER ERROR | OrderBonds::add | Could not find corresponding bond type for bond between atoms '{}' and '{}'. {}",
+                    "FATAL GORDER ERROR | OrderBonds::insert | Could not find corresponding bond type for bond between atoms '{}' and '{}'. {}",
                     index1, index2, PANIC_MESSAGE
                 );
             }
@@ -286,7 +297,7 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
         for index in [index1, index2] {
             if index < min_index {
                 panic!(
-                    "FATAL GORDER ERROR | topology::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}", 
+                    "FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}", 
                     index1, min_index, PANIC_MESSAGE
                 );
             }
@@ -294,7 +305,7 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
 
         if index1 == index2 {
             panic!(
-                "FATAL GORDER ERROR | topology::bonds_sanity_check | Bond between the same atom (index: '{}'). {}", 
+                "FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}", 
                 index1, PANIC_MESSAGE
             );
         }
@@ -302,15 +313,15 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
 }
 
 /// Get atoms corresponding to the provided absolute indices,
-/// panicking with a suitable error message if these indices are out of range.
+/// panicking if these indices are out of range.
 fn get_atoms_from_bond(system: &System, index1: usize, index2: usize) -> (&Atom, &Atom) {
     let atom1 = system
         .get_atom(index1)
-        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | topology::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index1, PANIC_MESSAGE));
+        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | molecule::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index1, PANIC_MESSAGE));
 
     let atom2 = system
         .get_atom(index2)
-        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | topology::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index2, PANIC_MESSAGE));
+        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | molecule::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index2, PANIC_MESSAGE));
 
     (atom1, atom2)
 }
@@ -326,6 +337,7 @@ pub(crate) struct OrderAtoms {
 }
 
 impl OrderAtoms {
+    /// Create a new list of atoms involved in the order calculations.
     pub(super) fn new(system: &System, atoms: &[usize], minimum_index: usize) -> Self {
         let mut converted_atoms = atoms
             .into_iter()
@@ -346,24 +358,36 @@ impl OrderAtoms {
     }
 }
 
+/// Structure describing a type of bond.
+/// Contains indices of all atoms that are involved in this bond type.
 #[derive(Debug, Clone, Getters, MutGetters)]
 pub(crate) struct BondType {
+    /// Atom types involved in this bond type.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     bond_topology: BondTopology,
+    /// List of all bond instances of this bond type (absolute indices of atoms).
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     bonds: Vec<(usize, usize)>,
+    /// Order parameter for this bond type calculated using lipids in the entire membrane.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     total: Order,
+    /// Order parameter for this bond type calculated using lipids in the upper leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     upper: Option<Order>,
+    /// Order parameter for this bond type calculated using lipids in the lower leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     lower: Option<Order>,
+    /// Number of samples collected for this bond type that suffices to calculate the order parameter.
+    /// If the number of collected samples is lower than this value, the final order is NaN.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     min_samples: usize,
+    /// Order parameter map of this bond calculated using lipids in the entire membrane.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     total_map: Option<Map>,
+    /// Order parameter map of this bond calculated using lipids in the upper leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     upper_map: Option<Map>,
+    /// Order parameter map of this bond calculated using lipids in the lower leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     lower_map: Option<Map>,
 }
@@ -567,6 +591,7 @@ impl Add<BondType> for BondType {
     }
 }
 
+/// Atom types involved in a specific bond type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters)]
 pub(crate) struct BondTopology {
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
@@ -599,6 +624,7 @@ impl BondTopology {
         }
     }
 
+    /// Construct a new BondTopology using directly already constructed atom types.
     #[allow(unused)]
     #[inline(always)]
     pub(super) fn new_from_types(atom_type1: AtomType, atom_type2: AtomType) -> BondTopology {
@@ -628,17 +654,22 @@ impl BondTopology {
     }
 }
 
+/// Type of atom. Specific to a particular molecule.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters, CopyGetters)]
 pub(crate) struct AtomType {
+    /// Relative index of the atom in a molecule.
     #[getset(get_copy = "pub(crate)", get_mut = "pub(super)")]
     relative_index: usize,
+    /// Name of the residue of the atom.
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     residue_name: String,
+    /// Name of the atom.
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     atom_name: String,
 }
 
 impl AtomType {
+    /// Create a new atom type.
     #[inline(always)]
     pub(super) fn new(relative_index: usize, atom: &Atom) -> AtomType {
         AtomType {
@@ -648,6 +679,7 @@ impl AtomType {
         }
     }
 
+    /// Create a new atom type from raw parts.
     #[allow(unused)]
     #[inline(always)]
     pub(crate) fn new_raw(relative_index: usize, residue_name: &str, atom_name: &str) -> AtomType {
@@ -672,10 +704,13 @@ impl fmt::Display for AtomType {
     }
 }
 
+/// Structure for calculating order parameters from the simulation.
 #[derive(Debug, Clone, Default, CopyGetters)]
 pub(crate) struct Order {
+    /// Cumulative order parameter calculated over the analysis.
     #[getset(get_copy = "pub(super)")]
     order: OrderValue,
+    /// Number of samples collected for this order parameter.
     #[getset(get_copy = "pub(super)")]
     n_samples: usize,
 }
@@ -730,7 +765,7 @@ fn merge_option_order(lhs: Option<Order>, rhs: Option<Order>) -> Option<Order> {
         (Some(x), Some(y)) => Some(x + y),
         (None, None) => None,
         (Some(_), None) | (None, Some(_)) => panic!(
-            "FATAL GORDER ERROR | merge_option_order | Inconsistent option value. {}",
+            "FATAL GORDER ERROR | molecule::merge_option_order | Inconsistent option value. {}",
             PANIC_MESSAGE
         ),
     }

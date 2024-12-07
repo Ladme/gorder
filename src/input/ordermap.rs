@@ -64,39 +64,44 @@ impl fmt::Display for Plane {
     }
 }
 
+/// Parameters for constructing ordermaps.
 #[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct OrderMap {
-    /// Directory where the output files containing the individual ordermaps should be saved.
+    /// Directory where the output files containing the individual ordermaps will be saved.
     #[builder(setter(into))]
     #[serde(alias = "output_dir")]
     #[getset(get = "pub")]
     output_directory: String,
-    /// Minimal number of samples in a grid tile required to calculate order parameter for it.
-    /// If not specified, the default value is 1.
+
+    /// Minimum number of samples required in a grid tile to calculate the order parameter.
+    /// The default value is 1.
     #[builder(default = "1")]
     #[serde(default = "default_min_samples")]
     #[getset(get_copy = "pub")]
     min_samples: usize,
+
     /// Span of the grid along the axes.
-    /// The first span corresponds to either x axis (if the map is in the xy or xz plane) or to z axis (if the map is in the yz plane).
-    /// The second span corresponds to either y axis (if the map is in the xy or yz plane) or to z axis (if the map is in the xz plane).
-    /// If not specified, the span of the map is taken from the box size of the input structure.
+    /// The first span corresponds to the x-axis (if the map is in the xy or xz plane) or the z-axis (if the map is in the yz plane).
+    /// The second span corresponds to the y-axis (if the map is in the xy or yz plane) or the z-axis (if the map is in the xz plane).
+    /// If not specified, the span is derived from the simulation box size of the input structure.
     #[builder(default)]
     #[serde(default = "default_gridspan")]
     #[getset(get_copy = "pub")]
     dim: [GridSpan; 2],
-    /// The size of the grid bin along the axes.
-    /// The first bin dimension corresponds to either x axis (if the map is in the xy or xz plane) or to z axis (if the map is in the yz plane).
-    /// The second bin dimension corresponds to either y axis (if the map is in the xy or yz plane) or to z axis (if the map is in the xz plane).
-    /// If not specified, the default value is 0.1x0.1 nm.
+
+    /// Size of the grid bin along the axes.
+    /// The first bin dimension corresponds to the x-axis (if the map is in the xy or xz plane) or the z-axis (if the map is in the yz plane).
+    /// The second bin dimension corresponds to the y-axis (if the map is in the xy or yz plane) or the z-axis (if the map is in the xz plane).
+    /// The default value is 0.1 x 0.1 nm if not specified.
     #[builder(default = "[0.1, 0.1]")]
     #[serde(default = "default_bin_size")]
     #[getset(get_copy = "pub")]
     bin_size: [f32; 2],
+
     /// Plane in which the ordermaps should be constructed.
-    /// If not specified, the plane is parallel to membrane normal.
+    /// If not specified, the plane is assumed to be parallel to the membrane normal.
     #[builder(setter(strip_option), default)]
     #[getset(get_copy = "pub", set = "pub(crate)")]
     plane: Option<Plane>,
@@ -167,6 +172,7 @@ fn validate_bin_size(size: [f32; 2]) -> Result<(), OrderMapConfigError> {
 }
 
 impl OrderMap {
+    /// Start providing ordermap parameters.
     pub fn new() -> OrderMapBuilder {
         OrderMapBuilder::default()
     }

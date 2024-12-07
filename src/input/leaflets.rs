@@ -32,9 +32,9 @@ impl LeafletClassification {
     /// Generally reliable and fast. The best option when working with disrupted membranes.
     ///
     /// ## Parameters
-    /// - `membrane`: selection of all lipids forming the membrane
-    /// - `heads`: reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
-    ///            there must only be one such atom/bead per lipid molecule.
+    /// - `membrane` - selection of all lipids forming the membrane
+    /// - `heads` - reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
+    ///    there must only be one such atom/bead per lipid molecule.
     pub fn global(membrane: &str, heads: &str) -> LeafletClassification {
         Self::Global(GlobalParams {
             membrane: membrane.to_string(),
@@ -46,10 +46,10 @@ impl LeafletClassification {
     /// Useful for curved membranes, very slow.
     ///
     /// ## Parameters
-    /// - `membrane`: selection of all lipids forming the membrane
-    /// - `heads`: reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
-    ///            there must only be one such atom/bead per lipid molecule.
-    /// - `radius`: radius of a cylinder for the calculation of local membrane center of geometry (in nm)
+    /// - `membrane` - selection of all lipids forming the membrane
+    /// - `heads` - reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
+    ///    there must only be one such atom/bead per lipid molecule.
+    /// - `radius` - radius of a cylinder for the calculation of local membrane center of geometry (in nm)
     pub fn local(membrane: &str, heads: &str, radius: f32) -> LeafletClassification {
         Self::Local(LocalParams {
             membrane: membrane.to_string(),
@@ -63,9 +63,9 @@ impl LeafletClassification {
     ///
     /// ## Parameters
     /// - `heads`: reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
-    ///            there must only be one such atom/bead per lipid molecule.
+    ///    there must only be one such atom/bead per lipid molecule.
     /// - `methyls`: reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails;
-    ///              there should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
+    ///    there should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
     pub fn individual(heads: &str, methyls: &str) -> LeafletClassification {
         Self::Individual(IndividualParams {
             heads: heads.to_string(),

@@ -1,7 +1,7 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-//! Structures and methods for presenting the results of the analysis of all-atom order parameters.
+//! Structures and methods for presenting the results of the analysis of atomistic order parameters.
 
 use indexmap::IndexMap;
 use serde::Serialize;
@@ -18,13 +18,16 @@ use crate::{
 
 use super::{AAOrder, BondResults, MoleculeResults, ResultsPresenter};
 
+/// Results of the atomistic order parameters calculation.
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
 pub(crate) struct AAOrderResults {
+    /// Results for individual molecules of the system.
     molecules: Vec<AAMoleculeResults>,
 }
 
 impl From<SystemTopology> for AAOrderResults {
+    /// Convert `SystemTopology` for which the analysis was run to a results structure.
     #[inline(always)]
     fn from(value: SystemTopology) -> Self {
         AAOrderResults {
@@ -72,9 +75,12 @@ impl ResultsPresenter for AAOrderResults {
     }
 }
 
+/// Atomistic order parameters calculated for a single molecule type.
 #[derive(Debug, Clone, Serialize)]
 struct AAMoleculeResults {
+    /// Name of the molecule.
     molecule: String,
+    /// Order parameters calculated for specific atoms.
     #[serde(skip_serializing_if = "IndexMap::is_empty")]
     order: IndexMap<AtomType, AAAtomResults>,
 }
@@ -217,23 +223,29 @@ impl MoleculeResults for AAMoleculeResults {
     }
 }
 
+/// Atomistic order parameters calculated for a single atom type and bond types it is involved in.
 #[derive(Debug, Clone, Serialize)]
 struct AAAtomResults {
+    /// Order parameter calculated using lipids in the entire membrane.
     // 'total' is set to `None`, if there are no bonds associated with the atom
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "super::round_serialize_option_f32")]
     total: Option<f32>,
+    /// Order parameter calculated using lipids in the upper leaflet.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "super::round_serialize_option_f32")]
     upper: Option<f32>,
+    /// Order parameters calculated using lipids in the lower leaflet.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(serialize_with = "super::round_serialize_option_f32")]
     lower: Option<f32>,
+    /// Order parameters calculated for specific bond type that this atom type is involved in.
     #[serde(skip_serializing_if = "IndexMap::is_empty")]
     bonds: IndexMap<AtomType, BondResults>,
 }
 
 impl AAAtomResults {
+    /// Collect order parameters for this heavy atom type and bond types it is involved in.
     fn new(bonds: &[&BondType], heavy_atom: &AtomType) -> Self {
         let mut totals = Vec::new();
         let mut uppers = Vec::new();
@@ -276,12 +288,13 @@ impl AAAtomResults {
         }
     }
 
+    /// Check whether the atom has any bonds associated with it.
     #[inline(always)]
     fn is_empty(&self) -> bool {
         self.bonds.is_empty()
     }
 
-    /// Write results for an atom in human readable table format.
+    /// Write a fragment of a human readable table file containing order parameters calculated for a single heavy atom type.
     fn write_tab(
         &self,
         writer: &mut impl Write,
@@ -334,6 +347,7 @@ impl AAAtomResults {
         Ok(())
     }
 
+    /// Write a fragment of an xvg file containing order parameters calculated for a single heavy atom type.
     fn write_xvg(
         &self,
         writer: &mut impl Write,
@@ -361,6 +375,7 @@ impl AAAtomResults {
         Ok(())
     }
 
+    /// Write a fragment of a csv file containing order parameters calculated for a single heavy atom type.
     fn write_csv(
         &self,
         writer: &mut impl Write,
@@ -413,6 +428,7 @@ impl AAAtomResults {
     }
 }
 
+/// Calculate an average of several Option<32> values.
 fn average_of_some(values: &[Option<f32>]) -> Option<f32> {
     let mut all_none = true;
     let mut all_nan = true;
@@ -450,7 +466,10 @@ fn average_of_some(values: &[Option<f32>]) -> Option<f32> {
         // average of not-none values
         Some(sum / count as f32)
     } else {
-        panic!("FATAL GORDER ERROR | presentation::aapresenter::average_of_some | Impossible branch reached. {}", PANIC_MESSAGE);
+        panic!(
+            "FATAL GORDER ERROR | aapresenter::average_of_some | Impossible branch reached. {}",
+            PANIC_MESSAGE
+        );
     }
 }
 

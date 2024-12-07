@@ -1,14 +1,14 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-//! Contains the implementation of the calculation of the atomistic lipid order parameters.
+//! Contains the implementation of the calculation of the atomistic order parameters.
 
 use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{analyze_frame, sanity_check_molecules, write_results};
 use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aapresenter::AAOrderResults;
 use crate::presentation::AAOrder;
-use crate::{Analysis, PANIC_MESSAGE};
+use crate::{input::Analysis, PANIC_MESSAGE};
 
 use groan_rs::prelude::OrderedAtomIterator;
 use groan_rs::{
@@ -16,7 +16,8 @@ use groan_rs::{
     prelude::{ProgressPrinter, XtcReader},
     system::System,
 };
-/// Calculate the atomistic lipid order parameters.
+
+/// Calculate the atomistic order parameters.
 pub(super) fn analyze_atomistic(
     analysis: &Analysis,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -150,7 +151,7 @@ mod tests {
 
     use crate::{
         analysis::molecule::{BondType, MoleculeType},
-        LeafletClassification,
+        input::leaflets::LeafletClassification,
     };
 
     use super::*;

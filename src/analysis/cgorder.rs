@@ -1,7 +1,7 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-//! Contains the implementation of the calculation of the coarse-grained lipid order parameters.
+//! Contains the implementation of the calculation of the coarse-grained order parameters.
 
 use groan_rs::{
     files::FileType,
@@ -15,10 +15,12 @@ use crate::{
         topology::SystemTopology,
     },
     errors::AnalysisError,
+    input::Analysis,
     presentation::{cgpresenter::CGOrderResults, CGOrder},
-    Analysis, PANIC_MESSAGE,
+    PANIC_MESSAGE,
 };
 
+/// Analyze the coarse-grained order parameters.
 pub(super) fn analyze_coarse_grained(
     analysis: &Analysis,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -29,7 +31,7 @@ pub(super) fn analyze_coarse_grained(
         &mut system,
         "Beads",
         analysis.beads().as_ref().unwrap_or_else(||
-             panic!("FATAL GORDER ERROR | aaorder::analyze_coarse_grained | Selection of order beads should be provided. {}", PANIC_MESSAGE)),
+             panic!("FATAL GORDER ERROR | cgorder::analyze_coarse_grained | Selection of order beads should be provided. {}", PANIC_MESSAGE)),
     )?;
 
     log::info!(
@@ -116,7 +118,7 @@ mod tests {
 
     use crate::{
         analysis::molecule::{BondType, MoleculeType},
-        LeafletClassification,
+        input::LeafletClassification,
     };
 
     use super::*;

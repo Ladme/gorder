@@ -1,3 +1,8 @@
+// Released under MIT License.
+// Copyright (c) 2024 Ladislav Bartos
+
+//! This module contains error types that can be returned by the `gorder` crate.
+
 use std::path::Path;
 
 use colored::{ColoredString, Colorize};

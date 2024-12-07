@@ -15,7 +15,8 @@ use crate::{
         topology::SystemTopology,
     },
     errors::WriteError,
-    Analysis, PANIC_MESSAGE,
+    input::Analysis,
+    PANIC_MESSAGE,
 };
 use serde::{Serialize, Serializer};
 
@@ -272,6 +273,7 @@ pub(crate) trait ResultsPresenter: Serialize {
     }
 }
 
+/// Order parameters calculated for a single bond.
 #[derive(Debug, Clone, Serialize)]
 struct BondResults {
     #[serde(serialize_with = "round_serialize_f32")]

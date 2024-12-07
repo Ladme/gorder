@@ -14,9 +14,11 @@ use super::{
     BondResults, CGOrder, MoleculeResults, MoleculeType, ResultsPresenter, SystemTopology,
 };
 
+/// Results of the coarse-grained order parameters calculation.
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
 pub(crate) struct CGOrderResults {
+    /// Results for individual molecules of the system.
     molecules: Vec<CGMoleculeResults>,
 }
 
@@ -55,9 +57,12 @@ impl ResultsPresenter for CGOrderResults {
     }
 }
 
+/// Coarse-grained order parameters calculated for a single molecule type.
 #[derive(Debug, Clone, Serialize)]
 struct CGMoleculeResults {
+    /// Name of the molecule.
     molecule: String,
+    /// Order parameters calculated for specific bonds.
     #[serde(skip_serializing_if = "IndexMap::is_empty")]
     order: IndexMap<BondTopology, BondResults>,
 }

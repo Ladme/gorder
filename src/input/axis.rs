@@ -12,7 +12,7 @@ use crate::PANIC_MESSAGE;
 
 use super::ordermap::Plane;
 
-/// X, Y, or Z axis.
+/// Represents the X, Y, or Z axis.
 #[derive(Debug, Clone, PartialEq, Eq, Copy, Deserialize)]
 pub enum Axis {
     #[serde(alias = "x")]

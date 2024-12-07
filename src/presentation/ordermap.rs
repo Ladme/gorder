@@ -1,6 +1,8 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
+//! Methods for writing maps of order parameters.
+
 use std::io::Write;
 use std::{fs::File, io::BufWriter, path::Path};
 
@@ -16,7 +18,7 @@ use crate::{GORDER_VERSION, PANIC_MESSAGE};
 use super::OrderType;
 
 impl Map {
-    /// Write the map of order parameters for a single heavy atom into an output file.
+    /// Write the map of order parameters for a single heavy atom type into an output file.
     /// Leaflet `None` corresponds to ordermap for the full membrane.
     #[inline]
     pub(crate) fn write_atom_map<O: OrderType>(
@@ -36,7 +38,7 @@ impl Map {
         self.write_ordermap::<O>(&filename, molname, &comment)
     }
 
-    /// Write the map of order parameters for a single bond into an output file.
+    /// Write the map of order parameters for a single bond type into an output file.
     /// Leaflet `None` corresponds to ordermap for the full membrane.
     #[inline]
     pub(crate) fn write_bond_map<O: OrderType>(
@@ -57,6 +59,7 @@ impl Map {
         self.write_ordermap::<O>(&filename, molname, &comment)
     }
 
+    /// Write the map of order parameters for a bond type or an atom type into an output file.
     fn write_ordermap<O: OrderType>(
         &self,
         filename: &str,
@@ -146,6 +149,8 @@ impl MoleculeType {
         Ok(())
     }
 
+    /// Write ordermaps for all heavy atom types of this molecule type.
+    /// Ordermap for an atom type is constructed by merging maps for bond types the atom type is involved in.
     fn write_ordermaps_atoms<O: OrderType>(&self, molname: &str) -> Result<(), OrderMapWriteError> {
         for heavy_atom in self.order_atoms().atoms() {
             let mut relevant_maps = Vec::new();
@@ -293,7 +298,8 @@ mod tests {
     use tempfile::TempDir;
 
     use crate::{
-        analysis::orderval::OrderValue, input::ordermap::Plane, presentation::CGOrder, OrderMap,
+        analysis::orderval::OrderValue, input::ordermap::Plane, input::OrderMap,
+        presentation::CGOrder,
     };
 
     use super::*;

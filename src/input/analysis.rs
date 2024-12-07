@@ -17,6 +17,7 @@ use super::Axis;
 use super::LeafletClassification;
 use super::OrderMap;
 
+/// Type of analysis to perform.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum AnalysisType {
@@ -31,6 +32,16 @@ pub enum AnalysisType {
 }
 
 impl AnalysisType {
+    /// Request calculation of atomistic order parameters.
+    ///
+    /// ## Arguments
+    /// - `heavy_atoms` - specification of heavy atoms to be used in the analysis (usually carbon atoms of lipid tails)
+    /// - `hydrogens` - specification of hydrogens to be used in the analysis (only atoms connected to heavy atoms will be used)
+    ///
+    /// ## Notes
+    /// - To specify the atoms, use the [groan selection language](https://docs.rs/groan_rs/latest/groan_rs/#groan-selection-language).
+    /// - Order parameters will be calculated for bonds between the `heavy_atoms` and `hydrogens`. These bonds are detected automatically.
+    /// - Order parameters for heavy atoms are then calculated by averaging the order parameters of the relevant bonds.
     pub fn aaorder(heavy_atoms: &str, hydrogens: &str) -> Self {
         Self::AAOrder {
             heavy_atoms: heavy_atoms.to_owned(),
@@ -38,12 +49,21 @@ impl AnalysisType {
         }
     }
 
+    /// Request calculation of coarse-grained order parameters.
+    ///
+    /// ## Arguments
+    /// - `beads` - specification of coarse-grained beads
+    ///
+    /// ## Notes
+    /// - To specify the beads, use the [groan selection language](https://docs.rs/groan_rs/latest/groan_rs/#groan-selection-language).
+    /// - Order parameters will be calculated for bonds between the individual `beads`. These bonds are detected automatically.
     pub fn cgorder(beads: &str) -> Self {
         Self::CGOrder {
             beads: beads.to_owned(),
         }
     }
 
+    /// Get the type of analysis as a string.
     pub fn name(&self) -> &str {
         match self {
             Self::AAOrder {
@@ -55,104 +75,120 @@ impl AnalysisType {
     }
 }
 
-/// Structure holding all the information necessary to perform the specified analysis.
+/// Structure holding all the information necessary to perform the analysis.
 #[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, MutGetters, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
-    /// Path to TPR file containing the topology of the system.
+    /// Path to a TPR file containing the structure and topology of the system.
     #[builder(setter(into))]
     #[getset(get = "pub")]
     structure: String,
-    /// Path to XTC trajectory file containing the trajectory to be analyzed.
+
+    /// Path to a XTC trajectory file containing the trajectory to be analyzed.
     #[builder(setter(into))]
     #[getset(get = "pub")]
     trajectory: String,
-    /// Path to NDX file containing the groups associated with the system.
-    /// Optional parameter.
+
+    /// Optional path to an NDX file containing the groups associated with the system.
     #[builder(setter(into, strip_option), default)]
     #[getset(get = "pub")]
     index: Option<String>,
-    /// Path to an output YAML file where the results of the analysis will be written.
+
+    /// Path to an output YAML file where the full results of the analysis will be saved.
+    /// The path to an output YAML file must always be specified, even if other output formats
+    /// are requested, as it is the only format that contains the complete results of the analysis.
     #[builder(setter(into))]
     #[getset(get = "pub")]
     #[serde(alias = "output")]
     output_yaml: String,
-    /// Path to an output TABLE file where the results of the analysis will be written in a human readable format.
+
+    /// Optional path to an output TABLE file where the analysis results will be saved
+    /// in a human-readable format.
     #[builder(setter(into, strip_option), default)]
     #[getset(get = "pub")]
     output_tab: Option<String>,
-    /// Filename pattern of the output XVG files where the results of the analysis will be written.
-    /// One xvg file will be generated for each detected molecule type and the name of this molecule type
-    /// will be appended to the provided filename pattern (between the file stem and the file extension).
+
+    /// Optional filename pattern for the output XVG files where analysis results will be stored.
+    /// A separate XVG file will be generated for each detected molecule type, with the molecule
+    /// type name appended to the pattern.
     ///
-    /// Example: filename pattern 'order.xvg' may be transformed into 'order_POPC.xvg'.
+    /// Example: 'order.xvg' may become 'order_POPC.xvg'.
     #[builder(setter(into, strip_option), default)]
     #[getset(get = "pub")]
     output_xvg: Option<String>,
-    /// Path to an output CSV file where the results of the analysis will be written.
+
+    /// Optional path to an output CSV file where the analysis results will be stored.
     #[builder(setter(into, strip_option), default)]
     #[getset(get = "pub")]
     output_csv: Option<String>,
-    /// Type of the analysis to perform (AAOrder / CGOrder).
+
+    /// Type of analysis to be performed (AAOrder or CGOrder).
     #[getset(get = "pub")]
     #[serde(alias = "type")]
     analysis_type: AnalysisType,
-    /// Direction of the membrane normal.
-    /// If not provided, the default value is 'Axis::Z'.
+
+    /// Direction of the membrane normal. Defaults to 'Axis::Z' if not provided.
     #[builder(setter(into), default = "Axis::Z")]
     #[serde(default = "default_membrane_normal")]
     #[getset(get_copy = "pub")]
     membrane_normal: Axis,
-    /// Starting time of the trajectory analysis (in ps).
-    /// If not specified, the analysis starts at the beginning of the trajectory.
+
+    /// Starting time of the trajectory analysis in picoseconds (ps).
+    /// Defaults to the beginning of the trajectory if not specified.
     #[builder(default = "0.0")]
     #[serde(default = "default_begin", alias = "start")]
     #[getset(get_copy = "pub")]
     begin: f32,
-    /// Ending time of the trajectory analysis (in ps).
-    /// If not specified, the analysis ends at the end of the trajectory.
+
+    /// Ending time of the trajectory analysis in picoseconds (ps).
+    /// Defaults to the end of the trajectory if not specified.
     #[builder(default = "f32::INFINITY")]
     #[serde(default = "default_end")]
     #[getset(get_copy = "pub")]
     end: f32,
-    /// Only every Nth frame of the simulation trajectory will be analyzed.
-    /// If not specified, each frame of the trajectory will be analyzed.
+
+    /// Step size for the analysis. Every Nth frame of the trajectory will be analyzed.
+    /// Defaults to 1 if not specified.
     #[builder(default = "1")]
     #[serde(default = "default_one")]
     #[getset(get_copy = "pub")]
     step: usize,
-    /// Minimal number of samples for each heavy atom required to calculate order parameter for it.
-    /// If not specified, the default value is 1.
+
+    /// Minimum number of samples required for each heavy atom to calculate its order parameter.
+    /// Defaults to 1 if not specified.
     #[builder(default = "1")]
     #[serde(default = "default_one")]
     #[getset(get_copy = "pub")]
     min_samples: usize,
-    /// Number of threads to use to perform the analysis.
-    /// If not specified, the default value is 1.
+
+    /// Number of threads to use for the analysis. Defaults to 1 if not specified.
     #[builder(default = "1")]
     #[serde(default = "default_one")]
     #[getset(get_copy = "pub")]
     n_threads: usize,
-    /// Specifies how to assign lipids into membrane leaflets.
-    /// If specified, order parameters will be calcualted for the individual membrane leaflets
-    /// as well as for the entire membrane.
-    /// If not specified, only values for the entire membrane will be calculated.
+
+    /// Specifies how lipids are assigned to membrane leaflets. If provided, order parameters
+    /// will be calculated for each leaflet as well as for the entire membrane. If not provided,
+    /// only the overall membrane values will be calculated.
     #[builder(setter(strip_option), default)]
     #[getset(get = "pub")]
     leaflets: Option<LeafletClassification>,
-    /// If provided, specifies the properties of an ordermap that shall be calculated.
-    /// If not specified, no map will be calculated.
+
+    /// Optional specification for the properties of an ordermap to be calculated.
+    /// If not provided, no ordermap will be calculated.
     #[builder(setter(strip_option), default)]
     #[serde(alias = "maps", alias = "ordermap", alias = "ordermaps")]
     #[getset(get = "pub", get_mut = "pub(crate)")]
     map: Option<OrderMap>,
-    /// Be silent. Print nothing to the standard output during the analysis.
+
+    /// If true, suppress all output to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
     #[serde(default = "default_false")]
     #[getset(get_copy = "pub", set = "pub")]
     silent: bool,
-    /// Do not make backups. Overwrite all output files and directories.
+
+    /// If true, overwrite existing output files and directories without creating backups.
     #[builder(setter(custom), default = "false")]
     #[serde(default = "default_false")]
     #[getset(get_copy = "pub", set = "pub")]
@@ -212,10 +248,12 @@ fn validate_begin_end(begin: f32, end: f32) -> Result<(), ConfigError> {
 }
 
 impl Analysis {
+    /// Start providing the analysis parameters.
     pub fn new() -> AnalysisBuilder {
         AnalysisBuilder::default()
     }
 
+    /// Read parameters of the analysis from an input YAML file.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Analysis, ConfigError> {
         let string = read_to_string(&path).map_err(|_| {
             ConfigError::CouldNotOpenConfig(path.as_ref().to_str().unwrap().to_owned())
@@ -244,6 +282,8 @@ impl Analysis {
         Ok(())
     }
 
+    /// Get the heavy atoms specified for the analysis.
+    /// If the calculation of coarse-grained order parameters is requested, returns None.
     pub fn heavy_atoms(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads: _ } => None,
@@ -254,6 +294,8 @@ impl Analysis {
         }
     }
 
+    /// Get the hydrogens specified for the analysis.
+    /// If the calculation of coarse-grained order parameters is requested, returns None.
     pub fn hydrogens(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads: _ } => None,
@@ -264,6 +306,8 @@ impl Analysis {
         }
     }
 
+    /// Get the beads specified for the analysis.
+    /// If the calculation of atomistic order parameters is requested, returns None.
     pub fn beads(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads } => Some(beads),
@@ -274,6 +318,7 @@ impl Analysis {
         }
     }
 
+    /// Alias for [`Analysis::beads`].
     #[inline(always)]
     pub fn atoms(&self) -> Option<&String> {
         self.beads()

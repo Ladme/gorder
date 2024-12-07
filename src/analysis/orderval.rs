@@ -46,7 +46,7 @@ impl Add<OrderValue> for OrderValue {
     fn add(self, rhs: OrderValue) -> Self::Output {
         OrderValue(
             self.0.checked_add(rhs.0)
-                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | OrderValue::Add | OrderValue overflowed. Tried adding '{}' and '{}'. {}", self.0, rhs.0, PANIC_MESSAGE))
+                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | OrderValue::add | OrderValue overflowed. Tried adding '{}' and '{}'. {}", self.0, rhs.0, PANIC_MESSAGE))
         )
     }
 }
@@ -54,7 +54,7 @@ impl Add<OrderValue> for OrderValue {
 impl AddAssign<OrderValue> for OrderValue {
     fn add_assign(&mut self, rhs: OrderValue) {
         self.0 = self.0.checked_add(rhs.0)
-            .unwrap_or_else(|| panic!("FATAL GORDER ERROR | OrderValue::AddAssign | OrderValue overflowed. Tried adding '{}' and '{}'. {}", self.0, rhs.0, PANIC_MESSAGE));
+            .unwrap_or_else(|| panic!("FATAL GORDER ERROR | OrderValue::add_assign | OrderValue overflowed. Tried adding '{}' and '{}'. {}", self.0, rhs.0, PANIC_MESSAGE));
     }
 }
 
