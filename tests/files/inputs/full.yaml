@@ -15,7 +15,7 @@ min_samples: 10
 n_threads: 4
 leaflets: !Global
   membrane: "@membrane"
-  heads: name P
+  heads: "name P"
 map:
   output_directory: "."
   dim: 
