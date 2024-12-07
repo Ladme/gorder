@@ -32,7 +32,7 @@ $ gorder YOUR_INPUT_YAML_FILE
 
 3) See the results of the analysis in `order.yaml`.
 
-**See the Gorder Manual for more information about using this program.**
+**See the [gorder manual](https://ladme.github.io/gorder-manual/) for more information about using this program.**
 
 ## Features
 - Calculation of atomistic and coarse-grained order parameters for individual lipid types.
