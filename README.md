@@ -53,7 +53,7 @@ $ gorder YOUR_INPUT_YAML_FILE
 - [ ] Python API: using `gorder` as a Python library.
 
 ## Rust API
-`gorder` is also available as a Rust crate. See the gorder manual and [Rust docs](https://docs.rs/gorder/latest/gorder) for more information.
+`gorder` is also available as a Rust crate. See the gorder manual and the corresponding [docs.rs](https://docs.rs/gorder/latest/gorder) page for more information.
 
 ## License
 The command line tool and the crate are both released under the MIT License.
