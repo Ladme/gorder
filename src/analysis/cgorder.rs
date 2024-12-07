@@ -27,6 +27,15 @@ pub(super) fn analyze_coarse_grained(
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
     log::info!("Read molecular topology from '{}'.", analysis.structure());
 
+    if let Some(ndx) = analysis.index() {
+        system.read_ndx(ndx)?;
+        log::info!(
+            "Read {} group(s) from ndx file '{}'.",
+            system.get_n_groups() - 2,
+            ndx
+        );
+    }
+
     super::common::create_group(
         &mut system,
         "Beads",

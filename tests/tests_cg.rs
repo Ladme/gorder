@@ -54,6 +54,31 @@ fn test_cg_order_basic_yaml() {
 }
 
 #[test]
+fn test_cg_order_basic_ndx_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .index("tests/files/cg.ndx")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("Membrane"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_basic.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_cg_order_basic_table() {
     let output_yaml = NamedTempFile::new().unwrap();
     let path_to_yaml = output_yaml.path().to_str().unwrap();

@@ -6,7 +6,7 @@
 //! Crate for calculating lipid order parameters from Gromacs simulations.
 //! `gorder` can analyze coarse-grained as well as atomistic lipid order parameters.
 //!
-//! **See the Gorder Manual for full information about the capabilities of the crate.**
+//! **See the gorder manual for full information about the capabilities of the crate.**
 //!
 //! ## Usage
 //!
@@ -136,7 +136,7 @@
 //! ```
 //! ***
 //!
-//! **See the Gorder Manual for full information about the capabilities of the crate.**
+//! **See the gorder manual for full information about the capabilities of the crate.**
 
 /// Version of the `gorder` crate.
 pub const GORDER_VERSION: &str = env!("CARGO_PKG_VERSION");

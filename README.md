@@ -4,6 +4,9 @@ Command line tool for calculating atomistic or coarse-grained lipid order parame
 
 ## Installation
 
+1. [Install Rust](https://www.rust-lang.org/tools/install)
+
+2. Install gorder:
 ```bash
 $ cargo install gorder
 ```
@@ -36,9 +39,10 @@ $ gorder YOUR_INPUT_YAML_FILE
 - Simple atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files.
 - Automatic identification of bonds and topology-based classification of molecule types.
 - Output in YAML, XVG, CSV, and custom "table" format.
-- Assignment of lipids to membrane leaflets using three different methods, and calculation of lipid order parameters for individual leaflets.
+- Scrambling-safe assignment of lipids to membrane leaflets using three different methods, and calculation of lipid order parameters for individual leaflets.
 - Calculation of order parameter maps.
 - Completely force-field agnostic.
+- Robust: use any XTC trajectory even with molecules broken at periodic boundaries.
 - Fast, multi-threaded analysis.
 
 ## Planned
@@ -49,7 +53,7 @@ $ gorder YOUR_INPUT_YAML_FILE
 - [ ] Python API: using `gorder` as a Python library.
 
 ## Rust API
-`gorder` is also available as a Rust crate. See the Gorder Manual and [Rust docs](https://docs.rs/gorder/latest/gorder) for more information.
+`gorder` is also available as a Rust crate. See the gorder manual and [Rust docs](https://docs.rs/gorder/latest/gorder) for more information.
 
 ## License
 The command line tool and the crate are both released under the MIT License.

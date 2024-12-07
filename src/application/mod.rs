@@ -17,7 +17,7 @@ use gorder::{prelude::Analysis, GORDER_VERSION};
 pub struct Args {
     #[arg(
         help = "Config yaml file",
-        long_help = "Configuration yaml file specifying the analysis settings."
+        long_help = "Configuration yaml file specifying the analysis options."
     )]
     pub config: String,
 

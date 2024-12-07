@@ -57,6 +57,31 @@ fn test_aa_order_basic_yaml() {
 }
 
 #[test]
+fn test_aa_order_basic_ndx_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .index("tests/files/pcpepg.ndx")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder("HeavyAtoms", "Hydrogens"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_basic.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_aa_order_basic_fail_overlap() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
