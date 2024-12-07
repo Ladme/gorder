@@ -48,9 +48,13 @@ $ gorder YOUR_INPUT_YAML_FILE
 ## Planned
 - [ ] Robust error estimation using cross-validation.
 - [ ] Dynamic membrane normal calculation, supporting membrane vesicles.
-- [ ] Improved multi-threading (currently, multi-threading is only implemented at the trajectory reading level).
+- [ ] Improved multithreading (currently, multithreading is only implemented at the trajectory reading level).
 - [ ] United-atom order parameters.
 - [ ] Python API: using `gorder` as a Python library.
+
+## Validation
+
+🏗️ Work in progress... 🏗️
 
 ## Rust API
 `gorder` is also available as a Rust crate. See the gorder manual and the corresponding [docs.rs](https://docs.rs/gorder/latest/gorder) page for more information.
