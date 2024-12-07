@@ -57,7 +57,7 @@ $ gorder YOUR_INPUT_YAML_FILE
 🏗️ Work in progress... 🏗️
 
 ## Rust API
-`gorder` is also available as a Rust crate. See the gorder manual and the corresponding [docs.rs](https://docs.rs/gorder/latest/gorder) page for more information.
+`gorder` is also available as a Rust crate. See the [gorder manual](https://ladme.github.io/gorder-manual/) and the corresponding [docs.rs](https://docs.rs/gorder/latest/gorder) page for more information.
 
 ## License
 The command line tool and the crate are both released under the MIT License.
