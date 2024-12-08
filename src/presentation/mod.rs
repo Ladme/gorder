@@ -297,6 +297,9 @@ pub(crate) trait OrderType {
     /// Atomistic order parameters are reported as -S_CD.
     /// Coarse grained order parameters are reported as P2.
     fn convert(order: f32) -> f32;
+
+    /// String to use as a label for z-axis in the ordermap.
+    fn zlabel() -> &'static str;
 }
 
 impl OrderType for AAOrder {
@@ -304,12 +307,22 @@ impl OrderType for AAOrder {
     fn convert(order: f32) -> f32 {
         -order
     }
+
+    #[inline(always)]
+    fn zlabel() -> &'static str {
+        "order parameter ($-S_{CH}$)"
+    }
 }
 
 impl OrderType for CGOrder {
     #[inline(always)]
     fn convert(order: f32) -> f32 {
         order
+    }
+
+    #[inline(always)]
+    fn zlabel() -> &'static str {
+        "order parameter ($S$)"
     }
 }
 

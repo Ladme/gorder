@@ -80,9 +80,11 @@ impl Map {
 
         let (label_x, label_y) = self.params().plane().expect(PANIC_MESSAGE).get_labels();
 
+        let label_z = O::zlabel();
+
         writeln!(
             output,
-            "@ xlabel {label_x}-dimension [nm]\n@ ylabel {label_y}-dimension [nm]\n@ zrange -1 1 0.2"
+            "@ xlabel {label_x}-dimension [nm]\n@ ylabel {label_y}-dimension [nm]\n@ zlabel {label_z}\n@ zrange -1 1 0.2"
         )
         .map_err(|_| OrderMapWriteError::CouldNotWriteLine(Box::from(Path::new(&full_path))))?;
 

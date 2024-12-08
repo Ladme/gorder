@@ -2,6 +2,7 @@
 # Calculated with 'gorder v0.2.0-dev.4'.
 @ xlabel x-dimension [nm]
 @ ylabel y-dimension [nm]
+@ zlabel order parameter ($S$)
 @ zrange -1 1 0.2
 $ type colorbar
 $ colormap seismic_r
