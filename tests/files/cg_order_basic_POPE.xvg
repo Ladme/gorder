@@ -1,7 +1,7 @@
 # Order parameters calculated with 'gorder v0.2.0-dev.4' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
 @    title "Coarse-grained order parameters for molecule type POPE"
 @    xaxis label "Bond"
-@    yaxis label "P2"
+@    yaxis label "S"
 @    s0 legend "Full membrane"
 @TYPE xy
 # Bond NH3 - PO4:

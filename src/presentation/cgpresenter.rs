@@ -172,7 +172,7 @@ impl MoleculeResults for CGMoleculeResults {
         );
         write_result!(
             writer,
-            "@    xaxis label \"Bond\"\n@    yaxis label \"P2\"\n"
+            "@    xaxis label \"Bond\"\n@    yaxis label \"S\"\n"
         );
 
         write_result!(writer, "@    s0 legend \"Full membrane\"\n");
