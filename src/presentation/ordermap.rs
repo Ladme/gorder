@@ -33,7 +33,7 @@ impl Map {
             None => format!("ordermap_{}_full.dat", atom),
         };
 
-        let comment = format!("# Map of average order parameters calculated for bonds involving atom type {}.\n# Calculated with 'gorder v{}'.", atom, GORDER_VERSION);
+        let comment = format!("# Map of average order parameters calculated for the atom type {}.\n# Calculated with 'gorder v{}'.", atom, GORDER_VERSION);
 
         self.write_ordermap::<O>(&filename, molname, &comment)
     }
@@ -115,7 +115,8 @@ impl MoleculeType {
     fn create_molecule_dir(&self) -> Result<(), OrderMapWriteError> {
         if let Some(map) = self
             .order_bonds()
-            .bond_types().first()
+            .bond_types()
+            .first()
             .and_then(|bond| bond.total_map().as_ref())
         {
             let dirname = format!("{}/{}", map.params().output_directory(), self.name());
