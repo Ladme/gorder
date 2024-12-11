@@ -1,6 +1,7 @@
 # gorder: Everything you will ever need for lipid order calculations
+[![DOI](https://zenodo.org/badge/848864524.svg)](https://doi.org/10.5281/zenodo.14391305) ![Crates.io Version](https://img.shields.io/crates/v/gorder)![Crates.io Downloads](https://img.shields.io/crates/d/gorder)![Crates.io License](https://img.shields.io/crates/l/gorder)
 
-Command line tool for calculating atomistic or coarse-grained lipid order parameters from Gromacs simulations.
+Command line tool for calculating atomistic and coarse-grained lipid order parameters from Gromacs simulations.
 
 ## Installation
 
