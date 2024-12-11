@@ -2,8 +2,6 @@
 
 Command line tool for calculating atomistic or coarse-grained lipid order parameters from Gromacs simulations.
 
-⚠️ `gorder` is currently in BETA. Therefore you will not be able to install it using the instructions below. If you want to try the program, use `cargo install gorder --version 0.2.0-beta`, but it might be better to wait for a bit more stable and validated version. ⚠️
-
 ## Installation
 
 1. [Install Rust](https://www.rust-lang.org/tools/install)
@@ -49,15 +47,16 @@ $ gorder YOUR_INPUT_YAML_FILE
 ## Planned
 - [ ] Robust error estimation using cross-validation.
 - [ ] Dynamic membrane normal calculation, supporting membrane vesicles.
-- [ ] Improved multithreading (currently, multithreading is only implemented at the trajectory reading level).
-- [ ] United-atom order parameters.
+- [ ] Dynamic selection of lipids for order parameter calculation based on geometric conditions (i.e., only calculating order parameters from a part of a membrane).
 - [ ] Python API: using `gorder` as a Python library.
+- [ ] United-atom order parameters.
+- [ ] Improved multithreading (currently, multithreading is only implemented at the trajectory reading level).
 
 ## Validation
 
 ### Atomistic order parameters
 A CHARMM36m simulation of a membrane consisting of 256 lipids was used to validate the calculation of atomistic order parameters by the `gorder` program. In total, the system contained ~64,500 atoms. The trajectory was 200 ns long and consisted of 10,000 frames. The following programs were used for validation:
-- [`OrderParameter.py` by NMR Lipids](https://github.com/NMRLipids/Databank/blob/main/Scripts/AnalyzeDatabank/calcOrderParameters.py)
+- [`OrderParameter.py` by NMR Lipids](https://github.com/NMRLipids/Databank/blob/main/Scripts/BuildDatabank/OrderParameter.py)
 - [VMD's `calc_op.tcl` script](https://www.ks.uiuc.edu/Research/vmd/mailing_list/vmd-l/att-14731/calc_op.tcl)
 
 We also present a comparison of the calculated order parameters with the results from [`gmx order`](https://manual.gromacs.org/2021.4/onlinehelp/gmx-order.html) (version 2021.4). Note that `gmx order` actually calculates united atom order parameters, so it is not suitable for atomistic systems. (However, many users still utilize it.)

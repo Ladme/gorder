@@ -45,6 +45,9 @@
 //!             ))
 //!             .build()?;                                 // constructing the analysis
 //!
+//!     // activate colog if you want logging (requires the `colog` crate)
+//!     colog::init();
+//!
 //!     // run the analysis and write the output
 //!     analysis.run()?;
 //!
@@ -71,6 +74,9 @@
 //!                "@membrane",                            // selection of beads
 //!             ))
 //!             .build()?;                                 // constructing the analysis
+//!
+//!     // activate colog if you want logging (requires the `colog` crate)
+//!     colog::init();
 //!
 //!     // run the analysis and write the output
 //!     analysis.run()?;
@@ -127,6 +133,9 @@
 //!                     .build()?
 //!             )                                          
 //!             .build()?;                                 // constructing the analysis
+//!
+//!     // activate colog if you want logging (requires the `colog` crate)
+//!     colog::init();
 //!
 //!     // run the analysis and write the output
 //!     analysis.run()?;
