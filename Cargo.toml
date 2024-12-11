@@ -1,13 +1,13 @@
 [package]
 name = "gorder"
-version = "0.2.0-beta"
+version = "0.2.0"
 description = "Calculating lipid order parameters from Gromacs simulations"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/Ladme/gorder"
-keywords = ["gromacs", "molecular-dynamics"]
+keywords = ["gromacs", "molecular-dynamics", "order", "nmr", "lipids"]
 categories = ["command-line-utilities", "science"]
-exclude = ["/tests"]
+exclude = ["/tests", "/validation"]
 
 [dependencies]
 backitup = "0.1.1"
