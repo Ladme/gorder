@@ -60,7 +60,7 @@ A CHARMM36m simulation of a membrane consisting of 256 lipids was used to valida
 - [`OrderParameter.py` by NMR Lipids](https://github.com/NMRLipids/Databank/blob/main/Scripts/AnalyzeDatabank/calcOrderParameters.py)
 - [VMD's `calc_op.tcl` script](https://www.ks.uiuc.edu/Research/vmd/mailing_list/vmd-l/att-14731/calc_op.tcl)
 
-We also present a comparison of the calculated order parameters with the results from `gmx order`. Note that `gmx order` actually calculates united atom order parameters, so it is not suitable for atomistic systems. (However, many users still utilize it.)
+We also present a comparison of the calculated order parameters with the results from [`gmx order`](https://manual.gromacs.org/2021.4/onlinehelp/gmx-order.html) (version 2021.4). Note that `gmx order` actually calculates united atom order parameters, so it is not suitable for atomistic systems. (However, many users still utilize it.)
 
 ![Three completely overlapping curves, appearing as a single curve, and an additional dashed curve corresponding to `gmx order`.](validation/aaorder_validation.png)
 
