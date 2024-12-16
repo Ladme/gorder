@@ -101,7 +101,7 @@ pub struct OrderMap {
     bin_size: [f32; 2],
 
     /// Plane in which the ordermaps should be constructed.
-    /// If not specified, the plane is assumed to be parallel to the membrane normal.
+    /// If not specified, the plane is assumed to be perpendicular to the membrane normal.
     #[builder(setter(strip_option), default)]
     #[getset(get_copy = "pub", set = "pub(crate)")]
     plane: Option<Plane>,
