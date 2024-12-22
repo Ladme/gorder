@@ -14,6 +14,7 @@ mod leaflets;
 pub(crate) mod molecule;
 pub(crate) mod ordermap;
 pub(crate) mod orderval;
+mod timewise;
 pub(crate) mod topology;
 
 impl Analysis {
@@ -51,7 +52,6 @@ pub(super) fn calc_sch(vector: &Vector3D, membrane_normal: &Vector3D) -> f32 {
     let angle = vector.angle(membrane_normal);
 
     let cos = angle.cos();
-    
 
     (1.5 * cos * cos) - 0.5
 }

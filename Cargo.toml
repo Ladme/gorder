@@ -1,6 +1,6 @@
 [package]
 name = "gorder"
-version = "0.2.0"
+version = "0.3.0-dev.1"
 description = "Calculating lipid order parameters from Gromacs simulations"
 edition = "2021"
 license = "MIT"

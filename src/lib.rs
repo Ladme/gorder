@@ -184,6 +184,7 @@ pub mod prelude {
     pub use super::input::Analysis;
     pub use super::input::AnalysisType;
     pub use super::input::Axis;
+    pub use super::input::EstimateError;
     pub use super::input::GridSpan;
     pub use super::input::LeafletClassification;
     pub use super::input::OrderMap;
