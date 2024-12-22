@@ -16,14 +16,14 @@ use crate::{
     PANIC_MESSAGE,
 };
 
-use super::{AAOrder, BondResults, MoleculeResults, ResultsPresenter};
+use super::{AAOrder, AverageOrder, BondResults, MoleculeResults, ResultsPresenter};
 
 /// Results of the atomistic order parameters calculation.
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
 pub(crate) struct AAOrderResults {
     /// Results for individual molecules of the system.
-    molecules: Vec<AAMoleculeResults>,
+    molecules: IndexMap<String, AAMoleculeResults>,
 }
 
 impl From<SystemTopology> for AAOrderResults {
@@ -34,16 +34,19 @@ impl From<SystemTopology> for AAOrderResults {
             molecules: value
                 .molecule_types()
                 .iter()
-                .map(AAMoleculeResults::from)
-                .collect(),
+                .map(|x| x.name().clone())
+                .zip(value.molecule_types().iter().map(AAMoleculeResults::from))
+                .collect::<IndexMap<String, AAMoleculeResults>>(),
         }
     }
 }
 
 impl ResultsPresenter for AAOrderResults {
     #[inline(always)]
-    fn molecules(&self) -> &[impl MoleculeResults] {
-        &self.molecules
+    #[allow(refining_impl_trait)]
+    #[allow(private_interfaces)]
+    fn molecules(&self) -> impl Iterator<Item = &AAMoleculeResults> {
+        self.molecules.values()
     }
 
     fn write_csv_header(
@@ -79,15 +82,21 @@ impl ResultsPresenter for AAOrderResults {
 #[derive(Debug, Clone, Serialize)]
 struct AAMoleculeResults {
     /// Name of the molecule.
+    #[serde(skip)]
     molecule: String,
+    /// Average order parameter for all bond types of the molecule.
+    #[serde(rename = "average order")]
+    average_order: BondResults,
     /// Order parameters calculated for specific atoms.
     #[serde(skip_serializing_if = "IndexMap::is_empty")]
+    #[serde(rename = "order parameters")]
     order: IndexMap<AtomType, AAAtomResults>,
 }
 
 impl From<&MoleculeType> for AAMoleculeResults {
     fn from(value: &MoleculeType) -> Self {
         let mut order = IndexMap::new();
+        let mut average_order = AverageOrder::<AAOrder>::default();
         for heavy_atom in value.order_atoms().atoms() {
             let mut relevant_bonds = Vec::new();
 
@@ -95,6 +104,8 @@ impl From<&MoleculeType> for AAMoleculeResults {
                 if bond.contains(heavy_atom) {
                     relevant_bonds.push(bond);
                 }
+
+                average_order += bond;
             }
 
             let results = AAAtomResults::new(&relevant_bonds, heavy_atom);
@@ -108,6 +119,7 @@ impl From<&MoleculeType> for AAMoleculeResults {
         AAMoleculeResults {
             molecule: value.name().to_owned(),
             order,
+            average_order: average_order.into(),
         }
     }
 }
@@ -155,6 +167,10 @@ impl MoleculeResults for AAMoleculeResults {
         for (name, results) in self.order.iter() {
             results.write_tab(writer, name, max_bonds, leaflets)?;
         }
+
+        write_result!(writer, "AVERAGE  ");
+        self.average_order.write_tab(writer, leaflets)?;
+        write_result!(writer, "\n");
 
         Ok(())
     }
@@ -599,16 +615,23 @@ bonds:
         let atom_type_2 = AtomType::new_raw(5, "POPE", "CB");
         let molecule_results = AAMoleculeResults {
             molecule: "POPE".to_owned(),
-            order: IndexMap::from_iter(
-                [(atom_type_1, atom_results_1), (atom_type_2, atom_results_2)],
-            ),
+            order: IndexMap::from_iter([
+                (atom_type_1, atom_results_1),
+                (atom_type_2, atom_results_2),
+            ]),
+            average_order: BondResults {
+                total: 0.777,
+                upper: None,
+                lower: None,
+            },
         };
 
         let serialized = serde_yaml::to_string(&molecule_results).unwrap();
         assert_eq!(
             serialized,
-            "molecule: POPE
-order:
+            "average order:
+  total: 0.777
+order parameters:
   POPE CA (0):
     total: 0.777
     bonds:
@@ -641,19 +664,29 @@ order:
         let atom_type_2 = AtomType::new_raw(5, "POPE", "CB");
         let molecule_results = AAMoleculeResults {
             molecule: "POPE".to_owned(),
-            order: IndexMap::from_iter(
-                [(atom_type_1, atom_results_1), (atom_type_2, atom_results_2)],
-            ),
+            order: IndexMap::from_iter([
+                (atom_type_1, atom_results_1),
+                (atom_type_2, atom_results_2),
+            ]),
+            average_order: BondResults {
+                total: 0.777,
+                upper: Some(0.743),
+                lower: Some(0.811),
+            },
         };
         let results = AAOrderResults {
-            molecules: vec![molecule_results],
+            molecules: IndexMap::from([(String::from("POPE"), molecule_results)]),
         };
 
         let serialized = serde_yaml::to_string(&results).unwrap();
         assert_eq!(
             serialized,
-            "- molecule: POPE
-  order:
+            "POPE:
+  average order:
+    total: 0.777
+    upper: 0.743
+    lower: 0.811
+  order parameters:
     POPE CA (0):
       total: 0.777
       bonds:

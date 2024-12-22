@@ -6,6 +6,8 @@
 use std::{
     fs::File,
     io::{BufWriter, Write},
+    marker::PhantomData,
+    ops::AddAssign,
     path::{Path, PathBuf},
 };
 
@@ -62,8 +64,8 @@ pub(crate) trait MoleculeResults: Serialize {
 /// Trait implemented by structures presenting the results of the order calculation.
 /// General for both AAOrder and CGOrder.
 pub(crate) trait ResultsPresenter: Serialize {
-    /// Get reference to the results associated with the individual molecules.
-    fn molecules(&self) -> &[impl MoleculeResults];
+    /// Get iterator over the results associated with the individual molecules.
+    fn molecules(&self) -> impl Iterator<Item = &impl MoleculeResults>;
 
     /// Write the header for a csv file.
     fn write_csv_header(
@@ -114,7 +116,7 @@ pub(crate) trait ResultsPresenter: Serialize {
             true,
         )?;
 
-        for mol in self.molecules().iter() {
+        for mol in self.molecules() {
             mol.write_tab(&mut writer)?;
         }
 
@@ -140,13 +142,9 @@ pub(crate) trait ResultsPresenter: Serialize {
         let file_path = path_buf.to_str().expect(PANIC_MESSAGE);
 
         // all molecule names must be unique
-        let names: Vec<String> = self
-            .molecules()
-            .iter()
-            .map(|x| x.name().to_owned())
-            .collect();
+        let names: Vec<String> = self.molecules().map(|x| x.name().to_owned()).collect();
 
-        for (i, mol) in self.molecules().iter().enumerate() {
+        for (i, mol) in self.molecules().enumerate() {
             let filename = match extension {
                 Some(x) => format!("{}_{}.{}", file_path, names[i], x),
                 None => format!("{}_{}", file_path, names[i]),
@@ -173,18 +171,13 @@ pub(crate) trait ResultsPresenter: Serialize {
     fn write_csv(&self, filename: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
         let mut writer = Self::prepare_file(&filename, "", "", "csv", overwrite, false)?;
 
-        let max_bonds = self
-            .molecules()
-            .iter()
-            .map(|x| x.max_bonds())
-            .max()
-            .unwrap_or(0);
+        let max_bonds = self.molecules().map(|x| x.max_bonds()).max().unwrap_or(0);
 
-        let leaflets = self.molecules().iter().any(|x| x.has_assigned_leaflets());
+        let leaflets = self.molecules().any(|x| x.has_assigned_leaflets());
 
         Self::write_csv_header(&mut writer, max_bonds, leaflets)?;
 
-        for molecule in self.molecules().iter() {
+        for molecule in self.molecules() {
             molecule.write_csv(&mut writer, max_bonds, leaflets)?;
         }
 
@@ -287,8 +280,10 @@ struct BondResults {
 }
 
 /// Empty struct used as a marker.
+#[derive(Default)]
 pub(crate) struct AAOrder {}
 /// Empty struct used as a marker.
+#[derive(Default)]
 pub(crate) struct CGOrder {}
 
 /// Trait implemented only by `AAOrder` and `CGOrder` structs.
@@ -481,6 +476,63 @@ impl SystemTopology {
 
         for molecule in self.molecule_types() {
             molecule.info();
+        }
+    }
+}
+
+/// Structure for collecting order parameters to calculate average order.
+#[derive(Debug, Clone, Serialize, Default)]
+struct AverageOrder<O: OrderType> {
+    total: f32,
+    total_samples: usize,
+    upper: f32,
+    upper_samples: usize,
+    lower: f32,
+    lower_samples: usize,
+    _type: PhantomData<O>,
+}
+
+impl<O: OrderType> AddAssign<&BondType> for AverageOrder<O> {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: &BondType) {
+        let (total, upper, lower) = rhs.calc_order();
+        self.total += total;
+        // we collect the number of bond types, not the number of samples
+        // the number of bonds must be the same for each bond type across the system
+        self.total_samples += 1;
+
+        if let Some(u) = upper {
+            self.upper += u;
+            self.upper_samples += 1;
+        }
+
+        if let Some(l) = lower {
+            self.lower += l;
+            self.lower_samples += 1;
+        }
+    }
+}
+
+impl<O: OrderType> From<AverageOrder<O>> for BondResults {
+    fn from(value: AverageOrder<O>) -> Self {
+        let total = O::convert(value.total / value.total_samples as f32);
+
+        let upper = if value.upper_samples > 0 {
+            Some(O::convert(value.upper / value.upper_samples as f32))
+        } else {
+            None
+        };
+
+        let lower = if value.lower_samples > 0 {
+            Some(O::convert(value.lower / value.lower_samples as f32))
+        } else {
+            None
+        };
+
+        Self {
+            total,
+            upper,
+            lower,
         }
     }
 }

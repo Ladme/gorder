@@ -100,7 +100,7 @@ pub struct Analysis {
     /// are requested, as it is the only format that contains the complete results of the analysis.
     #[builder(setter(into))]
     #[getset(get = "pub")]
-    #[serde(alias = "output")]
+    #[serde(alias = "output", alias = "output_yml")]
     output_yaml: String,
 
     /// Optional path to an output TABLE file where the analysis results will be saved

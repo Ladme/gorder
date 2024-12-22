@@ -1,6 +1,8 @@
-# Order parameters calculated with 'gorder v0.2.0-dev.4' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
-- molecule: POPC
-  order:
+# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+POPC:
+  average order:
+    total: 0.2943
+  order parameters:
     POPC NC3 (0) - POPC PO4 (1):
       total: -0.1352
     POPC PO4 (1) - POPC GL1 (2):
@@ -23,8 +25,10 @@
       total: 0.4175
     POPC C3B (10) - POPC C4B (11):
       total: 0.2661
-- molecule: POPE
-  order:
+POPE:
+  average order:
+    total: 0.2972
+  order parameters:
     POPE NH3 (0) - POPE PO4 (1):
       total: -0.1342
     POPE PO4 (1) - POPE GL1 (2):
@@ -47,8 +51,10 @@
       total: 0.4087
     POPE C3B (10) - POPE C4B (11):
       total: 0.2629
-- molecule: POPG
-  order:
+POPG:
+  average order:
+    total: 0.3059
+  order parameters:
     POPG GL0 (0) - POPG PO4 (1):
       total: -0.0149
     POPG PO4 (1) - POPG GL1 (2):
