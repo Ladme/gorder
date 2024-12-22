@@ -27,6 +27,7 @@ use super::{
     leaflets::MoleculeLeafletClassification,
     ordermap::{merge_option_maps, Map},
     orderval::OrderValue,
+    timewise::TimeWiseData,
 };
 
 /// Represents a specific type of molecule with all its atoms and bonds.
@@ -489,6 +490,14 @@ impl BondType {
         self.bond_topology().get_other_atom(atom)
     }
 
+    /// Initialize reading of a new simulation frame.
+    #[inline(always)]
+    fn init_new_frame(&mut self) {
+        self.total.init_new_frame();
+        self.upper.as_mut().map(|x| x.init_new_frame());
+        self.lower.as_mut().map(|x| x.init_new_frame());
+    }
+
     /// Calculate the current order parameter for this bond type.
     fn analyze_frame(
         &mut self,
@@ -497,6 +506,8 @@ impl BondType {
         simbox: &SimBox,
         membrane_normal: &Vector3D,
     ) -> Result<(), AnalysisError> {
+        self.init_new_frame();
+
         for (molecule_index, (index1, index2)) in self.bonds.iter().enumerate() {
             let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
             let atom2 = unsafe { frame.get_atom_unchecked(*index2) };
@@ -710,6 +721,8 @@ pub(crate) struct Order {
     /// Number of samples collected for this order parameter.
     #[getset(get_copy = "pub(super)")]
     n_samples: usize,
+    /// Data for timewise analysis.
+    timewise: Option<TimeWiseData>,
 }
 
 impl Order {
@@ -719,6 +732,7 @@ impl Order {
         Order {
             order: OrderValue::from(order),
             n_samples,
+            timewise: None,
         }
     }
 
@@ -733,6 +747,12 @@ impl Order {
             f32::from(self.order / self.n_samples)
         }
     }
+
+    /// Initialize anlysis of a new frame. This only does something if `timewise` calculation is requested.
+    #[inline(always)]
+    fn init_new_frame(&mut self) {
+        self.timewise.as_mut().map(|x| x.next_frame());
+    }
 }
 
 impl Add<Order> for Order {
@@ -740,9 +760,15 @@ impl Add<Order> for Order {
 
     #[inline(always)]
     fn add(self, rhs: Order) -> Self::Output {
+        let timewise = match (self.timewise, rhs.timewise) {
+            (Some(x), Some(y)) => Some(x + y),
+            _ => None,
+        };
+
         Order {
             order: self.order + rhs.order,
             n_samples: self.n_samples + rhs.n_samples,
+            timewise,
         }
     }
 }
@@ -752,6 +778,8 @@ impl AddAssign<f32> for Order {
     fn add_assign(&mut self, rhs: f32) {
         self.order += rhs;
         self.n_samples += 1;
+
+        self.timewise.as_mut().map(|x| *x += rhs);
     }
 }
 
