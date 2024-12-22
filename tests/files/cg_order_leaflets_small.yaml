@@ -1,6 +1,10 @@
-# Order parameters calculated with 'gorder v0.2.0-dev.4' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
-- molecule: POPC
-  order:
+# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+POPC:
+  average order:
+    total: 0.3959
+    upper: 0.4071
+    lower: 0.3846
+  order parameters:
     POPC C1B (8) - POPC C2B (9):
       total: 0.5039
       upper: 0.5202

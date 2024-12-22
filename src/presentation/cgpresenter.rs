@@ -11,7 +11,8 @@ use serde::{Serialize, Serializer};
 use crate::{analysis::molecule::BondTopology, errors::WriteError};
 
 use super::{
-    BondResults, CGOrder, MoleculeResults, MoleculeType, ResultsPresenter, SystemTopology,
+    AverageOrder, BondResults, CGOrder, MoleculeResults, MoleculeType, ResultsPresenter,
+    SystemTopology,
 };
 
 /// Results of the coarse-grained order parameters calculation.
@@ -19,7 +20,7 @@ use super::{
 #[serde(transparent)]
 pub(crate) struct CGOrderResults {
     /// Results for individual molecules of the system.
-    molecules: Vec<CGMoleculeResults>,
+    molecules: IndexMap<String, CGMoleculeResults>,
 }
 
 impl From<SystemTopology> for CGOrderResults {
@@ -29,16 +30,19 @@ impl From<SystemTopology> for CGOrderResults {
             molecules: value
                 .molecule_types()
                 .iter()
-                .map(CGMoleculeResults::from)
-                .collect(),
+                .map(|x| x.name().clone())
+                .zip(value.molecule_types().iter().map(CGMoleculeResults::from))
+                .collect::<IndexMap<String, CGMoleculeResults>>(),
         }
     }
 }
 
 impl ResultsPresenter for CGOrderResults {
     #[inline(always)]
-    fn molecules(&self) -> &[impl MoleculeResults] {
-        &self.molecules
+    #[allow(refining_impl_trait)]
+    #[allow(private_interfaces)]
+    fn molecules(&self) -> impl Iterator<Item = &CGMoleculeResults> {
+        self.molecules.values()
     }
 
     fn write_csv_header(
@@ -61,9 +65,14 @@ impl ResultsPresenter for CGOrderResults {
 #[derive(Debug, Clone, Serialize)]
 struct CGMoleculeResults {
     /// Name of the molecule.
+    #[serde(skip)]
     molecule: String,
+    /// Average order parameter for all bond types of the molecule.
+    #[serde(rename = "average order")]
+    average_order: BondResults,
     /// Order parameters calculated for specific bonds.
     #[serde(skip_serializing_if = "IndexMap::is_empty")]
+    #[serde(rename = "order parameters")]
     order: IndexMap<BondTopology, BondResults>,
 }
 
@@ -88,7 +97,9 @@ impl Serialize for BondTopology {
 impl From<&MoleculeType> for CGMoleculeResults {
     fn from(value: &MoleculeType) -> Self {
         let mut order = IndexMap::new();
+        let mut average_order = AverageOrder::<CGOrder>::default();
         for bond in value.order_bonds().bond_types() {
+            average_order += bond;
             let results = BondResults::convert_from::<CGOrder>(bond);
             order.insert(bond.bond_topology().clone(), results);
         }
@@ -96,6 +107,7 @@ impl From<&MoleculeType> for CGMoleculeResults {
         CGMoleculeResults {
             molecule: value.name().to_owned(),
             order,
+            average_order: average_order.into(),
         }
     }
 }
@@ -138,6 +150,10 @@ impl MoleculeResults for CGMoleculeResults {
             results.write_tab(writer, leaflets)?;
             write_result!(writer, "\n");
         }
+
+        write_result!(writer, "AVERAGE         ");
+        self.average_order.write_tab(writer, leaflets)?;
+        write_result!(writer, "\n");
 
         Ok(())
     }
