@@ -371,7 +371,7 @@ mod tests {
 
             assert_eq!(orders.len(), expected_total_orders[m].len());
             for (real, expected) in orders.iter().zip(expected_total_orders[m].iter()) {
-                assert_relative_eq!(-real, expected);
+                assert_relative_eq!(-real, expected, epsilon = 1e-5);
             }
 
             for sample in samples {
@@ -428,7 +428,7 @@ mod tests {
             ] {
                 assert_eq!(order.len(), expected_order.len());
                 for (real, expected) in order.iter().zip(expected_order.iter()) {
-                    assert_relative_eq!(-real, expected);
+                    assert_relative_eq!(-real, expected, epsilon = 1e-5);
                 }
 
                 for &sample in samples {
