@@ -15,20 +15,25 @@ use serde::{
 #[derive(Debug, Clone, Getters, CopyGetters)]
 pub struct EstimateError {
     /// Number of analyzed trajectory frames per one block.
-    /// The default value is 50.
+    /// The default value is 500.
     #[getset(get_copy = "pub")]
     block_size: usize,
-    /// Path to output directory where the timewise information should be written.
+
+    /// Optional filename pattern for the output XVG files where convergence analysis will be written.
+    /// A separate XVG file will be generated for each detected molecule type, with the molecule
+    /// type name appended to the pattern.
+    ///
+    /// Example: 'convergence.xvg' may become 'convergence_POPC.xvg'.
     /// Default is None => no such data will be written.
     #[getset(get = "pub")]
-    output_directory: Option<String>,
+    output_convergence: Option<String>,
 }
 
 impl Default for EstimateError {
     fn default() -> Self {
         Self {
-            block_size: 50,
-            output_directory: None,
+            block_size: default_block_size(),
+            output_convergence: None,
         }
     }
 }
@@ -63,13 +68,13 @@ impl<'de> Deserialize<'de> for EstimateError {
                 M: MapAccess<'de>,
             {
                 let mut block_size = None;
-                let mut output_directory = None;
+                let mut output_convergence = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
                         "block_size" => block_size = Some(map.next_value()?),
-                        "output_directory" | "output_dir" => {
-                            output_directory = Some(map.next_value()?)
+                        "output_convergence" | "output" => {
+                            output_convergence = Some(map.next_value()?)
                         }
                         _ => {
                             return Err(de::Error::unknown_field(
@@ -82,7 +87,7 @@ impl<'de> Deserialize<'de> for EstimateError {
 
                 Ok(EstimateError {
                     block_size: block_size.unwrap_or_else(default_block_size),
-                    output_directory,
+                    output_convergence,
                 })
             }
         }
@@ -91,15 +96,16 @@ impl<'de> Deserialize<'de> for EstimateError {
     }
 }
 
+#[inline(always)]
 fn default_block_size() -> usize {
-    50
+    500
 }
 
 impl EstimateError {
-    fn new(block_size: usize, output_directory: Option<&str>) -> Self {
+    pub fn new(block_size: usize, output: Option<&str>) -> Self {
         Self {
             block_size,
-            output_directory: output_directory.map(|s| s.to_string()),
+            output_convergence: output.map(|s| s.to_string()),
         }
     }
 }

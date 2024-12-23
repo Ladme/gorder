@@ -747,6 +747,7 @@ fn test_cg_order_maps_basic() {
         "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
         "ordermap_POPC-C2B-9--POPC-C3B-10_full.dat",
         "ordermap_POPC-C3B-10--POPC-C4B-11_full.dat",
+        "ordermap_average_full.dat",
     ];
 
     for file in expected_file_names {
@@ -808,6 +809,9 @@ fn test_cg_order_maps_leaflets() {
             "ordermap_POPC-C2B-9--POPC-C3B-10_full.dat",
             "ordermap_POPC-C2B-9--POPC-C3B-10_upper.dat",
             "ordermap_POPC-C3B-10--POPC-C4B-11_lower.dat",
+            "ordermap_average_full.dat",
+            "ordermap_average_upper.dat",
+            "ordermap_average_lower.dat",
         ];
 
         for file in expected_file_names {
@@ -860,6 +864,7 @@ fn test_cg_order_maps_basic_multiple_threads() {
             "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
             "ordermap_POPC-C2B-9--POPC-C3B-10_full.dat",
             "ordermap_POPC-C3B-10--POPC-C4B-11_full.dat",
+            "ordermap_average_full.dat",
         ];
 
         for file in expected_file_names {
@@ -915,6 +920,7 @@ fn test_cg_order_maps_basic_backup() {
         "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
         "ordermap_POPC-C2B-9--POPC-C3B-10_full.dat",
         "ordermap_POPC-C3B-10--POPC-C4B-11_full.dat",
+        "ordermap_average_full.dat",
     ];
 
     for file in expected_file_names {

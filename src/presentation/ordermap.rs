@@ -59,6 +59,28 @@ impl Map {
         self.write_ordermap::<O>(&filename, molname, &comment)
     }
 
+    /// Write the map of order parameters collected across all bonds.
+    /// Leaflet `None` corresponds to ordermap for the full membarne.
+    #[inline]
+    fn write_average_map<O: OrderType>(
+        &self,
+        leaflet: Option<Leaflet>,
+        molname: &str,
+    ) -> Result<(), OrderMapWriteError> {
+        let filename = match leaflet {
+            Some(Leaflet::Upper) => "ordermap_average_upper.dat",
+            Some(Leaflet::Lower) => "ordermap_average_lower.dat",
+            None => "ordermap_average_full.dat",
+        };
+
+        let comment = format!(
+            "# Map of average order parameters calculated for molecule type '{}'.\n# Calculated with 'gorder v{}'.",
+            molname, GORDER_VERSION
+        );
+
+        self.write_ordermap::<O>(filename, molname, &comment)
+    }
+
     /// Write the map of order parameters for a bond type or an atom type into an output file.
     fn write_ordermap<O: OrderType>(
         &self,
@@ -134,7 +156,14 @@ impl MoleculeType {
 
     /// Write ordermaps constructed for all the bond types of this molecule type.
     fn write_ordermaps_bonds<O: OrderType>(&self, molname: &str) -> Result<(), OrderMapWriteError> {
+        let mut all_maps = Vec::new();
         for bond in self.order_bonds().bond_types() {
+            all_maps.push((
+                bond.total_map().clone(),
+                bond.upper_map().clone(),
+                bond.lower_map().clone(),
+            ));
+
             if let Some(map) = bond.total_map() {
                 map.write_bond_map::<O>(bond.atom1(), bond.atom2(), None, molname)?;
             }
@@ -146,6 +175,20 @@ impl MoleculeType {
             if let Some(map) = bond.lower_map() {
                 map.write_bond_map::<O>(bond.atom1(), bond.atom2(), Some(Leaflet::Lower), molname)?;
             }
+        }
+
+        let (average_total, average_upper, average_lower) = MoleculeType::merge_maps(all_maps);
+
+        if let Some(map) = average_total {
+            map.write_average_map::<O>(None, molname)?;
+        }
+
+        if let Some(map) = average_upper {
+            map.write_average_map::<O>(Some(Leaflet::Upper), molname)?;
+        }
+
+        if let Some(map) = average_lower {
+            map.write_average_map::<O>(Some(Leaflet::Lower), molname)?;
         }
 
         Ok(())

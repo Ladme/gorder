@@ -91,6 +91,7 @@ fn test_bin_cg_order_maps() {
         "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
         "ordermap_POPC-C2B-9--POPC-C3B-10_full.dat",
         "ordermap_POPC-C3B-10--POPC-C4B-11_full.dat",
+        "ordermap_average_full.dat",
     ];
 
     for file in expected_file_names {

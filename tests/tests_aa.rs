@@ -1052,6 +1052,7 @@ fn test_aa_order_maps_basic() {
         "ordermap_POPC-C24-47--POPC-H4R-48_full.dat",
         "ordermap_POPC-C24-47--POPC-H4S-49_full.dat",
         "ordermap_POPC-C24-47_full.dat",
+        "ordermap_average_full.dat",
     ];
 
     for file in expected_file_names {
@@ -1135,6 +1136,9 @@ fn test_aa_order_maps_leaflets() {
             "ordermap_POPC-C22-32--POPC-H2S-34_full.dat",
             "ordermap_POPC-C24-47--POPC-H4R-48_full.dat",
             "ordermap_POPC-C24-47_upper.dat",
+            "ordermap_average_full.dat",
+            "ordermap_average_upper.dat",
+            "ordermap_average_lower.dat",
         ];
 
         for file in expected_file_names {
@@ -1234,6 +1238,9 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
                 "ordermap_POPC-C22-32--POPC-H2S-34_full.dat",
                 "ordermap_POPC-C24-47--POPC-H4R-48_full.dat",
                 "ordermap_POPC-C24-47_upper.dat",
+                "ordermap_average_full.dat",
+                "ordermap_average_upper.dat",
+                "ordermap_average_lower.dat",
             ];
 
             for file in expected_file_names {
@@ -1295,6 +1302,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
             "ordermap_POPC-C24-47--POPC-H4R-48_full.dat",
             "ordermap_POPC-C24-47--POPC-H4S-49_full.dat",
             "ordermap_POPC-C24-47_full.dat",
+            "ordermap_average_full.dat",
         ];
 
         for file in expected_file_names {
@@ -1354,6 +1362,7 @@ fn test_aa_order_maps_basic_weird_molecules() {
         "POPC-POPE1/ordermap_POPE-C3A-6_full.dat",
         "POPC-POPE1/ordermap_POPE-C1B-8_full.dat",
         "POPC-POPE1/ordermap_POPE-C3B-10_full.dat",
+        "POPC-POPE1/ordermap_average_full.dat",
         "POPC-POPE2/ordermap_POPC-C1A-4--POPC-D2A-5_full.dat",
         "POPC-POPE2/ordermap_POPC-D2A-5--POPE-C3A-6_full.dat",
         "POPC-POPE2/ordermap_POPE-C3A-6--POPE-C4A-7_full.dat",
@@ -1361,7 +1370,8 @@ fn test_aa_order_maps_basic_weird_molecules() {
         "POPC-POPE2/ordermap_POPC-C1A-4_full.dat",
         "POPC-POPE2/ordermap_POPE-C3A-6_full.dat",
         "POPC-POPE2/ordermap_POPE-C3B-10_full.dat",
-        "POPC-POPE1/ordermap_POPC-C1A-4--POPC-D2A-5_full.dat",
+        "POPC-POPE2/ordermap_POPC-C1A-4--POPC-D2A-5_full.dat",
+        "POPC-POPE2/ordermap_average_full.dat",
         "POPC/ordermap_POPC-D2A-5--POPC-C3A-6_full.dat",
         "POPC/ordermap_POPC-C3A-6--POPC-C4A-7_full.dat",
         "POPC/ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
@@ -1371,6 +1381,7 @@ fn test_aa_order_maps_basic_weird_molecules() {
         "POPC/ordermap_POPC-C3A-6_full.dat",
         "POPC/ordermap_POPC-C1B-8_full.dat",
         "POPC/ordermap_POPC-C3B-10_full.dat",
+        "POPC/ordermap_average_full.dat",
     ];
 
     for file in expected_file_names {
@@ -1426,6 +1437,7 @@ fn test_aa_order_maps_basic_backup() {
         "ordermap_POPC-C24-47--POPC-H4R-48_full.dat",
         "ordermap_POPC-C24-47--POPC-H4S-49_full.dat",
         "ordermap_POPC-C24-47_full.dat",
+        "ordermap_average_full.dat",
     ];
 
     for file in expected_file_names {
