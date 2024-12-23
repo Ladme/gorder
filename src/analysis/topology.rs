@@ -3,6 +3,8 @@
 
 //! Implementation of a structure describing the topology of the entire system.
 
+use crate::input::EstimateError;
+
 use super::molecule::MoleculeType;
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::prelude::Dimension;
@@ -15,6 +17,8 @@ pub(crate) struct SystemTopology {
     molecule_types: Vec<MoleculeType>,
     #[getset(get_copy = "pub(super)")]
     membrane_normal: Dimension,
+    #[getset(get = "pub(crate)")]
+    estimate_error: Option<EstimateError>,
 }
 
 impl SystemTopology {
@@ -22,10 +26,12 @@ impl SystemTopology {
     pub(crate) fn new(
         molecule_types: Vec<MoleculeType>,
         membrane_normal: Dimension,
+        estimate_error: Option<EstimateError>,
     ) -> SystemTopology {
         SystemTopology {
             molecule_types,
             membrane_normal,
+            estimate_error,
         }
     }
 }
@@ -43,6 +49,7 @@ impl Add<SystemTopology> for SystemTopology {
                 .map(|(a, b)| a + b)
                 .collect::<Vec<MoleculeType>>(),
             membrane_normal: self.membrane_normal,
+            estimate_error: self.estimate_error,
         }
     }
 }

@@ -68,13 +68,18 @@ pub(super) fn analyze_coarse_grained(
         analysis.membrane_normal().into(),
         analysis.map().as_ref(),
         analysis.min_samples(),
+        analysis.estimate_error().as_ref(),
     )?;
 
     if !sanity_check_molecules(&molecules) {
         return Ok(());
     }
 
-    let data = SystemTopology::new(molecules, analysis.membrane_normal().into());
+    let data = SystemTopology::new(
+        molecules,
+        analysis.membrane_normal().into(),
+        analysis.estimate_error().clone(),
+    );
     data.info();
 
     let progress_printer = if analysis.silent() {
@@ -153,10 +158,11 @@ mod tests {
             Dimension::Z,
             None,
             1,
+            None,
         )
         .unwrap();
 
-        (system, SystemTopology::new(molecules, Dimension::Z))
+        (system, SystemTopology::new(molecules, Dimension::Z, None))
     }
 
     fn expected_total_orders() -> [Vec<f32>; 3] {

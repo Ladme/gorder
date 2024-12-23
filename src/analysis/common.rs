@@ -7,6 +7,7 @@ use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
 use super::topology::SystemTopology;
 use crate::errors::{AnalysisError, WriteError};
+use crate::input::EstimateError;
 use crate::presentation::ResultsPresenter;
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::Analysis, input::OrderMap, PANIC_MESSAGE};
@@ -70,6 +71,7 @@ pub(super) fn classify_molecules(
     membrane_normal: Dimension,
     ordermap_params: Option<&OrderMap>,
     min_samples: usize,
+    estimate_error: Option<&EstimateError>,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -114,6 +116,7 @@ pub(super) fn classify_molecules(
                 leaflet_classification,
                 ordermap_params,
                 min_samples,
+                estimate_error.map(|e| e.block_size()),
             )?);
         }
     }
@@ -336,6 +339,7 @@ fn create_new_molecule_type(
     leaflet_classification: Option<&LeafletClassification>,
     ordermap_params: Option<&OrderMap>,
     min_samples: usize,
+    error_block_size: Option<usize>,
 ) -> Result<MoleculeType, TopologyError> {
     // create a name of the molecule
     let name = residues.join("-");
@@ -366,6 +370,7 @@ fn create_new_molecule_type(
         classifier,
         ordermap_params,
         min_samples,
+        error_block_size,
     )
 }
 
@@ -1256,6 +1261,7 @@ mod tests {
             Dimension::Z,
             None,
             1,
+            None,
         )
         .unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
@@ -1706,6 +1712,7 @@ mod tests {
             Dimension::Z,
             None,
             1,
+            None,
         )
         .unwrap();
         let expected_names = ["POPE", "POPG"];
@@ -2382,7 +2389,8 @@ mod tests {
         create_group(&mut system, "Atoms", "resname POPC").unwrap();
 
         let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1, None)
+                .unwrap();
 
         let expected_names = ["POPC1", "POPC2"];
         let expected_n_instances = [2, 1];
@@ -2407,7 +2415,8 @@ mod tests {
         create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
 
         let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1, None)
+                .unwrap();
 
         let expected_names = ["POPC-POPE", "POPC"];
         let expected_n_instances = [2, 1];
@@ -2432,7 +2441,8 @@ mod tests {
         create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
 
         let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1, None)
+                .unwrap();
 
         let expected_names = ["POPC-POPE1", "POPC-POPE2", "POPC"];
         let expected_n_instances = [1, 1, 1];
@@ -2457,7 +2467,8 @@ mod tests {
         create_group(&mut system, "Atoms", "resname POPC").unwrap();
 
         let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1, None)
+                .unwrap();
 
         assert_eq!(molecules.len(), 1);
         assert_eq!(molecules[0].order_bonds().bond_types().len(), 14);

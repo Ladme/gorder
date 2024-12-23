@@ -122,7 +122,7 @@ impl Map {
             let average = if samples.2 < self.params().min_samples() {
                 f32::NAN
             } else {
-                O::convert(value.2 / samples.2 as f32)
+                O::convert(value.2 / samples.2 as f32, None).value
             };
 
             writeln!(output, "{:.4} {:.4} {:.4}", value.0, value.1, average).map_err(|_| {

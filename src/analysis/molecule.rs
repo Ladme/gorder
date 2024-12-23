@@ -64,6 +64,7 @@ impl MoleculeType {
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
         min_samples: usize,
+        error_block_size: Option<usize>,
     ) -> Result<Self, TopologyError> {
         Ok(Self {
             name,
@@ -75,6 +76,7 @@ impl MoleculeType {
                 leaflet_classification.is_some(),
                 ordermap_params,
                 min_samples,
+                error_block_size,
             )?,
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
@@ -201,6 +203,7 @@ impl OrderBonds {
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
         min_samples: usize,
+        error_block_size: Option<usize>,
     ) -> Result<Self, TopologyError> {
         bonds_sanity_check(bonds, min_index);
 
@@ -227,6 +230,7 @@ impl OrderBonds {
                 ordermap,
                 min_samples,
                 simbox,
+                error_block_size,
             )?;
             order_bonds.push(bond)
         }
@@ -390,6 +394,8 @@ pub(crate) struct BondType {
     /// Order parameter map of this bond calculated using lipids in the lower leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     lower_map: Option<Map>,
+    /// Block size for the error estimation.
+    error_block_size: Option<usize>,
 }
 
 impl BondType {
@@ -405,6 +411,7 @@ impl BondType {
         ordermap: Option<&OrderMap>,
         min_samples: usize,
         simbox: &SimBox,
+        error_block_size: Option<usize>,
     ) -> Result<Self, TopologyError> {
         let bond_topology = BondTopology::new(
             abs_index_1 - min_index,
@@ -440,6 +447,7 @@ impl BondType {
             total_map: optional_map,
             upper_map: leaflet_map.clone(),
             lower_map: leaflet_map,
+            error_block_size,
         })
     }
 
@@ -578,6 +586,33 @@ impl BondType {
 
         (total_order, upper_order, lower_order)
     }
+
+    /// Calculate estimate of the calculation error for this bond type.
+    /// A standard error of the mean is calculated for the full membrane and for the individual leaflets.
+    /// If the information for the calculation of error is not available, None is returned.
+    pub(crate) fn estimate_error(&self) -> (Option<f32>, Option<f32>, Option<f32>) {
+        let error_total = self
+            .total
+            .timewise
+            .as_ref()
+            .map(|data| data.estimate_error(self.error_block_size.expect(PANIC_MESSAGE)));
+
+        let error_upper = self.upper.as_ref().and_then(|order| {
+            order
+                .timewise
+                .as_ref()
+                .map(|data| data.estimate_error(self.error_block_size.expect(PANIC_MESSAGE)))
+        });
+
+        let error_lower = self.lower.as_ref().and_then(|order| {
+            order
+                .timewise
+                .as_ref()
+                .map(|data| data.estimate_error(self.error_block_size.expect(PANIC_MESSAGE)))
+        });
+
+        (error_total, error_upper, error_lower)
+    }
 }
 
 impl Add<BondType> for BondType {
@@ -595,6 +630,7 @@ impl Add<BondType> for BondType {
             total_map: merge_option_maps(self.total_map, rhs.total_map),
             upper_map: merge_option_maps(self.upper_map, rhs.upper_map),
             lower_map: merge_option_maps(self.lower_map, rhs.lower_map),
+            error_block_size: self.error_block_size,
         }
     }
 }
@@ -830,6 +866,7 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
         let bond2 = BondType::new(
@@ -842,6 +879,7 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -866,6 +904,7 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -894,6 +933,7 @@ mod tests {
             Some(&ordermap_params),
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -925,6 +965,7 @@ mod tests {
             Some(&ordermap_params),
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -950,6 +991,7 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -977,6 +1019,7 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -1005,6 +1048,7 @@ mod tests {
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -1083,7 +1127,7 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds);
-        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1).unwrap();
+        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1, None).unwrap();
 
         let expected_bonds = expected_bonds(&system);
 
@@ -1108,7 +1152,8 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds);
-        let mut order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1).unwrap();
+        let mut order_bonds =
+            OrderBonds::new(&system, &bonds_set, 125, false, None, 1, None).unwrap();
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
         let new_bonds_set = HashSet::from(new_bonds);

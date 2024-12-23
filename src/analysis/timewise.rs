@@ -58,6 +58,33 @@ impl TimeWiseData {
         self.order.push(OrderValue::from(0.0));
         self.n_samples.push(0);
     }
+
+    /// Estimate the calculation error from the order parameters calculated for the individual blocks.
+    /// Returns standard error of the mean.
+    pub(super) fn estimate_error(&self, block_size: usize) -> f32 {
+        let n_blocks = self.order.len() / block_size;
+
+        let mut blocks_order = vec![OrderValue::from(0.0); n_blocks];
+        let mut blocks_samples = vec![0; n_blocks];
+
+        for (i, (o, s)) in self.order.iter().zip(&self.n_samples).enumerate() {
+            let block_id = i / block_size;
+            if block_id < n_blocks {
+                blocks_order[block_id] += *o;
+                blocks_samples[block_id] += s;
+            }
+        }
+
+        let orders: Vec<f32> = blocks_order
+            .into_iter()
+            .zip(blocks_samples)
+            .map(|(o, s)| (o / s).into())
+            .collect();
+
+        let std = statistical::standard_deviation(&orders, None);
+
+        std / (n_blocks as f32).sqrt()
+    }
 }
 
 impl AddAssign<f32> for TimeWiseData {
@@ -110,6 +137,8 @@ fn order_and_merge<T: Clone, U: Ord>(vectors: Vec<Vec<T>>, numbers: &[U]) -> Vec
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_relative_eq;
+
     use super::*;
 
     #[test]
@@ -368,5 +397,29 @@ mod tests {
         for (x, y) in data_sum.n_samples.iter().zip(expected_n_samples.iter()) {
             assert_eq!(x, y);
         }
+    }
+
+    #[test]
+    fn estimate_error() {
+        let order = [
+            10.0, 15.0, 18.0, 12.0, 14.0, 15.0, 16.0, 20.0, 21.0, 18.0, 9.0, 11.0, 13.0, 14.0,
+            19.0, 16.0, 17.0,
+        ];
+
+        let data = TimeWiseData {
+            thread_ids: vec![0, 1, 2],
+            order: order
+                .into_iter()
+                .map(|x| x.into())
+                .collect::<Vec<OrderValue>>(),
+            n_samples: vec![
+                10, 12, 15, 11, 13, 11, 11, 17, 18, 15, 8, 10, 12, 13, 17, 14, 15,
+            ],
+        };
+
+        // blocks: 1.16216, 1.1714, 1.2391, 1.1515, 1.0952 (last two numbers ignored)
+
+        let error = data.estimate_error(3);
+        assert_relative_eq!(error, 0.0230077);
     }
 }
