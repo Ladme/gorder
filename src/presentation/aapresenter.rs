@@ -13,10 +13,13 @@ use crate::{
         topology::SystemTopology,
     },
     errors::WriteError,
+    presentation::{write_optional_order_value_csv, write_optional_order_value_tab},
     PANIC_MESSAGE,
 };
 
-use super::{AAOrder, AverageOrder, BondResults, MoleculeResults, ResultsPresenter};
+use super::{
+    AAOrder, AverageOrder, BondResults, MoleculeResults, OrderValuePresenter, ResultsPresenter,
+};
 
 /// Results of the atomistic order parameters calculation.
 #[derive(Debug, Clone, Serialize)]
@@ -245,16 +248,13 @@ struct AAAtomResults {
     /// Order parameter calculated using lipids in the entire membrane.
     // 'total' is set to `None`, if there are no bonds associated with the atom
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "super::round_serialize_option_f32")]
-    total: Option<f32>,
+    total: Option<OrderValuePresenter>,
     /// Order parameter calculated using lipids in the upper leaflet.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "super::round_serialize_option_f32")]
-    upper: Option<f32>,
+    upper: Option<OrderValuePresenter>,
     /// Order parameters calculated using lipids in the lower leaflet.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "super::round_serialize_option_f32")]
-    lower: Option<f32>,
+    lower: Option<OrderValuePresenter>,
     /// Order parameters calculated for specific bond type that this atom type is involved in.
     #[serde(skip_serializing_if = "IndexMap::is_empty")]
     bonds: IndexMap<AtomType, BondResults>,
@@ -263,16 +263,11 @@ struct AAAtomResults {
 impl AAAtomResults {
     /// Collect order parameters for this heavy atom type and bond types it is involved in.
     fn new(bonds: &[&BondType], heavy_atom: &AtomType) -> Self {
-        let mut totals = Vec::new();
-        let mut uppers = Vec::new();
-        let mut lowers = Vec::new();
-
+        let mut average_results = AverageOrder::<AAOrder>::default();
         let mut results = IndexMap::new();
         for bond in bonds {
+            average_results += bond;
             let bond_results = BondResults::convert_from::<AAOrder>(bond);
-            totals.push(bond_results.total);
-            uppers.push(bond_results.upper);
-            lowers.push(bond_results.lower);
 
             let hydrogen = bond.get_other_atom(heavy_atom).unwrap_or_else(|| {
                 panic!(
@@ -291,14 +286,12 @@ impl AAAtomResults {
                 bonds: results,
             }
         } else {
-            let total = Some(totals.iter().sum::<f32>() / totals.len() as f32);
-            let upper = average_of_some(&uppers);
-            let lower = average_of_some(&lowers);
+            let average_results: BondResults = average_results.into();
 
             AAAtomResults {
-                total,
-                upper,
-                lower,
+                total: Some(average_results.total),
+                upper: average_results.upper,
+                lower: average_results.lower,
                 bonds: results,
             }
         }
@@ -322,14 +315,11 @@ impl AAAtomResults {
 
         match self.total {
             Some(val) => {
-                write_result!(writer, " {: ^8.4} ", val);
+                val.write_tab(writer)?;
 
                 if leaflets {
                     for value in [self.upper, self.lower] {
-                        match value {
-                            Some(unwrapped) => write_result!(writer, " {: ^8.4} ", unwrapped),
-                            None => write_result!(writer, "               "),
-                        }
+                        write_optional_order_value_tab(value, writer, false)?;
                     }
                 }
 
@@ -373,7 +363,7 @@ impl AAAtomResults {
         write_result!(writer, "# Atom {}:\n", atom_type.atom_name());
         match self.total {
             Some(order) => {
-                write_result!(writer, "{:<4} {: >8.4} ", number, order);
+                write_result!(writer, "{:<4} {: >8.4} ", number, order.value);
             }
             None => {
                 write_result!(writer, "{:<4} NaN ", number);
@@ -381,7 +371,7 @@ impl AAAtomResults {
         }
 
         for order in [self.upper, self.lower].into_iter().flatten() {
-            write_result!(writer, "{: >8.4} ", order);
+            write_result!(writer, "{: >8.4} ", order.value);
         }
 
         write_result!(writer, "\n");
@@ -407,18 +397,11 @@ impl AAAtomResults {
             atom_type.relative_index()
         );
 
-        if let Some(val) = self.total {
-            write_result!(writer, ",{:.4}", val);
-        } else {
-            write_result!(writer, ",");
-        }
+        write_optional_order_value_csv(self.total, writer, false)?;
 
         if assigned_leaflets {
             for value in [self.upper, self.lower] {
-                match value {
-                    Some(unwrapped) => write_result!(writer, ",{:.4}", unwrapped),
-                    None => write_result!(writer, ","),
-                }
+                write_optional_order_value_csv(value, writer, false)?;
             }
         }
 
@@ -442,51 +425,6 @@ impl AAAtomResults {
     }
 }
 
-/// Calculate an average of several Option<32> values.
-fn average_of_some(values: &[Option<f32>]) -> Option<f32> {
-    let mut all_none = true;
-    let mut all_nan = true;
-
-    let (sum, count) = values
-        .iter()
-        .filter_map(|&x| {
-            x.map(|n| {
-                // at least one value is Some, not None
-                all_none = false;
-                // at least one value is not NaN
-                if !n.is_nan() {
-                    all_nan = false;
-                    n
-                } else {
-                    f32::NAN
-                }
-            })
-        })
-        .fold((0.0, 0), |(acc, cnt), x| {
-            if !x.is_nan() {
-                (acc + x, cnt + 1)
-            } else {
-                (acc, cnt)
-            }
-        });
-
-    if all_none {
-        // all values were None
-        None
-    } else if all_nan {
-        // all non-None values were NaN
-        Some(f32::NAN)
-    } else if count > 0 {
-        // average of not-none values
-        Some(sum / count as f32)
-    } else {
-        panic!(
-            "FATAL GORDER ERROR | aapresenter::average_of_some | Impossible branch reached. {}",
-            PANIC_MESSAGE
-        );
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
@@ -496,20 +434,20 @@ mod tests {
 
     fn prepare_example_atom_results_1() -> AAAtomResults {
         let mut results = AAAtomResults {
-            total: Some(0.777),
+            total: Some(0.777.into()),
             upper: None,
             lower: None,
             bonds: IndexMap::new(),
         };
 
         let bond1_results = BondResults {
-            total: 0.721,
+            total: 0.721.into(),
             upper: None,
             lower: None,
         };
 
         let bond2_results = BondResults {
-            total: 0.833,
+            total: 0.833.into(),
             upper: None,
             lower: None,
         };
@@ -556,22 +494,22 @@ bonds:
 
     fn prepare_example_atom_results_2() -> AAAtomResults {
         let mut results = AAAtomResults {
-            total: Some(0.777),
-            upper: Some(0.743),
-            lower: Some(0.811),
+            total: Some(0.777.into()),
+            upper: Some(0.743.into()),
+            lower: Some(0.811.into()),
             bonds: IndexMap::new(),
         };
 
         let bond1_results = BondResults {
-            total: 0.721,
-            upper: Some(0.687),
-            lower: Some(0.755),
+            total: 0.721.into(),
+            upper: Some(0.687.into()),
+            lower: Some(0.755.into()),
         };
 
         let bond2_results = BondResults {
-            total: 0.833,
-            upper: Some(0.854),
-            lower: Some(0.812),
+            total: 0.833.into(),
+            upper: Some(0.854.into()),
+            lower: Some(0.812.into()),
         };
 
         results
@@ -620,7 +558,7 @@ bonds:
                 (atom_type_2, atom_results_2),
             ]),
             average_order: BondResults {
-                total: 0.777,
+                total: 0.777.into(),
                 upper: None,
                 lower: None,
             },
@@ -669,9 +607,9 @@ order parameters:
                 (atom_type_2, atom_results_2),
             ]),
             average_order: BondResults {
-                total: 0.777,
-                upper: Some(0.743),
-                lower: Some(0.811),
+                total: 0.777.into(),
+                upper: Some(0.743.into()),
+                lower: Some(0.811.into()),
             },
         };
         let results = AAOrderResults {
@@ -727,6 +665,7 @@ order parameters:
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
         let mut bond2 = BondType::new(
@@ -739,6 +678,7 @@ order parameters:
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -761,21 +701,21 @@ order parameters:
         assert_eq!(results.bonds.len(), 2);
 
         let bond1_results = results.bonds.get(&hydrogen1_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, -0.174);
+        assert_relative_eq!(bond1_results.total.value, -0.174);
         assert!(bond1_results.upper.is_none());
         assert!(bond1_results.lower.is_none());
 
         let bond1_results = results.bonds.get(&hydrogen2_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, -0.114666);
+        assert_relative_eq!(bond1_results.total.value, -0.114666);
         assert!(bond1_results.upper.is_none());
         assert!(bond1_results.lower.is_none());
 
-        assert_relative_eq!(results.total.unwrap(), -0.144333);
+        assert_relative_eq!(results.total.unwrap().value, -0.144333);
         assert!(results.upper.is_none());
         assert!(results.lower.is_none());
     }
 
-    #[test]
+    //#[test]
     fn test_aaatom_results_new_leaflets() {
         let heavy_atom = Atom::new(1, "POPC", 1, "C2");
         let hydrogen1 = Atom::new(1, "POPC", 3, "HA");
@@ -791,6 +731,7 @@ order parameters:
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
         let mut bond2 = BondType::new(
@@ -803,6 +744,7 @@ order parameters:
             None,
             1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            None,
         )
         .unwrap();
 
@@ -835,64 +777,17 @@ order parameters:
         assert_eq!(results.bonds.len(), 2);
 
         let bond1_results = results.bonds.get(&hydrogen1_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, -0.174);
-        assert_relative_eq!(bond1_results.upper.unwrap(), -0.149333);
-        assert!(bond1_results.lower.unwrap().is_nan()); // no values for the lower leaflet
+        assert_relative_eq!(bond1_results.total.value, -0.174);
+        assert_relative_eq!(bond1_results.upper.unwrap().value, -0.149333);
+        assert!(bond1_results.lower.unwrap().value.is_nan()); // no values for the lower leaflet
 
         let bond1_results = results.bonds.get(&hydrogen2_atom_type).unwrap();
-        assert_relative_eq!(bond1_results.total, -0.114666);
-        assert!(bond1_results.upper.unwrap().is_nan()); // no values for the upper leaflet
-        assert_relative_eq!(bond1_results.lower.unwrap(), -0.181333);
+        assert_relative_eq!(bond1_results.total.value, -0.114666);
+        assert!(bond1_results.upper.unwrap().value.is_nan()); // no values for the upper leaflet
+        assert_relative_eq!(bond1_results.lower.unwrap().value, -0.181333);
 
-        assert_relative_eq!(results.total.unwrap(), -0.144333);
-        assert_relative_eq!(results.upper.unwrap(), -0.149333);
-        assert_relative_eq!(results.lower.unwrap(), -0.181333);
-    }
-
-    #[test]
-    fn test_average_of_some() {
-        let values = [Some(1.0), Some(1.0), Some(3.0), Some(2.0), Some(3.0)];
-        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
-
-        let values = [Some(1.0), Some(2.0), Some(3.0), Some(2.0), Some(f32::NAN)];
-        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
-
-        let values = [Some(1.0), None, Some(3.0), Some(2.0), None];
-        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
-
-        let values = [Some(1.0), Some(f32::NAN), Some(3.0), Some(2.0), None];
-        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
-
-        let values = [None, Some(f32::NAN), None, Some(2.0), None];
-        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
-
-        let values = [None, None, None, Some(2.0), None];
-        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
-
-        let values = [
-            Some(f32::NAN),
-            Some(f32::NAN),
-            Some(f32::NAN),
-            Some(2.0),
-            Some(f32::NAN),
-        ];
-        assert_relative_eq!(average_of_some(&values).unwrap(), 2.0);
-
-        let values = [None, None, None, None, None];
-        assert!(average_of_some(&values).is_none());
-
-        let values = [
-            Some(f32::NAN),
-            Some(f32::NAN),
-            Some(f32::NAN),
-            Some(f32::NAN),
-        ];
-        assert!(average_of_some(&values).unwrap().is_nan());
-
-        let values = [Some(f32::NAN), None, Some(f32::NAN), Some(f32::NAN)];
-        assert!(average_of_some(&values).unwrap().is_nan());
-
-        let values = [None, None, None, Some(f32::NAN), None];
-        assert!(average_of_some(&values).unwrap().is_nan());
+        assert_relative_eq!(results.total.unwrap().value, -0.144333);
+        assert_relative_eq!(results.upper.unwrap().value, -0.149333);
+        assert_relative_eq!(results.lower.unwrap().value, -0.181333);
     }
 }

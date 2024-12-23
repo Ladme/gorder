@@ -20,7 +20,7 @@ use crate::{
     input::Analysis,
     PANIC_MESSAGE,
 };
-use serde::{Serialize, Serializer};
+use serde::{ser::SerializeSeq, Serialize, Serializer};
 
 macro_rules! write_result {
     ($dst:expr, $($arg:tt)*) => {
@@ -266,17 +266,121 @@ pub(crate) trait ResultsPresenter: Serialize {
     }
 }
 
+/// Single order parameter value, optionally with its estimated error.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct OrderValuePresenter {
+    value: f32,
+    error: Option<f32>,
+}
+
+impl Serialize for OrderValuePresenter {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(error) = self.error {
+            // serialize as an array if `error` is present
+            let mut seq = serializer.serialize_seq(Some(2))?;
+            seq.serialize_element(&(self.value.round_to_4()))?;
+            seq.serialize_element(&(error.round_to_4()))?;
+            seq.end()
+        } else {
+            // serialize as a single float rounded to 4 decimal places
+            serializer.serialize_f32(self.value.round_to_4())
+        }
+    }
+}
+
+impl From<f32> for OrderValuePresenter {
+    fn from(value: f32) -> Self {
+        OrderValuePresenter { value, error: None }
+    }
+}
+
+impl From<[f32; 2]> for OrderValuePresenter {
+    fn from(value: [f32; 2]) -> Self {
+        OrderValuePresenter {
+            value: value[0],
+            error: Some(value[1]),
+        }
+    }
+}
+
+impl OrderValuePresenter {
+    /// Write the order parameter (and its error) in 'table' format.
+    #[inline(always)]
+    fn write_tab(&self, writer: &mut impl Write) -> Result<(), WriteError> {
+        write_result!(writer, " {: ^8.4} ", self.value);
+        Ok(())
+    }
+
+    /// Write empty space into 'table' with the correct length.
+    #[inline(always)]
+    fn write_empty_tab(writer: &mut impl Write, _errors: bool) -> Result<(), WriteError> {
+        write_result!(writer, "          ");
+        Ok(())
+    }
+
+    /// Write the order parameter (and its error) in 'csv' format.
+    #[inline(always)]
+    fn write_csv(&self, writer: &mut impl Write) -> Result<(), WriteError> {
+        write_result!(writer, ",{:.4}", self.value);
+        Ok(())
+    }
+
+    /// Write empty (non-existent) order value into a 'csv' file
+    #[inline(always)]
+    fn write_empty_csv(writer: &mut impl Write, _errors: bool) -> Result<(), WriteError> {
+        write_result!(writer, ",");
+        Ok(())
+    }
+}
+
+/// Write the order parameter (and its error) in 'table' format or handle missing value.
+#[inline(always)]
+fn write_optional_order_value_tab(
+    value: Option<OrderValuePresenter>,
+    writer: &mut impl Write,
+    errors: bool,
+) -> Result<(), WriteError> {
+    match value {
+        Some(val) => val.write_tab(writer),
+        None => OrderValuePresenter::write_empty_tab(writer, errors),
+    }
+}
+
+/// Write the order parameter (and its error) in 'csv' format or handle missing value.
+#[inline(always)]
+fn write_optional_order_value_csv(
+    value: Option<OrderValuePresenter>,
+    writer: &mut impl Write,
+    errors: bool,
+) -> Result<(), WriteError> {
+    match value {
+        Some(val) => val.write_csv(writer),
+        None => OrderValuePresenter::write_empty_csv(writer, errors),
+    }
+}
+
+// Helper trait for rounding a float to 4 decimal places
+trait RoundTo4 {
+    fn round_to_4(self) -> f32;
+}
+
+impl RoundTo4 for f32 {
+    fn round_to_4(self) -> f32 {
+        (self as f32 * 10_000.0).round() / 10_000.0
+    }
+}
+
 /// Order parameters calculated for a single bond.
 #[derive(Debug, Clone, Serialize)]
 struct BondResults {
-    #[serde(serialize_with = "round_serialize_f32")]
-    total: f32,
+    total: OrderValuePresenter,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "round_serialize_option_f32")]
-    upper: Option<f32>,
+    upper: Option<OrderValuePresenter>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "round_serialize_option_f32")]
-    lower: Option<f32>,
+    lower: Option<OrderValuePresenter>,
 }
 
 /// Empty struct used as a marker.
@@ -291,7 +395,7 @@ pub(crate) trait OrderType {
     /// Used to convert an order parameter to its final value depending on the analysis type.
     /// Atomistic order parameters are reported as -S_CD.
     /// Coarse grained order parameters are reported as P2.
-    fn convert(order: f32) -> f32;
+    fn convert(order: f32, error: Option<f32>) -> OrderValuePresenter;
 
     /// String to use as a label for z-axis in the ordermap.
     fn zlabel() -> &'static str;
@@ -299,8 +403,11 @@ pub(crate) trait OrderType {
 
 impl OrderType for AAOrder {
     #[inline(always)]
-    fn convert(order: f32) -> f32 {
-        -order
+    fn convert(order: f32, error: Option<f32>) -> OrderValuePresenter {
+        OrderValuePresenter {
+            value: -order,
+            error: error.map(|x| -x),
+        }
     }
 
     #[inline(always)]
@@ -311,8 +418,11 @@ impl OrderType for AAOrder {
 
 impl OrderType for CGOrder {
     #[inline(always)]
-    fn convert(order: f32) -> f32 {
-        order
+    fn convert(order: f32, error: Option<f32>) -> OrderValuePresenter {
+        OrderValuePresenter {
+            value: order,
+            error: error,
+        }
     }
 
     #[inline(always)]
@@ -325,11 +435,12 @@ impl BondResults {
     #[inline(always)]
     fn convert_from<O: OrderType>(value: &BondType) -> Self {
         let (total, upper, lower) = value.calc_order();
+        let (etotal, eupper, elower) = value.estimate_error();
 
         BondResults {
-            total: O::convert(total),
-            upper: upper.map(|x| O::convert(x)),
-            lower: lower.map(|x| O::convert(x)),
+            total: O::convert(total, etotal),
+            upper: upper.map(|x| O::convert(x, eupper)),
+            lower: lower.map(|x| O::convert(x, elower)),
         }
     }
 }
@@ -337,13 +448,10 @@ impl BondResults {
 impl BondResults {
     /// Write results for a single bond in human readable table format.
     fn write_tab(&self, writer: &mut impl Write, leaflets: bool) -> Result<(), WriteError> {
-        write_result!(writer, " {: ^8.4} ", self.total);
+        self.total.write_tab(writer)?;
         if leaflets {
             for value in [self.upper, self.lower] {
-                match value {
-                    Some(unwrapped) => write_result!(writer, " {: ^8.4} ", unwrapped),
-                    None => write_result!(writer, "          "),
-                }
+                write_optional_order_value_tab(value, writer, false)?;
             }
         }
 
@@ -354,14 +462,11 @@ impl BondResults {
 
     /// Write results for a single bond in csv format.
     fn write_csv(&self, writer: &mut impl Write, leaflets: bool) -> Result<(), WriteError> {
-        write_result!(writer, ",{:.4}", self.total);
+        self.total.write_csv(writer)?;
 
         if leaflets {
             for value in [self.upper, self.lower] {
-                match value {
-                    Some(unwrapped) => write_result!(writer, ",{:.4}", unwrapped),
-                    None => write_result!(writer, ","),
-                }
+                write_optional_order_value_csv(value, writer, false)?;
             }
         }
 
@@ -382,10 +487,10 @@ impl BondResults {
             bond_topology.atom2().atom_name()
         );
 
-        write_result!(writer, "{:<4} {: >8.4} ", number, self.total);
+        write_result!(writer, "{:<4} {: >8.4} ", number, self.total.value);
 
         for order in [self.upper, self.lower].into_iter().flatten() {
-            write_result!(writer, "{: >8.4} ", order);
+            write_result!(writer, "{: >8.4} ", order.value);
         }
 
         Ok(())
@@ -405,23 +510,6 @@ impl Serialize for AtomType {
         );
         serializer.serialize_str(&formatted_string)
     }
-}
-
-/// Assumes that `None` value is ignored.
-#[inline(always)]
-fn round_serialize_option_f32<S>(x: &Option<f32>, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    s.serialize_f32((x.expect(PANIC_MESSAGE) * 10000.0).round() / 10000.0)
-}
-
-#[inline(always)]
-fn round_serialize_f32<S>(x: &f32, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    s.serialize_f32((x * 10000.0).round() / 10000.0)
 }
 
 impl Analysis {
@@ -484,30 +572,49 @@ impl SystemTopology {
 #[derive(Debug, Clone, Serialize, Default)]
 struct AverageOrder<O: OrderType> {
     total: f32,
+    total_error: Option<f32>,
     total_samples: usize,
     upper: f32,
+    upper_error: Option<f32>,
     upper_samples: usize,
     lower: f32,
+    lower_error: Option<f32>,
     lower_samples: usize,
     _type: PhantomData<O>,
+}
+
+impl<O: OrderType> AverageOrder<O> {
+    /// Handles summing of errors.
+    fn add_error(lhs: Option<&mut f32>, rhs: Option<f32>) {
+        match (lhs, rhs) {
+            (Some(x), Some(y)) => *x += y * y, // we add squared error for error averaging
+            (None, None) => (),
+            _ => panic!("FATAL GORDER ERROR | AverageOrder::add_error | Both values must be either None or Some."),
+        }
+    }
 }
 
 impl<O: OrderType> AddAssign<&BondType> for AverageOrder<O> {
     #[inline(always)]
     fn add_assign(&mut self, rhs: &BondType) {
         let (total, upper, lower) = rhs.calc_order();
+        let (etotal, eupper, elower) = rhs.estimate_error();
+
         self.total += total;
+        AverageOrder::<O>::add_error(self.total_error.as_mut(), etotal);
         // we collect the number of bond types, not the number of samples
         // the number of bonds must be the same for each bond type across the system
         self.total_samples += 1;
 
         if let Some(u) = upper {
             self.upper += u;
+            AverageOrder::<O>::add_error(self.upper_error.as_mut(), eupper);
             self.upper_samples += 1;
         }
 
         if let Some(l) = lower {
             self.lower += l;
+            AverageOrder::<O>::add_error(self.lower_error.as_mut(), elower);
             self.lower_samples += 1;
         }
     }
@@ -515,16 +622,31 @@ impl<O: OrderType> AddAssign<&BondType> for AverageOrder<O> {
 
 impl<O: OrderType> From<AverageOrder<O>> for BondResults {
     fn from(value: AverageOrder<O>) -> Self {
-        let total = O::convert(value.total / value.total_samples as f32);
+        let total_error = value
+            .total_error
+            .map(|e| e.sqrt() / value.total_samples as f32);
+        let total = O::convert(value.total / value.total_samples as f32, total_error);
 
         let upper = if value.upper_samples > 0 {
-            Some(O::convert(value.upper / value.upper_samples as f32))
+            let upper_error = value
+                .upper_error
+                .map(|e| e.sqrt() / value.upper_samples as f32);
+            Some(O::convert(
+                value.upper / value.upper_samples as f32,
+                upper_error,
+            ))
         } else {
             None
         };
 
         let lower = if value.lower_samples > 0 {
-            Some(O::convert(value.lower / value.lower_samples as f32))
+            let lower_error = value
+                .lower_error
+                .map(|e| e.sqrt() / value.lower_samples as f32);
+            Some(O::convert(
+                value.lower / value.lower_samples as f32,
+                lower_error,
+            ))
         } else {
             None
         };
@@ -551,7 +673,7 @@ mod tests {
     #[test]
     fn test_serialize_bond_results() {
         let bond_results = BondResults {
-            total: 0.777,
+            total: 0.777.into(),
             upper: None,
             lower: None,
         };
@@ -562,9 +684,9 @@ mod tests {
     #[test]
     fn test_serialize_bond_results_leaflets() {
         let bond_results = BondResults {
-            total: 0.777,
-            upper: Some(0.765),
-            lower: Some(0.789),
+            total: 0.777.into(),
+            upper: Some(0.765.into()),
+            lower: Some(0.789.into()),
         };
         let serialized = serde_yaml::to_string(&bond_results).unwrap();
         assert_eq!(serialized, "total: 0.777\nupper: 0.765\nlower: 0.789\n");

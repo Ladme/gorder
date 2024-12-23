@@ -13,9 +13,9 @@ use serde::Deserialize;
 
 use crate::errors::ConfigError;
 
-use super::Axis;
 use super::LeafletClassification;
 use super::OrderMap;
+use super::{Axis, EstimateError};
 
 /// Type of analysis to perform.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -181,6 +181,12 @@ pub struct Analysis {
     #[serde(alias = "maps", alias = "ordermap", alias = "ordermaps")]
     #[getset(get = "pub", get_mut = "pub(crate)")]
     map: Option<OrderMap>,
+
+    /// Optional specification of calculation error estimation.
+    /// If provided, calculation error will be provided for each bond.
+    #[builder(setter(strip_option), default)]
+    #[getset(get = "pub")]
+    estimate_error: Option<EstimateError>,
 
     /// If true, suppress all output to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
