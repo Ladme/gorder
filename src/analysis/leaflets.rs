@@ -119,10 +119,10 @@ fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, Topolo
 
     if atoms.is_empty() {
         return Err(TopologyError::NoHead(
-                molecule
-                    .get_atoms()
-                    .first()
-                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | leaflets::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
+            molecule
+                .get_atoms()
+                .first()
+                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | leaflets::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
     }
 
     if atoms.len() > 1 {

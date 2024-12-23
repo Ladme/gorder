@@ -48,7 +48,7 @@ impl ResultsPresenter for AAOrderResults {
     #[inline(always)]
     #[allow(refining_impl_trait)]
     #[allow(private_interfaces)]
-    fn molecules(&self) -> impl Iterator<Item = &AAMoleculeResults> {
+    fn molecules(&self) -> impl Iterator<Item=&AAMoleculeResults> {
         self.molecules.values()
     }
 
@@ -106,9 +106,8 @@ impl From<&MoleculeType> for AAMoleculeResults {
             for bond in value.order_bonds().bond_types() {
                 if bond.contains(heavy_atom) {
                     relevant_bonds.push(bond);
+                    average_order += bond;
                 }
-
-                average_order += bond;
             }
 
             let results = AAAtomResults::new(&relevant_bonds, heavy_atom);
@@ -667,7 +666,7 @@ order parameters:
             &SimBox::from([10.0, 10.0, 10.0]),
             None,
         )
-        .unwrap();
+            .unwrap();
         let mut bond2 = BondType::new(
             0,
             &heavy_atom,
@@ -680,7 +679,7 @@ order parameters:
             &SimBox::from([10.0, 10.0, 10.0]),
             None,
         )
-        .unwrap();
+            .unwrap();
 
         *bond1.total_mut() += 0.234;
         *bond1.total_mut() += 0.176;
@@ -733,7 +732,7 @@ order parameters:
             &SimBox::from([10.0, 10.0, 10.0]),
             None,
         )
-        .unwrap();
+            .unwrap();
         let mut bond2 = BondType::new(
             0,
             &heavy_atom,
@@ -746,7 +745,7 @@ order parameters:
             &SimBox::from([10.0, 10.0, 10.0]),
             None,
         )
-        .unwrap();
+            .unwrap();
 
         *bond1.total_mut() += 0.234;
         *bond1.total_mut() += 0.176;

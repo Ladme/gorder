@@ -37,7 +37,7 @@ pub(super) fn analyze_atomistic(
         &mut system,
         "HeavyAtoms",
         analysis.heavy_atoms().as_ref().unwrap_or_else(||
-             panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of heavy atoms should be provided. {}", PANIC_MESSAGE)),
+            panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of heavy atoms should be provided. {}", PANIC_MESSAGE)),
     )?;
 
     log::info!(
@@ -50,9 +50,9 @@ pub(super) fn analyze_atomistic(
 
     super::common::create_group(
         &mut system,
-        "Hydrogens", 
+        "Hydrogens",
         analysis.hydrogens().as_ref().unwrap_or_else(||
-            panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of hydrogens should be provided. {}", PANIC_MESSAGE))
+            panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of hydrogens should be provided. {}", PANIC_MESSAGE)),
     )?;
 
     log::info!(
@@ -127,6 +127,10 @@ pub(super) fn analyze_atomistic(
         analysis.step()
     );
 
+    if let Some(error_estimation) = analysis.estimate_error() {
+        error_estimation.info();
+    }
+
     log::info!(
         "Performing the analysis using {} thread(s)...",
         analysis.n_threads()
@@ -144,6 +148,9 @@ pub(super) fn analyze_atomistic(
         progress_printer,
     )?;
 
+    // print basic info about error estimation
+    result.error_info()?;
+
     // write out the maps
     result.handle_ordermap_directory(analysis.overwrite())?;
     result.prepare_directories()?;
@@ -159,7 +166,6 @@ pub(super) fn analyze_atomistic(
 
 #[cfg(test)]
 mod tests {
-
     use approx::assert_relative_eq;
     use groan_rs::prelude::Dimension;
 

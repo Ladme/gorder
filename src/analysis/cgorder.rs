@@ -40,7 +40,7 @@ pub(super) fn analyze_coarse_grained(
         &mut system,
         "Beads",
         analysis.beads().as_ref().unwrap_or_else(||
-             panic!("FATAL GORDER ERROR | cgorder::analyze_coarse_grained | Selection of order beads should be provided. {}", PANIC_MESSAGE)),
+            panic!("FATAL GORDER ERROR | cgorder::analyze_coarse_grained | Selection of order beads should be provided. {}", PANIC_MESSAGE)),
     )?;
 
     log::info!(
@@ -96,6 +96,10 @@ pub(super) fn analyze_coarse_grained(
         analysis.step()
     );
 
+    if let Some(error_estimation) = analysis.estimate_error() {
+        error_estimation.info();
+    }
+
     log::info!(
         "Performing the analysis using {} thread(s)...",
         analysis.n_threads()
@@ -112,6 +116,9 @@ pub(super) fn analyze_coarse_grained(
         Some(analysis.step()),
         progress_printer,
     )?;
+
+    // print basic info about error estimation
+    result.error_info()?;
 
     // write out the maps
     result.handle_ordermap_directory(analysis.overwrite())?;

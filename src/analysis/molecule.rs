@@ -170,7 +170,7 @@ impl MoleculeTopology {
 
             if !converted_bonds.insert(bond) {
                 panic!(
-                    "FATAL GORDER ERROR | MoleculeTopology::new | Bond between atoms '{}' and '{}' defined multiple times. {}", 
+                    "FATAL GORDER ERROR | MoleculeTopology::new | Bond between atoms '{}' and '{}' defined multiple times. {}",
                     index1, index2, PANIC_MESSAGE
                 );
             }
@@ -301,7 +301,7 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
         for index in [index1, index2] {
             if index < min_index {
                 panic!(
-                    "FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}", 
+                    "FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}",
                     index1, min_index, PANIC_MESSAGE
                 );
             }
@@ -309,7 +309,7 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
 
         if index1 == index2 {
             panic!(
-                "FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}", 
+                "FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}",
                 index1, PANIC_MESSAGE
             );
         }
@@ -432,7 +432,10 @@ impl BondType {
         };
 
         let (leaflet_order, leaflet_map) = if classify_leaflets {
-            (Some(Order::default()), optional_map.clone())
+            (
+                Some(Order::new(0.0, 0, error_block_size.is_some())),
+                optional_map.clone(),
+            )
         } else {
             (None, None)
         };
@@ -440,7 +443,7 @@ impl BondType {
         Ok(Self {
             bond_topology,
             bonds: vec![real_bond],
-            total: Order::default(),
+            total: Order::new(0.0, 0, error_block_size.is_some()),
             upper: leaflet_order.clone(),
             lower: leaflet_order,
             min_samples,
@@ -543,7 +546,7 @@ impl BondType {
             if let Some(classifier) = leaflet_classification {
                 match classifier
                     .get_assigned_leaflet(molecule_index)
-                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | BondType::analyze_frame | Molecule with internal gorder index '{}' is not assigned into a leaflet.", molecule_index)) 
+                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | BondType::analyze_frame | Molecule with internal gorder index '{}' is not assigned into a leaflet.", molecule_index))
                 {
                     Leaflet::Upper => {
                         *self.upper.as_mut().expect(PANIC_MESSAGE) += sch;
@@ -749,7 +752,7 @@ impl fmt::Display for AtomType {
 }
 
 /// Structure for calculating order parameters from the simulation.
-#[derive(Debug, Clone, Default, CopyGetters)]
+#[derive(Debug, Clone, CopyGetters, Getters)]
 pub(crate) struct Order {
     /// Cumulative order parameter calculated over the analysis.
     #[getset(get_copy = "pub(super)")]
@@ -757,18 +760,24 @@ pub(crate) struct Order {
     /// Number of samples collected for this order parameter.
     #[getset(get_copy = "pub(super)")]
     n_samples: usize,
-    /// Data for timewise analysis.
+    /// Data for time-wise analysis.
+    #[getset(get = "pub(super)")]
     timewise: Option<TimeWiseData>,
 }
 
 impl Order {
-    #[allow(unused)]
     #[inline(always)]
-    pub(super) fn new(order: f32, n_samples: usize) -> Order {
+    pub(super) fn new(order: f32, n_samples: usize, timewise: bool) -> Order {
+        let timewise = if timewise {
+            Some(TimeWiseData::default())
+        } else {
+            None
+        };
+
         Order {
             order: OrderValue::from(order),
             n_samples,
-            timewise: None,
+            timewise,
         }
     }
 
