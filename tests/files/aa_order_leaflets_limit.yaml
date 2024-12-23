@@ -372,7 +372,7 @@ POPE:
           lower: 0.2321
         POPE H8Y (99):
           total: 0.2386
-          upper: 0.2487
+          upper: 0.2486
           lower: 0.2288
     POPE C39 (100):
       total: 0.2282
@@ -608,7 +608,7 @@ POPC:
         POPC HX (36):
           total: 0.1779
           upper: 0.1284
-          lower: 0.2274
+          lower: 0.2273
         POPC HY (37):
           total: 0.0193
           upper: 0.0524

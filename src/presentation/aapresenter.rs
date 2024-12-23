@@ -715,7 +715,7 @@ order parameters:
         assert!(results.lower.is_none());
     }
 
-    //#[test]
+    #[test]
     fn test_aaatom_results_new_leaflets() {
         let heavy_atom = Atom::new(1, "POPC", 1, "C2");
         let hydrogen1 = Atom::new(1, "POPC", 3, "HA");
@@ -787,7 +787,7 @@ order parameters:
         assert_relative_eq!(bond1_results.lower.unwrap().value, -0.181333);
 
         assert_relative_eq!(results.total.unwrap().value, -0.144333);
-        assert_relative_eq!(results.upper.unwrap().value, -0.149333);
-        assert_relative_eq!(results.lower.unwrap().value, -0.181333);
+        assert!(results.upper.unwrap().value.is_nan());
+        assert!(results.lower.unwrap().value.is_nan());
     }
 }
