@@ -30,7 +30,7 @@ POPE:
         POPE H11B (9):
           total: -0.0582
           upper: -0.0952
-          lower: -0.0217
+          lower: -0.0216
     POPE C1 (15):
       total: 0.2133
       upper: 0.238
@@ -941,7 +941,7 @@ POPC:
       bonds:
         POPC H11X (116):
           total: 0.2034
-          upper: 0.179
+          upper: 0.1789
           lower: 0.2279
         POPC H11Y (117):
           total: 0.2023
@@ -1207,12 +1207,12 @@ POPG:
           lower: 0.0977
     POPG C210 (57):
       total: 0.0331
-      upper: 0.0374
+      upper: 0.0373
       lower: 0.0283
       bonds:
         POPG H101 (58):
           total: 0.0331
-          upper: 0.0374
+          upper: 0.0373
           lower: 0.0283
     POPG C211 (59):
       total: 0.1053

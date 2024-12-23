@@ -286,7 +286,7 @@ impl Serialize for OrderValuePresenter {
             seq.end()
         } else {
             // serialize as a single float rounded to 4 decimal places
-            serializer.serialize_f32(self.value.round_to_4())
+            serializer.serialize_f64(self.value.round_to_4())
         }
     }
 }
@@ -364,12 +364,12 @@ fn write_optional_order_value_csv(
 
 // Helper trait for rounding a float to 4 decimal places
 trait RoundTo4 {
-    fn round_to_4(self) -> f32;
+    fn round_to_4(self) -> f64;
 }
 
 impl RoundTo4 for f32 {
-    fn round_to_4(self) -> f32 {
-        (self as f32 * 10_000.0).round() / 10_000.0
+    fn round_to_4(self) -> f64 {
+        (self as f64 * 10_000.0).round() / 10_000.0
     }
 }
 

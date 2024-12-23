@@ -18,7 +18,7 @@ $ cargo install gorder
 
 ```yaml
 structure: system.tpr
-trajectory: md.xtc
+trajectory: md.xtc     # use your MD trajectory directly - no PBC handling or molecule fixing needed
 analysis_type: !AAOrder
     heavy_atoms: "@membrane and element name carbon"
     hydrogens: "@membrane and element name hydrogen"
@@ -105,4 +105,5 @@ The command line tool and the crate are both released under the MIT License.
 
 ## Limitations
 - `gorder` only works for simulations with orthogonal simulation boxes.
+- `gorder` only supports TPR files generated with Gromacs 5.1 or newer.
 - `gorder` is developed on Linux for Linux. While it should work on other operating systems, it is not guaranteed.
