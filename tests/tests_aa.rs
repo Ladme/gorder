@@ -383,8 +383,8 @@ fn test_aa_order_leaflets_yaml_different_membrane_normals() {
         "tests/files/pcpepg_switched_xz.xtc",
         "tests/files/pcpepg_switched_yz.xtc",
     ]
-    .into_iter()
-    .zip([Axis::Z, Axis::X, Axis::Y].into_iter())
+        .into_iter()
+        .zip([Axis::Z, Axis::X, Axis::Y].into_iter())
     {
         for method in [
             LeafletClassification::global("@membrane", "name P"),
@@ -1161,16 +1161,16 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
         "tests/files/pcpepg_switched_xz.xtc",
         "tests/files/pcpepg_switched_yz.xtc",
     ]
-    .into_iter()
-    .zip(
-        [Axis::X, Axis::Y].into_iter().zip(
-            [
-                "tests/files/pcpepg_switched_xz.tpr",
-                "tests/files/pcpepg_switched_yz.tpr",
-            ]
-            .into_iter(),
-        ),
-    ) {
+        .into_iter()
+        .zip(
+            [Axis::X, Axis::Y].into_iter().zip(
+                [
+                    "tests/files/pcpepg_switched_xz.tpr",
+                    "tests/files/pcpepg_switched_yz.tpr",
+                ]
+                    .into_iter(),
+            ),
+        ) {
         for method in [
             LeafletClassification::global("@membrane", "name P"),
             LeafletClassification::local("@membrane", "name P", 2.0),

@@ -3,14 +3,6 @@
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
-use std::{
-    fs::File,
-    io::{BufWriter, Write},
-    marker::PhantomData,
-    ops::AddAssign,
-    path::{Path, PathBuf},
-};
-
 use crate::{
     analysis::{
         molecule::{AtomType, BondTopology, BondType, MoleculeType},
@@ -20,7 +12,16 @@ use crate::{
     input::Analysis,
     PANIC_MESSAGE,
 };
-use serde::{ser::SerializeSeq, Serialize, Serializer};
+use serde::ser::SerializeMap;
+use serde::{Serialize, Serializer};
+use std::fmt::Debug;
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    marker::PhantomData,
+    ops::AddAssign,
+    path::{Path, PathBuf},
+};
 
 macro_rules! write_result {
     ($dst:expr, $($arg:tt)*) => {
@@ -65,7 +66,7 @@ pub(crate) trait MoleculeResults: Serialize {
 /// General for both AAOrder and CGOrder.
 pub(crate) trait ResultsPresenter: Serialize {
     /// Get iterator over the results associated with the individual molecules.
-    fn molecules(&self) -> impl Iterator<Item = &impl MoleculeResults>;
+    fn molecules(&self) -> impl Iterator<Item=&impl MoleculeResults>;
 
     /// Write the header for a csv file.
     fn write_csv_header(
@@ -226,7 +227,7 @@ pub(crate) trait ResultsPresenter: Serialize {
             "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.",
             crate::GORDER_VERSION, input_structure, input_trajectory
         )
-        .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))
+            .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))
     }
 
     /// Create and open file for buffered writing.
@@ -279,11 +280,11 @@ impl Serialize for OrderValuePresenter {
         S: Serializer,
     {
         if let Some(error) = self.error {
-            // serialize as an array if `error` is present
-            let mut seq = serializer.serialize_seq(Some(2))?;
-            seq.serialize_element(&(self.value.round_to_4()))?;
-            seq.serialize_element(&(error.round_to_4()))?;
-            seq.end()
+            // serialize as a dictionary if `error` is present
+            let mut map = serializer.serialize_map(Some(2))?;
+            map.serialize_entry("mean", &self.value.round_to_4())?;
+            map.serialize_entry("error", &error.round_to_4())?;
+            map.end()
         } else {
             // serialize as a single float rounded to 4 decimal places
             serializer.serialize_f64(self.value.round_to_4())
@@ -384,14 +385,14 @@ struct BondResults {
 }
 
 /// Empty struct used as a marker.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct AAOrder {}
 /// Empty struct used as a marker.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct CGOrder {}
 
 /// Trait implemented only by `AAOrder` and `CGOrder` structs.
-pub(crate) trait OrderType {
+pub(crate) trait OrderType: Debug {
     /// Used to convert an order parameter to its final value depending on the analysis type.
     /// Atomistic order parameters are reported as -S_CD.
     /// Coarse grained order parameters are reported as P2.
@@ -406,7 +407,7 @@ impl OrderType for AAOrder {
     fn convert(order: f32, error: Option<f32>) -> OrderValuePresenter {
         OrderValuePresenter {
             value: -order,
-            error: error.map(|x| -x),
+            error,
         }
     }
 
@@ -421,7 +422,7 @@ impl OrderType for CGOrder {
     fn convert(order: f32, error: Option<f32>) -> OrderValuePresenter {
         OrderValuePresenter {
             value: order,
-            error: error,
+            error,
         }
     }
 
@@ -572,26 +573,15 @@ impl SystemTopology {
 #[derive(Debug, Clone, Serialize, Default)]
 struct AverageOrder<O: OrderType> {
     total: f32,
-    total_error: Option<f32>,
+    total_error: f32,
     total_samples: usize,
     upper: f32,
-    upper_error: Option<f32>,
+    upper_error: f32,
     upper_samples: usize,
     lower: f32,
-    lower_error: Option<f32>,
+    lower_error: f32,
     lower_samples: usize,
     _type: PhantomData<O>,
-}
-
-impl<O: OrderType> AverageOrder<O> {
-    /// Handles summing of errors.
-    fn add_error(lhs: Option<&mut f32>, rhs: Option<f32>) {
-        match (lhs, rhs) {
-            (Some(x), Some(y)) => *x += y * y, // we add squared error for error averaging
-            (None, None) => (),
-            _ => panic!("FATAL GORDER ERROR | AverageOrder::add_error | Both values must be either None or Some."),
-        }
-    }
 }
 
 impl<O: OrderType> AddAssign<&BondType> for AverageOrder<O> {
@@ -601,20 +591,23 @@ impl<O: OrderType> AddAssign<&BondType> for AverageOrder<O> {
         let (etotal, eupper, elower) = rhs.estimate_error();
 
         self.total += total;
-        AverageOrder::<O>::add_error(self.total_error.as_mut(), etotal);
+        let etotal_u = etotal.unwrap_or(f32::NAN);
+        self.total_error += etotal_u * etotal_u;
         // we collect the number of bond types, not the number of samples
         // the number of bonds must be the same for each bond type across the system
         self.total_samples += 1;
 
         if let Some(u) = upper {
             self.upper += u;
-            AverageOrder::<O>::add_error(self.upper_error.as_mut(), eupper);
+            let eupper_u = eupper.unwrap_or(f32::NAN);
+            self.upper_error += eupper_u * eupper_u;
             self.upper_samples += 1;
         }
 
         if let Some(l) = lower {
             self.lower += l;
-            AverageOrder::<O>::add_error(self.lower_error.as_mut(), elower);
+            let elower_u = elower.unwrap_or(f32::NAN);
+            self.lower_error += elower_u * elower_u;
             self.lower_samples += 1;
         }
     }
@@ -622,15 +615,19 @@ impl<O: OrderType> AddAssign<&BondType> for AverageOrder<O> {
 
 impl<O: OrderType> From<AverageOrder<O>> for BondResults {
     fn from(value: AverageOrder<O>) -> Self {
-        let total_error = value
-            .total_error
-            .map(|e| e.sqrt() / value.total_samples as f32);
+        fn error2option(val: f32, n_samples: usize) -> Option<f32> {
+            if val.is_nan() {
+                None
+            } else {
+                Some(val.sqrt() / n_samples as f32)
+            }
+        }
+
+        let total_error = error2option(value.total_error, value.total_samples);
         let total = O::convert(value.total / value.total_samples as f32, total_error);
 
         let upper = if value.upper_samples > 0 {
-            let upper_error = value
-                .upper_error
-                .map(|e| e.sqrt() / value.upper_samples as f32);
+            let upper_error = error2option(value.upper_error, value.upper_samples);
             Some(O::convert(
                 value.upper / value.upper_samples as f32,
                 upper_error,
@@ -640,9 +637,7 @@ impl<O: OrderType> From<AverageOrder<O>> for BondResults {
         };
 
         let lower = if value.lower_samples > 0 {
-            let lower_error = value
-                .lower_error
-                .map(|e| e.sqrt() / value.lower_samples as f32);
+            let lower_error = error2option(value.lower_error, value.lower_samples);
             Some(O::convert(
                 value.lower / value.lower_samples as f32,
                 lower_error,

@@ -74,7 +74,7 @@ impl Map {
             (binx, biny),
             usize::clone as fn(&usize) -> usize,
         ).unwrap_or_else(|e|
-             panic!("FATAL GORDER ERROR | Map::new | Could not create gridmap for samples. Unexpected error: {}. {}", e, PANIC_MESSAGE));
+            panic!("FATAL GORDER ERROR | Map::new | Could not create gridmap for samples. Unexpected error: {}. {}", e, PANIC_MESSAGE));
 
         Ok(Map {
             params,
@@ -253,10 +253,8 @@ mod tests {
 
     #[test]
     fn merge_order() {
-        let order1 = Order::new(0.78, 31);
-
-        let order2 = Order::new(0.43, 14);
-
+        let order1 = Order::new(0.78, 31, false);
+        let order2 = Order::new(0.43, 14, false);
         let merged = order1 + order2;
 
         assert_relative_eq!(f32::from(merged.order()), 1.21);

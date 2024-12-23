@@ -15,7 +15,7 @@ use serde::{
 #[derive(Debug, Clone, Getters, CopyGetters)]
 pub struct EstimateError {
     /// Number of analyzed trajectory frames per one block.
-    /// The default value is 500.
+    /// The default value is 100.
     #[getset(get_copy = "pub")]
     block_size: usize,
 
@@ -98,7 +98,7 @@ impl<'de> Deserialize<'de> for EstimateError {
 
 #[inline(always)]
 fn default_block_size() -> usize {
-    500
+    100
 }
 
 impl EstimateError {
@@ -106,6 +106,20 @@ impl EstimateError {
         Self {
             block_size,
             output_convergence: output.map(|s| s.to_string()),
+        }
+    }
+
+    /// Log basic info about the error estimation.
+    pub(crate) fn info(&self) {
+        log::info!(
+            "Will estimate error using blocks of {} trajectory frames.",
+            self.block_size()
+        );
+        if let Some(output) = &self.output_convergence {
+            log::info!(
+                "Will output convergence analysis into file(s) with a pattern '{}'.",
+                output
+            );
         }
     }
 }
