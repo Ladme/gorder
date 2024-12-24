@@ -285,6 +285,13 @@ impl Analysis {
             map.validate().map_err(ConfigError::InvalidOrderMap)?;
         }
 
+        // check the validity of error estimation
+        if let Some(ref error) = self.estimate_error {
+            error
+                .validate()
+                .map_err(ConfigError::InvalidErrorEstimation)?;
+        }
+
         Ok(())
     }
 
@@ -404,12 +411,12 @@ impl AnalysisBuilder {
 mod tests_yaml {
     use approx::assert_relative_eq;
 
+    use super::*;
+    use crate::errors::ErrorEstimationError;
     use crate::{
         errors::OrderMapConfigError,
         input::{ordermap::Plane, GridSpan},
     };
-
-    use super::*;
 
     #[test]
     fn analysis_yaml_pass_basic() {
@@ -480,6 +487,10 @@ mod tests_yaml {
         assert_eq!(map.bin_size_x(), 0.05);
         assert_eq!(map.bin_size_y(), 0.02);
         assert_eq!(map.plane().unwrap(), Plane::XY);
+
+        let ee = analysis.estimate_error().as_ref().unwrap();
+        assert_eq!(ee.n_blocks(), 10);
+        assert_eq!(ee.output_convergence().unwrap(), "convergence.xvg");
     }
 
     #[test]
@@ -596,6 +607,17 @@ mod tests_yaml {
             Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
+
+    #[test]
+    fn analysis_yaml_fail_estimate_error_invalid_n_blocks() {
+        match Analysis::from_file("tests/files/inputs/estimate_error_invalid_n_blocks.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidErrorEstimation(ErrorEstimationError::NotEnoughBlocks(x))) => {
+                assert_eq!(x, 1);
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -683,6 +705,7 @@ mod tests_builder {
                     .build()
                     .unwrap(),
             )
+            .estimate_error(EstimateError::new(Some(10), Some("convergence.xvg")).unwrap())
             .build()
             .unwrap();
 
@@ -719,6 +742,11 @@ mod tests_builder {
         assert_eq!(map.bin_size_x(), 0.05);
         assert_eq!(map.bin_size_y(), 0.02);
         assert_eq!(map.plane().unwrap(), Plane::XY);
+
+        let ee = analysis.estimate_error().as_ref().unwrap();
+
+        assert_eq!(ee.n_blocks(), 10);
+        assert_eq!(ee.output_convergence().unwrap(), "convergence.xvg");
     }
 
     #[test]

@@ -102,8 +102,8 @@ POPE:
 POPG:
   average order:
     total: 0.3059
-    upper: .nan
-    lower: .nan
+    upper: 0.3085
+    lower: 0.3033
   order parameters:
     POPG GL0 (0) - POPG PO4 (1):
       total: -0.0149

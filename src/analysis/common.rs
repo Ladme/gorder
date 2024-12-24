@@ -116,7 +116,7 @@ pub(super) fn classify_molecules(
                 leaflet_classification,
                 ordermap_params,
                 min_samples,
-                estimate_error.map(|e| e.block_size()),
+                estimate_error.map(|e| e.n_blocks()),
             )?);
         }
     }
@@ -339,7 +339,7 @@ fn create_new_molecule_type(
     leaflet_classification: Option<&LeafletClassification>,
     ordermap_params: Option<&OrderMap>,
     min_samples: usize,
-    error_block_size: Option<usize>,
+    error_n_blocks: Option<usize>,
 ) -> Result<MoleculeType, TopologyError> {
     // create a name of the molecule
     let name = residues.join("-");
@@ -370,7 +370,7 @@ fn create_new_molecule_type(
         classifier,
         ordermap_params,
         min_samples,
-        error_block_size,
+        error_n_blocks,
     )
 }
 

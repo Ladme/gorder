@@ -376,7 +376,7 @@ POPE:
           lower: 0.2231
     POPE C39 (100):
       total: 0.2395
-      upper: 0.2791
+      upper: 0.279
       lower: 0.2005
       bonds:
         POPE H9X (101):

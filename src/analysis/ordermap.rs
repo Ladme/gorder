@@ -14,7 +14,7 @@ use groan_rs::{
 
 use crate::{errors::OrderMapConfigError, input::GridSpan, input::OrderMap, PANIC_MESSAGE};
 
-use super::orderval::OrderValue;
+use super::order::OrderValue;
 
 /// Order parameter map. Stores order parameters calculated for a specific bond/atom
 /// and for each tile of a grid covering the membrane.
@@ -174,7 +174,7 @@ where
 mod tests {
     use approx::assert_relative_eq;
 
-    use crate::{analysis::molecule::Order, input::ordermap::Plane};
+    use crate::{analysis::order::Order, input::ordermap::Plane};
 
     use super::*;
 
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn merge_order() {
-        let order1 = Order::new(0.78, 31, false);
+        let order1: Order<super::super::timewise::AddExtend> = Order::new(0.78, 31, false);
         let order2 = Order::new(0.43, 14, false);
         let merged = order1 + order2;
 

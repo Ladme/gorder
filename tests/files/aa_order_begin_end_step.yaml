@@ -935,7 +935,7 @@ POPC:
           upper: 0.2156
           lower: 0.2076
     POPC C311 (115):
-      total: 0.2029
+      total: 0.2028
       upper: 0.1873
       lower: 0.2184
       bonds:

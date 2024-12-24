@@ -166,6 +166,9 @@ pub enum ConfigError {
 
     #[error("{}", .0)]
     InvalidOrderMap(OrderMapConfigError),
+
+    #[error("{}", .0)]
+    InvalidErrorEstimation(ErrorEstimationError),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.
@@ -202,12 +205,12 @@ pub enum OrderMapConfigError {
 /// Errors that can occur when estimating the error of the calculation.
 #[derive(Error, Debug)]
 pub enum ErrorEstimationError {
-    #[error("{} collected '{}' block(s) for error estimation; at least 6 blocks are needed ({} decrease the `block_size` property to {})",
-    "error:".red().bold(), .0.to_string().yellow(), "hint:".purple().bold(), .1.to_string().bright_purple()
+    #[error("{} number of blocks for error estimation must be at least 2, not '{}'",
+    "error:".red().bold(), .0.to_string().yellow(),
     )]
-    NotEnoughBlocks(usize, usize),
+    NotEnoughBlocks(usize),
 
-    #[error("{} read {} trajectory frame(s) which is not enough to estimate an error ({} collect more data)",
-    "error:".red().bold(), .0.to_string().yellow(), "hint:".purple().bold())]
-    NotEnoughData(usize),
+    #[error("{} read '{}' trajectory frame(s) which is fewer than the number of blocks ('{}')",
+    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
+    NotEnoughData(usize, usize),
 }

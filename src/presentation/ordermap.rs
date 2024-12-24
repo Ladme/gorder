@@ -343,8 +343,7 @@ mod tests {
     use tempfile::TempDir;
 
     use crate::{
-        analysis::orderval::OrderValue, input::ordermap::Plane, input::OrderMap,
-        presentation::CGOrder,
+        analysis::order::OrderValue, input::ordermap::Plane, input::OrderMap, presentation::CGOrder,
     };
 
     use super::*;

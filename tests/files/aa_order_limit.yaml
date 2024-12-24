@@ -550,7 +550,7 @@ POPC:
           total: 0.0359
 POPG:
   average order:
-    total: .nan
+    total: 0.1561
   order parameters:
     POPG C13 (0):
       total: .nan
@@ -706,7 +706,7 @@ POPG:
         POPG H17S (79):
           total: .nan
     POPG C218 (80):
-      total: .nan
+      total: 0.0312
       bonds:
         POPG H18R (81):
           total: .nan
@@ -806,7 +806,7 @@ POPG:
         POPG H15Y (122):
           total: .nan
     POPG C316 (123):
-      total: .nan
+      total: 0.0336
       bonds:
         POPG H16X (124):
           total: .nan

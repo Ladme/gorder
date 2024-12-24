@@ -12,9 +12,9 @@ mod cgorder;
 mod common;
 mod leaflets;
 pub(crate) mod molecule;
+pub(crate) mod order;
 pub(crate) mod ordermap;
-pub(crate) mod orderval;
-mod timewise;
+pub(crate) mod timewise;
 pub(crate) mod topology;
 
 impl Analysis {

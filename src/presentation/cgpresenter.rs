@@ -8,12 +8,8 @@ use std::io::Write;
 use indexmap::IndexMap;
 use serde::{Serialize, Serializer};
 
-use crate::{analysis::molecule::BondTopology, errors::WriteError};
-
-use super::{
-    AverageOrder, BondResults, CGOrder, MoleculeResults, MoleculeType, ResultsPresenter,
-    SystemTopology,
-};
+use super::{AverageOrder, BondResults, CGOrder, MoleculeResults, MoleculeType, ResultsPresenter, SystemTopology};
+use crate::{analysis::molecule::BondTopology, errors::WriteError, PANIC_MESSAGE};
 
 /// Results of the coarse-grained order parameters calculation.
 #[derive(Debug, Clone, Serialize)]
@@ -104,10 +100,20 @@ impl From<&MoleculeType> for CGMoleculeResults {
             order.insert(bond.bond_topology().clone(), results);
         }
 
+        let bond =  value.order_bonds().bond_types().first().unwrap_or_else(|| {
+            panic!(
+                "FATAL GORDER ERROR | CGMoleculeResults::from | Molecule has no order bonds. {}",
+                PANIC_MESSAGE
+            )
+        });
+
+        let min_samples = bond.min_samples();
+        let n_blocks = bond.error_n_blocks();
+
         CGMoleculeResults {
             molecule: value.name().to_owned(),
             order,
-            average_order: average_order.into(),
+            average_order: average_order.convert2result(min_samples, n_blocks),
         }
     }
 }

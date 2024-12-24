@@ -48,7 +48,7 @@ impl ResultsPresenter for AAOrderResults {
     #[inline(always)]
     #[allow(refining_impl_trait)]
     #[allow(private_interfaces)]
-    fn molecules(&self) -> impl Iterator<Item=&AAMoleculeResults> {
+    fn molecules(&self) -> impl Iterator<Item = &AAMoleculeResults> {
         self.molecules.values()
     }
 
@@ -118,10 +118,20 @@ impl From<&MoleculeType> for AAMoleculeResults {
             }
         }
 
+        let bond =  value.order_bonds().bond_types().first().unwrap_or_else(|| {
+            panic!(
+                "FATAL GORDER ERROR | AAMoleculeResults::from | Molecule has no order bonds. {}",
+                PANIC_MESSAGE
+            )
+        });
+
+        let min_samples = bond.min_samples();
+        let n_blocks = bond.error_n_blocks();
+
         AAMoleculeResults {
             molecule: value.name().to_owned(),
             order,
-            average_order: average_order.into(),
+            average_order: average_order.convert2result(min_samples, n_blocks),
         }
     }
 }
@@ -270,7 +280,7 @@ impl AAAtomResults {
 
             let hydrogen = bond.get_other_atom(heavy_atom).unwrap_or_else(|| {
                 panic!(
-                    "FATAL GORDER ERROR | AAAtomResults::new | Heavy atom not part of bond. {}",
+                    "FATAL GORDER ERROR | AAAtomResults::new | Heavy atom not part of the bond. {}",
                     PANIC_MESSAGE
                 )
             });
@@ -285,7 +295,17 @@ impl AAAtomResults {
                 bonds: results,
             }
         } else {
-            let average_results: BondResults = average_results.into();
+            let bond =  bonds.first().unwrap_or_else(|| {
+                panic!(
+                    "FATAL GORDER ERROR | AAAtomResults::from | Atom has no order bonds but this should have been handled before. {}",
+                    PANIC_MESSAGE
+                )
+            });
+
+            let min_samples = bond.min_samples();
+            let n_blocks = bond.error_n_blocks();
+
+            let average_results = average_results.convert2result(min_samples, n_blocks);
 
             AAAtomResults {
                 total: Some(average_results.total),
@@ -302,7 +322,7 @@ impl AAAtomResults {
         self.bonds.is_empty()
     }
 
-    /// Write a fragment of a human readable table file containing order parameters calculated for a single heavy atom type.
+    /// Write a fragment of a human-readable table file containing order parameters calculated for a single heavy atom type.
     fn write_tab(
         &self,
         writer: &mut impl Write,
@@ -666,7 +686,7 @@ order parameters:
             &SimBox::from([10.0, 10.0, 10.0]),
             None,
         )
-            .unwrap();
+        .unwrap();
         let mut bond2 = BondType::new(
             0,
             &heavy_atom,
@@ -679,7 +699,7 @@ order parameters:
             &SimBox::from([10.0, 10.0, 10.0]),
             None,
         )
-            .unwrap();
+        .unwrap();
 
         *bond1.total_mut() += 0.234;
         *bond1.total_mut() += 0.176;
@@ -732,7 +752,7 @@ order parameters:
             &SimBox::from([10.0, 10.0, 10.0]),
             None,
         )
-            .unwrap();
+        .unwrap();
         let mut bond2 = BondType::new(
             0,
             &heavy_atom,
@@ -745,7 +765,7 @@ order parameters:
             &SimBox::from([10.0, 10.0, 10.0]),
             None,
         )
-            .unwrap();
+        .unwrap();
 
         *bond1.total_mut() += 0.234;
         *bond1.total_mut() += 0.176;
@@ -786,7 +806,7 @@ order parameters:
         assert_relative_eq!(bond1_results.lower.unwrap().value, -0.181333);
 
         assert_relative_eq!(results.total.unwrap().value, -0.144333);
-        assert!(results.upper.unwrap().value.is_nan());
-        assert!(results.lower.unwrap().value.is_nan());
+        assert_relative_eq!(results.upper.unwrap().value, -0.149333);
+        assert_relative_eq!(results.lower.unwrap().value, -0.181333);
     }
 }

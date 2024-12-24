@@ -3,6 +3,8 @@
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
+use crate::analysis::order::Order;
+use crate::analysis::timewise::AddSum;
 use crate::{
     analysis::{
         molecule::{AtomType, BondTopology, BondType, MoleculeType},
@@ -15,6 +17,7 @@ use crate::{
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use std::fmt::Debug;
+use std::num::NonZeroUsize;
 use std::{
     fs::File,
     io::{BufWriter, Write},
@@ -66,7 +69,7 @@ pub(crate) trait MoleculeResults: Serialize {
 /// General for both AAOrder and CGOrder.
 pub(crate) trait ResultsPresenter: Serialize {
     /// Get iterator over the results associated with the individual molecules.
-    fn molecules(&self) -> impl Iterator<Item=&impl MoleculeResults>;
+    fn molecules(&self) -> impl Iterator<Item = &impl MoleculeResults>;
 
     /// Write the header for a csv file.
     fn write_csv_header(
@@ -570,86 +573,77 @@ impl SystemTopology {
 }
 
 /// Structure for collecting order parameters to calculate average order.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone)]
 struct AverageOrder<O: OrderType> {
-    total: f32,
-    total_error: f32,
-    total_samples: usize,
-    upper: f32,
-    upper_error: f32,
-    upper_samples: usize,
-    lower: f32,
-    lower_error: f32,
-    lower_samples: usize,
-    _type: PhantomData<O>,
+    total: Order<AddSum>,
+    upper: Order<AddSum>,
+    lower: Order<AddSum>,
+    order_type: PhantomData<O>,
+}
+
+impl<O: OrderType> Default for AverageOrder<O> {
+    fn default() -> Self {
+        Self {
+            total: Order::new(0.0, 0, true),
+            upper: Order::new(0.0, 0, true),
+            lower: Order::new(0.0, 0, true),
+            order_type: PhantomData,
+        }
+    }
 }
 
 impl<O: OrderType> AddAssign<&BondType> for AverageOrder<O> {
     #[inline(always)]
     fn add_assign(&mut self, rhs: &BondType) {
-        let (total, upper, lower) = rhs.calc_order();
-        let (etotal, eupper, elower) = rhs.estimate_error();
-
-        self.total += total;
-        let etotal_u = etotal.unwrap_or(f32::NAN);
-        self.total_error += etotal_u * etotal_u;
-        // we collect the number of bond types, not the number of samples
-        // the number of bonds must be the same for each bond type across the system
-        self.total_samples += 1;
-
-        if let Some(u) = upper {
-            self.upper += u;
-            let eupper_u = eupper.unwrap_or(f32::NAN);
-            self.upper_error += eupper_u * eupper_u;
-            self.upper_samples += 1;
+        self.total += rhs.total().clone();
+        if let Some(upper) = rhs.upper().clone() {
+            self.upper += upper;
         }
-
-        if let Some(l) = lower {
-            self.lower += l;
-            let elower_u = elower.unwrap_or(f32::NAN);
-            self.lower_error += elower_u * elower_u;
-            self.lower_samples += 1;
+        if let Some(lower) = rhs.lower().clone() {
+            self.lower += lower;
         }
     }
 }
 
-impl<O: OrderType> From<AverageOrder<O>> for BondResults {
-    fn from(value: AverageOrder<O>) -> Self {
-        fn error2option(val: f32, n_samples: usize) -> Option<f32> {
-            if val.is_nan() {
-                None
-            } else {
-                Some(val.sqrt() / n_samples as f32)
-            }
-        }
+impl<O: OrderType> AverageOrder<O> {
+    fn convert2result(self, min_samples: usize, n_blocks: Option<usize>) -> BondResults {
+        let checked_min_samples = NonZeroUsize::new(min_samples).unwrap_or_else(|| {
+            panic!(
+                "FATAL GORDER ERROR | AverageOrder::convert2result | 'min_samples' is ZERO. {}",
+                PANIC_MESSAGE
+            )
+        });
 
-        let total_error = error2option(value.total_error, value.total_samples);
-        let total = O::convert(value.total / value.total_samples as f32, total_error);
+        let calc_and_convert =
+            |order: &Order<AddSum>, error| O::convert(order.calc_order(checked_min_samples), error);
 
-        let upper = if value.upper_samples > 0 {
-            let upper_error = error2option(value.upper_error, value.upper_samples);
-            Some(O::convert(
-                value.upper / value.upper_samples as f32,
-                upper_error,
+        let total_result = calc_and_convert(
+            &self.total,
+            n_blocks.map(|n| self.total.estimate_error(n)).flatten(),
+        );
+
+        let upper_result = if !self.upper.is_empty() {
+            Some(calc_and_convert(
+                &self.upper,
+                n_blocks.map(|n| self.upper.estimate_error(n)).flatten(),
             ))
         } else {
             None
         };
 
-        let lower = if value.lower_samples > 0 {
-            let lower_error = error2option(value.lower_error, value.lower_samples);
-            Some(O::convert(
-                value.lower / value.lower_samples as f32,
-                lower_error,
+        let lower_result = if !self.lower.is_empty() {
+            Some(calc_and_convert(
+                &self.lower,
+                n_blocks.map(|n| self.lower.estimate_error(n)).flatten(),
             ))
         } else {
             None
         };
 
-        Self {
-            total,
-            upper,
-            lower,
+        BondResults {
+            total: total_result,
+            upper: upper_result,
+            lower: lower_result,
         }
     }
 }

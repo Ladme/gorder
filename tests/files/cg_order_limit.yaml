@@ -53,7 +53,7 @@ POPE:
       total: 0.2629
 POPG:
   average order:
-    total: .nan
+    total: 0.3059
   order parameters:
     POPG GL0 (0) - POPG PO4 (1):
       total: .nan
