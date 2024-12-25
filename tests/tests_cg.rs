@@ -953,3 +953,111 @@ fn test_cg_order_maps_basic_backup() {
 
     assert_eq!(file_content, "This file will be backed up.");
 }
+
+#[test]
+fn test_cg_order_error_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_error.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_error_yaml_multiple_threads() {
+    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .n_threads(n_threads)
+            .estimate_error(EstimateError::default())
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_error.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_error_leaflets_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_error_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_error_leaflets_yaml_multiple_threads() {
+    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+            .n_threads(n_threads)
+            .estimate_error(EstimateError::default())
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_error_leaflets.yaml",
+            1
+        ));
+    }
+}

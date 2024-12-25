@@ -34,6 +34,14 @@ impl TimeWiseAddTreatment for AddExtend {
         lhs: TimeWiseData<T>,
         rhs: TimeWiseData<T>,
     ) -> TimeWiseData<T> {
+        if lhs.order.is_empty() {
+            return rhs;
+        }
+
+        if rhs.order.is_empty() {
+            return lhs;
+        }
+
         let order = interleave_vectors(&lhs.order, &rhs.order, lhs.n_threads, rhs.n_threads);
         let n_samples =
             interleave_vectors(&lhs.n_samples, &rhs.n_samples, lhs.n_threads, rhs.n_threads);
@@ -46,6 +54,16 @@ impl TimeWiseAddTreatment for AddExtend {
         lhs: &mut TimeWiseData<T>,
         rhs: TimeWiseData<U>,
     ) {
+        if lhs.order.is_empty() {
+            lhs.order = rhs.order;
+            lhs.n_samples = rhs.n_samples;
+            return;
+        }
+
+        if rhs.order.is_empty() {
+            return;
+        }
+
         let order = interleave_vectors(&lhs.order, &rhs.order, lhs.n_threads, rhs.n_threads);
         let n_samples =
             interleave_vectors(&lhs.n_samples, &rhs.n_samples, lhs.n_threads, rhs.n_threads);
