@@ -6,7 +6,7 @@
 use super::{AAOrder, BondResults, MoleculeResults, OrderCollection, OrderResults};
 use crate::analysis::molecule::AtomType;
 use crate::input::Analysis;
-use crate::presentation::ordermap::OrderMapsCollection;
+use crate::presentation::ordermaps_presenter::OrderMapsCollection;
 use getset::Getters;
 use indexmap::IndexMap;
 use serde::Serialize;

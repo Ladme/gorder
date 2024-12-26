@@ -10,7 +10,7 @@ use serde::{Serialize, Serializer};
 use super::{BondResults, CGOrder, MoleculeResults, OrderCollection, OrderResults};
 use crate::analysis::molecule::BondTopology;
 use crate::input::Analysis;
-use crate::presentation::ordermap::OrderMapsCollection;
+use crate::presentation::ordermaps_presenter::OrderMapsCollection;
 
 /// Results of the coarse-grained order parameters calculation.
 #[derive(Debug, Clone, Serialize)]

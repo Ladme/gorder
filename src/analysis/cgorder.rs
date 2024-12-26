@@ -120,15 +120,6 @@ pub(super) fn analyze_coarse_grained<'a>(
     // print basic info about error estimation
     result.error_info()?;
 
-    /*// write out the maps
-    result.handle_ordermap_directory(analysis.overwrite())?;
-    result.prepare_directories()?;
-    result.write_ordermaps_bonds::<CGOrder>()?;
-
-    // write out the results
-    let results = CGOrderResults::from(result);
-    write_results(results, analysis)?;*/
-
     Ok(AnalysisResults::CG(
         result.convert::<CGOrderResults>(analysis),
     ))
@@ -140,7 +131,6 @@ mod tests {
     use groan_rs::prelude::Dimension;
 
     use super::*;
-    use crate::input::AnalysisType;
     use crate::{
         analysis::molecule::{BondType, MoleculeType},
         input::LeafletClassification,

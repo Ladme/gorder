@@ -109,6 +109,9 @@ pub enum WriteError {
 
     #[error("{} could not write results in the output file ({})", "error:".red().bold(), .0)]
     CouldNotWriteResults(std::io::Error),
+
+    #[error("{}", .0)]
+    CouldNotWriteOrderMap(OrderMapWriteError),
 }
 
 /// Errors that can occur while writing the order maps.

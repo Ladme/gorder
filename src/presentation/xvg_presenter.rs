@@ -98,7 +98,7 @@ impl<'a, R: OrderResults> Presenter<'a, R> for XvgPresenter<'a, R> {
     }
 
     /// Write all xvg output files.
-    fn write(&self, file_pattern: &impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
+    fn write(&self, file_pattern: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
         let extension = file_pattern
             .as_ref()
             .extension()

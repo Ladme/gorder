@@ -6,7 +6,8 @@
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::cgresults::CGOrderResults;
 use crate::presentation::csv_presenter::{CsvPresenter, CsvProperties, CsvWrite};
-use crate::presentation::ordermap::OrderMapsCollection;
+use crate::presentation::ordermaps_presenter::{OrderMapPresenter, OrderMapProperties, OrderMapsCollection};
+use crate::presentation::ordermaps_presenter::MapWrite;
 use crate::presentation::tab_presenter::{TabPresenter, TabProperties, TabWrite};
 use crate::presentation::xvg_presenter::{XvgPresenter, XvgProperties, XvgWrite};
 use crate::presentation::yaml_presenter::{YamlPresenter, YamlProperties, YamlWrite};
@@ -31,6 +32,7 @@ use std::{
     path::Path,
 };
 use strum_macros::Display;
+use crate::input::Plane;
 
 macro_rules! write_result {
     ($dst:expr, $($arg:tt)*) => {
@@ -42,7 +44,8 @@ pub mod aaresults;
 pub mod cgresults;
 pub(crate) mod converter;
 mod csv_presenter;
-pub(crate) mod ordermap;
+//pub(crate) mod ordermap;
+mod ordermaps_presenter;
 mod tab_presenter;
 mod xvg_presenter;
 mod yaml_presenter;
@@ -67,7 +70,9 @@ impl AnalysisResults {
 type GridMapF32 = GridMap<f32, f32, fn(&f32) -> f32>;
 
 /// Trait implemented by all structures providing the full results of the analysis.
-pub(crate) trait OrderResults: Debug + Clone + CsvWrite + TabWrite + YamlWrite {
+pub(crate) trait OrderResults:
+    Debug + Clone + CsvWrite + TabWrite + YamlWrite
+{
     type OrderType: OrderType;
     type MoleculeResults: MoleculeResults;
 
@@ -130,12 +135,19 @@ pub(crate) trait OrderResults: Debug + Clone + CsvWrite + TabWrite + YamlWrite {
                 .write(csv, overwrite)?;
         }
 
+        if let Some(map) = analysis.map() {
+            OrderMapPresenter::new(self, OrderMapProperties::new(map.plane().unwrap_or(Plane::XY).into()))
+                .write(map.output_directory(), overwrite)?;
+        }
+
         Ok(())
     }
 }
 
 /// Trait implemented by all structures providing the results of the analysis for a single molecule type.
-pub(crate) trait MoleculeResults: Debug + Clone + CsvWrite + TabWrite + XvgWrite {
+pub(crate) trait MoleculeResults:
+    Debug + Clone + CsvWrite + TabWrite + XvgWrite + MapWrite
+{
     /// Return the maximal number of bonds for heavy atoms in the molecule.
     /// Only makes sense for atomistic order. Returns 0 by default.
     #[inline(always)]
@@ -158,6 +170,8 @@ pub(crate) enum OutputFormat {
     XVG,
     #[strum(serialize = "tab")]
     TAB,
+    #[strum(serialize = "map")]
+    MAP,
 }
 
 /// Trait implemented by all structures that store properties of Presenters.
@@ -203,7 +217,7 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
     }
 
     /// Create (and potentially back up) an output file, open it and write the results into it.
-    fn write(&self, filename: &impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
+    fn write(&self, filename: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
         log::info!(
             "Writing the order parameters into {} file '{}'...",
             self.file_format(),
@@ -211,8 +225,8 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
         );
         log::logger().flush();
 
-        self.try_backup(filename, overwrite)?;
-        let mut writer = Self::create_and_open(filename)?;
+        self.try_backup(&filename, overwrite)?;
+        let mut writer = Self::create_and_open(&filename)?;
         self.write_results(&mut writer)
     }
 

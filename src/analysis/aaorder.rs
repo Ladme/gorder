@@ -150,16 +150,6 @@ pub(super) fn analyze_atomistic<'a>(
     // print basic info about error estimation
     result.error_info()?;
 
-    /*// write out the maps
-    result.handle_ordermap_directory(analysis.overwrite())?;
-    result.prepare_directories()?;
-    result.write_ordermaps_bonds::<AAOrder>()?;
-    result.write_ordermaps_atoms::<AAOrder>()?;
-
-    // write out the results
-    let results = AAOrderResults::from(result);
-    write_results(results, analysis)?;*/
-
     Ok(AnalysisResults::AA(
         result.convert::<AAOrderResults>(analysis),
     ))
@@ -171,7 +161,6 @@ mod tests {
     use groan_rs::prelude::Dimension;
 
     use super::*;
-    use crate::input::{analysis, AnalysisType};
     use crate::{
         analysis::molecule::{BondType, MoleculeType},
         input::leaflets::LeafletClassification,

@@ -11,7 +11,7 @@ use crate::analysis::topology::SystemTopology;
 use crate::input::Analysis;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
 use crate::presentation::cgresults::{CGMoleculeResults, CGOrderResults};
-use crate::presentation::ordermap::OrderMapsCollection;
+use crate::presentation::ordermaps_presenter::OrderMapsCollection;
 use crate::presentation::{
     BondResults, GridMapF32, Order, OrderCollection, OrderResults, OrderType,
 };
