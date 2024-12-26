@@ -13,7 +13,6 @@ use crate::presentation::{
 use crate::PANIC_MESSAGE;
 use hashbrown::HashMap;
 use std::io::Write;
-use crate::presentation::csv_presenter::{CsvPresenter, CsvWrite};
 
 /// Structure handling the writing of a table output.
 #[derive(Debug, Clone)]
@@ -26,7 +25,7 @@ pub(super) struct TabPresenter<'a, R: OrderResults> {
 
 /// Structure containing parameters necessary for the writing of the table file.
 #[derive(Debug, Clone)]
-pub(super) struct TabProperties {
+pub(crate) struct TabProperties {
     /// Name of the input structure file.
     structure: String,
     /// Name of the input trajectory file.
@@ -40,7 +39,7 @@ pub(super) struct TabProperties {
 }
 
 /// Trait implemented by all structures that can be written in table format.
-pub(super) trait TabWrite {
+pub(crate) trait TabWrite {
     /// Write the structure in a table format into an output file.
     fn write_tab(
         &self,

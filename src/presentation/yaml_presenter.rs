@@ -21,7 +21,7 @@ pub(super) struct YamlPresenter<'a, R: OrderResults> {
 
 /// Structure containing parameters necessary for the writing of the yaml file.
 #[derive(Debug, Clone)]
-pub(super) struct YamlProperties {
+pub(crate) struct YamlProperties {
     /// Name of the input structure file.
     structure: String,
     /// Name of the input trajectory file.
@@ -29,7 +29,7 @@ pub(super) struct YamlProperties {
 }
 
 /// Trait implemented by all structures that can be written in yaml format.
-pub(super) trait YamlWrite {
+pub(crate) trait YamlWrite {
     /// Write the structure in a yaml format into an output file.
     fn write_yaml(
         &self,

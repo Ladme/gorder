@@ -7,7 +7,7 @@ use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{analyze_frame, sanity_check_molecules};
 use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aaresults::AAOrderResults;
-use crate::presentation::{AAOrder, AnalysisResults, OrderResults};
+use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
 
 use groan_rs::prelude::OrderedAtomIterator;
@@ -98,7 +98,6 @@ pub(super) fn analyze_atomistic<'a>(
         analysis.leaflets().as_ref(),
         analysis.membrane_normal().into(),
         analysis.map().as_ref(),
-        analysis.min_samples(),
         analysis.estimate_error().as_ref(),
     )?;
 
@@ -208,7 +207,6 @@ mod tests {
             leaflet_classification.as_ref(),
             Dimension::Z,
             None,
-            1,
             None,
         )
         .unwrap();

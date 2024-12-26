@@ -4,7 +4,7 @@
 //! Structures and methods for constructing and working with topology of a molecule type.
 
 use core::fmt;
-use std::{num::NonZeroUsize, ops::Add};
+use std::ops::Add;
 
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::{

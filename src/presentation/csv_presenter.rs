@@ -23,7 +23,7 @@ pub(super) struct CsvPresenter<'a, R: OrderResults> {
 
 /// Structure containing parameters necessary for the writing of the csv file.
 #[derive(Debug, Clone)]
-pub(super) struct CsvProperties {
+pub(crate) struct CsvProperties {
     /// Are errors calculated?
     errors: bool,
     /// Are results for individual leaflets available?
@@ -33,7 +33,7 @@ pub(super) struct CsvProperties {
 }
 
 /// Trait implemented by all structures that can be written in csv format.
-pub(super) trait CsvWrite {
+pub(crate) trait CsvWrite {
     /// Write the structure in a csv format into an output file.
     fn write_csv(
         &self,

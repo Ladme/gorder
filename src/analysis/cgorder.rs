@@ -68,7 +68,6 @@ pub(super) fn analyze_coarse_grained<'a>(
         analysis.leaflets().as_ref(),
         analysis.membrane_normal().into(),
         analysis.map().as_ref(),
-        analysis.min_samples(),
         analysis.estimate_error().as_ref(),
     )?;
 
@@ -167,18 +166,9 @@ mod tests {
             leaflet_classification.as_ref(),
             Dimension::Z,
             None,
-            1,
             None,
         )
         .unwrap();
-
-        let analysis = Analysis::new()
-            .structure("cg.tpr")
-            .trajectory("md.xtc")
-            .analysis_type(AnalysisType::cgorder("@membrane"))
-            .output("output.yaml")
-            .build()
-            .unwrap();
         (system, SystemTopology::new(molecules, Dimension::Z, None))
     }
 

@@ -117,11 +117,6 @@ impl<T: TimeWiseAddTreatment> AnalysisOrder<T> {
         self.timewise.as_ref()
     }
 
-    /// Returns `true` if no samples have been collected for this order.
-    pub(crate) fn is_empty(&self) -> bool {
-        self.n_samples == 0
-    }
-
     /// Estimate error for this order parameter.
     /// Returns `None` if no information necessary for the error estimation is available.
     pub(crate) fn estimate_error(&self, n_blocks: usize) -> Option<f32> {

@@ -38,8 +38,8 @@ macro_rules! write_result {
     };
 }
 
-pub(crate) mod aaresults;
-pub(crate) mod cgresults;
+pub mod aaresults;
+pub mod cgresults;
 pub(crate) mod converter;
 mod csv_presenter;
 pub(crate) mod ordermap;
@@ -135,7 +135,7 @@ pub(crate) trait OrderResults: Debug + Clone + CsvWrite + TabWrite + YamlWrite {
 }
 
 /// Trait implemented by all structures providing the results of the analysis for a single molecule type.
-trait MoleculeResults: Debug + Clone + CsvWrite + TabWrite + XvgWrite {
+pub(crate) trait MoleculeResults: Debug + Clone + CsvWrite + TabWrite + XvgWrite {
     /// Return the maximal number of bonds for heavy atoms in the molecule.
     /// Only makes sense for atomistic order. Returns 0 by default.
     #[inline(always)]
@@ -149,7 +149,7 @@ trait MoleculeResults: Debug + Clone + CsvWrite + TabWrite + XvgWrite {
 
 /// All supported output file formats.
 #[derive(Debug, Clone, Display)]
-enum OutputFormat {
+pub(crate) enum OutputFormat {
     #[strum(serialize = "yaml")]
     YAML,
     #[strum(serialize = "csv")]

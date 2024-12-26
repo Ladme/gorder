@@ -15,7 +15,7 @@ use crate::presentation::ordermap::OrderMapsCollection;
 /// Results of the coarse-grained order parameters calculation.
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
-pub(crate) struct CGOrderResults {
+pub struct CGOrderResults {
     /// Results for individual molecules of the system.
     molecules: IndexMap<String, CGMoleculeResults>,
     /// Parameters of the analysis.
@@ -52,7 +52,7 @@ impl OrderResults for CGOrderResults {
 
 /// Coarse-grained order parameters calculated for a single molecule type.
 #[derive(Debug, Clone, Serialize, Getters)]
-pub(crate) struct CGMoleculeResults {
+pub struct CGMoleculeResults {
     /// Name of the molecule.
     #[serde(skip)]
     #[getset(get = "pub(super)")]

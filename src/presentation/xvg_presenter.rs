@@ -13,7 +13,6 @@ use crate::presentation::{
 use crate::PANIC_MESSAGE;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use crate::presentation::tab_presenter::{TabPresenter, TabWrite};
 
 /// Structure handling the writing of an xvg output.
 #[derive(Debug, Clone)]
@@ -26,7 +25,7 @@ pub(super) struct XvgPresenter<'a, R: OrderResults> {
 
 /// Structure containing parameters necessary for the writing of the xvg file.
 #[derive(Debug, Clone)]
-pub(super) struct XvgProperties {
+pub(crate) struct XvgProperties {
     /// Name of the input structure file.
     structure: String,
     /// Name of the input trajectory file.
@@ -36,7 +35,7 @@ pub(super) struct XvgProperties {
 }
 
 /// Trait implemented by all structures that can be written in an xvg format.
-pub(super) trait XvgWrite {
+pub(crate) trait XvgWrite {
     /// Write the structure in an xvg format into an output file.
     fn write_xvg(
         &self,

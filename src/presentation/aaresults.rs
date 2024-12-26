@@ -14,7 +14,7 @@ use serde::Serialize;
 /// Results of the atomistic order parameters calculation.
 #[derive(Debug, Clone, Serialize)]
 #[serde(transparent)]
-pub(crate) struct AAOrderResults {
+pub struct AAOrderResults {
     /// Results for individual molecules of the system.
     molecules: IndexMap<String, AAMoleculeResults>,
     /// Parameters of the analysis.
@@ -61,7 +61,7 @@ impl OrderResults for AAOrderResults {
 
 /// Atomistic order parameters calculated for a single molecule type.
 #[derive(Debug, Clone, Serialize, Getters)]
-pub(crate) struct AAMoleculeResults {
+pub struct AAMoleculeResults {
     /// Name of the molecule type.
     #[serde(skip)]
     molecule: String,
@@ -113,7 +113,7 @@ impl MoleculeResults for AAMoleculeResults {
 
 /// Atomistic order parameters calculated for a single atom type and for involved bond types.
 #[derive(Debug, Clone, Serialize, Getters)]
-pub(super) struct AAAtomResults {
+pub struct AAAtomResults {
     /// Name of the atom type.
     #[serde(skip)]
     #[getset(get = "pub(super)")]

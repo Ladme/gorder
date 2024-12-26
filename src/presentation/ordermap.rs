@@ -12,9 +12,6 @@ use crate::{
     Leaflet,
 };
 use crate::{GORDER_VERSION, PANIC_MESSAGE};
-use groan_rs::prelude::GridMap;
-use groan_rs::structures::gridmap::DataOrder;
-use indexmap::IndexMap;
 use std::io::Write;
 use std::{fs::File, io::BufWriter, path::Path};
 
