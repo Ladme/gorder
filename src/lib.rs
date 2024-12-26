@@ -174,8 +174,12 @@ impl Display for Leaflet {
 mod analysis;
 pub mod errors;
 pub mod input;
-mod presentation;
+pub mod presentation;
 
+use crate::errors::WriteError;
+use crate::presentation::aaresults::AAOrderResults;
+use crate::presentation::cgresults::CGOrderResults;
+use crate::presentation::OrderResults;
 use std::fmt::Display;
 
 /// This module contains re-exported public structures of the `gorder` crate.

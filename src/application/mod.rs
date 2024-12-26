@@ -42,8 +42,9 @@ This option can also be specified in the configuration file."
     pub overwrite: bool,
 }
 
-/// Get arguments, parse input file, and run the analysis.
-pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+/// Get arguments, parse input file, run the analysis and write the results.
+/// Returns `true` if run successfully, else returns `false`.
+pub(crate) fn run() -> bool {
     let args = Args::parse();
 
     colog::init();
@@ -52,7 +53,7 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Ok(x) => x,
         Err(e) => {
             log::error!("{}", e);
-            return Err(Box::new(e));
+            return false;
         }
     };
 
@@ -76,21 +77,31 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let result = analysis.run();
 
-    if let Err(ref e) = result {
+    if let Err(e) = result {
         log::error!("{}", e);
+        display_result(false, silent);
+        return false;
     }
 
-    if !silent {
-        display_result(&result);
+    // write the results into an output file
+    if let Err(e) = result.unwrap().write() {
+        log::error!("{}", e);
+        display_result(false, silent);
+        return false;
     }
 
-    result
+    display_result(true, silent);
+    true
 }
 
 #[inline(always)]
-fn display_result(result: &Result<(), Box<dyn std::error::Error + Send + Sync>>) {
+fn display_result(result: bool, silent: bool) {
+    if silent {
+        return;
+    }
+
     match result {
-        Ok(_) => {
+        true => {
             let prefix = format!(
                 "{}{}{}",
                 "[".to_string().blue().bold(),
@@ -100,7 +111,7 @@ fn display_result(result: &Result<(), Box<dyn std::error::Error + Send + Sync>>)
             let message = "ANALYSIS COMPLETED".to_string().bright_green().bold();
             println!("{} {}\n", prefix, message);
         }
-        Err(_) => {
+        false => {
             let prefix = format!(
                 "{}{}{}",
                 "[".to_string().blue().bold(),

@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "gorder"
-version = "0.3.0-dev.1"
+version = "0.3.0-dev.2"
 dependencies = [
  "approx",
  "assert_cmd",
@@ -492,6 +492,7 @@ dependencies = [
  "serde",
  "serde_yaml",
  "statistical",
+ "strum_macros",
  "tempfile",
  "thiserror 2.0.4",
 ]

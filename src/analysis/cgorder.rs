@@ -9,21 +9,22 @@ use groan_rs::{
     system::System,
 };
 
+use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{
     analysis::{
-        common::{analyze_frame, macros::group_name, sanity_check_molecules, write_results},
+        common::{analyze_frame, macros::group_name, sanity_check_molecules},
         topology::SystemTopology,
     },
     errors::AnalysisError,
     input::Analysis,
-    presentation::{cgpresenter::CGOrderResults, CGOrder},
+    presentation::cgresults::CGOrderResults,
     PANIC_MESSAGE,
 };
 
 /// Analyze the coarse-grained order parameters.
-pub(super) fn analyze_coarse_grained(
-    analysis: &Analysis,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub(super) fn analyze_coarse_grained<'a>(
+    analysis: Analysis,
+) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
     log::info!("Read molecular topology from '{}'.", analysis.structure());
 
@@ -72,7 +73,7 @@ pub(super) fn analyze_coarse_grained(
     )?;
 
     if !sanity_check_molecules(&molecules) {
-        return Ok(());
+        return Ok(AnalysisResults::CG(CGOrderResults::empty(analysis)));
     }
 
     let data = SystemTopology::new(
@@ -120,16 +121,18 @@ pub(super) fn analyze_coarse_grained(
     // print basic info about error estimation
     result.error_info()?;
 
-    // write out the maps
+    /*// write out the maps
     result.handle_ordermap_directory(analysis.overwrite())?;
     result.prepare_directories()?;
     result.write_ordermaps_bonds::<CGOrder>()?;
 
     // write out the results
     let results = CGOrderResults::from(result);
-    write_results(results, analysis)?;
+    write_results(results, analysis)?;*/
 
-    Ok(())
+    Ok(AnalysisResults::CG(
+        result.convert::<CGOrderResults>(analysis),
+    ))
 }
 
 #[cfg(test)]
@@ -137,12 +140,12 @@ mod tests {
     use approx::assert_relative_eq;
     use groan_rs::prelude::Dimension;
 
+    use super::*;
+    use crate::input::AnalysisType;
     use crate::{
         analysis::molecule::{BondType, MoleculeType},
         input::LeafletClassification,
     };
-
-    use super::*;
 
     fn prepare_data_for_tests(
         leaflet_classification: Option<LeafletClassification>,
@@ -169,6 +172,13 @@ mod tests {
         )
         .unwrap();
 
+        let analysis = Analysis::new()
+            .structure("cg.tpr")
+            .trajectory("md.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .output("output.yaml")
+            .build()
+            .unwrap();
         (system, SystemTopology::new(molecules, Dimension::Z, None))
     }
 

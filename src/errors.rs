@@ -103,13 +103,9 @@ pub enum WriteError {
     )]
     CouldNotBackupFile(Box<Path>),
 
-    #[error("{} could not write output file header into '{}'", "error:".red().bold(), path_to_yellow(.0)
+    #[error("{} could not write results in yaml format (serde_yaml error: `{}`)", "error:".red().bold(), .0.to_string()
     )]
-    CouldNotWriteHeader(Box<Path>),
-
-    #[error("{} could not write results in yaml format into '{}'", "error:".red().bold(), path_to_yellow(.0)
-    )]
-    CouldNotWriteYaml(Box<Path>),
+    CouldNotWriteYaml(serde_yaml::Error),
 
     #[error("{} could not write results in the output file ({})", "error:".red().bold(), .0)]
     CouldNotWriteResults(std::io::Error),

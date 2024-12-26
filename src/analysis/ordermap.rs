@@ -3,7 +3,7 @@
 
 //! Contains structures and methods for the construction of maps of order parameters.
 
-use std::ops::Add;
+use std::ops::{Add, AddAssign};
 
 use getset::{Getters, MutGetters};
 use groan_rs::{
@@ -12,9 +12,8 @@ use groan_rs::{
     structures::gridmap::DataOrder,
 };
 
-use crate::{errors::OrderMapConfigError, input::GridSpan, input::OrderMap, PANIC_MESSAGE};
-
 use super::order::OrderValue;
+use crate::{errors::OrderMapConfigError, input::GridSpan, input::OrderMap, PANIC_MESSAGE};
 
 /// Order parameter map. Stores order parameters calculated for a specific bond/atom
 /// and for each tile of a grid covering the membrane.
@@ -125,16 +124,33 @@ impl Add<Map> for Map {
     }
 }
 
+impl AddAssign<Map> for Map {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: Map) {
+        // not a very efficient implementation, but will do
+        *self = self.clone() + rhs;
+    }
+}
+
 /// Helper function for merging optional Maps.
 #[inline]
 pub(super) fn merge_option_maps(lhs: Option<Map>, rhs: Option<Map>) -> Option<Map> {
     match (lhs, rhs) {
         (Some(x), Some(y)) => Some(x + y),
         (None, None) => None,
-        (Some(_), None) | (None, Some(_)) => panic!(
-            "FATAL GORDER ERROR | ordermap::merge_option_maps | Inconsistent option value. {}",
-            PANIC_MESSAGE
-        ),
+        (Some(x), None) => Some(x),
+        (None, Some(x)) => Some(x),
+    }
+}
+
+/// Helper function for adding an optional ordermap to another optional ordermap.
+#[inline]
+pub(crate) fn add_option_map(lhs: &mut Option<Map>, rhs: Option<Map>) {
+    if let Some(rhs_value) = rhs {
+        match lhs {
+            Some(lhs_value) => *lhs_value += rhs_value,
+            None => *lhs = Some(rhs_value),
+        }
     }
 }
 
@@ -174,7 +190,7 @@ where
 mod tests {
     use approx::assert_relative_eq;
 
-    use crate::{analysis::order::Order, input::ordermap::Plane};
+    use crate::{analysis::order::AnalysisOrder, input::ordermap::Plane};
 
     use super::*;
 
@@ -253,8 +269,9 @@ mod tests {
 
     #[test]
     fn merge_order() {
-        let order1: Order<super::super::timewise::AddExtend> = Order::new(0.78, 31, false);
-        let order2 = Order::new(0.43, 14, false);
+        let order1: AnalysisOrder<super::super::timewise::AddExtend> =
+            AnalysisOrder::new(0.78, 31, false);
+        let order2 = AnalysisOrder::new(0.43, 14, false);
         let merged = order1 + order2;
 
         assert_relative_eq!(f32::from(merged.order()), 1.21);
@@ -336,6 +353,98 @@ mod tests {
             .map(|(_, _, &x)| x.into())
             .collect::<Vec<f32>>();
         let samples = map
+            .samples
+            .extract_raw()
+            .map(|(_, _, &x)| x)
+            .collect::<Vec<usize>>();
+
+        assert_eq!(values.len(), expected_values.len());
+        assert_eq!(samples.len(), expected_samples.len());
+
+        for (got, exp) in values.iter().zip(expected_values.iter()) {
+            assert_relative_eq!(got, exp);
+        }
+
+        for (got, exp) in samples.iter().zip(expected_samples.iter()) {
+            assert_eq!(got, exp);
+        }
+    }
+
+    #[test]
+    fn add_assign_map() {
+        let values = vec![1.0, 2.5, 3.0, 4.2, 5.3, 6.1, 7.3, 8.9]
+            .into_iter()
+            .map(OrderValue::from)
+            .collect::<Vec<OrderValue>>();
+        let map1_values = GridMap::from_vec(
+            (1.0, 2.0),
+            (1.0, 2.5),
+            (1.0, 0.5),
+            values,
+            DataOrder::RowMajor,
+            from_order_value as fn(&OrderValue) -> f32,
+        )
+        .unwrap();
+
+        let samples = vec![1, 2, 3, 4, 5, 6, 7, 8];
+        let map1_samples = GridMap::from_vec(
+            (1.0, 2.0),
+            (1.0, 2.5),
+            (1.0, 0.5),
+            samples,
+            DataOrder::RowMajor,
+            usize::to_owned as fn(&usize) -> usize,
+        )
+        .unwrap();
+
+        let mut map1 = Map {
+            params: OrderMap::new().output_directory(".").build().unwrap(),
+            values: map1_values,
+            samples: map1_samples,
+        };
+
+        let values = vec![0.7, 1.4, 2.1, 1.4, 2.3, 3.1, 3.3, 1.9]
+            .into_iter()
+            .map(OrderValue::from)
+            .collect::<Vec<OrderValue>>();
+        let map2_values = GridMap::from_vec(
+            (1.0, 2.0),
+            (1.0, 2.5),
+            (1.0, 0.5),
+            values,
+            DataOrder::RowMajor,
+            from_order_value as fn(&OrderValue) -> f32,
+        )
+        .unwrap();
+
+        let samples = vec![2, 1, 4, 3, 2, 1, 0, 2];
+        let map2_samples = GridMap::from_vec(
+            (1.0, 2.0),
+            (1.0, 2.5),
+            (1.0, 0.5),
+            samples,
+            DataOrder::RowMajor,
+            usize::to_owned as fn(&usize) -> usize,
+        )
+        .unwrap();
+
+        let map2 = Map {
+            params: OrderMap::new().output_directory(".").build().unwrap(),
+            values: map2_values,
+            samples: map2_samples,
+        };
+
+        map1 += map2;
+
+        let expected_values = [1.7, 3.9, 5.1, 5.6, 7.6, 9.2, 10.6, 10.8];
+        let expected_samples = [3, 3, 7, 7, 7, 7, 7, 10];
+
+        let values = map1
+            .values
+            .extract_raw()
+            .map(|(_, _, &x)| x.into())
+            .collect::<Vec<f32>>();
+        let samples = map1
             .samples
             .extract_raw()
             .map(|(_, _, &x)| x)

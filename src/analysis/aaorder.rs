@@ -4,10 +4,10 @@
 //! Contains the implementation of the calculation of the atomistic order parameters.
 
 use super::{common::macros::group_name, topology::SystemTopology};
-use crate::analysis::common::{analyze_frame, sanity_check_molecules, write_results};
+use crate::analysis::common::{analyze_frame, sanity_check_molecules};
 use crate::errors::{AnalysisError, TopologyError};
-use crate::presentation::aapresenter::AAOrderResults;
-use crate::presentation::AAOrder;
+use crate::presentation::aaresults::AAOrderResults;
+use crate::presentation::{AAOrder, AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
 
 use groan_rs::prelude::OrderedAtomIterator;
@@ -18,9 +18,9 @@ use groan_rs::{
 };
 
 /// Calculate the atomistic order parameters.
-pub(super) fn analyze_atomistic(
-    analysis: &Analysis,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub(super) fn analyze_atomistic<'a>(
+    analysis: Analysis,
+) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
     log::info!("Read molecular topology from '{}'.", analysis.structure());
 
@@ -103,7 +103,7 @@ pub(super) fn analyze_atomistic(
     )?;
 
     if !sanity_check_molecules(&molecules) {
-        return Ok(());
+        return Ok(AnalysisResults::AA(AAOrderResults::empty(analysis)));
     }
 
     let data = SystemTopology::new(
@@ -151,7 +151,7 @@ pub(super) fn analyze_atomistic(
     // print basic info about error estimation
     result.error_info()?;
 
-    // write out the maps
+    /*// write out the maps
     result.handle_ordermap_directory(analysis.overwrite())?;
     result.prepare_directories()?;
     result.write_ordermaps_bonds::<AAOrder>()?;
@@ -159,9 +159,11 @@ pub(super) fn analyze_atomistic(
 
     // write out the results
     let results = AAOrderResults::from(result);
-    write_results(results, analysis)?;
+    write_results(results, analysis)?;*/
 
-    Ok(())
+    Ok(AnalysisResults::AA(
+        result.convert::<AAOrderResults>(analysis),
+    ))
 }
 
 #[cfg(test)]
@@ -169,12 +171,12 @@ mod tests {
     use approx::assert_relative_eq;
     use groan_rs::prelude::Dimension;
 
+    use super::*;
+    use crate::input::{analysis, AnalysisType};
     use crate::{
         analysis::molecule::{BondType, MoleculeType},
         input::leaflets::LeafletClassification,
     };
-
-    use super::*;
 
     fn prepare_data_for_tests(
         leaflet_classification: Option<LeafletClassification>,

@@ -185,11 +185,15 @@ impl<T: TimeWiseAddTreatment> TimeWiseData<T> {
     }
 
     /// Estimate the calculation error from the order parameters calculated for the individual blocks.
-    /// Returns samples standard deviation.
-    pub(super) fn estimate_error(&self, n_blocks: usize) -> f32 {
+    /// Returns samples standard deviation or None if the structure is empty.
+    pub(super) fn estimate_error(&self, n_blocks: usize) -> Option<f32> {
+        if self.order.is_empty() {
+            return None;
+        }
+
         // error estimation requires at least 2 blocks
         if n_blocks < 2 {
-            return 0.0;
+            panic!("FATAL GORDER ERROR | TimeWiseData::estimate_error | Cannot estimate the error from '{}' blocks. {}", n_blocks, PANIC_MESSAGE);
         }
 
         let block_size = self.order.len() / n_blocks;
@@ -211,16 +215,13 @@ impl<T: TimeWiseAddTreatment> TimeWiseData<T> {
             .map(|(o, s)| (o / s).into())
             .collect();
 
-        let std: f32 =
-            match std::panic::catch_unwind(|| statistical::standard_deviation(&orders, None)) {
-                Ok(result) => result,
+        match std::panic::catch_unwind(|| statistical::standard_deviation(&orders, None)) {
+                Ok(result) => Some(result),
                 Err(e) => panic!(
                     "FATAL GORDER ERROR | TimeWiseData::estimate_error | Standard deviation calculation failed: {:?}. {}",
                     e, PANIC_MESSAGE
                 ),
-            };
-
-        std
+            }
     }
 
     /// Get the size of each block for error estimation.
@@ -238,6 +239,12 @@ impl<T: TimeWiseAddTreatment> TimeWiseData<T> {
     /// Unpack the `TimeWiseData` structure into its individual fields.
     pub(super) fn unpack(self) -> (Vec<OrderValue>, Vec<usize>, usize) {
         (self.order, self.n_samples, self.n_threads)
+    }
+
+    /// Convert between two ways to treat addition.
+    pub(super) fn switch_type<U: TimeWiseAddTreatment>(self) -> TimeWiseData<U> {
+        let (order, samples, threads) = self.unpack();
+        TimeWiseData::new(order, samples, threads)
     }
 }
 
@@ -603,7 +610,13 @@ mod tests {
 
         // blocks: 1.16216, 1.1714, 1.2391, 1.1515, 1.0952 (last two numbers ignored)
 
-        let error = data.estimate_error(5);
+        let error = data.estimate_error(5).unwrap();
         assert_relative_eq!(error, 0.0514468);
+    }
+
+    #[test]
+    fn estimate_error_empty_structure() {
+        let data: TimeWiseData<AddExtend> = TimeWiseData::new(Vec::new(), Vec::new(), 1);
+        assert!(data.estimate_error(5).is_none());
     }
 }

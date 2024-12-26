@@ -3,7 +3,7 @@
 
 //! Contains implementation of structures for storing and calculating order parameters.
 
-use crate::analysis::timewise::{TimeWiseAddTreatment, TimeWiseData};
+use crate::analysis::timewise::{AddSum, TimeWiseAddTreatment, TimeWiseData};
 use crate::PANIC_MESSAGE;
 use getset::{CopyGetters, Getters};
 use serde::Deserialize;
@@ -67,7 +67,7 @@ impl AddAssign<f32> for OrderValue {
 
 /// Structure for calculating order parameters from the simulation.
 #[derive(Debug, Clone, CopyGetters, Getters)]
-pub(crate) struct Order<T: TimeWiseAddTreatment> {
+pub(crate) struct AnalysisOrder<T: TimeWiseAddTreatment> {
     /// Cumulative order parameter calculated over the analysis.
     #[getset(get_copy = "pub(super)")]
     order: OrderValue,
@@ -78,16 +78,16 @@ pub(crate) struct Order<T: TimeWiseAddTreatment> {
     timewise: Option<TimeWiseData<T>>,
 }
 
-impl<T: TimeWiseAddTreatment> Order<T> {
+impl<T: TimeWiseAddTreatment> AnalysisOrder<T> {
     #[inline(always)]
-    pub(crate) fn new(order: f32, n_samples: usize, timewise: bool) -> Order<T> {
+    pub(crate) fn new(order: f32, n_samples: usize, timewise: bool) -> AnalysisOrder<T> {
         let timewise = if timewise {
             Some(TimeWiseData::default())
         } else {
             None
         };
 
-        Order {
+        AnalysisOrder {
             order: OrderValue::from(order),
             n_samples,
             timewise,
@@ -128,22 +128,32 @@ impl<T: TimeWiseAddTreatment> Order<T> {
         self.timewise
             .as_ref()
             .map(|data| data.estimate_error(n_blocks))
+            .flatten()
+    }
+
+    /// Switch between two ways of treating addition in `timewise`.
+    pub(crate) fn switch_type<U: TimeWiseAddTreatment>(self) -> AnalysisOrder<U> {
+        AnalysisOrder {
+            order: self.order,
+            n_samples: self.n_samples,
+            timewise: self.timewise.map(|x| x.switch_type()),
+        }
     }
 }
 
-impl<T: TimeWiseAddTreatment> Add<Order<T>> for Order<T> {
-    type Output = Order<T>;
+impl<T: TimeWiseAddTreatment> Add<AnalysisOrder<T>> for AnalysisOrder<T> {
+    type Output = AnalysisOrder<T>;
 
     /// This method is intended for merging data for the same bond collected using different threads.
     /// Time-wise data for the merged structures are interleaved.
     #[inline(always)]
-    fn add(self, rhs: Order<T>) -> Self::Output {
+    fn add(self, rhs: AnalysisOrder<T>) -> Self::Output {
         let timewise = match (self.timewise, rhs.timewise) {
             (Some(x), Some(y)) => Some(x + y),
             _ => None,
         };
 
-        Order {
+        AnalysisOrder {
             order: self.order + rhs.order,
             n_samples: self.n_samples + rhs.n_samples,
             timewise,
@@ -151,7 +161,7 @@ impl<T: TimeWiseAddTreatment> Add<Order<T>> for Order<T> {
     }
 }
 
-impl<T: TimeWiseAddTreatment> AddAssign<f32> for Order<T> {
+impl<T: TimeWiseAddTreatment> AddAssign<f32> for AnalysisOrder<T> {
     #[inline(always)]
     fn add_assign(&mut self, rhs: f32) {
         self.order += rhs;
@@ -161,16 +171,17 @@ impl<T: TimeWiseAddTreatment> AddAssign<f32> for Order<T> {
     }
 }
 
-impl<T: TimeWiseAddTreatment, U: TimeWiseAddTreatment> AddAssign<Order<U>> for Order<T> {
+impl<T: TimeWiseAddTreatment, U: TimeWiseAddTreatment> AddAssign<AnalysisOrder<U>>
+    for AnalysisOrder<T>
+{
     #[inline]
-    fn add_assign(&mut self, rhs: Order<U>) {
+    fn add_assign(&mut self, rhs: AnalysisOrder<U>) {
         self.order += rhs.order;
         self.n_samples += rhs.n_samples;
 
         match (&mut self.timewise, rhs.timewise) {
             (None, Some(rhs_timewise)) => {
-                let (order, samples, threads) = rhs_timewise.unpack();
-                self.timewise = Some(TimeWiseData::new(order, samples, threads));
+                self.timewise = Some(rhs_timewise.switch_type());
             }
             (Some(lhs_timewise), Some(rhs_timewise)) => {
                 *lhs_timewise += rhs_timewise;
@@ -180,18 +191,30 @@ impl<T: TimeWiseAddTreatment, U: TimeWiseAddTreatment> AddAssign<Order<U>> for O
     }
 }
 
-/// Helper function for merging optional Orders.
+/// Helper function for merging optional order parameters.
 #[inline]
 pub(super) fn merge_option_order<T: TimeWiseAddTreatment>(
-    lhs: Option<Order<T>>,
-    rhs: Option<Order<T>>,
-) -> Option<Order<T>> {
+    lhs: Option<AnalysisOrder<T>>,
+    rhs: Option<AnalysisOrder<T>>,
+) -> Option<AnalysisOrder<T>> {
     match (lhs, rhs) {
         (Some(x), Some(y)) => Some(x + y),
         (None, None) => None,
-        (Some(_), None) | (None, Some(_)) => panic!(
-            "FATAL GORDER ERROR | molecule::merge_option_order | Inconsistent option value. {}",
-            PANIC_MESSAGE
-        ),
+        (Some(x), None) => Some(x),
+        (None, Some(x)) => Some(x),
+    }
+}
+
+/// Helper function for adding an optional order parameter to another optional order parameter.
+#[inline(always)]
+pub(crate) fn add_option_order<T: TimeWiseAddTreatment>(
+    lhs: &mut Option<AnalysisOrder<AddSum>>,
+    rhs: Option<AnalysisOrder<T>>,
+) {
+    if let Some(rhs_value) = rhs {
+        match lhs {
+            Some(lhs_value) => *lhs_value += rhs_value,
+            None => *lhs = Some(rhs_value.switch_type::<AddSum>()),
+        }
     }
 }

@@ -44,7 +44,7 @@ fn test_cg_order_basic_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -69,7 +69,7 @@ fn test_cg_order_basic_ndx_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -97,7 +97,7 @@ fn test_cg_order_basic_table() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_table,
@@ -127,7 +127,7 @@ fn test_cg_order_basic_xvg() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     for molecule in ["POPC", "POPE", "POPG"] {
         let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
@@ -156,7 +156,7 @@ fn test_cg_order_basic_csv() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_csv,
@@ -182,7 +182,7 @@ fn test_cg_order_basic_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -213,7 +213,7 @@ fn test_cg_order_leaflets_yaml() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -246,7 +246,7 @@ fn test_cg_order_leaflets_yaml_multiple_threads() {
                 .build()
                 .unwrap();
 
-            analysis.run().unwrap();
+            analysis.run().unwrap().write().unwrap();
 
             assert!(diff_files_ignore_first(
                 path_to_output,
@@ -282,7 +282,7 @@ fn test_cg_order_leaflets_table() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_table,
@@ -319,7 +319,7 @@ fn test_cg_order_leaflets_xvg() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         for molecule in ["POPC", "POPE", "POPG"] {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
@@ -355,7 +355,7 @@ fn test_cg_order_leaflets_csv() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_csv,
@@ -381,7 +381,7 @@ fn test_cg_order_limit_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -407,7 +407,7 @@ fn test_cg_order_leaflets_limit_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -437,7 +437,7 @@ fn test_cg_order_leaflets_limit_tab() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_table,
@@ -467,7 +467,7 @@ fn test_cg_order_leaflets_limit_csv() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_csv,
@@ -495,7 +495,7 @@ fn test_cg_order_begin_end_step_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -525,7 +525,7 @@ fn test_cg_order_begin_end_step_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -553,7 +553,7 @@ fn test_cg_order_begin_end_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -582,7 +582,7 @@ fn test_cg_order_begin_end_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -604,7 +604,7 @@ fn test_cg_order_no_molecules() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(!Path::new("THIS_FILE_SHOULD_NOT_BE_CREATED_CG_1").exists());
 }
@@ -621,7 +621,7 @@ fn test_cg_order_empty_molecules() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(!Path::new("THIS_FILE_SHOULD_NOT_BE_CREATED_CG_2").exists());
 }
@@ -691,7 +691,7 @@ fn test_cg_order_basic_all_formats_backup() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     let all_files = [
         ("tests/files/cg_order_basic.yaml", &file_paths[0]),
@@ -741,7 +741,7 @@ fn test_cg_order_maps_basic() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     let expected_file_names = [
         "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
@@ -797,7 +797,7 @@ fn test_cg_order_maps_leaflets() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         let expected_file_names = [
             "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
@@ -858,7 +858,7 @@ fn test_cg_order_maps_basic_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         let expected_file_names = [
             "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
@@ -914,7 +914,7 @@ fn test_cg_order_maps_basic_backup() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     let expected_file_names = [
         "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
@@ -970,7 +970,7 @@ fn test_cg_order_error_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -997,7 +997,7 @@ fn test_cg_order_error_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -1024,7 +1024,7 @@ fn test_cg_order_error_leaflets_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -1052,7 +1052,7 @@ fn test_cg_order_error_leaflets_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,

@@ -3,28 +3,34 @@
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
-use crate::analysis::order::Order;
-use crate::analysis::timewise::AddSum;
+use crate::presentation::aaresults::AAOrderResults;
+use crate::presentation::cgresults::CGOrderResults;
+use crate::presentation::csv_presenter::{CsvPresenter, CsvProperties, CsvWrite};
+use crate::presentation::ordermap::OrderMapsCollection;
+use crate::presentation::tab_presenter::{TabPresenter, TabProperties, TabWrite};
+use crate::presentation::xvg_presenter::{XvgPresenter, XvgProperties, XvgWrite};
+use crate::presentation::yaml_presenter::{YamlPresenter, YamlProperties, YamlWrite};
 use crate::{
     analysis::{
-        molecule::{AtomType, BondTopology, BondType, MoleculeType},
+        molecule::{AtomType, BondTopology, MoleculeType},
         topology::SystemTopology,
     },
     errors::WriteError,
     input::Analysis,
     PANIC_MESSAGE,
 };
+use getset::{CopyGetters, Getters};
+use groan_rs::prelude::GridMap;
+use indexmap::IndexMap;
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use std::fmt::Debug;
-use std::num::NonZeroUsize;
 use std::{
     fs::File,
     io::{BufWriter, Write},
-    marker::PhantomData,
-    ops::AddAssign,
-    path::{Path, PathBuf},
+    path::Path,
 };
+use strum_macros::Display;
 
 macro_rules! write_result {
     ($dst:expr, $($arg:tt)*) => {
@@ -32,210 +38,187 @@ macro_rules! write_result {
     };
 }
 
-pub(crate) mod aapresenter;
-pub(crate) mod cgpresenter;
+pub(crate) mod aaresults;
+pub(crate) mod cgresults;
+pub(crate) mod converter;
+mod csv_presenter;
 pub(crate) mod ordermap;
+mod tab_presenter;
+mod xvg_presenter;
+mod yaml_presenter;
 
-/// Trait for presentation of results for individual molcules.
-/// General for both AAOrder and CGOrder.
-pub(crate) trait MoleculeResults: Serialize {
-    /// Get the name of the molecule.
-    fn name(&self) -> &str;
-
-    /// Get the maximal number of order bonds associated with any order atom in this molecule.
-    /// For CG, this should be zero.
-    fn max_bonds(&self) -> usize;
-
-    /// Check whether order parameters for individual membrane
-    /// leaflets have been calculated for at least one order bond of the molecule.
-    fn has_assigned_leaflets(&self) -> bool;
-
-    /// Write information about the molecule in human-readable table format.
-    fn write_tab(&self, writer: &mut impl Write) -> Result<(), WriteError>;
-
-    /// Write information about the molecule in an xvg format.
-    fn write_xvg(&self, writer: &mut impl Write) -> Result<(), WriteError>;
-
-    /// Write information about the molecule in an csv format.
-    fn write_csv(
-        &self,
-        writer: &mut impl Write,
-        max_bonds: usize,
-        assigned_leaflets: bool,
-    ) -> Result<(), WriteError>;
+/// Enum representing any of the types of results that can be returned by the `gorder`.
+pub enum AnalysisResults {
+    AA(AAOrderResults),
+    CG(CGOrderResults),
 }
 
-/// Trait implemented by structures presenting the results of the order calculation.
-/// General for both AAOrder and CGOrder.
-pub(crate) trait ResultsPresenter: Serialize {
-    /// Get iterator over the results associated with the individual molecules.
-    fn molecules(&self) -> impl Iterator<Item = &impl MoleculeResults>;
+impl AnalysisResults {
+    /// Write the results of the analysis into output files.
+    pub fn write(&self) -> Result<(), WriteError> {
+        match self {
+            AnalysisResults::AA(x) => x.write_all_results(),
+            AnalysisResults::CG(x) => x.write_all_results(),
+        }
+    }
+}
 
-    /// Write the header for a csv file.
-    fn write_csv_header(
+/// Type alias for a gridmap of f32 values.
+type GridMapF32 = GridMap<f32, f32, fn(&f32) -> f32>;
+
+/// Trait implemented by all structures providing the full results of the analysis.
+pub(crate) trait OrderResults: Debug + Clone + CsvWrite + TabWrite + YamlWrite {
+    type OrderType: OrderType;
+    type MoleculeResults: MoleculeResults;
+
+    /// Create an empty `OrderResults` structure (i.e., without any molecules).
+    fn empty(analysis: Analysis) -> Self;
+
+    /// Create a new `OrderResults` structure.
+    fn new(molecules: IndexMap<String, Self::MoleculeResults>, analysis: Analysis) -> Self;
+
+    /// Get the results for all molecules.
+    fn molecules(&self) -> impl Iterator<Item = &Self::MoleculeResults>;
+
+    /// Get the parameters of the analysis.
+    fn analysis(&self) -> &Analysis;
+
+    /// Return the maximal number of bonds for heavy atoms in the system.
+    /// Only makes sense for atomistic order. Returns 0 by default.
+    #[inline(always)]
+    fn max_bonds(&self) -> usize {
+        0
+    }
+
+    /// Write results of the analysis into the output files.
+    fn write_all_results(&self) -> Result<(), WriteError> {
+        if self.molecules().count() == 0 {
+            log::warn!("Nothing to write.");
+            return Ok(());
+        }
+
+        let analysis = self.analysis();
+        let errors = analysis.estimate_error().is_some();
+        let leaflets = analysis.leaflets().is_some();
+        let input_structure = analysis.structure();
+        let input_trajectory = analysis.trajectory();
+        let overwrite = analysis.overwrite();
+
+        YamlPresenter::new(self, YamlProperties::new(input_structure, input_trajectory))
+            .write(analysis.output_yaml(), overwrite)?;
+
+        if let Some(tab) = analysis.output_tab() {
+            TabPresenter::new(
+                self,
+                TabProperties::new(self, input_structure, input_trajectory, errors, leaflets),
+            )
+            .write(tab, overwrite)?;
+        }
+
+        if let Some(xvg) = analysis.output_xvg() {
+            log::info!("Writing the order parameters into xvg file(s)...");
+
+            XvgPresenter::new(
+                self,
+                XvgProperties::new(input_structure, input_trajectory, leaflets),
+            )
+            .write(xvg, overwrite)?;
+        }
+
+        if let Some(csv) = analysis.output_csv() {
+            CsvPresenter::new(self, CsvProperties::new(self, errors, leaflets))
+                .write(csv, overwrite)?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Trait implemented by all structures providing the results of the analysis for a single molecule type.
+trait MoleculeResults: Debug + Clone + CsvWrite + TabWrite + XvgWrite {
+    /// Return the maximal number of bonds for heavy atoms in the molecule.
+    /// Only makes sense for atomistic order. Returns 0 by default.
+    #[inline(always)]
+    fn max_bonds(&self) -> usize {
+        0
+    }
+
+    /// Get the name of the molecule
+    fn molecule(&self) -> &str;
+}
+
+/// All supported output file formats.
+#[derive(Debug, Clone, Display)]
+enum OutputFormat {
+    #[strum(serialize = "yaml")]
+    YAML,
+    #[strum(serialize = "csv")]
+    CSV,
+    #[strum(serialize = "xvg")]
+    XVG,
+    #[strum(serialize = "tab")]
+    TAB,
+}
+
+/// Trait implemented by all structures that store properties of Presenters.
+pub(crate) trait PresenterProperties: Debug + Clone {
+    /// Is the data for leaflets available?
+    fn leaflets(&self) -> bool;
+}
+
+/// Trait implemented by all structures presenting results of the analysis.
+pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
+    /// Structure describing properties of the presenter.
+    type Properties: PresenterProperties;
+
+    /// Create a new presenter structure.
+    fn new(results: &'a R, properties: Self::Properties) -> Self;
+
+    /// Get the format of the output file that this Presenter creates.
+    fn file_format(&self) -> OutputFormat;
+
+    /// Write the results into an open output file.
+    fn write_results(&self, writer: &mut impl Write) -> Result<(), WriteError>;
+
+    /// Write empty (missing) order parameter into the output file.
+    fn write_empty_order(
         writer: &mut impl Write,
-        max_bonds: usize,
-        assigned_leaflets: bool,
+        properties: &Self::Properties,
     ) -> Result<(), WriteError>;
 
-    /// Write the results of the analysis into a yaml file.
-    #[inline]
-    fn write_yaml(
-        &self,
-        filename: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
+    /// Write empty (missing) order parameters for an entire collection.
+    fn write_empty_bond_collection(
+        writer: &mut impl Write,
+        properties: &Self::Properties,
     ) -> Result<(), WriteError> {
-        let writer = Self::prepare_file(
-            &filename,
-            input_structure,
-            input_trajectory,
-            "yaml",
-            overwrite,
-            true,
-        )?;
-
-        serde_yaml::to_writer(writer, self)
-            .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))?;
-
-        Ok(())
-    }
-
-    /// Write the results of the analysis into a table.
-    #[inline]
-    fn write_tab(
-        &self,
-        filename: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let mut writer = Self::prepare_file(
-            &filename,
-            input_structure,
-            input_trajectory,
-            "tab",
-            overwrite,
-            true,
-        )?;
-
-        for mol in self.molecules() {
-            mol.write_tab(&mut writer)?;
-        }
-
-        Ok(())
-    }
-
-    /// Write the results of the analysis for the individual molecules into xvg files.
-    fn write_xvg(
-        &self,
-        file_pattern: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let extension = file_pattern
-            .as_ref()
-            .extension()
-            .and_then(|x| x.to_str())
-            .map(Some)
-            .unwrap_or(None);
-
-        let path_buf = Self::strip_extension(file_pattern.as_ref());
-        let file_path = path_buf.to_str().expect(PANIC_MESSAGE);
-
-        // all molecule names must be unique
-        let names: Vec<String> = self.molecules().map(|x| x.name().to_owned()).collect();
-
-        for (i, mol) in self.molecules().enumerate() {
-            let filename = match extension {
-                Some(x) => format!("{}_{}.{}", file_path, names[i], x),
-                None => format!("{}_{}", file_path, names[i]),
-            };
-
-            log::info!("Writing an xvg file '{}'...", filename);
-
-            let mut writer = Self::prepare_file(
-                &filename,
-                input_structure,
-                input_trajectory,
-                "xvg",
-                overwrite,
-                true,
-            )?;
-
-            mol.write_xvg(&mut writer)?;
-        }
-
-        Ok(())
-    }
-
-    /// Write the results of the analysis into an csv file.
-    fn write_csv(&self, filename: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
-        let mut writer = Self::prepare_file(&filename, "", "", "csv", overwrite, false)?;
-
-        let max_bonds = self.molecules().map(|x| x.max_bonds()).max().unwrap_or(0);
-
-        let leaflets = self.molecules().any(|x| x.has_assigned_leaflets());
-
-        Self::write_csv_header(&mut writer, max_bonds, leaflets)?;
-
-        for molecule in self.molecules() {
-            molecule.write_csv(&mut writer, max_bonds, leaflets)?;
-        }
-
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn strip_extension(file_path: &Path) -> PathBuf {
-        if let Some(stem) = file_path.file_stem() {
-            if let Some(parent) = file_path.parent() {
-                return parent.join(stem);
+        if properties.leaflets() {
+            for _ in 0..3 {
+                Self::write_empty_order(writer, properties)?;
             }
-        }
-        file_path.to_path_buf()
-    }
-
-    /// Back up a file, create a new one and write a header into it.
-    #[inline(always)]
-    fn prepare_file(
-        filename: &impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        file_type: &str,
-        overwrite: bool,
-        write_header: bool,
-    ) -> Result<BufWriter<File>, WriteError> {
-        Self::try_backup_file(filename, overwrite, file_type)?;
-        let mut writer = Self::create_and_open_file(filename)?;
-        if write_header {
-            Self::write_header(&mut writer, filename, input_structure, input_trajectory)?;
+        } else {
+            Self::write_empty_order(writer, properties)?;
         }
 
-        Ok(writer)
+        Ok(())
     }
 
-    /// Write header into an output file.
-    #[inline(always)]
-    fn write_header(
-        writer: &mut BufWriter<File>,
-        filename: &impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-    ) -> Result<(), WriteError> {
-        writeln!(
-            writer,
-            "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.",
-            crate::GORDER_VERSION, input_structure, input_trajectory
-        )
-            .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))
+    /// Create (and potentially back up) an output file, open it and write the results into it.
+    fn write(&self, filename: &impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
+        log::info!(
+            "Writing the order parameters into {} file '{}'...",
+            self.file_format(),
+            filename.as_ref().to_str().expect(PANIC_MESSAGE)
+        );
+        log::logger().flush();
+
+        self.try_backup(filename, overwrite)?;
+        let mut writer = Self::create_and_open(filename)?;
+        self.write_results(&mut writer)
     }
 
-    /// Create and open file for buffered writing.
+    /// Create and open a file for buffered writing.
     #[inline(always)]
-    fn create_and_open_file(filename: &impl AsRef<Path>) -> Result<BufWriter<File>, WriteError> {
+    fn create_and_open(filename: &impl AsRef<Path>) -> Result<BufWriter<File>, WriteError> {
         let file = File::create(filename.as_ref())
             .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
 
@@ -243,16 +226,12 @@ pub(crate) trait ResultsPresenter: Serialize {
     }
 
     /// Back up an output file, if it is necessary and if it is requested.
-    fn try_backup_file(
-        filename: &impl AsRef<Path>,
-        overwrite: bool,
-        file_type: &str,
-    ) -> Result<(), WriteError> {
+    fn try_backup(&self, filename: &impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
         if filename.as_ref().exists() {
             if !overwrite {
                 log::warn!(
                     "Output {} file '{}' already exists. Backing it up.",
-                    file_type,
+                    self.file_format(),
                     filename.as_ref().to_str().expect(PANIC_MESSAGE)
                 );
                 backitup::backup(filename.as_ref())
@@ -260,7 +239,7 @@ pub(crate) trait ResultsPresenter: Serialize {
             } else {
                 log::warn!(
                     "Output {} file '{}' already exists. It will be overwritten as requested.",
-                    file_type,
+                    self.file_format(),
                     filename.as_ref().to_str().expect(PANIC_MESSAGE)
                 );
             }
@@ -268,16 +247,32 @@ pub(crate) trait ResultsPresenter: Serialize {
 
         Ok(())
     }
+
+    /// Write header into the output file specifying version of the library used and some other basic info.
+    fn write_header(
+        writer: &mut impl Write,
+        structure: &str,
+        trajectory: &str,
+    ) -> Result<(), WriteError> {
+        write_result!(writer, "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.\n",
+        crate::GORDER_VERSION, structure, trajectory);
+
+        Ok(())
+    }
 }
 
 /// Single order parameter value, optionally with its estimated error.
-#[derive(Debug, Clone, Copy)]
-pub(super) struct OrderValuePresenter {
+#[derive(Debug, Clone, Copy, CopyGetters)]
+pub struct Order {
+    /// Value of the order parameter (mean from the analysed frames).
+    #[getset(get_copy = "pub")]
     value: f32,
+    /// Estimated error for this order parameter (standard deviation of N blocks).
+    #[getset(get_copy = "pub")]
     error: Option<f32>,
 }
 
-impl Serialize for OrderValuePresenter {
+impl Serialize for Order {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -295,77 +290,6 @@ impl Serialize for OrderValuePresenter {
     }
 }
 
-impl From<f32> for OrderValuePresenter {
-    fn from(value: f32) -> Self {
-        OrderValuePresenter { value, error: None }
-    }
-}
-
-impl From<[f32; 2]> for OrderValuePresenter {
-    fn from(value: [f32; 2]) -> Self {
-        OrderValuePresenter {
-            value: value[0],
-            error: Some(value[1]),
-        }
-    }
-}
-
-impl OrderValuePresenter {
-    /// Write the order parameter (and its error) in 'table' format.
-    #[inline(always)]
-    fn write_tab(&self, writer: &mut impl Write) -> Result<(), WriteError> {
-        write_result!(writer, " {: ^8.4} ", self.value);
-        Ok(())
-    }
-
-    /// Write empty space into 'table' with the correct length.
-    #[inline(always)]
-    fn write_empty_tab(writer: &mut impl Write, _errors: bool) -> Result<(), WriteError> {
-        write_result!(writer, "          ");
-        Ok(())
-    }
-
-    /// Write the order parameter (and its error) in 'csv' format.
-    #[inline(always)]
-    fn write_csv(&self, writer: &mut impl Write) -> Result<(), WriteError> {
-        write_result!(writer, ",{:.4}", self.value);
-        Ok(())
-    }
-
-    /// Write empty (non-existent) order value into a 'csv' file
-    #[inline(always)]
-    fn write_empty_csv(writer: &mut impl Write, _errors: bool) -> Result<(), WriteError> {
-        write_result!(writer, ",");
-        Ok(())
-    }
-}
-
-/// Write the order parameter (and its error) in 'table' format or handle missing value.
-#[inline(always)]
-fn write_optional_order_value_tab(
-    value: Option<OrderValuePresenter>,
-    writer: &mut impl Write,
-    errors: bool,
-) -> Result<(), WriteError> {
-    match value {
-        Some(val) => val.write_tab(writer),
-        None => OrderValuePresenter::write_empty_tab(writer, errors),
-    }
-}
-
-/// Write the order parameter (and its error) in 'csv' format or handle missing value.
-#[inline(always)]
-fn write_optional_order_value_csv(
-    value: Option<OrderValuePresenter>,
-    writer: &mut impl Write,
-    errors: bool,
-) -> Result<(), WriteError> {
-    match value {
-        Some(val) => val.write_csv(writer),
-        None => OrderValuePresenter::write_empty_csv(writer, errors),
-    }
-}
-
 // Helper trait for rounding a float to 4 decimal places
 trait RoundTo4 {
     fn round_to_4(self) -> f64;
@@ -377,14 +301,50 @@ impl RoundTo4 for f32 {
     }
 }
 
+/// Collection of (up to) 3 order parameters: for the full membrane, the upper leaflet,
+/// and the lower leaflet.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct OrderCollection {
+    /// Order parameter for the full membrane.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total: Option<Order>,
+    /// Order parameter for the upper leaflet.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    upper: Option<Order>,
+    /// Order parameter for the lower leaflet.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lower: Option<Order>,
+}
+
+impl OrderCollection {
+    fn new(total: Option<Order>, upper: Option<Order>, lower: Option<Order>) -> Self {
+        Self {
+            total,
+            upper,
+            lower,
+        }
+    }
+}
+
 /// Order parameters calculated for a single bond.
-#[derive(Debug, Clone, Serialize)]
-struct BondResults {
-    total: OrderValuePresenter,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    upper: Option<OrderValuePresenter>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    lower: Option<OrderValuePresenter>,
+#[derive(Debug, Clone, Serialize, Getters)]
+pub struct BondResults {
+    /// Name of the bond.
+    #[serde(skip)]
+    #[getset(get = "pub")]
+    bond: BondTopology,
+    /// Name of the molecule this bond belongs to.
+    #[serde(skip)]
+    #[getset(get = "pub")]
+    molecule: String,
+    /// Order parameters calculated for this bond.
+    #[serde(flatten)]
+    #[getset(get = "pub")]
+    order: OrderCollection,
+    /// Ordermaps calculated for this bond.
+    #[serde(skip)]
+    #[getset(get = "pub")]
+    ordermaps: OrderMapsCollection,
 }
 
 /// Empty struct used as a marker.
@@ -395,11 +355,11 @@ pub(crate) struct AAOrder {}
 pub(crate) struct CGOrder {}
 
 /// Trait implemented only by `AAOrder` and `CGOrder` structs.
-pub(crate) trait OrderType: Debug {
+pub(crate) trait OrderType: Debug + Clone {
     /// Used to convert an order parameter to its final value depending on the analysis type.
     /// Atomistic order parameters are reported as -S_CD.
     /// Coarse grained order parameters are reported as P2.
-    fn convert(order: f32, error: Option<f32>) -> OrderValuePresenter;
+    fn convert(order: f32, error: Option<f32>) -> Order;
 
     /// String to use as a label for z-axis in the ordermap.
     fn zlabel() -> &'static str;
@@ -407,8 +367,8 @@ pub(crate) trait OrderType: Debug {
 
 impl OrderType for AAOrder {
     #[inline(always)]
-    fn convert(order: f32, error: Option<f32>) -> OrderValuePresenter {
-        OrderValuePresenter {
+    fn convert(order: f32, error: Option<f32>) -> Order {
+        Order {
             value: -order,
             error,
         }
@@ -422,8 +382,8 @@ impl OrderType for AAOrder {
 
 impl OrderType for CGOrder {
     #[inline(always)]
-    fn convert(order: f32, error: Option<f32>) -> OrderValuePresenter {
-        OrderValuePresenter {
+    fn convert(order: f32, error: Option<f32>) -> Order {
+        Order {
             value: order,
             error,
         }
@@ -437,67 +397,18 @@ impl OrderType for CGOrder {
 
 impl BondResults {
     #[inline(always)]
-    fn convert_from<O: OrderType>(value: &BondType) -> Self {
-        let (total, upper, lower) = value.calc_order();
-        let (etotal, eupper, elower) = value.estimate_error();
-
-        BondResults {
-            total: O::convert(total, etotal),
-            upper: upper.map(|x| O::convert(x, eupper)),
-            lower: lower.map(|x| O::convert(x, elower)),
+    fn new(
+        bond: &BondTopology,
+        molecule: &str,
+        order: OrderCollection,
+        ordermaps: OrderMapsCollection,
+    ) -> Self {
+        Self {
+            bond: bond.clone(),
+            molecule: molecule.to_owned(),
+            order,
+            ordermaps,
         }
-    }
-}
-
-impl BondResults {
-    /// Write results for a single bond in human readable table format.
-    fn write_tab(&self, writer: &mut impl Write, leaflets: bool) -> Result<(), WriteError> {
-        self.total.write_tab(writer)?;
-        if leaflets {
-            for value in [self.upper, self.lower] {
-                write_optional_order_value_tab(value, writer, false)?;
-            }
-        }
-
-        write_result!(writer, "|");
-
-        Ok(())
-    }
-
-    /// Write results for a single bond in csv format.
-    fn write_csv(&self, writer: &mut impl Write, leaflets: bool) -> Result<(), WriteError> {
-        self.total.write_csv(writer)?;
-
-        if leaflets {
-            for value in [self.upper, self.lower] {
-                write_optional_order_value_csv(value, writer, false)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Write results for a single bond in xvg format.
-    fn write_xvg(
-        &self,
-        writer: &mut impl Write,
-        number: usize,
-        bond_topology: &BondTopology,
-    ) -> Result<(), WriteError> {
-        write_result!(
-            writer,
-            "# Bond {} - {}:\n",
-            bond_topology.atom1().atom_name(),
-            bond_topology.atom2().atom_name()
-        );
-
-        write_result!(writer, "{:<4} {: >8.4} ", number, self.total.value);
-
-        for order in [self.upper, self.lower].into_iter().flatten() {
-            write_result!(writer, "{: >8.4} ", order.value);
-        }
-
-        Ok(())
     }
 }
 
@@ -569,115 +480,5 @@ impl SystemTopology {
         for molecule in self.molecule_types() {
             molecule.info();
         }
-    }
-}
-
-/// Structure for collecting order parameters to calculate average order.
-#[derive(Debug, Clone)]
-struct AverageOrder<O: OrderType> {
-    total: Order<AddSum>,
-    upper: Order<AddSum>,
-    lower: Order<AddSum>,
-    order_type: PhantomData<O>,
-}
-
-impl<O: OrderType> Default for AverageOrder<O> {
-    fn default() -> Self {
-        Self {
-            total: Order::new(0.0, 0, true),
-            upper: Order::new(0.0, 0, true),
-            lower: Order::new(0.0, 0, true),
-            order_type: PhantomData,
-        }
-    }
-}
-
-impl<O: OrderType> AddAssign<&BondType> for AverageOrder<O> {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: &BondType) {
-        self.total += rhs.total().clone();
-        if let Some(upper) = rhs.upper().clone() {
-            self.upper += upper;
-        }
-        if let Some(lower) = rhs.lower().clone() {
-            self.lower += lower;
-        }
-    }
-}
-
-impl<O: OrderType> AverageOrder<O> {
-    fn convert2result(self, min_samples: usize, n_blocks: Option<usize>) -> BondResults {
-        let checked_min_samples = NonZeroUsize::new(min_samples).unwrap_or_else(|| {
-            panic!(
-                "FATAL GORDER ERROR | AverageOrder::convert2result | 'min_samples' is ZERO. {}",
-                PANIC_MESSAGE
-            )
-        });
-
-        let calc_and_convert =
-            |order: &Order<AddSum>, error| O::convert(order.calc_order(checked_min_samples), error);
-
-        let total_result = calc_and_convert(
-            &self.total,
-            n_blocks.map(|n| self.total.estimate_error(n)).flatten(),
-        );
-
-        let upper_result = if !self.upper.is_empty() {
-            Some(calc_and_convert(
-                &self.upper,
-                n_blocks.map(|n| self.upper.estimate_error(n)).flatten(),
-            ))
-        } else {
-            None
-        };
-
-        let lower_result = if !self.lower.is_empty() {
-            Some(calc_and_convert(
-                &self.lower,
-                n_blocks.map(|n| self.lower.estimate_error(n)).flatten(),
-            ))
-        } else {
-            None
-        };
-
-        BondResults {
-            total: total_result,
-            upper: upper_result,
-            lower: lower_result,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_serialize_atom_type() {
-        let atom = AtomType::new_raw(5, "POPC", "CA");
-        let serialized = serde_yaml::to_string(&atom).unwrap();
-        assert_eq!(serialized, "POPC CA (5)\n");
-    }
-
-    #[test]
-    fn test_serialize_bond_results() {
-        let bond_results = BondResults {
-            total: 0.777.into(),
-            upper: None,
-            lower: None,
-        };
-        let serialized = serde_yaml::to_string(&bond_results).unwrap();
-        assert_eq!(serialized, "total: 0.777\n");
-    }
-
-    #[test]
-    fn test_serialize_bond_results_leaflets() {
-        let bond_results = BondResults {
-            total: 0.777.into(),
-            upper: Some(0.765.into()),
-            lower: Some(0.789.into()),
-        };
-        let serialized = serde_yaml::to_string(&bond_results).unwrap();
-        assert_eq!(serialized, "total: 0.777\nupper: 0.765\nlower: 0.789\n");
     }
 }

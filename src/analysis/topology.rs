@@ -3,10 +3,11 @@
 
 //! Implementation of a structure describing the topology of the entire system.
 
-use crate::input::EstimateError;
+use crate::input::{Analysis, EstimateError};
 
 use super::molecule::MoleculeType;
 use crate::errors::ErrorEstimationError;
+use crate::presentation::converter::{MolConvert, ResultsConverter};
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::prelude::Dimension;
 use std::ops::Add;
@@ -18,7 +19,7 @@ pub(crate) struct SystemTopology {
     molecule_types: Vec<MoleculeType>,
     #[getset(get_copy = "pub(super)")]
     membrane_normal: Dimension,
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub(super)")]
     estimate_error: Option<EstimateError>,
 }
 
@@ -36,9 +37,15 @@ impl SystemTopology {
         }
     }
 
+    /// Convert the topology into a results structure.
+    pub(super) fn convert<O: MolConvert>(self, analysis: Analysis) -> O {
+        let converter = ResultsConverter::<O>::new(analysis);
+        converter.convert_topology(self)
+    }
+
     /// Report basic information about the result of the error estimation.
     pub(super) fn error_info(&self) -> Result<(), ErrorEstimationError> {
-        let Some(estimate_error) = &self.estimate_error else {
+        let Some(estimate_error) = self.estimate_error() else {
             return Ok(());
         };
         let n_blocks = estimate_error.n_blocks();

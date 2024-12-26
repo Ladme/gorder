@@ -6,11 +6,10 @@
 use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
 use super::topology::SystemTopology;
-use crate::errors::{AnalysisError, WriteError};
+use crate::errors::AnalysisError;
 use crate::input::EstimateError;
-use crate::presentation::ResultsPresenter;
 use crate::{errors::TopologyError, input::LeafletClassification};
-use crate::{input::Analysis, input::OrderMap, PANIC_MESSAGE};
+use crate::{input::OrderMap, PANIC_MESSAGE};
 use groan_rs::prelude::Dimension;
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
@@ -115,8 +114,7 @@ pub(super) fn classify_molecules(
                 membrane_normal,
                 leaflet_classification,
                 ordermap_params,
-                min_samples,
-                estimate_error.map(|e| e.n_blocks()),
+                estimate_error.is_some(),
             )?);
         }
     }
@@ -187,58 +185,6 @@ pub(super) fn analyze_frame(
         }
 
         molecule.analyze_frame(frame, simbox, &membrane_normal.into())?;
-    }
-
-    Ok(())
-}
-
-/// Write the results of the analysis into the requested output files.
-/// Note that writing of the ordermaps is handled elsewhere.
-pub(super) fn write_results(
-    results: impl ResultsPresenter,
-    analysis: &Analysis,
-) -> Result<(), WriteError> {
-    log::info!(
-        "Writing the order parameters into a yaml file '{}'...",
-        analysis.output()
-    );
-    log::logger().flush();
-
-    results.write_yaml(
-        analysis.output(),
-        analysis.structure(),
-        analysis.trajectory(),
-        analysis.overwrite(),
-    )?;
-
-    if let Some(tab) = analysis.output_tab() {
-        log::info!("Writing the order parameters into a table '{}'...", tab);
-
-        log::logger().flush();
-        results.write_tab(
-            tab,
-            analysis.structure(),
-            analysis.trajectory(),
-            analysis.overwrite(),
-        )?;
-    };
-
-    if let Some(xvg) = analysis.output_xvg() {
-        log::info!("Writing the order parameters into xvg file(s)...");
-
-        log::logger().flush();
-        results.write_xvg(
-            xvg,
-            analysis.structure(),
-            analysis.trajectory(),
-            analysis.overwrite(),
-        )?;
-    }
-
-    if let Some(csv) = analysis.output_csv() {
-        log::info!("Writing the order parameters into a csv file '{}'...", csv);
-        log::logger().flush();
-        results.write_csv(csv, analysis.overwrite())?;
     }
 
     Ok(())
@@ -338,8 +284,7 @@ fn create_new_molecule_type(
     membrane_normal: Dimension,
     leaflet_classification: Option<&LeafletClassification>,
     ordermap_params: Option<&OrderMap>,
-    min_samples: usize,
-    error_n_blocks: Option<usize>,
+    errors: bool,
 ) -> Result<MoleculeType, TopologyError> {
     // create a name of the molecule
     let name = residues.join("-");
@@ -369,8 +314,7 @@ fn create_new_molecule_type(
         minimum_index,
         classifier,
         ordermap_params,
-        min_samples,
-        error_n_blocks,
+        errors,
     )
 }
 

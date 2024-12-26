@@ -47,7 +47,7 @@ fn test_aa_order_basic_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -72,7 +72,7 @@ fn test_aa_order_basic_ndx_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -127,7 +127,7 @@ fn test_aa_order_basic_table() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_table,
@@ -160,7 +160,7 @@ fn test_aa_order_basic_xvg() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     for molecule in ["POPC", "POPE", "POPG"] {
         let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
@@ -192,7 +192,7 @@ fn test_aa_order_basic_csv() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_csv,
@@ -226,7 +226,7 @@ fn test_aa_order_basic_xvg_weird_names() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         for molecule in ["POPC", "POPE", "POPG"] {
             let path = if name.contains(".xvg") {
@@ -261,7 +261,7 @@ fn test_aa_order_basic_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -295,7 +295,7 @@ fn test_aa_order_basic_table_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_table,
@@ -329,7 +329,7 @@ fn test_aa_order_leaflets_yaml() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -365,7 +365,7 @@ fn test_aa_order_leaflets_yaml_multiple_threads() {
                 .build()
                 .unwrap();
 
-            analysis.run().unwrap();
+            analysis.run().unwrap().write().unwrap();
 
             assert!(diff_files_ignore_first(
                 path_to_output,
@@ -409,7 +409,7 @@ fn test_aa_order_leaflets_yaml_different_membrane_normals() {
                 .build()
                 .unwrap();
 
-            analysis.run().unwrap();
+            analysis.run().unwrap().write().unwrap();
 
             assert!(diff_files_ignore_first(
                 path_to_output,
@@ -448,7 +448,7 @@ fn test_aa_order_leaflets_table() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_table,
@@ -488,7 +488,7 @@ fn test_aa_order_leaflets_xvg() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         for molecule in ["POPC", "POPE", "POPG"] {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
@@ -527,7 +527,7 @@ fn test_aa_order_leaflets_csv() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_csv,
@@ -556,7 +556,7 @@ fn test_aa_order_leaflets_yaml_supershort() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -588,7 +588,7 @@ fn test_aa_order_one_different_hydrogen_numbers_table() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_table,
@@ -620,7 +620,7 @@ fn test_aa_order_one_different_hydrogen_numbers_csv() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_csv,
@@ -648,7 +648,7 @@ fn test_aa_order_limit_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -677,7 +677,7 @@ fn test_aa_order_leaflets_limit_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -710,7 +710,7 @@ fn test_aa_order_leaflets_limit_tab() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_table,
@@ -743,7 +743,7 @@ fn test_aa_order_leaflets_limit_csv() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_csv,
@@ -774,7 +774,7 @@ fn test_aa_order_begin_end_step_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -807,7 +807,7 @@ fn test_aa_order_begin_end_step_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -838,7 +838,7 @@ fn test_aa_order_begin_end_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -870,7 +870,7 @@ fn test_aa_order_begin_end_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -895,7 +895,7 @@ fn test_aa_order_no_molecules() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(!Path::new("THIS_FILE_SHOULD_NOT_BE_CREATED_1").exists());
 }
@@ -915,7 +915,7 @@ fn test_aa_order_empty_molecules() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(!Path::new("THIS_FILE_SHOULD_NOT_BE_CREATED_2").exists());
 }
@@ -988,7 +988,7 @@ fn test_aa_order_basic_all_formats_backup() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     let all_files = [
         ("tests/files/aa_order_basic.yaml", &file_paths[0]),
@@ -1039,7 +1039,7 @@ fn test_aa_order_maps_basic() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     let expected_file_names = [
         "ordermap_POPC-C218-87--POPC-H18R-88_full.dat",
@@ -1103,7 +1103,7 @@ fn test_aa_order_maps_leaflets() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         let expected_file_names = [
             "ordermap_POPC-C218-87_lower.dat",
@@ -1205,7 +1205,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
                 .build()
                 .unwrap();
 
-            analysis.run().unwrap();
+            analysis.run().unwrap().write().unwrap();
 
             let expected_file_names = [
                 "ordermap_POPC-C218-87_lower.dat",
@@ -1289,7 +1289,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         let expected_file_names = [
             "ordermap_POPC-C218-87--POPC-H18R-88_full.dat",
@@ -1349,7 +1349,7 @@ fn test_aa_order_maps_basic_weird_molecules() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     let expected_file_names = [
         "POPC-POPE1/ordermap_POPC-C1A-4--POPC-D2A-5_full.dat",
@@ -1424,7 +1424,7 @@ fn test_aa_order_maps_basic_backup() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     let expected_file_names = [
         "ordermap_POPC-C218-87--POPC-H18R-88_full.dat",
@@ -1501,7 +1501,7 @@ fn test_aa_order_maps_basic_different_plane() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     // only test one file
     let real_file = format!("{}/POPC/ordermap_POPC-C218-87_full.dat", path_to_dir);
@@ -1534,7 +1534,7 @@ fn test_aa_order_error_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -1564,7 +1564,7 @@ fn test_aa_order_error_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -1594,7 +1594,7 @@ fn test_aa_order_error_leaflets_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap();
+    analysis.run().unwrap().write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -1625,7 +1625,7 @@ fn test_aa_order_error_leaflets_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap();
+        analysis.run().unwrap().write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,

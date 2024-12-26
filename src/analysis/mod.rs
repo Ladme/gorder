@@ -6,6 +6,7 @@
 use groan_rs::prelude::Vector3D;
 
 use crate::input::{Analysis, AnalysisType, Axis};
+use crate::presentation::{AnalysisResults, OrderResults};
 
 mod aaorder;
 mod cgorder;
@@ -18,20 +19,17 @@ pub(crate) mod timewise;
 pub(crate) mod topology;
 
 impl Analysis {
-    /// Perform the analysis and write out the results.
-    #[inline(always)]
-    pub fn run(mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    /// Perform the analysis.
+    pub fn run<'a>(mut self) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
         self.init_ordermap(self.membrane_normal());
-
         self.info();
+
         match self.analysis_type() {
             AnalysisType::AAOrder {
                 heavy_atoms: _,
                 hydrogens: _,
-            } => crate::analysis::aaorder::analyze_atomistic(&self),
-            AnalysisType::CGOrder { beads: _ } => {
-                crate::analysis::cgorder::analyze_coarse_grained(&self)
-            }
+            } => aaorder::analyze_atomistic(self),
+            AnalysisType::CGOrder { beads: _ } => cgorder::analyze_coarse_grained(self),
         }
     }
 

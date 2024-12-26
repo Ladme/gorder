@@ -3,9 +3,7 @@
 
 //! Methods for writing maps of order parameters.
 
-use std::io::Write;
-use std::{fs::File, io::BufWriter, path::Path};
-
+use super::{GridMapF32, OrderType};
 use crate::analysis::molecule::MoleculeType;
 use crate::analysis::topology::SystemTopology;
 use crate::{
@@ -14,8 +12,34 @@ use crate::{
     Leaflet,
 };
 use crate::{GORDER_VERSION, PANIC_MESSAGE};
+use groan_rs::prelude::GridMap;
+use groan_rs::structures::gridmap::DataOrder;
+use indexmap::IndexMap;
+use std::io::Write;
+use std::{fs::File, io::BufWriter, path::Path};
 
-use super::OrderType;
+/// Collection of (up to) 3 order maps: for the full membrane, the upper leaflet,
+/// and the lower leaflet.
+#[derive(Debug, Clone, Default)]
+pub struct OrderMapsCollection {
+    total: Option<GridMapF32>,
+    upper: Option<GridMapF32>,
+    lower: Option<GridMapF32>,
+}
+
+impl OrderMapsCollection {
+    pub(super) fn new(
+        total: Option<GridMapF32>,
+        upper: Option<GridMapF32>,
+        lower: Option<GridMapF32>,
+    ) -> Self {
+        Self {
+            total,
+            upper,
+            lower,
+        }
+    }
+}
 
 impl Map {
     /// Write the map of order parameters for a single heavy atom type into an output file.
