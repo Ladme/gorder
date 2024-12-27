@@ -6,6 +6,7 @@
 use crate::errors::{OrderMapWriteError, WriteError};
 use crate::input::Plane;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults};
+use crate::presentation::cgresults::CGMoleculeResults;
 use crate::presentation::{
     BondResults, GridMapF32, MoleculeResults, OrderResults, OrderType, OutputFormat, Presenter,
     PresenterProperties,
@@ -15,7 +16,6 @@ use getset::Getters;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use crate::presentation::cgresults::CGMoleculeResults;
 
 /// Collection of (up to) 3 order maps: for the full membrane, the upper leaflet,
 /// and the lower leaflet.
@@ -126,8 +126,17 @@ impl<'a, R: OrderResults> Presenter<'a, R> for OrderMapPresenter<'a, R> {
 
 impl OrderMapsCollection {
     /// Write maps from a single OrderMapsCollection.
-    fn write_maps<O: OrderType>(&self, directory: &impl AsRef<Path>, name_pattern: &str, plane: Plane, comment: &str) -> Result<(), OrderMapWriteError> {
-        for (map_type, leaflet) in [self.total(), self.upper(), self.lower()].into_iter().zip(["full", "upper", "lower"]) {
+    fn write_maps<O: OrderType>(
+        &self,
+        directory: &impl AsRef<Path>,
+        name_pattern: &str,
+        plane: Plane,
+        comment: &str,
+    ) -> Result<(), OrderMapWriteError> {
+        for (map_type, leaflet) in [self.total(), self.upper(), self.lower()]
+            .into_iter()
+            .zip(["full", "upper", "lower"])
+        {
             if let Some(map) = map_type {
                 let filename = format!("{}_{}.dat", name_pattern, leaflet);
                 let path = directory.as_ref().join(Path::new(&filename));
@@ -151,62 +160,81 @@ impl MapWrite for BondResults {
         let comment = format!("# Map of average order parameters calculated for bonds between atom types {} and {} of molecule type {}.\n# Calculated with 'gorder v{}'.",
                               atom1, atom2, self.molecule(), GORDER_VERSION);
 
-        self.ordermaps().write_maps::<O>(&directory, &name, properties.plane, &comment)
+        self.ordermaps()
+            .write_maps::<O>(&directory, &name, properties.plane, &comment)
     }
 }
 
 impl MapWrite for AAMoleculeResults {
-    fn write_map<O: OrderType>(&self, path: impl AsRef<Path>, properties: &OrderMapProperties) -> Result<(), OrderMapWriteError> {
+    fn write_map<O: OrderType>(
+        &self,
+        path: impl AsRef<Path>,
+        properties: &OrderMapProperties,
+    ) -> Result<(), OrderMapWriteError> {
         let name = self.molecule();
         let directory = path.as_ref().join(Path::new(name));
 
-        std::fs::create_dir(&directory).map_err(|_| {
-            OrderMapWriteError::CouldNotCreateDirectory(Box::from(path.as_ref()))
-        })?;
+        std::fs::create_dir(&directory)
+            .map_err(|_| OrderMapWriteError::CouldNotCreateDirectory(Box::from(path.as_ref())))?;
 
         // write average ordermaps
         let comment = format!("# Map of average order parameters calculated for molecule type {}.\n# Calculated with 'gorder v{}'.",
                               self.molecule(), GORDER_VERSION);
         let name = "ordermap_average";
-        self.average_ordermaps().write_maps::<O>(&directory, &name, properties.plane, &comment)?;
+        self.average_ordermaps()
+            .write_maps::<O>(&directory, &name, properties.plane, &comment)?;
 
         // write ordermaps for atoms
-        self.order().values().try_for_each(|atom| atom.write_map::<O>(&directory, properties))
+        self.order()
+            .values()
+            .try_for_each(|atom| atom.write_map::<O>(&directory, properties))
     }
 }
 
 impl MapWrite for AAAtomResults {
-    fn write_map<O: OrderType>(&self, directory: impl AsRef<Path>, properties: &OrderMapProperties) -> Result<(), OrderMapWriteError> {
+    fn write_map<O: OrderType>(
+        &self,
+        directory: impl AsRef<Path>,
+        properties: &OrderMapProperties,
+    ) -> Result<(), OrderMapWriteError> {
         let name = format!("ordermap_{}", self.atom());
         let comment = format!("# Map of average order parameters calculated for atom type {} of molecule type {}.\n# Calculated with 'gorder v{}'.",
                               self.atom(), self.molecule(), GORDER_VERSION);
 
         // write the ordermaps for the atom itself
-        self.ordermaps().write_maps::<O>(&directory, &name, properties.plane, &comment)?;
+        self.ordermaps()
+            .write_maps::<O>(&directory, &name, properties.plane, &comment)?;
 
         // write ordermaps for the individual bonds
-        self.bonds().values().try_for_each(|bond| bond.write_map::<O>(&directory, properties))
-
+        self.bonds()
+            .values()
+            .try_for_each(|bond| bond.write_map::<O>(&directory, properties))
     }
 }
 
 impl MapWrite for CGMoleculeResults {
-    fn write_map<O: OrderType>(&self, path: impl AsRef<Path>, properties: &OrderMapProperties) -> Result<(), OrderMapWriteError> {
+    fn write_map<O: OrderType>(
+        &self,
+        path: impl AsRef<Path>,
+        properties: &OrderMapProperties,
+    ) -> Result<(), OrderMapWriteError> {
         let name = self.molecule();
         let directory = path.as_ref().join(Path::new(name));
 
-        std::fs::create_dir(&directory).map_err(|_| {
-            OrderMapWriteError::CouldNotCreateDirectory(Box::from(path.as_ref()))
-        })?;
+        std::fs::create_dir(&directory)
+            .map_err(|_| OrderMapWriteError::CouldNotCreateDirectory(Box::from(path.as_ref())))?;
 
         // write average ordermaps
         let comment = format!("# Map of average order parameters calculated for molecule type {}.\n# Calculated with 'gorder v{}'.",
                               self.molecule(), GORDER_VERSION);
         let name = "ordermap_average";
-        self.average_ordermaps().write_maps::<O>(&directory, &name, properties.plane, &comment)?;
-        
+        self.average_ordermaps()
+            .write_maps::<O>(&directory, &name, properties.plane, &comment)?;
+
         // write ordermaps for individual bonds
-        self.order().values().try_for_each(|bond| bond.write_map::<O>(&directory, properties))
+        self.order()
+            .values()
+            .try_for_each(|bond| bond.write_map::<O>(&directory, properties))
     }
 }
 
@@ -227,14 +255,16 @@ fn prepare_ordermaps_directory(
                 "Output directory for ordermaps '{}' already exists. Backing it up.",
                 directory.as_ref().to_str().expect(PANIC_MESSAGE)
             );
-            backitup::backup(directory)
-                .map_err(|_| OrderMapWriteError::CouldNotBackupDirectory(Box::from(directory.as_ref())))?;
+            backitup::backup(directory).map_err(|_| {
+                OrderMapWriteError::CouldNotBackupDirectory(Box::from(directory.as_ref()))
+            })?;
         } else {
             log::warn!("Output directory for ordermaps '{}' already exists. It will be overwritten as requested.",
                         directory.as_ref().to_str().expect(PANIC_MESSAGE)
                     );
-            std::fs::remove_dir_all(directory)
-                .map_err(|_| OrderMapWriteError::CouldNotRemoveDirectory(Box::from(directory.as_ref())))?;
+            std::fs::remove_dir_all(directory).map_err(|_| {
+                OrderMapWriteError::CouldNotRemoveDirectory(Box::from(directory.as_ref()))
+            })?;
         }
     }
 

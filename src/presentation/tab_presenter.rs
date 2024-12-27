@@ -111,7 +111,7 @@ impl<'a, R: OrderResults> Presenter<'a, R> for TabPresenter<'a, R> {
         properties: &TabProperties,
     ) -> Result<(), WriteError> {
         if properties.errors {
-            write_result!(writer, " {:13} ", "");
+            write_result!(writer, " {:17} ", "");
         } else {
             write_result!(writer, " {:8} ", "");
         }
@@ -129,7 +129,7 @@ impl TabWrite for Order {
         _properties: &TabProperties,
     ) -> Result<(), WriteError> {
         match self.error {
-            Some(e) => write_result!(writer, " {: ^6.4}±{: ^6.4} ", self.value, e),
+            Some(e) => write_result!(writer, " {: >7.4} ± {: ^7.4} ", self.value, e),
             None => write_result!(writer, " {: ^8.4} ", self.value),
         }
 
@@ -205,12 +205,18 @@ impl TabWrite for AAMoleculeResults {
     ) -> Result<(), WriteError> {
         write_result!(writer, "\nMolecule type {}\n", self.molecule());
         write_result!(writer, "{:9}", " ");
-        let width = if properties.leaflets { 28usize } else { 8usize };
+        let width = match (properties.leaflets, properties.errors) {
+            (true, true) => 55,
+            (true, false) => 28,
+            (false, true) => 17,
+            (false, false) => 8,
+        };
+
         let max_bonds = properties.max_bonds_for_molecule(self.molecule());
 
         write_result!(writer, " {: ^width$} |", "TOTAL", width = width);
         for i in 1..=max_bonds {
-            let hydrogen = if properties.leaflets {
+            let hydrogen = if properties.leaflets || properties.errors {
                 format!("HYDROGEN #{}", i)
             } else {
                 format!("H #{}", i)
@@ -223,7 +229,14 @@ impl TabWrite for AAMoleculeResults {
         if properties.leaflets {
             write_result!(writer, "         ");
             for _ in 0..=max_bonds {
-                write_result!(writer, "   FULL     UPPER     LOWER   |");
+                if properties.errors {
+                    write_result!(
+                        writer,
+                        "        FULL              UPPER              LOWER       |"
+                    );
+                } else {
+                    write_result!(writer, "   FULL     UPPER     LOWER   |");
+                }
             }
             write_result!(writer, "\n");
         }
@@ -296,10 +309,18 @@ impl TabWrite for CGMoleculeResults {
     ) -> Result<(), WriteError> {
         write_result!(writer, "\nMolecule type {}\n", self.molecule());
 
-        if properties.leaflets {
-            write_result!(writer, "                   FULL     UPPER     LOWER   |\n");
-        } else {
-            write_result!(writer, "                   FULL   |\n");
+        match (properties.leaflets, properties.errors) {
+            (true, true) => {
+                write_result!(
+                    writer,
+                    "                        FULL              UPPER              LOWER       |\n"
+                )
+            }
+            (true, false) => {
+                write_result!(writer, "                   FULL     UPPER     LOWER   |\n")
+            }
+            (false, true) => write_result!(writer, "                        FULL       |\n"),
+            (false, false) => write_result!(writer, "                   FULL   |\n"),
         }
 
         for bond in self.order().values() {

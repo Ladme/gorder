@@ -159,15 +159,15 @@ impl<'a> CsvWrite for AAOrderResults {
         match (properties.leaflets, properties.errors) {
             (true, true) => write_result!(
                 writer,
-                ",total full membrane,total full membrane std,\
-                 total upper leaflet,total upper leaflet std,\
-                 total lower leaflet,total lower leaflet std"
+                ",total full membrane,total full membrane error,\
+                 total upper leaflet,total upper leaflet error,\
+                 total lower leaflet,total lower leaflet error"
             ),
             (true, false) => write_result!(
                 writer,
                 ",total full membrane,total upper leaflet,total lower leaflet"
             ),
-            (false, true) => write_result!(writer, ",total,total std"),
+            (false, true) => write_result!(writer, ",total,total error"),
             (false, false) => write_result!(writer, ",total"),
         };
 
@@ -175,9 +175,9 @@ impl<'a> CsvWrite for AAOrderResults {
             match (properties.leaflets, properties.errors) {
                 (true, true) => write_result!(
                     writer,
-                    ",hydrogen #{} full membrane,hydrogen #{} full membrane std,\
-                 hydrogen #{} upper leaflet,hydrogen #{} upper leaflet std,\
-                 hydrogen #{} lower leaflet,hydrogen #{} lower leaflet std",
+                    ",hydrogen #{} full membrane,hydrogen #{} full membrane error,\
+                 hydrogen #{} upper leaflet,hydrogen #{} upper leaflet error,\
+                 hydrogen #{} lower leaflet,hydrogen #{} lower leaflet error",
                     i,
                     i,
                     i,
@@ -194,7 +194,7 @@ impl<'a> CsvWrite for AAOrderResults {
                     i,
                     i
                 ),
-                (false, true) => write_result!(writer, ",hydrogen #{},hydrogen #{} std", i, i),
+                (false, true) => write_result!(writer, ",hydrogen #{},hydrogen #{} error", i, i),
                 (false, false) => write_result!(writer, ",hydrogen #{}", i),
             };
         }
@@ -267,12 +267,12 @@ impl<'a> CsvWrite for CGOrderResults {
         match (properties.leaflets, properties.errors) {
             (true, true) => write_result!(
                 writer,
-                ",full membrane,full membrane std,\
-             upper leaflet,upper leaflet std,\
-             lower leaflet,lower leaflet std\n"
+                ",full membrane,full membrane error,\
+             upper leaflet,upper leaflet error,\
+             lower leaflet,lower leaflet error\n"
             ),
             (true, false) => write_result!(writer, ",full membrane,upper leaflet,lower leaflet\n"),
-            (false, true) => write_result!(writer, ",full membrane,full membrane std\n"),
+            (false, true) => write_result!(writer, ",full membrane,full membrane error\n"),
             (false, false) => write_result!(writer, ",full membrane\n"),
         }
 

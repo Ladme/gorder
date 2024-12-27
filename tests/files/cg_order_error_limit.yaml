@@ -1,0 +1,151 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+POPC:
+  average order:
+    total:
+      mean: 0.2943
+      error: 0.0067
+  order parameters:
+    POPC NC3 (0) - POPC PO4 (1):
+      total:
+        mean: -0.1352
+        error: 0.003
+    POPC PO4 (1) - POPC GL1 (2):
+      total:
+        mean: 0.5899
+        error: 0.006
+    POPC GL1 (2) - POPC GL2 (3):
+      total:
+        mean: -0.1867
+        error: 0.0074
+    POPC GL1 (2) - POPC C1A (4):
+      total:
+        mean: 0.3896
+        error: 0.0124
+    POPC GL2 (3) - POPC C1B (8):
+      total:
+        mean: 0.4916
+        error: 0.0114
+    POPC C1A (4) - POPC D2A (5):
+      total:
+        mean: 0.3682
+        error: 0.0125
+    POPC D2A (5) - POPC C3A (6):
+      total:
+        mean: 0.2931
+        error: 0.0085
+    POPC C3A (6) - POPC C4A (7):
+      total:
+        mean: 0.239
+        error: 0.0109
+    POPC C1B (8) - POPC C2B (9):
+      total:
+        mean: 0.5039
+        error: 0.0126
+    POPC C2B (9) - POPC C3B (10):
+      total:
+        mean: 0.4175
+        error: 0.0131
+    POPC C3B (10) - POPC C4B (11):
+      total:
+        mean: 0.2661
+        error: 0.0136
+POPE:
+  average order:
+    total:
+      mean: 0.2972
+      error: 0.0052
+  order parameters:
+    POPE NH3 (0) - POPE PO4 (1):
+      total:
+        mean: -0.1342
+        error: 0.0069
+    POPE PO4 (1) - POPE GL1 (2):
+      total:
+        mean: 0.6126
+        error: 0.0039
+    POPE GL1 (2) - POPE GL2 (3):
+      total:
+        mean: -0.1913
+        error: 0.0056
+    POPE GL1 (2) - POPE C1A (4):
+      total:
+        mean: 0.4086
+        error: 0.0101
+    POPE GL2 (3) - POPE C1B (8):
+      total:
+        mean: 0.4889
+        error: 0.0078
+    POPE C1A (4) - POPE D2A (5):
+      total:
+        mean: 0.3759
+        error: 0.0164
+    POPE D2A (5) - POPE C3A (6):
+      total:
+        mean: 0.3026
+        error: 0.0136
+    POPE C3A (6) - POPE C4A (7):
+      total:
+        mean: 0.2454
+        error: 0.011
+    POPE C1B (8) - POPE C2B (9):
+      total:
+        mean: 0.4894
+        error: 0.0073
+    POPE C2B (9) - POPE C3B (10):
+      total:
+        mean: 0.4087
+        error: 0.015
+    POPE C3B (10) - POPE C4B (11):
+      total:
+        mean: 0.2629
+        error: 0.0128
+POPG:
+  average order:
+    total:
+      mean: 0.3059
+      error: 0.0089
+  order parameters:
+    POPG GL0 (0) - POPG PO4 (1):
+      total:
+        mean: .nan
+        error: .nan
+    POPG PO4 (1) - POPG GL1 (2):
+      total:
+        mean: .nan
+        error: .nan
+    POPG GL1 (2) - POPG GL2 (3):
+      total:
+        mean: .nan
+        error: .nan
+    POPG GL1 (2) - POPG C1A (4):
+      total:
+        mean: .nan
+        error: .nan
+    POPG GL2 (3) - POPG C1B (8):
+      total:
+        mean: .nan
+        error: .nan
+    POPG C1A (4) - POPG D2A (5):
+      total:
+        mean: .nan
+        error: .nan
+    POPG D2A (5) - POPG C3A (6):
+      total:
+        mean: .nan
+        error: .nan
+    POPG C3A (6) - POPG C4A (7):
+      total:
+        mean: .nan
+        error: .nan
+    POPG C1B (8) - POPG C2B (9):
+      total:
+        mean: .nan
+        error: .nan
+    POPG C2B (9) - POPG C3B (10):
+      total:
+        mean: .nan
+        error: .nan
+    POPG C3B (10) - POPG C4B (11):
+      total:
+        mean: .nan
+        error: .nan

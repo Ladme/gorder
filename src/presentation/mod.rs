@@ -3,11 +3,14 @@
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
+use crate::input::Plane;
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::cgresults::CGOrderResults;
 use crate::presentation::csv_presenter::{CsvPresenter, CsvProperties, CsvWrite};
-use crate::presentation::ordermaps_presenter::{OrderMapPresenter, OrderMapProperties, OrderMapsCollection};
 use crate::presentation::ordermaps_presenter::MapWrite;
+use crate::presentation::ordermaps_presenter::{
+    OrderMapPresenter, OrderMapProperties, OrderMapsCollection,
+};
 use crate::presentation::tab_presenter::{TabPresenter, TabProperties, TabWrite};
 use crate::presentation::xvg_presenter::{XvgPresenter, XvgProperties, XvgWrite};
 use crate::presentation::yaml_presenter::{YamlPresenter, YamlProperties, YamlWrite};
@@ -32,7 +35,6 @@ use std::{
     path::Path,
 };
 use strum_macros::Display;
-use crate::input::Plane;
 
 macro_rules! write_result {
     ($dst:expr, $($arg:tt)*) => {
@@ -70,9 +72,7 @@ impl AnalysisResults {
 type GridMapF32 = GridMap<f32, f32, fn(&f32) -> f32>;
 
 /// Trait implemented by all structures providing the full results of the analysis.
-pub(crate) trait OrderResults:
-    Debug + Clone + CsvWrite + TabWrite + YamlWrite
-{
+pub(crate) trait OrderResults: Debug + Clone + CsvWrite + TabWrite + YamlWrite {
     type OrderType: OrderType;
     type MoleculeResults: MoleculeResults;
 
@@ -136,8 +136,11 @@ pub(crate) trait OrderResults:
         }
 
         if let Some(map) = analysis.map() {
-            OrderMapPresenter::new(self, OrderMapProperties::new(map.plane().unwrap_or(Plane::XY).into()))
-                .write(map.output_directory(), overwrite)?;
+            OrderMapPresenter::new(
+                self,
+                OrderMapProperties::new(map.plane().unwrap_or(Plane::XY).into()),
+            )
+            .write(map.output_directory(), overwrite)?;
         }
 
         Ok(())

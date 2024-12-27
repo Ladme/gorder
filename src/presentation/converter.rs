@@ -60,14 +60,14 @@ impl<O: MolConvert> ResultsConverter<O> {
     /// Convert raw order from analysis into a presentable order parameter.
     #[inline]
     fn convert_order<T: TimeWiseAddTreatment>(&self, analysis_order: &AnalysisOrder<T>) -> Order {
-        let order = analysis_order
-            .calc_order(NonZeroUsize::new(self.analysis.min_samples()).expect(PANIC_MESSAGE));
+        let min_samples = NonZeroUsize::new(self.analysis.min_samples()).expect(PANIC_MESSAGE);
+        let order = analysis_order.calc_order(min_samples);
         let error = self
             .analysis
             .estimate_error()
             .as_ref()
             .map(|e| e.n_blocks())
-            .map(|blocks| analysis_order.estimate_error(blocks))
+            .map(|blocks| analysis_order.estimate_error(blocks, min_samples))
             .flatten();
         O::OrderType::convert(order, error)
     }

@@ -1634,3 +1634,305 @@ fn test_aa_order_error_leaflets_yaml_multiple_threads() {
         ));
     }
 }
+
+#[test]
+fn test_aa_order_error_tab() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let output_table = NamedTempFile::new().unwrap();
+    let path_to_table = output_table.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .output_tab(path_to_table)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_table,
+        "tests/files/aa_order_error.tab",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_error_leaflets_tab() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let output_table = NamedTempFile::new().unwrap();
+    let path_to_table = output_table.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .output_tab(path_to_table)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_table,
+        "tests/files/aa_order_error_leaflets.tab",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_error_csv() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let output_csv = NamedTempFile::new().unwrap();
+    let path_to_csv = output_csv.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .output_csv(path_to_csv)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_csv,
+        "tests/files/aa_order_error.csv",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_error_leaflets_csv() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let output_csv = NamedTempFile::new().unwrap();
+    let path_to_csv = output_csv.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .output_csv(path_to_csv)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_csv,
+        "tests/files/aa_order_error_leaflets.csv",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_error_xvg() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let pattern = format!("{}/order.xvg", path_to_dir);
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_xvg(pattern)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    for molecule in ["POPC", "POPE", "POPG"] {
+        let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
+        // same files as when `estimate_error` is not provided - xvg files do not show error
+        let path_expected = format!("tests/files/aa_order_basic_{}.xvg", molecule);
+
+        assert!(diff_files_ignore_first(&path, &path_expected, 1));
+    }
+}
+
+#[test]
+fn test_aa_order_error_leaflets_xvg() {
+    let output_yaml = NamedTempFile::new().unwrap();
+    let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let pattern = format!("{}/order.xvg", path_to_dir);
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_xvg(pattern)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    for molecule in ["POPC", "POPE", "POPG"] {
+        let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
+        // same files as when `estimate_error` is not provided - xvg files do not show error
+        let path_expected = format!("tests/files/aa_order_leaflets_{}.xvg", molecule);
+
+        assert!(diff_files_ignore_first(&path, &path_expected, 1));
+    }
+}
+
+#[test]
+fn test_aa_order_error_limit() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_yaml = output.path().to_str().unwrap();
+
+    let output_table = NamedTempFile::new().unwrap();
+    let path_to_table = output_table.path().to_str().unwrap();
+
+    let output_csv = NamedTempFile::new().unwrap();
+    let path_to_csv = output_csv.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_tab(path_to_table)
+        .output_csv(path_to_csv)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .estimate_error(EstimateError::default())
+        .min_samples(2000)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_yaml,
+        "tests/files/aa_order_error_limit.yaml",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        path_to_table,
+        "tests/files/aa_order_error_limit.tab",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        path_to_csv,
+        "tests/files/aa_order_error_limit.csv",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_error_leaflets_limit() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_yaml = output.path().to_str().unwrap();
+
+    let output_table = NamedTempFile::new().unwrap();
+    let path_to_table = output_table.path().to_str().unwrap();
+
+    let output_csv = NamedTempFile::new().unwrap();
+    let path_to_csv = output_csv.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_yaml)
+        .output_tab(path_to_table)
+        .output_csv(path_to_csv)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .estimate_error(EstimateError::default())
+        .min_samples(500)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_yaml,
+        "tests/files/aa_order_error_leaflets_limit.yaml",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        path_to_table,
+        "tests/files/aa_order_error_leaflets_limit.tab",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        path_to_csv,
+        "tests/files/aa_order_error_leaflets_limit.csv",
+        1
+    ));
+}

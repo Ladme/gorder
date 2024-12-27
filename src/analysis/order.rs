@@ -119,11 +119,19 @@ impl<T: TimeWiseAddTreatment> AnalysisOrder<T> {
 
     /// Estimate error for this order parameter.
     /// Returns `None` if no information necessary for the error estimation is available.
-    pub(crate) fn estimate_error(&self, n_blocks: usize) -> Option<f32> {
-        self.timewise
+    /// Returns NaN if the total number of samples is below `min_samples`.
+    pub(crate) fn estimate_error(&self, n_blocks: usize, min_samples: NonZeroUsize) -> Option<f32> {
+        let error = self
+            .timewise
             .as_ref()
             .map(|data| data.estimate_error(n_blocks))
-            .flatten()
+            .flatten();
+
+        if error.is_some() && self.n_samples < min_samples.into() {
+            Some(f32::NAN)
+        } else {
+            error
+        }
     }
 
     /// Switch between two ways of treating addition in `timewise`.
