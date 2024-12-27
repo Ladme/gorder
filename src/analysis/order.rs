@@ -108,7 +108,7 @@ impl<T: TimeWiseAddTreatment> AnalysisOrder<T> {
 
     /// Initialize analysis of a new frame. This only does something if `timewise` calculation is requested.
     #[inline(always)]
-    pub(super) fn init_new_frame(&mut self) {
+    pub(crate) fn init_new_frame(&mut self) {
         self.timewise.as_mut().map(|x| x.next_frame());
     }
 
@@ -147,8 +147,6 @@ impl<T: TimeWiseAddTreatment> AnalysisOrder<T> {
 impl<T: TimeWiseAddTreatment> Add<AnalysisOrder<T>> for AnalysisOrder<T> {
     type Output = AnalysisOrder<T>;
 
-    /// This method is intended for merging data for the same bond collected using different threads.
-    /// Time-wise data for the merged structures are interleaved.
     #[inline(always)]
     fn add(self, rhs: AnalysisOrder<T>) -> Self::Output {
         let timewise = match (self.timewise, rhs.timewise) {

@@ -84,7 +84,7 @@ impl Map {
 
     /// Add sampled order parameter to the correct position. Ignore if out of range.
     #[inline(always)]
-    pub(super) fn add_order(&mut self, order: f32, bond_pos: &Vector3D) {
+    pub(crate) fn add_order(&mut self, order: f32, bond_pos: &Vector3D) {
         let (x, y) = self
             .params()
             .plane()

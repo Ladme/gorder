@@ -142,7 +142,7 @@ impl EstimateError {
 }
 
 #[cfg(test)]
-mod tests_yaml {
+mod tests {
     use super::*;
 
     #[test]
