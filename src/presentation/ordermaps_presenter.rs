@@ -8,40 +8,14 @@ use crate::input::Plane;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults};
 use crate::presentation::cgresults::CGMoleculeResults;
 use crate::presentation::{
-    BondResults, GridMapF32, MoleculeResults, OrderResults, OrderType, OutputFormat, Presenter,
-    PresenterProperties,
+    BondResults, GridMapF32, OrderResults, OrderType, OutputFormat, Presenter, PresenterProperties,
 };
 use crate::{GORDER_VERSION, PANIC_MESSAGE};
-use getset::Getters;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-/// Collection of (up to) 3 order maps: for the full membrane, the upper leaflet,
-/// and the lower leaflet.
-#[derive(Debug, Clone, Default, Getters)]
-pub struct OrderMapsCollection {
-    #[getset(get = "pub")]
-    total: Option<GridMapF32>,
-    #[getset(get = "pub")]
-    upper: Option<GridMapF32>,
-    #[getset(get = "pub")]
-    lower: Option<GridMapF32>,
-}
-
-impl OrderMapsCollection {
-    pub(super) fn new(
-        total: Option<GridMapF32>,
-        upper: Option<GridMapF32>,
-        lower: Option<GridMapF32>,
-    ) -> Self {
-        Self {
-            total,
-            upper,
-            lower,
-        }
-    }
-}
+use super::OrderMapsCollection;
 
 /// Structure handling the writing of ordermaps.
 #[derive(Debug, Clone)]
@@ -207,7 +181,6 @@ impl MapWrite for AAAtomResults {
 
         // write ordermaps for the individual bonds
         self.bonds()
-            .values()
             .try_for_each(|bond| bond.write_map::<O>(&directory, properties))
     }
 }

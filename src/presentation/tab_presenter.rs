@@ -14,6 +14,8 @@ use crate::PANIC_MESSAGE;
 use hashbrown::HashMap;
 use std::io::Write;
 
+use super::PublicOrderResults;
+
 /// Structure handling the writing of a table output.
 #[derive(Debug, Clone)]
 pub(super) struct TabPresenter<'a, R: OrderResults> {
@@ -265,7 +267,7 @@ impl TabWrite for AAAtomResults {
         write_result!(writer, "|");
 
         let max_bonds = properties.max_bonds_for_molecule(self.molecule());
-        let mut bonds = self.bonds().values();
+        let mut bonds = self.bonds();
         for _ in 0..max_bonds {
             match bonds.next() {
                 Some(bond) => bond.write_tab(writer, properties)?,

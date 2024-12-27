@@ -8,9 +8,7 @@ use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::cgresults::CGOrderResults;
 use crate::presentation::csv_presenter::{CsvPresenter, CsvProperties, CsvWrite};
 use crate::presentation::ordermaps_presenter::MapWrite;
-use crate::presentation::ordermaps_presenter::{
-    OrderMapPresenter, OrderMapProperties, OrderMapsCollection,
-};
+use crate::presentation::ordermaps_presenter::{OrderMapPresenter, OrderMapProperties};
 use crate::presentation::tab_presenter::{TabPresenter, TabProperties, TabWrite};
 use crate::presentation::xvg_presenter::{XvgPresenter, XvgProperties, XvgWrite};
 use crate::presentation::yaml_presenter::{YamlPresenter, YamlProperties, YamlWrite};
@@ -47,12 +45,13 @@ pub mod cgresults;
 pub(crate) mod converter;
 mod csv_presenter;
 //pub(crate) mod ordermap;
-mod ordermaps_presenter;
+pub mod ordermaps_presenter;
 mod tab_presenter;
 mod xvg_presenter;
 mod yaml_presenter;
 
 /// Enum representing any of the types of results that can be returned by the `gorder`.
+#[derive(Debug, Clone)]
 pub enum AnalysisResults {
     AA(AAOrderResults),
     CG(CGOrderResults),
@@ -69,24 +68,36 @@ impl AnalysisResults {
 }
 
 /// Type alias for a gridmap of f32 values.
-type GridMapF32 = GridMap<f32, f32, fn(&f32) -> f32>;
+pub type GridMapF32 = GridMap<f32, f32, fn(&f32) -> f32>;
+
+/// Public trait implemented by results-containing structures.
+pub trait PublicOrderResults {
+    #[allow(private_bounds)]
+    type MoleculeResults: MoleculeResults;
+
+    /// Get the results for all molecules.
+    fn molecules(&self) -> impl Iterator<Item = &Self::MoleculeResults>;
+
+    /// Get the results for a molecule with the specified name.
+    /// O(1) complexity.
+    /// Returns `None` if such molecule does not exist.
+    fn get_molecule(&self, name: &str) -> Option<&Self::MoleculeResults>;
+
+    /// Get the parameters of the analysis.
+    fn analysis(&self) -> &Analysis;
+}
 
 /// Trait implemented by all structures providing the full results of the analysis.
-pub(crate) trait OrderResults: Debug + Clone + CsvWrite + TabWrite + YamlWrite {
+pub(crate) trait OrderResults:
+    Debug + Clone + CsvWrite + TabWrite + YamlWrite + PublicOrderResults
+{
     type OrderType: OrderType;
-    type MoleculeResults: MoleculeResults;
 
     /// Create an empty `OrderResults` structure (i.e., without any molecules).
     fn empty(analysis: Analysis) -> Self;
 
     /// Create a new `OrderResults` structure.
     fn new(molecules: IndexMap<String, Self::MoleculeResults>, analysis: Analysis) -> Self;
-
-    /// Get the results for all molecules.
-    fn molecules(&self) -> impl Iterator<Item = &Self::MoleculeResults>;
-
-    /// Get the parameters of the analysis.
-    fn analysis(&self) -> &Analysis;
 
     /// Return the maximal number of bonds for heavy atoms in the system.
     /// Only makes sense for atomistic order. Returns 0 by default.
@@ -281,12 +292,29 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
 /// Single order parameter value, optionally with its estimated error.
 #[derive(Debug, Clone, Copy, CopyGetters)]
 pub struct Order {
-    /// Value of the order parameter (mean from the analysed frames).
+    /// Value of the order parameter (mean from the analyzed frames).
     #[getset(get_copy = "pub")]
     value: f32,
     /// Estimated error for this order parameter (standard deviation of N blocks).
     #[getset(get_copy = "pub")]
     error: Option<f32>,
+}
+
+impl From<f32> for Order {
+    #[inline(always)]
+    fn from(value: f32) -> Self {
+        Order { value, error: None }
+    }
+}
+
+impl From<[f32; 2]> for Order {
+    #[inline(always)]
+    fn from(value: [f32; 2]) -> Self {
+        Order {
+            value: value[0],
+            error: Some(value[1]),
+        }
+    }
 }
 
 impl Serialize for Order {
@@ -320,16 +348,19 @@ impl RoundTo4 for f32 {
 
 /// Collection of (up to) 3 order parameters: for the full membrane, the upper leaflet,
 /// and the lower leaflet.
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Getters)]
 pub struct OrderCollection {
     /// Order parameter for the full membrane.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[getset(get = "pub")]
     total: Option<Order>,
     /// Order parameter for the upper leaflet.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[getset(get = "pub")]
     upper: Option<Order>,
     /// Order parameter for the lower leaflet.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[getset(get = "pub")]
     lower: Option<Order>,
 }
 
@@ -343,12 +374,38 @@ impl OrderCollection {
     }
 }
 
+/// Collection of (up to) 3 order maps: for the full membrane, the upper leaflet,
+/// and the lower leaflet.
+#[derive(Debug, Clone, Default, Getters)]
+pub struct OrderMapsCollection {
+    #[getset(get = "pub")]
+    total: Option<GridMapF32>,
+    #[getset(get = "pub")]
+    upper: Option<GridMapF32>,
+    #[getset(get = "pub")]
+    lower: Option<GridMapF32>,
+}
+
+impl OrderMapsCollection {
+    pub(super) fn new(
+        total: Option<GridMapF32>,
+        upper: Option<GridMapF32>,
+        lower: Option<GridMapF32>,
+    ) -> Self {
+        Self {
+            total,
+            upper,
+            lower,
+        }
+    }
+}
+
 /// Order parameters calculated for a single bond.
 #[derive(Debug, Clone, Serialize, Getters)]
 pub struct BondResults {
     /// Name of the bond.
     #[serde(skip)]
-    #[getset(get = "pub")]
+    #[getset(get = "pub(super)")] // intentionally not public
     bond: BondTopology,
     /// Name of the molecule this bond belongs to.
     #[serde(skip)]
@@ -362,6 +419,13 @@ pub struct BondResults {
     #[serde(skip)]
     #[getset(get = "pub")]
     ordermaps: OrderMapsCollection,
+}
+
+impl BondResults {
+    /// Atom types involved in the bond.
+    pub fn atoms(&self) -> (&AtomType, &AtomType) {
+        (self.bond.atom1(), self.bond.atom2())
+    }
 }
 
 /// Empty struct used as a marker.

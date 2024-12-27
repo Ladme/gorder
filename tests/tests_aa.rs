@@ -9,6 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use approx::assert_relative_eq;
 use gorder::prelude::*;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
@@ -1935,4 +1936,577 @@ fn test_aa_order_error_leaflets_limit() {
         "tests/files/aa_order_error_leaflets_limit.csv",
         1
     ));
+}
+
+#[test]
+fn test_aa_order_basic_rust_api() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(x) => x,
+        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+    };
+
+    assert_eq!(results.molecules().count(), 3);
+
+    assert!(results.get_molecule("POPE").is_some());
+    assert!(results.get_molecule("POPC").is_some());
+    assert!(results.get_molecule("POPG").is_some());
+    assert!(results.get_molecule("POPA").is_none());
+
+    let expected_average_orders = [0.1455, 0.1378, 0.1561];
+    let expected_atom_numbers = [37, 40, 38];
+    let expected_molecule_names = ["POPE", "POPC", "POPG"];
+
+    let expected_atom_indices = [32, 41, 34];
+    let expected_atom_names = ["C32", "C32", "C32"];
+    let expected_atom_order = [0.2226, 0.2363, 0.2247];
+
+    let expected_bond_numbers = [2, 2, 2];
+
+    let expected_atom2_indices = [34, 43, 36];
+    let expected_atom2_names = ["H2Y", "H2Y", "H2Y"];
+    let expected_atom2_order = [0.2040, 0.2317, 0.2020];
+
+    for (i, molecule) in results.molecules().enumerate() {
+        assert_eq!(molecule.molecule(), expected_molecule_names[i]);
+
+        let average_order = molecule.average_order();
+        assert_relative_eq!(
+            average_order.total().unwrap().value(),
+            expected_average_orders[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.total().unwrap().error().is_none());
+        assert!(average_order.upper().is_none());
+        assert!(average_order.lower().is_none());
+
+        let average_maps = molecule.average_ordermaps();
+        assert!(average_maps.total().is_none());
+        assert!(average_maps.upper().is_none());
+        assert!(average_maps.lower().is_none());
+
+        // atoms
+        assert_eq!(molecule.atoms().count(), expected_atom_numbers[i]);
+
+        let atom = molecule.get_atom(expected_atom_indices[i]).unwrap();
+        let atom_type = atom.atom();
+        assert_eq!(atom_type.atom_name(), expected_atom_names[i]);
+        assert_eq!(atom_type.relative_index(), expected_atom_indices[i]);
+        assert_eq!(atom_type.residue_name(), expected_molecule_names[i]);
+        assert_eq!(atom.molecule(), expected_molecule_names[i]);
+
+        let order = atom.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_atom_order[i],
+            epsilon = 1e-4
+        );
+        assert!(order.total().unwrap().error().is_none());
+        assert!(order.upper().is_none());
+        assert!(order.lower().is_none());
+
+        let maps = atom.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // bonds
+        assert_eq!(atom.bonds().count(), expected_bond_numbers[i]);
+
+        let bond = atom.get_bond(expected_atom2_indices[i]).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.atom_name(), expected_atom_names[i]);
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a1.residue_name(), expected_molecule_names[i]);
+        assert_eq!(a2.atom_name(), expected_atom2_names[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+        assert_eq!(a2.residue_name(), expected_molecule_names[i]);
+        assert_eq!(bond.molecule(), expected_molecule_names[i]);
+
+        let order = bond.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_atom2_order[i],
+            epsilon = 1e-4
+        );
+        assert!(order.total().unwrap().error().is_none());
+        assert!(order.upper().is_none());
+        assert!(order.lower().is_none());
+
+        let maps = bond.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // bond directly from molecule
+        let bond = molecule
+            .get_bond(expected_atom_indices[i], expected_atom2_indices[i])
+            .unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+
+        let bond = molecule
+            .get_bond(expected_atom2_indices[i], expected_atom_indices[i])
+            .unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+
+        // nonexistent atom
+        assert!(molecule.get_atom(145).is_none());
+        // nonexistent bond
+        assert!(molecule.get_bond(7, 19).is_none());
+        assert!(molecule.get_bond(145, 189).is_none());
+    }
+}
+
+#[test]
+fn test_aa_order_error_rust_api() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(x) => x,
+        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+    };
+
+    assert_eq!(results.molecules().count(), 3);
+
+    assert!(results.get_molecule("POPE").is_some());
+    assert!(results.get_molecule("POPC").is_some());
+    assert!(results.get_molecule("POPG").is_some());
+    assert!(results.get_molecule("POPA").is_none());
+
+    let expected_average_orders = [0.1455, 0.1378, 0.1561];
+    let expected_average_errors = [0.0029, 0.0036, 0.0112];
+    let expected_atom_numbers = [37, 40, 38];
+    let expected_molecule_names = ["POPE", "POPC", "POPG"];
+
+    let expected_atom_indices = [32, 41, 34];
+    let expected_atom_names = ["C32", "C32", "C32"];
+    let expected_atom_order = [0.2226, 0.2363, 0.2247];
+    let expected_atom_errors = [0.0087, 0.0071, 0.0574];
+
+    let expected_bond_numbers = [2, 2, 2];
+
+    let expected_atom2_indices = [34, 43, 36];
+    let expected_atom2_names = ["H2Y", "H2Y", "H2Y"];
+    let expected_atom2_order = [0.2040, 0.2317, 0.2020];
+    let expected_atom2_errors = [0.0125, 0.0091, 0.0656];
+
+    for (i, molecule) in results.molecules().enumerate() {
+        assert_eq!(molecule.molecule(), expected_molecule_names[i]);
+
+        let average_order = molecule.average_order();
+        assert_relative_eq!(
+            average_order.total().unwrap().value(),
+            expected_average_orders[i],
+            epsilon = 1e-4
+        );
+        assert_relative_eq!(
+            average_order.total().unwrap().error().unwrap(),
+            expected_average_errors[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.upper().is_none());
+        assert!(average_order.lower().is_none());
+
+        let average_maps = molecule.average_ordermaps();
+        assert!(average_maps.total().is_none());
+        assert!(average_maps.upper().is_none());
+        assert!(average_maps.lower().is_none());
+
+        // atoms
+        assert_eq!(molecule.atoms().count(), expected_atom_numbers[i]);
+
+        let atom = molecule.get_atom(expected_atom_indices[i]).unwrap();
+        let atom_type = atom.atom();
+        assert_eq!(atom_type.atom_name(), expected_atom_names[i]);
+        assert_eq!(atom_type.relative_index(), expected_atom_indices[i]);
+        assert_eq!(atom_type.residue_name(), expected_molecule_names[i]);
+        assert_eq!(atom.molecule(), expected_molecule_names[i]);
+
+        let order = atom.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_atom_order[i],
+            epsilon = 1e-4
+        );
+        assert_relative_eq!(
+            order.total().unwrap().error().unwrap(),
+            expected_atom_errors[i],
+            epsilon = 1e-4
+        );
+        assert!(order.upper().is_none());
+        assert!(order.lower().is_none());
+
+        let maps = atom.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // bonds
+        assert_eq!(atom.bonds().count(), expected_bond_numbers[i]);
+
+        let bond = atom.get_bond(expected_atom2_indices[i]).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.atom_name(), expected_atom_names[i]);
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a1.residue_name(), expected_molecule_names[i]);
+        assert_eq!(a2.atom_name(), expected_atom2_names[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+        assert_eq!(a2.residue_name(), expected_molecule_names[i]);
+        assert_eq!(bond.molecule(), expected_molecule_names[i]);
+
+        let order = bond.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_atom2_order[i],
+            epsilon = 1e-4
+        );
+        assert_relative_eq!(
+            order.total().unwrap().error().unwrap(),
+            expected_atom2_errors[i],
+            epsilon = 1e-4
+        );
+        assert!(order.upper().is_none());
+        assert!(order.lower().is_none());
+
+        let maps = bond.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // bond directly from molecule
+        let bond = molecule
+            .get_bond(expected_atom_indices[i], expected_atom2_indices[i])
+            .unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+
+        // nonexistent atom
+        assert!(molecule.get_atom(145).is_none());
+        // nonexistent bond
+        assert!(molecule.get_bond(7, 19).is_none());
+        assert!(molecule.get_bond(145, 189).is_none());
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_rust_api() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(x) => x,
+        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+    };
+
+    assert_eq!(results.molecules().count(), 3);
+
+    assert!(results.get_molecule("POPE").is_some());
+    assert!(results.get_molecule("POPC").is_some());
+    assert!(results.get_molecule("POPG").is_some());
+    assert!(results.get_molecule("POPA").is_none());
+
+    let expected_average_orders = [0.1455, 0.1378, 0.1561];
+    let expected_average_upper = [0.1492, 0.1326, 0.1522];
+    let expected_average_lower = [0.1419, 0.1431, 0.1606];
+    let expected_atom_numbers = [37, 40, 38];
+    let expected_molecule_names = ["POPE", "POPC", "POPG"];
+
+    let expected_atom_indices = [32, 41, 34];
+    let expected_atom_names = ["C32", "C32", "C32"];
+    let expected_atom_order = [0.2226, 0.2363, 0.2247];
+    let expected_atom_upper = [0.2131, 0.2334, 0.2484];
+    let expected_atom_lower = [0.2319, 0.2391, 0.1976];
+
+    let expected_bond_numbers = [2, 2, 2];
+
+    let expected_atom2_indices = [34, 43, 36];
+    let expected_atom2_names = ["H2Y", "H2Y", "H2Y"];
+    let expected_atom2_order = [0.2040, 0.2317, 0.2020];
+    let expected_atom2_upper = [0.1876, 0.2507, 0.2254];
+    let expected_atom2_lower = [0.2203, 0.2126, 0.1752];
+
+    for (i, molecule) in results.molecules().enumerate() {
+        assert_eq!(molecule.molecule(), expected_molecule_names[i]);
+
+        let average_order = molecule.average_order();
+        assert_relative_eq!(
+            average_order.total().unwrap().value(),
+            expected_average_orders[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.total().unwrap().error().is_none());
+        assert_relative_eq!(
+            average_order.upper().unwrap().value(),
+            expected_average_upper[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.upper().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            average_order.lower().unwrap().value(),
+            expected_average_lower[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.lower().unwrap().error().is_none());
+
+        let average_maps = molecule.average_ordermaps();
+        assert!(average_maps.total().is_none());
+        assert!(average_maps.upper().is_none());
+        assert!(average_maps.lower().is_none());
+
+        // atoms
+        assert_eq!(molecule.atoms().count(), expected_atom_numbers[i]);
+
+        let atom = molecule.get_atom(expected_atom_indices[i]).unwrap();
+        let atom_type = atom.atom();
+        assert_eq!(atom_type.atom_name(), expected_atom_names[i]);
+        assert_eq!(atom_type.relative_index(), expected_atom_indices[i]);
+        assert_eq!(atom_type.residue_name(), expected_molecule_names[i]);
+        assert_eq!(atom.molecule(), expected_molecule_names[i]);
+
+        let order = atom.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_atom_order[i],
+            epsilon = 1e-4
+        );
+        assert!(order.total().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            order.upper().unwrap().value(),
+            expected_atom_upper[i],
+            epsilon = 1e-4
+        );
+        assert!(order.upper().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            order.lower().unwrap().value(),
+            expected_atom_lower[i],
+            epsilon = 1e-4
+        );
+        assert!(order.lower().unwrap().error().is_none());
+
+        let maps = atom.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // bonds
+        assert_eq!(atom.bonds().count(), expected_bond_numbers[i]);
+
+        let bond = atom.get_bond(expected_atom2_indices[i]).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.atom_name(), expected_atom_names[i]);
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a1.residue_name(), expected_molecule_names[i]);
+        assert_eq!(a2.atom_name(), expected_atom2_names[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+        assert_eq!(a2.residue_name(), expected_molecule_names[i]);
+        assert_eq!(bond.molecule(), expected_molecule_names[i]);
+
+        let order = bond.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_atom2_order[i],
+            epsilon = 1e-4
+        );
+        assert!(order.total().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            order.upper().unwrap().value(),
+            expected_atom2_upper[i],
+            epsilon = 1e-4
+        );
+        assert!(order.upper().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            order.lower().unwrap().value(),
+            expected_atom2_lower[i],
+            epsilon = 1e-4
+        );
+        assert!(order.lower().unwrap().error().is_none());
+
+        let maps = bond.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // bond directly from molecule
+        let bond = molecule
+            .get_bond(expected_atom_indices[i], expected_atom2_indices[i])
+            .unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+
+        // nonexistent atom
+        assert!(molecule.get_atom(145).is_none());
+        // nonexistent bond
+        assert!(molecule.get_bond(7, 19).is_none());
+        assert!(molecule.get_bond(145, 189).is_none());
+    }
+}
+
+#[test]
+fn test_aa_order_error_leaflets_rust_api() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(x) => x,
+        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+    };
+
+    assert_eq!(results.molecules().count(), 3);
+
+    assert!(results.get_molecule("POPE").is_some());
+    assert!(results.get_molecule("POPC").is_some());
+    assert!(results.get_molecule("POPG").is_some());
+    assert!(results.get_molecule("POPA").is_none());
+
+    let expected_atom_numbers = [37, 40, 38];
+    let expected_molecule_names = ["POPE", "POPC", "POPG"];
+
+    let expected_atom_indices = [32, 41, 34];
+    let expected_atom_names = ["C32", "C32", "C32"];
+
+    let expected_bond_numbers = [2, 2, 2];
+
+    let expected_atom2_indices = [34, 43, 36];
+    let expected_atom2_names = ["H2Y", "H2Y", "H2Y"];
+
+    for (i, molecule) in results.molecules().enumerate() {
+        assert_eq!(molecule.molecule(), expected_molecule_names[i]);
+
+        let average_order = molecule.average_order();
+        assert!(average_order.total().unwrap().error().is_some());
+        assert!(average_order.upper().unwrap().error().is_some());
+        assert!(average_order.lower().unwrap().error().is_some());
+
+        let average_maps = molecule.average_ordermaps();
+        assert!(average_maps.total().is_none());
+        assert!(average_maps.upper().is_none());
+        assert!(average_maps.lower().is_none());
+
+        // atoms
+        assert_eq!(molecule.atoms().count(), expected_atom_numbers[i]);
+
+        let atom = molecule.get_atom(expected_atom_indices[i]).unwrap();
+        let atom_type = atom.atom();
+        assert_eq!(atom_type.atom_name(), expected_atom_names[i]);
+        assert_eq!(atom_type.relative_index(), expected_atom_indices[i]);
+        assert_eq!(atom_type.residue_name(), expected_molecule_names[i]);
+        assert_eq!(atom.molecule(), expected_molecule_names[i]);
+
+        let order = atom.order();
+        assert!(order.total().unwrap().error().is_some());
+        assert!(order.upper().unwrap().error().is_some());
+        assert!(order.lower().unwrap().error().is_some());
+
+        let maps = atom.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // bonds
+        assert_eq!(atom.bonds().count(), expected_bond_numbers[i]);
+
+        let bond = atom.get_bond(expected_atom2_indices[i]).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.atom_name(), expected_atom_names[i]);
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a1.residue_name(), expected_molecule_names[i]);
+        assert_eq!(a2.atom_name(), expected_atom2_names[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+        assert_eq!(a2.residue_name(), expected_molecule_names[i]);
+        assert_eq!(bond.molecule(), expected_molecule_names[i]);
+
+        let order = bond.order();
+        assert!(order.total().unwrap().error().is_some());
+        assert!(order.upper().unwrap().error().is_some());
+        assert!(order.lower().unwrap().error().is_some());
+
+        let maps = bond.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // bond directly from molecule
+        let bond = molecule
+            .get_bond(expected_atom_indices[i], expected_atom2_indices[i])
+            .unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), expected_atom_indices[i]);
+        assert_eq!(a2.relative_index(), expected_atom2_indices[i]);
+
+        // nonexistent atom
+        assert!(molecule.get_atom(145).is_none());
+        // nonexistent bond
+        assert!(molecule.get_bond(7, 19).is_none());
+        assert!(molecule.get_bond(145, 189).is_none());
+    }
 }

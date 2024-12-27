@@ -9,6 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use approx::assert_relative_eq;
 use gorder::prelude::*;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
@@ -1338,4 +1339,388 @@ fn test_cg_order_error_leaflets_limit() {
         "tests/files/cg_order_error_leaflets_limit.csv",
         1
     ));
+}
+
+#[test]
+fn test_cg_order_basic_rust_api() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
+        AnalysisResults::CG(x) => x,
+    };
+
+    assert_eq!(results.molecules().count(), 3);
+
+    assert!(results.get_molecule("POPC").is_some());
+    assert!(results.get_molecule("POPE").is_some());
+    assert!(results.get_molecule("POPG").is_some());
+    assert!(results.get_molecule("POPA").is_none());
+
+    let expected_molecule_names = ["POPC", "POPE", "POPG"];
+    let expected_average_orders = [0.2943, 0.2972, 0.3059];
+    let expected_bond_orders = [0.3682, 0.3759, 0.3789];
+
+    for (i, molecule) in results.molecules().enumerate() {
+        assert_eq!(molecule.molecule(), expected_molecule_names[i]);
+
+        let average_order = molecule.average_order();
+        assert_relative_eq!(
+            average_order.total().unwrap().value(),
+            expected_average_orders[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.total().unwrap().error().is_none());
+        assert!(average_order.upper().is_none());
+        assert!(average_order.lower().is_none());
+
+        let average_maps = molecule.average_ordermaps();
+        assert!(average_maps.total().is_none());
+        assert!(average_maps.upper().is_none());
+        assert!(average_maps.lower().is_none());
+
+        // bonds
+        assert_eq!(molecule.bonds().count(), 11);
+
+        let bond = molecule.get_bond(4, 5).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.atom_name(), "C1A");
+        assert_eq!(a1.relative_index(), 4);
+        assert_eq!(a1.residue_name(), expected_molecule_names[i]);
+        assert_eq!(a2.atom_name(), "D2A");
+        assert_eq!(a2.relative_index(), 5);
+        assert_eq!(a2.residue_name(), expected_molecule_names[i]);
+
+        let order = bond.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_bond_orders[i],
+            epsilon = 1e-4
+        );
+        assert!(order.total().unwrap().error().is_none());
+        assert!(order.upper().is_none());
+        assert!(order.lower().is_none());
+
+        let maps = bond.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // the same bond
+        let bond = molecule.get_bond(5, 4).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), 4);
+        assert_eq!(a2.relative_index(), 5);
+
+        // nonexistent bond
+        assert!(molecule.get_bond(1, 3).is_none());
+        assert!(molecule.get_bond(15, 16).is_none());
+    }
+}
+
+#[test]
+fn test_cg_order_error_rust_api() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
+        AnalysisResults::CG(x) => x,
+    };
+
+    assert_eq!(results.molecules().count(), 3);
+
+    assert!(results.get_molecule("POPC").is_some());
+    assert!(results.get_molecule("POPE").is_some());
+    assert!(results.get_molecule("POPG").is_some());
+    assert!(results.get_molecule("POPA").is_none());
+
+    let expected_molecule_names = ["POPC", "POPE", "POPG"];
+    let expected_average_orders = [0.2943, 0.2972, 0.3059];
+    let expected_average_errors = [0.0067, 0.0052, 0.0089];
+
+    let expected_bond_orders = [0.3682, 0.3759, 0.3789];
+    let expected_bond_errors = [0.0125, 0.0164, 0.0159];
+
+    for (i, molecule) in results.molecules().enumerate() {
+        assert_eq!(molecule.molecule(), expected_molecule_names[i]);
+
+        let average_order = molecule.average_order();
+        assert_relative_eq!(
+            average_order.total().unwrap().value(),
+            expected_average_orders[i],
+            epsilon = 1e-4
+        );
+        assert_relative_eq!(
+            average_order.total().unwrap().error().unwrap(),
+            expected_average_errors[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.upper().is_none());
+        assert!(average_order.lower().is_none());
+
+        let average_maps = molecule.average_ordermaps();
+        assert!(average_maps.total().is_none());
+        assert!(average_maps.upper().is_none());
+        assert!(average_maps.lower().is_none());
+
+        // bonds
+        assert_eq!(molecule.bonds().count(), 11);
+
+        let bond = molecule.get_bond(4, 5).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.atom_name(), "C1A");
+        assert_eq!(a1.relative_index(), 4);
+        assert_eq!(a1.residue_name(), expected_molecule_names[i]);
+        assert_eq!(a2.atom_name(), "D2A");
+        assert_eq!(a2.relative_index(), 5);
+        assert_eq!(a2.residue_name(), expected_molecule_names[i]);
+
+        let order = bond.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_bond_orders[i],
+            epsilon = 1e-4
+        );
+        assert_relative_eq!(
+            order.total().unwrap().error().unwrap(),
+            expected_bond_errors[i],
+            epsilon = 1e-4
+        );
+        assert!(order.upper().is_none());
+        assert!(order.lower().is_none());
+
+        let maps = bond.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // the same bond
+        let bond = molecule.get_bond(5, 4).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), 4);
+        assert_eq!(a2.relative_index(), 5);
+
+        // nonexistent bond
+        assert!(molecule.get_bond(1, 3).is_none());
+        assert!(molecule.get_bond(15, 16).is_none());
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_rust_api() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
+        AnalysisResults::CG(x) => x,
+    };
+
+    assert_eq!(results.molecules().count(), 3);
+
+    assert!(results.get_molecule("POPC").is_some());
+    assert!(results.get_molecule("POPE").is_some());
+    assert!(results.get_molecule("POPG").is_some());
+    assert!(results.get_molecule("POPA").is_none());
+
+    let expected_molecule_names = ["POPC", "POPE", "POPG"];
+    let expected_average_orders = [0.2943, 0.2972, 0.3059];
+    let expected_average_upper = [0.2965, 0.2965, 0.3085];
+    let expected_average_lower = [0.2920, 0.2980, 0.3033];
+
+    let expected_bond_orders = [0.3682, 0.3759, 0.3789];
+    let expected_bond_upper = [0.3647, 0.3713, 0.4129];
+    let expected_bond_lower = [0.3717, 0.3806, 0.3449];
+
+    for (i, molecule) in results.molecules().enumerate() {
+        assert_eq!(molecule.molecule(), expected_molecule_names[i]);
+
+        let average_order = molecule.average_order();
+        assert_relative_eq!(
+            average_order.total().unwrap().value(),
+            expected_average_orders[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.total().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            average_order.upper().unwrap().value(),
+            expected_average_upper[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.upper().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            average_order.lower().unwrap().value(),
+            expected_average_lower[i],
+            epsilon = 1e-4
+        );
+        assert!(average_order.lower().unwrap().error().is_none());
+
+        let average_maps = molecule.average_ordermaps();
+        assert!(average_maps.total().is_none());
+        assert!(average_maps.upper().is_none());
+        assert!(average_maps.lower().is_none());
+
+        // bonds
+        assert_eq!(molecule.bonds().count(), 11);
+
+        let bond = molecule.get_bond(4, 5).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.atom_name(), "C1A");
+        assert_eq!(a1.relative_index(), 4);
+        assert_eq!(a1.residue_name(), expected_molecule_names[i]);
+        assert_eq!(a2.atom_name(), "D2A");
+        assert_eq!(a2.relative_index(), 5);
+        assert_eq!(a2.residue_name(), expected_molecule_names[i]);
+
+        let order = bond.order();
+        assert_relative_eq!(
+            order.total().unwrap().value(),
+            expected_bond_orders[i],
+            epsilon = 1e-4
+        );
+        assert!(order.total().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            order.upper().unwrap().value(),
+            expected_bond_upper[i],
+            epsilon = 1e-4
+        );
+        assert!(order.upper().unwrap().error().is_none());
+
+        assert_relative_eq!(
+            order.lower().unwrap().value(),
+            expected_bond_lower[i],
+            epsilon = 1e-4
+        );
+        assert!(order.lower().unwrap().error().is_none());
+
+        let maps = bond.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // the same bond
+        let bond = molecule.get_bond(5, 4).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), 4);
+        assert_eq!(a2.relative_index(), 5);
+
+        // nonexistent bond
+        assert!(molecule.get_bond(1, 3).is_none());
+        assert!(molecule.get_bond(15, 16).is_none());
+    }
+}
+
+#[test]
+fn test_cg_order_error_leaflets_rust_api() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .estimate_error(EstimateError::default())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
+        AnalysisResults::CG(x) => x,
+    };
+
+    assert_eq!(results.molecules().count(), 3);
+
+    assert!(results.get_molecule("POPC").is_some());
+    assert!(results.get_molecule("POPE").is_some());
+    assert!(results.get_molecule("POPG").is_some());
+    assert!(results.get_molecule("POPA").is_none());
+
+    let expected_molecule_names = ["POPC", "POPE", "POPG"];
+
+    for (i, molecule) in results.molecules().enumerate() {
+        assert_eq!(molecule.molecule(), expected_molecule_names[i]);
+
+        let average_order = molecule.average_order();
+        assert!(average_order.total().unwrap().error().is_some());
+        assert!(average_order.upper().unwrap().error().is_some());
+        assert!(average_order.lower().unwrap().error().is_some());
+
+        let average_maps = molecule.average_ordermaps();
+        assert!(average_maps.total().is_none());
+        assert!(average_maps.upper().is_none());
+        assert!(average_maps.lower().is_none());
+
+        // bonds
+        assert_eq!(molecule.bonds().count(), 11);
+
+        let bond = molecule.get_bond(4, 5).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.atom_name(), "C1A");
+        assert_eq!(a1.relative_index(), 4);
+        assert_eq!(a1.residue_name(), expected_molecule_names[i]);
+        assert_eq!(a2.atom_name(), "D2A");
+        assert_eq!(a2.relative_index(), 5);
+        assert_eq!(a2.residue_name(), expected_molecule_names[i]);
+
+        let order = bond.order();
+        assert!(order.total().unwrap().error().is_some());
+        assert!(order.upper().unwrap().error().is_some());
+        assert!(order.lower().unwrap().error().is_some());
+
+        let maps = bond.ordermaps();
+        assert!(maps.total().is_none());
+        assert!(maps.upper().is_none());
+        assert!(maps.lower().is_none());
+
+        // the same bond
+        let bond = molecule.get_bond(5, 4).unwrap();
+        let (a1, a2) = bond.atoms();
+        assert_eq!(a1.relative_index(), 4);
+        assert_eq!(a2.relative_index(), 5);
+
+        // nonexistent bond
+        assert!(molecule.get_bond(1, 3).is_none());
+        assert!(molecule.get_bond(15, 16).is_none());
+    }
 }

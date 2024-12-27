@@ -7,8 +7,8 @@ use crate::errors::WriteError;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
 use crate::presentation::cgresults::{CGMoleculeResults, CGOrderResults};
 use crate::presentation::{
-    BondResults, MoleculeResults, Order, OrderCollection, OrderResults, OutputFormat, Presenter,
-    PresenterProperties,
+    BondResults, Order, OrderCollection, OrderResults, OutputFormat, Presenter,
+    PresenterProperties, PublicOrderResults,
 };
 use std::io::Write;
 
@@ -240,7 +240,7 @@ impl CsvWrite for AAAtomResults {
         );
 
         self.order().write_csv(writer, properties)?;
-        let mut bonds = self.bonds().values();
+        let mut bonds = self.bonds();
         for _ in 0..properties.max_bonds {
             match bonds.next() {
                 Some(bond) => bond.write_csv(writer, properties)?,

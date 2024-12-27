@@ -604,7 +604,7 @@ impl BondTopology {
     /// Construct a new BondTopology using directly already constructed atom types.
     #[allow(unused)]
     #[inline(always)]
-    pub(super) fn new_from_types(atom_type1: AtomType, atom_type2: AtomType) -> BondTopology {
+    pub(crate) fn new_from_types(atom_type1: AtomType, atom_type2: AtomType) -> BondTopology {
         BondTopology {
             atom1: atom_type1,
             atom2: atom_type2,
@@ -633,15 +633,15 @@ impl BondTopology {
 
 /// Type of atom. Specific to a particular molecule.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters, CopyGetters)]
-pub(crate) struct AtomType {
+pub struct AtomType {
     /// Relative index of the atom in a molecule.
-    #[getset(get_copy = "pub(crate)", get_mut = "pub(super)")]
+    #[getset(get_copy = "pub", get_mut = "pub(super)")]
     relative_index: usize,
     /// Name of the residue of the atom.
-    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
+    #[getset(get = "pub", get_mut = "pub(super)")]
     residue_name: String,
     /// Name of the atom.
-    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
+    #[getset(get = "pub", get_mut = "pub(super)")]
     atom_name: String,
 }
 

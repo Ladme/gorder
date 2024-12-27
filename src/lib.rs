@@ -180,13 +180,17 @@ use std::fmt::Display;
 
 /// This module contains re-exported public structures of the `gorder` crate.
 pub mod prelude {
-    pub use super::input::analysis::AnalysisBuilder;
-    pub use super::input::Analysis;
-    pub use super::input::AnalysisType;
-    pub use super::input::Axis;
-    pub use super::input::EstimateError;
-    pub use super::input::GridSpan;
-    pub use super::input::LeafletClassification;
-    pub use super::input::OrderMap;
-    pub use super::input::Plane;
+    pub use super::input::{
+        analysis::AnalysisBuilder, Analysis, AnalysisType, Axis, EstimateError, GridSpan,
+        LeafletClassification, OrderMap, Plane,
+    };
+
+    pub use super::analysis::molecule::AtomType;
+
+    pub use super::presentation::{
+        aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults},
+        cgresults::{CGMoleculeResults, CGOrderResults},
+        AnalysisResults, BondResults, GridMapF32, Order, OrderCollection, OrderMapsCollection,
+        PublicOrderResults,
+    };
 }
