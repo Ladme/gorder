@@ -8,7 +8,7 @@ use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderRe
 use crate::presentation::cgresults::{CGMoleculeResults, CGOrderResults};
 use crate::presentation::{
     BondResults, MoleculeResults, Order, OrderCollection, OrderResults, OutputFormat, Presenter,
-    PresenterProperties,
+    PresenterProperties, PublicMoleculeResults,
 };
 use crate::PANIC_MESSAGE;
 use hashbrown::HashMap;

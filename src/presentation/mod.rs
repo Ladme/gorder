@@ -21,6 +21,7 @@ use crate::{
     input::Analysis,
     PANIC_MESSAGE,
 };
+use convergence::{ConvPresenter, ConvProperties, Convergence};
 use getset::{CopyGetters, Getters};
 use groan_rs::prelude::GridMap;
 use indexmap::IndexMap;
@@ -45,6 +46,7 @@ pub mod cgresults;
 pub(crate) mod converter;
 mod csv_presenter;
 //pub(crate) mod ordermap;
+pub mod convergence;
 pub mod ordermaps_presenter;
 mod tab_presenter;
 mod xvg_presenter;
@@ -148,6 +150,16 @@ pub(crate) trait OrderResults:
                 .write(csv, overwrite)?;
         }
 
+        if let Some(estimate_error) = analysis.estimate_error() {
+            if let Some(convergence) = estimate_error.output_convergence() {
+                ConvPresenter::new(
+                    self,
+                    ConvProperties::new(input_structure, input_trajectory, leaflets),
+                )
+                .write(convergence, overwrite)?;
+            }
+        }
+
         if let Some(map) = analysis.map() {
             if let Some(output_dir) = map.output_directory() {
                 OrderMapPresenter::new(
@@ -164,7 +176,7 @@ pub(crate) trait OrderResults:
 
 /// Trait implemented by all structures providing the results of the analysis for a single molecule type.
 pub(crate) trait MoleculeResults:
-    Debug + Clone + CsvWrite + TabWrite + XvgWrite + MapWrite
+    Debug + Clone + CsvWrite + TabWrite + XvgWrite + MapWrite + PublicMoleculeResults
 {
     /// Return the maximal number of bonds for heavy atoms in the molecule.
     /// Only makes sense for atomistic order. Returns 0 by default.
@@ -172,6 +184,12 @@ pub(crate) trait MoleculeResults:
     fn max_bonds(&self) -> usize {
         0
     }
+}
+
+/// Public trait implemented by molecule results.
+pub trait PublicMoleculeResults {
+    /// Data about convergence of the order parameters.
+    fn convergence(&self) -> Option<&Convergence>;
 
     /// Get the name of the molecule
     fn molecule(&self) -> &str;
@@ -190,6 +208,8 @@ pub(crate) enum OutputFormat {
     TAB,
     #[strum(serialize = "map")]
     MAP,
+    #[strum(serialize = "convergence")]
+    CONV, // convergence data file (xvg format)
 }
 
 /// Trait implemented by all structures that store properties of Presenters.
@@ -442,12 +462,15 @@ pub(crate) struct CGOrder {}
 /// Trait implemented only by `AAOrder` and `CGOrder` structs.
 pub(crate) trait OrderType: Debug + Clone {
     /// Used to convert an order parameter to its final value depending on the analysis type.
-    /// Atomistic order parameters are reported as -S_CD.
-    /// Coarse grained order parameters are reported as P2.
+    /// Atomistic order parameters are reported as -S_CH.
+    /// Coarse grained order parameters are reported as S.
     fn convert(order: f32, error: Option<f32>) -> Order;
 
     /// String to use as a label for z-axis in the ordermap.
     fn zlabel() -> &'static str;
+
+    /// String to use as a label for y-axis in xvg files.
+    fn xvg_ylabel() -> &'static str;
 }
 
 impl OrderType for AAOrder {
@@ -463,6 +486,11 @@ impl OrderType for AAOrder {
     fn zlabel() -> &'static str {
         "order parameter ($-S_{CH}$)"
     }
+
+    #[inline(always)]
+    fn xvg_ylabel() -> &'static str {
+        "-Sch"
+    }
 }
 
 impl OrderType for CGOrder {
@@ -477,6 +505,11 @@ impl OrderType for CGOrder {
     #[inline(always)]
     fn zlabel() -> &'static str {
         "order parameter ($S$)"
+    }
+
+    #[inline(always)]
+    fn xvg_ylabel() -> &'static str {
+        "S"
     }
 }
 

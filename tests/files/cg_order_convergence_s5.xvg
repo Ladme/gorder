@@ -1,0 +1,29 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'cg.tpr' and trajectory file 'cg.xtc'.
+@    title "Convergence of average order parameters for individual molecules"
+@    xaxis label "Frame number"
+@    yaxis label "S"
+@    s0 legend "POPC"
+@    s1 legend "POPE"
+@    s2 legend "POPG"
+@TYPE xy
+1      0.2756   0.2830   0.3198 
+6      0.2884   0.2906   0.3117 
+11     0.2896   0.2910   0.2967 
+16     0.2925   0.2958   0.2962 
+21     0.2872   0.2931   0.2922 
+26     0.2874   0.2955   0.2960 
+31     0.2892   0.2963   0.2996 
+36     0.2889   0.2947   0.2989 
+41     0.2889   0.2952   0.3031 
+46     0.2894   0.2955   0.3078 
+51     0.2910   0.2968   0.3099 
+56     0.2913   0.2976   0.3145 
+61     0.2917   0.2978   0.3170 
+66     0.2925   0.2975   0.3140 
+71     0.2925   0.2964   0.3109 
+76     0.2924   0.2966   0.3109 
+81     0.2928   0.2966   0.3117 
+86     0.2921   0.2959   0.3129 
+91     0.2926   0.2956   0.3100 
+96     0.2930   0.2958   0.3095 
+101    0.2933   0.2956   0.3115 

@@ -246,6 +246,26 @@ impl<T: TimeWiseAddTreatment> TimeWiseData<T> {
         let (order, samples, threads) = self.unpack();
         TimeWiseData::new(order, samples, threads)
     }
+
+    /// Computes the prefix average of the order parameter values, accounting for the number
+    /// of samples used in each frame. Frames with more samples contribute proportionally
+    /// more to the average.
+    pub(super) fn prefix_average(&self) -> Vec<f32> {
+        self.order
+            .iter()
+            .zip(self.n_samples.iter())
+            .scan((OrderValue::default(), 0), |state, (&order, &samples)| {
+                let (current_sum, current_n_samples) = state;
+                *current_sum += order;
+                *current_n_samples += samples;
+                if *current_n_samples == 0 {
+                    Some(f32::NAN)
+                } else {
+                    Some((*current_sum / *current_n_samples).into())
+                }
+            })
+            .collect()
+    }
 }
 
 impl<T: TimeWiseAddTreatment> AddAssign<f32> for TimeWiseData<T> {
@@ -338,7 +358,7 @@ mod tests {
 
     #[test]
     fn timewise_merge_incomplete() {
-        let data1: TimeWiseData<AddExtend> = TimeWiseData::new(
+        let data1 = TimeWiseData::<AddExtend>::new(
             vec![
                 OrderValue::from(1.1),
                 OrderValue::from(2.2),
@@ -382,7 +402,7 @@ mod tests {
 
     #[test]
     fn timewise_merge_two_and_one() {
-        let data1: TimeWiseData<AddExtend> = TimeWiseData::new(
+        let data1 = TimeWiseData::<AddExtend>::new(
             vec![
                 OrderValue::from(1.1),
                 OrderValue::from(11.1),
@@ -433,7 +453,7 @@ mod tests {
 
     #[test]
     fn timewise_merge_two_and_one_incomplete() {
-        let data1: TimeWiseData<AddExtend> = TimeWiseData::new(
+        let data1 = TimeWiseData::<AddExtend>::new(
             vec![
                 OrderValue::from(1.1),
                 OrderValue::from(11.1),
@@ -479,7 +499,7 @@ mod tests {
 
     #[test]
     fn timewise_merge_one_and_two() {
-        let data1: TimeWiseData<AddExtend> = TimeWiseData::new(
+        let data1 = TimeWiseData::<AddExtend>::new(
             vec![
                 OrderValue::from(21.1),
                 OrderValue::from(22.2),
@@ -530,7 +550,7 @@ mod tests {
 
     #[test]
     fn timewise_merge_four_and_three() {
-        let data1: TimeWiseData<AddExtend> = TimeWiseData::new(
+        let data1 = TimeWiseData::<AddExtend>::new(
             vec![
                 OrderValue::from(1.0),
                 OrderValue::from(2.0),
@@ -590,6 +610,7 @@ mod tests {
             assert_eq!(x, y);
         }
     }
+
     #[test]
     fn estimate_error() {
         let order = [
@@ -597,7 +618,7 @@ mod tests {
             19.0, 16.0, 17.0,
         ];
 
-        let data: TimeWiseData<AddExtend> = TimeWiseData::new(
+        let data = TimeWiseData::<AddExtend>::new(
             order
                 .into_iter()
                 .map(|x| x.into())
@@ -618,5 +639,30 @@ mod tests {
     fn estimate_error_empty_structure() {
         let data: TimeWiseData<AddExtend> = TimeWiseData::new(Vec::new(), Vec::new(), 1);
         assert!(data.estimate_error(5).is_none());
+    }
+
+    #[test]
+    fn test_prefix_average() {
+        let order = [10.0, 12.0, 15.0, 10.0, 9.0, 12.0, 98432.0];
+        let samples = vec![13, 15, 20, 12, 11, 14, 98432];
+        let data =
+            TimeWiseData::<AddSum>::new(order.into_iter().map(|x| x.into()).collect(), samples, 1);
+
+        let prefix_average = data.prefix_average();
+        let expected = [
+            0.769230769,
+            0.785714286,
+            0.770833333,
+            0.783333333,
+            0.788732394,
+            0.8,
+            0.999827441,
+        ];
+
+        assert_eq!(prefix_average.len(), expected.len());
+
+        for (val, exp) in prefix_average.into_iter().zip(expected.into_iter()) {
+            assert_relative_eq!(f32::from(val), exp, epsilon = 1e-5);
+        }
     }
 }

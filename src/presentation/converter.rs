@@ -22,6 +22,8 @@ use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 use std::ops::AddAssign;
 
+use super::convergence::Convergence;
+
 /// Structure converting from system topology to formatted results.
 #[derive(Debug, Clone)]
 pub(crate) struct ResultsConverter<O: MolConvert> {
@@ -134,7 +136,6 @@ impl<O: MolConvert> ResultsConverter<O> {
     }
 
     /// Convert temporary OrderSummer structure.
-    #[inline]
     fn convert_order_summer(&self, summer: &OrderSummer) -> (OrderCollection, OrderMapsCollection) {
         let total = summer.total.as_ref().map(|x| self.convert_order(x));
         let upper = summer.upper.as_ref().map(|x| self.convert_order(x));
@@ -157,6 +158,33 @@ impl<O: MolConvert> ResultsConverter<O> {
             OrderCollection::new(total, upper, lower),
             OrderMapsCollection::new(total_ordermap, upper_ordermap, lower_ordermap),
         )
+    }
+
+    /// Get convergence data for a single order parameter.
+    fn map_order_prefix_average(order: &Option<AnalysisOrder<AddSum>>) -> Option<Vec<f32>> {
+        order.as_ref().map(|x| {
+            x.order_prefix_average()
+                .into_iter()
+                .map(|x| O::OrderType::convert(x, None).value())
+                .collect()
+        })
+    }
+
+    /// Convert the OrderSummer structure into `Convergence` structure.
+    fn convert_order_summer_to_convergence(&self, summer: &OrderSummer) -> Convergence {
+        let prefix_total = Self::map_order_prefix_average(&summer.total);
+        let prefix_upper = Self::map_order_prefix_average(&summer.upper);
+        let prefix_lower = Self::map_order_prefix_average(&summer.lower);
+
+        let frames = prefix_total
+            .as_ref()
+            .unwrap_or(&Vec::new())
+            .iter()
+            .enumerate()
+            .map(|(x, _)| x * self.analysis.step() + 1)
+            .collect::<Vec<usize>>();
+
+        Convergence::new(frames, prefix_total, prefix_upper, prefix_lower)
     }
 }
 
@@ -197,7 +225,14 @@ impl MolConvert for AAOrderResults {
         }
 
         let (average, ordermaps) = converter.convert_order_summer(&summer);
-        AAMoleculeResults::new(molecule_type.name(), average, ordermaps, order)
+
+        let convergence = if converter.analysis.estimate_error().is_some() {
+            Some(converter.convert_order_summer_to_convergence(&summer))
+        } else {
+            None
+        };
+
+        AAMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence)
     }
 }
 
@@ -256,7 +291,14 @@ impl MolConvert for CGOrderResults {
         }
 
         let (average, ordermaps) = converter.convert_order_summer(&summer);
-        CGMoleculeResults::new(molecule_type.name(), average, ordermaps, order)
+
+        let convergence = if converter.analysis.estimate_error().is_some() {
+            Some(converter.convert_order_summer_to_convergence(&summer))
+        } else {
+            None
+        };
+
+        CGMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence)
     }
 }
 

@@ -1286,6 +1286,107 @@ fn test_cg_order_error_leaflets_limit() {
 }
 
 #[test]
+fn test_cg_order_convergence() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .estimate_error(EstimateError::new(None, Some(path_to_output)).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_convergence.xvg",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_convergence() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .estimate_error(EstimateError::new(None, Some(path_to_output)).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets_convergence.xvg",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_convergence_multiple_threads() {
+    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::new()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .estimate_error(EstimateError::new(None, Some(path_to_output)).unwrap())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_convergence.xvg",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_convergence_step() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::new()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .estimate_error(EstimateError::new(None, Some(path_to_output)).unwrap())
+        .step(5)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_convergence_s5.xvg",
+        1
+    ));
+}
+
+#[test]
 fn test_cg_order_basic_rust_api() {
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")

@@ -191,6 +191,6 @@ pub mod prelude {
         aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults},
         cgresults::{CGMoleculeResults, CGOrderResults},
         AnalysisResults, BondResults, GridMapF32, Order, OrderCollection, OrderMapsCollection,
-        PublicOrderResults,
+        PublicMoleculeResults, PublicOrderResults,
     };
 }

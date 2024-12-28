@@ -7,8 +7,10 @@ use getset::Getters;
 use indexmap::IndexMap;
 use serde::{Serialize, Serializer};
 
+use super::convergence::Convergence;
 use super::{
-    BondResults, CGOrder, MoleculeResults, OrderCollection, OrderResults, PublicOrderResults,
+    BondResults, CGOrder, MoleculeResults, OrderCollection, OrderResults, PublicMoleculeResults,
+    PublicOrderResults,
 };
 use crate::analysis::molecule::BondTopology;
 use crate::input::Analysis;
@@ -64,7 +66,6 @@ impl OrderResults for CGOrderResults {
 pub struct CGMoleculeResults {
     /// Name of the molecule.
     #[serde(skip)]
-    #[getset(get = "pub")]
     molecule: String,
     /// Average order parameter for all bond types of the molecule.
     #[serde(rename = "average order")]
@@ -79,6 +80,9 @@ pub struct CGMoleculeResults {
     #[serde(rename = "order parameters")]
     #[getset(get = "pub(super)")]
     order: IndexMap<BondTopology, BondResults>,
+    /// Data about convergence of the order parameters.
+    #[serde(skip)]
+    convergence: Option<Convergence>,
 }
 
 impl CGMoleculeResults {
@@ -87,12 +91,14 @@ impl CGMoleculeResults {
         average_order: OrderCollection,
         average_ordermaps: OrderMapsCollection,
         order: IndexMap<BondTopology, BondResults>,
+        convergence: Option<Convergence>,
     ) -> Self {
         CGMoleculeResults {
             molecule: name.to_owned(),
             average_order,
             average_ordermaps,
             order,
+            convergence,
         }
     }
 
@@ -140,9 +146,15 @@ impl Serialize for BondTopology {
     }
 }
 
-impl MoleculeResults for CGMoleculeResults {
+impl MoleculeResults for CGMoleculeResults {}
+
+impl PublicMoleculeResults for CGMoleculeResults {
     fn molecule(&self) -> &str {
         &self.molecule
+    }
+
+    fn convergence(&self) -> Option<&Convergence> {
+        self.convergence.as_ref()
     }
 }
 
@@ -210,7 +222,7 @@ mod tests {
         let average_order = OrderCollection::new(None, None, None);
         let average_maps = OrderMapsCollection::new(None, None, None);
 
-        CGMoleculeResults::new("POPC", average_order, average_maps, bonds)
+        CGMoleculeResults::new("POPC", average_order, average_maps, bonds, None)
     }
 
     #[test]

@@ -7,8 +7,8 @@ use crate::errors::WriteError;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
 use crate::presentation::cgresults::CGMoleculeResults;
 use crate::presentation::{
-    BondResults, MoleculeResults, Order, OrderCollection, OrderResults, OutputFormat, Presenter,
-    PresenterProperties,
+    BondResults, Order, OrderCollection, OrderResults, OutputFormat, Presenter,
+    PresenterProperties, PublicMoleculeResults,
 };
 use crate::PANIC_MESSAGE;
 use std::io::Write;

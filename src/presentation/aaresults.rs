@@ -3,8 +3,10 @@
 
 //! Structures and methods for presenting the results of the analysis of atomistic order parameters.
 
+use super::convergence::Convergence;
 use super::{
-    AAOrder, BondResults, MoleculeResults, OrderCollection, OrderResults, PublicOrderResults,
+    AAOrder, BondResults, MoleculeResults, OrderCollection, OrderResults, PublicMoleculeResults,
+    PublicOrderResults,
 };
 use crate::analysis::molecule::AtomType;
 use crate::input::Analysis;
@@ -73,7 +75,6 @@ impl OrderResults for AAOrderResults {
 pub struct AAMoleculeResults {
     /// Name of the molecule type.
     #[serde(skip)]
-    #[getset(get = "pub")]
     molecule: String,
     /// Average order parameter calculated from all bond types of this molecule type.
     #[serde(rename = "average order")]
@@ -88,6 +89,9 @@ pub struct AAMoleculeResults {
     #[serde(rename = "order parameters")]
     #[getset(get = "pub(super)")]
     order: IndexMap<AtomType, AAAtomResults>,
+    /// Data about convergence of the order parameters.
+    #[serde(skip)]
+    convergence: Option<Convergence>,
 }
 
 impl AAMoleculeResults {
@@ -96,12 +100,14 @@ impl AAMoleculeResults {
         average_order: OrderCollection,
         average_ordermaps: OrderMapsCollection,
         order: IndexMap<AtomType, AAAtomResults>,
+        convergence: Option<Convergence>,
     ) -> Self {
         Self {
             molecule: molecule.to_owned(),
             average_order,
             average_ordermaps,
             order,
+            convergence,
         }
     }
 
@@ -141,11 +147,17 @@ impl AAMoleculeResults {
     }
 }
 
-impl MoleculeResults for AAMoleculeResults {
+impl PublicMoleculeResults for AAMoleculeResults {
     fn molecule(&self) -> &str {
         &self.molecule
     }
 
+    fn convergence(&self) -> Option<&Convergence> {
+        self.convergence.as_ref()
+    }
+}
+
+impl MoleculeResults for AAMoleculeResults {
     #[inline(always)]
     fn max_bonds(&self) -> usize {
         self.order

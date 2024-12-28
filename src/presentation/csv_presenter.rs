@@ -8,7 +8,7 @@ use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderRe
 use crate::presentation::cgresults::{CGMoleculeResults, CGOrderResults};
 use crate::presentation::{
     BondResults, Order, OrderCollection, OrderResults, OutputFormat, Presenter,
-    PresenterProperties, PublicOrderResults,
+    PresenterProperties, PublicMoleculeResults, PublicOrderResults,
 };
 use std::io::Write;
 

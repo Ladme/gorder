@@ -142,6 +142,18 @@ impl<T: TimeWiseAddTreatment> AnalysisOrder<T> {
             timewise: self.timewise.map(|x| x.switch_type()),
         }
     }
+
+    /// Computes the prefix average of the order parameter values, accounting for the number
+    /// of samples used in each frame. Frames with more samples contribute proportionally
+    /// more to the average.
+    /// Returns an empty vector if `timewise` is None or empty.
+    pub(crate) fn order_prefix_average(&self) -> Vec<f32> {
+        if let Some(timewise) = self.timewise() {
+            timewise.prefix_average()
+        } else {
+            Vec::new()
+        }
+    }
 }
 
 impl<T: TimeWiseAddTreatment> Add<AnalysisOrder<T>> for AnalysisOrder<T> {

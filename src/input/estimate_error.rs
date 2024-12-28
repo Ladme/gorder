@@ -19,12 +19,10 @@ pub struct EstimateError {
     #[serde(default = "default_n_blocks")]
     n_blocks: usize,
 
-    /// Optional filename pattern for the output XVG files where convergence analysis will be written.
-    /// A separate XVG file will be generated for each detected molecule type, with the molecule
-    /// type name appended to the pattern.
-    ///
-    /// Example: 'convergence.xvg' may become 'convergence_POPC.xvg'.
-    /// Default is None => no such data will be written.
+    /// Optional name of the file where convergence data will be written.
+    /// Note that if error estimation is requested, convergence analysis
+    /// will be performed even if this option is None. It will just not
+    /// be written out.
     #[serde(alias = "output", default)]
     output_convergence: Option<String>,
 }

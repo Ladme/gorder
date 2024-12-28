@@ -15,7 +15,7 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use super::OrderMapsCollection;
+use super::{OrderMapsCollection, PublicMoleculeResults};
 
 /// Structure handling the writing of ordermaps.
 #[derive(Debug, Clone)]
