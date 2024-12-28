@@ -1,0 +1,10 @@
+# Test file for binary application.
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
+type: !CGOrder
+  beads: "@membrane"
+output_yaml: temp_cg_ee.yaml
+output_tab: temp_cg_ee.tab
+output_csv: temp_cg_ee.csv
+estimate_error: true
+silent: true

@@ -70,10 +70,10 @@ impl fmt::Display for Plane {
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct OrderMap {
     /// Directory where the output files containing the individual ordermaps will be saved.
-    #[builder(setter(into))]
+    #[builder(setter(into, strip_option), default)]
     #[serde(alias = "output_dir")]
     #[getset(get = "pub")]
-    output_directory: String,
+    output_directory: Option<String>,
 
     /// Minimum number of samples required in a grid tile to calculate the order parameter.
     /// The default value is 1.
@@ -105,6 +105,20 @@ pub struct OrderMap {
     #[builder(setter(strip_option), default)]
     #[getset(get_copy = "pub", set = "pub(crate)")]
     plane: Option<Plane>,
+}
+
+impl Default for OrderMap {
+    /// Set the default parameters for the ordermaps calculation.
+    /// Warning: this sets NO output directory for the ordermaps, i.e. ordermaps will not be written out
+    /// and will only be available using public API.
+    fn default() -> Self {
+        Self::new().build().unwrap_or_else(|e| {
+            panic!(
+                "FATAL GORDER ERROR | OrderMap::default | Could not build default OrderMap (`{}`)",
+                e
+            )
+        })
+    }
 }
 
 impl OrderMap {
@@ -251,12 +265,21 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_pass_basic() {
-        let map = OrderMap::new()
-            .output_directory("ordermaps")
-            .build()
-            .unwrap();
+        let map = OrderMap::new().build().unwrap();
 
-        assert_eq!(map.output_directory(), "ordermaps");
+        assert!(map.output_directory().is_none());
+        assert_relative_eq!(map.bin_size_x(), 0.1);
+        assert_relative_eq!(map.bin_size_y(), 0.1);
+        assert_eq!(map.min_samples(), 1);
+        matches!(map.dim_x(), GridSpan::Auto);
+        matches!(map.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn test_ordermap_pass_default() {
+        let map = OrderMap::default();
+
+        assert!(map.output_directory().is_none());
         assert_relative_eq!(map.bin_size_x(), 0.1);
         assert_relative_eq!(map.bin_size_y(), 0.1);
         assert_eq!(map.min_samples(), 1);
@@ -274,7 +297,7 @@ mod test_ordermap {
             .build()
             .unwrap();
 
-        assert_eq!(map.output_directory(), "ordermaps");
+        assert_eq!(map.output_directory().as_ref().unwrap(), "ordermaps");
         assert_relative_eq!(map.bin_size_x(), 0.2);
         assert_relative_eq!(map.bin_size_y(), 0.01);
         assert_eq!(map.min_samples(), 10);
@@ -286,15 +309,6 @@ mod test_ordermap {
             }
         );
         matches!(map.dim_y(), GridSpan::Auto);
-    }
-
-    #[test]
-    fn test_ordermap_fail_incomplete() {
-        match OrderMap::new().build() {
-            Ok(_) => panic!("Function should have failed but it succeeded."),
-            Err(OrderMapBuilderError::UninitializedField(x)) => assert_eq!(x, "output_directory"),
-            Err(e) => panic!("Unexpected error type returned {}", e),
-        }
     }
 
     #[test]

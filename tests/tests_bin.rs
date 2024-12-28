@@ -104,6 +104,38 @@ fn test_bin_cg_order_maps() {
 }
 
 #[test]
+fn test_bin_estimate_error() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args(["tests/files/inputs/estimate_error_cg.yaml", "--overwrite"])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_ee.yaml",
+        "tests/files/cg_order_error.yaml",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_ee.tab",
+        "tests/files/cg_order_error.tab",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_ee.csv",
+        "tests/files/cg_order_error.csv",
+        0
+    ));
+
+    std::fs::remove_file("temp_cg_ee.yaml").unwrap();
+    std::fs::remove_file("temp_cg_ee.tab").unwrap();
+    std::fs::remove_file("temp_cg_ee.csv").unwrap();
+}
+
+#[test]
 fn test_bin_aa_order_fail() {
     Command::cargo_bin("gorder")
         .unwrap()
@@ -131,4 +163,19 @@ fn test_bin_missing_output_fail() {
         .failure()
         .stdout("")
         .stderr("[E] error: no yaml output file specified in the configuration file \'tests/files/inputs/basic.yaml\' (hint: add \'output: output.yaml\' to your configuration file)\n");
+}
+
+#[test]
+fn test_bin_missing_maps_output_fail() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/default_ordermap.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .failure()
+        .stdout("")
+        .stderr("[E] error: no output directory for ordermaps specified in the configuration file \'tests/files/inputs/default_ordermap.yaml\'\n");
 }

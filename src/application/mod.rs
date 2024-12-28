@@ -63,6 +63,14 @@ pub(crate) fn run() -> bool {
         return false;
     }
 
+    // ordermaps output must always be specified in the config file for the application
+    if let Some(maps) = analysis.map() {
+        if maps.output_directory().is_none() {
+            log::error!("{}", ConfigError::NoOrdermapsOutput(args.config.clone()));
+            return false;
+        }
+    }
+
     if !analysis.silent() {
         analysis.set_silent(args.silent);
     }

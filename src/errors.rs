@@ -149,6 +149,10 @@ pub enum ConfigError {
     #[error("{} no yaml output file specified in the configuration file '{}' ({} add '{}' to your configuration file)", "error:".red().bold(), .0.yellow(), "hint:".blue().bold(), "output: output.yaml".bright_blue())]
     NoYamlOutput(String),
 
+    // Only used in the `gorder` application.
+    #[error("{} no output directory for ordermaps specified in the configuration file '{}'", "error:".red().bold(), .0.yellow())]
+    NoOrdermapsOutput(String),
+
     #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "step".yellow()
     )]
     InvalidStep,

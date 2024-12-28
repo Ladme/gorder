@@ -3,24 +3,20 @@
 
 //! Contains the implementation of the `EstimateError` structure and its methods.
 
-use std::fmt;
-
 use crate::errors::ErrorEstimationError;
 use getset::{CopyGetters, Getters};
-use serde::{
-    de::{self, MapAccess, Visitor},
-    Deserialize, Deserializer,
-};
+use serde::Deserialize;
 
 /// Default number of blocks to use for error estimation.
 const DEFAULT_N_BLOCKS: usize = 5;
 
 /// Parameters for estimating the error of the analysis.
-#[derive(Debug, Clone, Getters, CopyGetters)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
 pub struct EstimateError {
     /// Number of blocks to divide the trajectory into for error estimation.
     /// Default value is 5, and it is recommended not to change this value.
     #[getset(get_copy = "pub")]
+    #[serde(default = "default_n_blocks")]
     n_blocks: usize,
 
     /// Optional filename pattern for the output XVG files where convergence analysis will be written.
@@ -29,7 +25,13 @@ pub struct EstimateError {
     ///
     /// Example: 'convergence.xvg' may become 'convergence_POPC.xvg'.
     /// Default is None => no such data will be written.
+    #[serde(alias = "output", default)]
     output_convergence: Option<String>,
+}
+
+#[inline(always)]
+fn default_n_blocks() -> usize {
+    DEFAULT_N_BLOCKS
 }
 
 impl Default for EstimateError {
@@ -39,64 +41,6 @@ impl Default for EstimateError {
             n_blocks: DEFAULT_N_BLOCKS,
             output_convergence: None,
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for EstimateError {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct EstimateErrorVisitor;
-
-        impl<'de> Visitor<'de> for EstimateErrorVisitor {
-            type Value = EstimateError;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a boolean or a map for EstimateError")
-            }
-
-            fn visit_bool<E>(self, value: bool) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                if value {
-                    Ok(EstimateError::default())
-                } else {
-                    Err(E::custom("false is not a valid value for estimate_error"))
-                }
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                let mut n_blocks = None;
-                let mut output_convergence = None;
-
-                while let Some(key) = map.next_key::<String>()? {
-                    match key.as_str() {
-                        "n_blocks" => n_blocks = Some(map.next_value()?),
-                        "output_convergence" | "output" => {
-                            output_convergence = Some(map.next_value()?)
-                        }
-                        _ => {
-                            return Err(de::Error::unknown_field(
-                                &key,
-                                &["n_blocks", "output_convergence", "output"],
-                            ))
-                        }
-                    }
-                }
-
-                Ok(EstimateError {
-                    n_blocks: n_blocks.unwrap_or(DEFAULT_N_BLOCKS),
-                    output_convergence,
-                })
-            }
-        }
-
-        deserializer.deserialize_any(EstimateErrorVisitor)
     }
 }
 
@@ -185,10 +129,6 @@ mod tests {
         assert_eq!(ee.n_blocks, 4);
         assert_eq!(ee.output_convergence, Some("convergence.xvg".to_string()));
 
-        let ee: EstimateError = serde_yaml::from_str("true").unwrap();
-        assert_eq!(ee.n_blocks, DEFAULT_N_BLOCKS);
-        assert_eq!(ee.output_convergence, None);
-
         let ee: EstimateError = serde_yaml::from_str("n_blocks: 10").unwrap();
         assert_eq!(ee.n_blocks, 10);
         assert_eq!(ee.output_convergence, None);
@@ -200,5 +140,8 @@ mod tests {
 
         let ee: EstimateError = serde_yaml::from_str("n_blocks: 1").unwrap();
         assert!(ee.validate().is_err());
+
+        assert!(serde_yaml::from_str::<EstimateError>("unknown").is_err());
+        assert!(serde_yaml::from_str::<EstimateError>("false").is_err());
     }
 }

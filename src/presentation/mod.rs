@@ -149,11 +149,13 @@ pub(crate) trait OrderResults:
         }
 
         if let Some(map) = analysis.map() {
-            OrderMapPresenter::new(
-                self,
-                OrderMapProperties::new(map.plane().unwrap_or(Plane::XY).into()),
-            )
-            .write(map.output_directory(), overwrite)?;
+            if let Some(output_dir) = map.output_directory() {
+                OrderMapPresenter::new(
+                    self,
+                    OrderMapProperties::new(map.plane().unwrap_or(Plane::XY).into()),
+                )
+                .write(output_dir, overwrite)?;
+            }
         }
 
         Ok(())

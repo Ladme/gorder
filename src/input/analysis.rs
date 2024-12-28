@@ -9,7 +9,7 @@ use std::path::Path;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
 use getset::{MutGetters, Setters};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 use crate::errors::ConfigError;
 
@@ -178,12 +178,14 @@ pub struct Analysis {
     /// If not provided, no ordermap will be calculated.
     #[builder(setter(strip_option), default)]
     #[serde(alias = "maps", alias = "ordermap", alias = "ordermaps")]
+    #[serde(deserialize_with = "deserialize_order_map", default)]
     #[getset(get = "pub", get_mut = "pub(crate)")]
     map: Option<OrderMap>,
 
     /// Optional specification of calculation error estimation.
     /// If provided, calculation error will be provided for each bond.
     #[builder(setter(strip_option), default)]
+    #[serde(deserialize_with = "deserialize_estimate_error", default)]
     #[getset(get = "pub")]
     estimate_error: Option<EstimateError>,
 
@@ -249,6 +251,48 @@ fn validate_begin_end(begin: f32, end: f32) -> Result<(), ConfigError> {
         Err(ConfigError::InvalidBeginEnd)
     } else {
         Ok(())
+    }
+}
+
+fn deserialize_order_map<'de, D>(deserializer: D) -> Result<Option<OrderMap>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: serde_yaml::Value = Deserialize::deserialize(deserializer)?;
+
+    match value {
+        serde_yaml::Value::String(keyword) if keyword == "default" || keyword == "true" => {
+            Ok(Some(OrderMap::default()))
+        }
+        serde_yaml::Value::Bool(true) => Ok(Some(OrderMap::default())),
+        serde_yaml::Value::Bool(false) => Err(serde::de::Error::custom("Invalid value 'false' for 'order_map'. If you do not want to calculate ordermaps, just omit this field.")),
+        serde_yaml::Value::Mapping(_) => serde_yaml::from_value(value)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+        _ => Err(serde::de::Error::custom(
+            "Invalid value for 'order_map'. Expected 'default', 'true', or a valid structure.",
+        )),
+    }
+}
+
+fn deserialize_estimate_error<'de, D>(deserializer: D) -> Result<Option<EstimateError>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: serde_yaml::Value = Deserialize::deserialize(deserializer)?;
+
+    match value {
+        serde_yaml::Value::String(keyword) if keyword == "default" => {
+            Ok(Some(EstimateError::default()))
+        }
+        serde_yaml::Value::Bool(true) => Ok(Some(EstimateError::default())),
+        serde_yaml::Value::Bool(false) => Err(serde::de::Error::custom("Invalid value 'false' for 'estimate_error'. If you do not want to calculate error, just omit this field.")),
+        serde_yaml::Value::Mapping(_) => serde_yaml::from_value(value)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+        _ => Err(serde::de::Error::custom(
+            "Invalid value for 'estimate_error'. Expected 'default', 'true', or a valid structure.",
+        )),
     }
 }
 
@@ -473,7 +517,7 @@ mod tests_yaml {
 
         let map = analysis.map().as_ref().unwrap();
 
-        assert_eq!(map.output_directory(), ".");
+        assert_eq!(map.output_directory().as_ref().unwrap(), ".");
         matches!(
             map.dim_x(),
             GridSpan::Manual {
@@ -497,12 +541,44 @@ mod tests_yaml {
         let analysis = Analysis::from_file("tests/files/inputs/default_ordermap.yaml").unwrap();
 
         let ordermap = analysis.map.unwrap();
-        assert_eq!(ordermap.output_directory(), "ordermaps");
+        assert!(ordermap.output_directory().is_none());
         assert_relative_eq!(ordermap.bin_size_x(), 0.1);
         assert_relative_eq!(ordermap.bin_size_y(), 0.1);
         assert_eq!(ordermap.min_samples(), 1);
         matches!(ordermap.dim_x(), GridSpan::Auto);
         matches!(ordermap.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn analysis_yaml_pass_true_ordermap() {
+        let analysis = Analysis::from_file("tests/files/inputs/true_ordermap.yaml").unwrap();
+
+        let ordermap = analysis.map.unwrap();
+        assert!(ordermap.output_directory().is_none());
+        assert_relative_eq!(ordermap.bin_size_x(), 0.1);
+        assert_relative_eq!(ordermap.bin_size_y(), 0.1);
+        assert_eq!(ordermap.min_samples(), 1);
+        matches!(ordermap.dim_x(), GridSpan::Auto);
+        matches!(ordermap.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn analysis_yaml_pass_default_estimate_error() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/default_estimate_error.yaml").unwrap();
+
+        let ee = analysis.estimate_error.unwrap();
+        assert_eq!(ee.n_blocks(), 5);
+        assert!(ee.output_convergence().is_none());
+    }
+
+    #[test]
+    fn analysis_yaml_pass_true_estimate_error() {
+        let analysis = Analysis::from_file("tests/files/inputs/true_estimate_error.yaml").unwrap();
+
+        let ee = analysis.estimate_error.unwrap();
+        assert_eq!(ee.n_blocks(), 5);
+        assert!(ee.output_convergence().is_none());
     }
 
     #[test]
@@ -608,6 +684,16 @@ mod tests_yaml {
     }
 
     #[test]
+    fn analysis_yaml_fail_ordermap_unknown_keyword() {
+        match Analysis::from_file("tests/files/inputs/ordermap_unknown_keyword.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(e) => assert!(e.to_string().contains(
+                "Invalid value for 'order_map'. Expected 'default', 'true', or a valid structure."
+            )),
+        }
+    }
+
+    #[test]
     fn analysis_yaml_fail_estimate_error_invalid_n_blocks() {
         match Analysis::from_file("tests/files/inputs/estimate_error_invalid_n_blocks.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
@@ -615,6 +701,16 @@ mod tests_yaml {
                 assert_eq!(x, 1);
             }
             Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_estimate_error_unknown_keyword() {
+        match Analysis::from_file("tests/files/inputs/estimate_error_unknown_keyword.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(e) => assert!(e.to_string().contains(
+                "Invalid value for 'estimate_error'. Expected 'default', 'true', or a valid structure."
+            )),
         }
     }
 }
@@ -727,7 +823,7 @@ mod tests_builder {
 
         let map = analysis.map().as_ref().unwrap();
 
-        assert_eq!(map.output_directory(), ".");
+        assert_eq!(map.output_directory().as_ref().unwrap(), ".");
         matches!(
             map.dim_x(),
             GridSpan::Manual {
@@ -757,17 +853,12 @@ mod tests_builder {
                 "@membrane and element name carbon",
                 "@membrane and element name hydrogen",
             ))
-            .map(
-                OrderMap::new()
-                    .output_directory("ordermaps")
-                    .build()
-                    .unwrap(),
-            )
+            .map(OrderMap::default())
             .build()
             .unwrap();
 
         let ordermap = analysis.map.unwrap();
-        assert_eq!(ordermap.output_directory(), "ordermaps");
+        assert!(ordermap.output_directory().is_none());
         assert_relative_eq!(ordermap.bin_size_x(), 0.1);
         assert_relative_eq!(ordermap.bin_size_y(), 0.1);
         assert_eq!(ordermap.min_samples(), 1);
