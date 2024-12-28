@@ -117,3 +117,18 @@ fn test_bin_aa_order_fail() {
         .stdout("")
         .stderr("[E] error: 217 atoms are part of both \'HeavyAtoms\' (query: \'@membrane and element name carbon or serial 876 to 1234\') and \'Hydrogens\' (query: \'@membrane and element name hydrogen\')\n");
 }
+
+#[test]
+fn test_bin_missing_output_fail() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/basic.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .failure()
+        .stdout("")
+        .stderr("[E] error: no yaml output file specified in the configuration file \'tests/files/inputs/basic.yaml\' (hint: add \'output: output.yaml\' to your configuration file)\n");
+}

@@ -120,8 +120,10 @@ pub(crate) trait OrderResults:
         let input_trajectory = analysis.trajectory();
         let overwrite = analysis.overwrite();
 
-        YamlPresenter::new(self, YamlProperties::new(input_structure, input_trajectory))
-            .write(analysis.output_yaml(), overwrite)?;
+        if let Some(yaml) = analysis.output_yaml() {
+            YamlPresenter::new(self, YamlProperties::new(input_structure, input_trajectory))
+                .write(yaml, overwrite)?;
+        }
 
         if let Some(tab) = analysis.output_tab() {
             TabPresenter::new(

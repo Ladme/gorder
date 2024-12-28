@@ -5,7 +5,7 @@
 
 use clap::Parser;
 use colored::Colorize;
-use gorder::{prelude::Analysis, GORDER_VERSION};
+use gorder::{errors::ConfigError, prelude::Analysis, GORDER_VERSION};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -56,6 +56,12 @@ pub(crate) fn run() -> bool {
             return false;
         }
     };
+
+    // yaml output must always be specified in the config file for the application
+    if analysis.output_yaml().is_none() {
+        log::error!("{}", ConfigError::NoYamlOutput(args.config.clone()));
+        return false;
+    }
 
     if !analysis.silent() {
         analysis.set_silent(args.silent);

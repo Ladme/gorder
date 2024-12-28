@@ -108,16 +108,12 @@ fn test_aa_order_basic_fail_overlap() {
 
 #[test]
 fn test_aa_order_basic_table() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -139,9 +135,6 @@ fn test_aa_order_basic_table() {
 
 #[test]
 fn test_aa_order_basic_xvg() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
@@ -150,7 +143,6 @@ fn test_aa_order_basic_xvg() {
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_xvg(pattern)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -173,16 +165,12 @@ fn test_aa_order_basic_xvg() {
 
 #[test]
 fn test_aa_order_basic_csv() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -205,9 +193,6 @@ fn test_aa_order_basic_csv() {
 #[test]
 fn test_aa_order_basic_xvg_weird_names() {
     for name in ["order", ".this.is.a.weird.name.xvg"] {
-        let output_yaml = NamedTempFile::new().unwrap();
-        let path_to_yaml = output_yaml.path().to_str().unwrap();
-
         let directory = TempDir::new().unwrap();
         let path_to_dir = directory.path().to_str().unwrap();
 
@@ -216,7 +201,6 @@ fn test_aa_order_basic_xvg_weird_names() {
         let analysis = Analysis::new()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
-            .output_yaml(path_to_yaml)
             .output_xvg(pattern)
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -275,16 +259,12 @@ fn test_aa_order_basic_yaml_multiple_threads() {
 #[test]
 fn test_aa_order_basic_table_multiple_threads() {
     for n_threads in [2, 3, 5, 8, 12, 16, 64] {
-        let output_yaml = NamedTempFile::new().unwrap();
-        let path_to_yaml = output_yaml.path().to_str().unwrap();
-
         let output_table = NamedTempFile::new().unwrap();
         let path_to_table = output_table.path().to_str().unwrap();
 
         let analysis = Analysis::new()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
-            .output_yaml(path_to_yaml)
             .output_tab(path_to_table)
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -428,16 +408,12 @@ fn test_aa_order_leaflets_table() {
         LeafletClassification::local("@membrane", "name P", 2.5),
         LeafletClassification::individual("name P", "name C218 C316"),
     ] {
-        let output_yaml = NamedTempFile::new().unwrap();
-        let path_to_yaml = output_yaml.path().to_str().unwrap();
-
         let output_table = NamedTempFile::new().unwrap();
         let path_to_table = output_table.path().to_str().unwrap();
 
         let analysis = Analysis::new()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
-            .output_yaml(path_to_yaml)
             .output_tab(path_to_table)
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -466,9 +442,6 @@ fn test_aa_order_leaflets_xvg() {
         LeafletClassification::local("@membrane", "name P", 2.5),
         LeafletClassification::individual("name P", "name C218 C316"),
     ] {
-        let output_yaml = NamedTempFile::new().unwrap();
-        let path_to_yaml = output_yaml.path().to_str().unwrap();
-
         let directory = TempDir::new().unwrap();
         let path_to_dir = directory.path().to_str().unwrap();
 
@@ -477,7 +450,6 @@ fn test_aa_order_leaflets_xvg() {
         let analysis = Analysis::new()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
-            .output_yaml(path_to_yaml)
             .output_xvg(pattern)
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -507,16 +479,12 @@ fn test_aa_order_leaflets_csv() {
         LeafletClassification::local("@membrane", "name P", 2.5),
         LeafletClassification::individual("name P", "name C218 C316"),
     ] {
-        let output_yaml = NamedTempFile::new().unwrap();
-        let path_to_yaml = output_yaml.path().to_str().unwrap();
-
         let output_csv = NamedTempFile::new().unwrap();
         let path_to_csv = output_csv.path().to_str().unwrap();
 
         let analysis = Analysis::new()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
-            .output_yaml(path_to_yaml)
             .output_csv(path_to_csv)
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -568,16 +536,12 @@ fn test_aa_order_leaflets_yaml_supershort() {
 
 #[test]
 fn test_aa_order_one_different_hydrogen_numbers_table() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::aaorder(
             "(resname POPC and name C29 C210) or (resname POPE and element name carbon)",
@@ -600,16 +564,12 @@ fn test_aa_order_one_different_hydrogen_numbers_table() {
 
 #[test]
 fn test_aa_order_one_different_hydrogen_numbers_csv() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::aaorder(
             "(resname POPC and name C29 C210) or (resname POPE and element name carbon)",
@@ -689,16 +649,12 @@ fn test_aa_order_leaflets_limit_yaml() {
 
 #[test]
 fn test_aa_order_leaflets_limit_tab() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -722,16 +678,12 @@ fn test_aa_order_leaflets_limit_tab() {
 
 #[test]
 fn test_aa_order_leaflets_limit_csv() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -1323,16 +1275,12 @@ fn test_aa_order_maps_basic_multiple_threads() {
 #[test]
 fn test_aa_order_maps_basic_weird_molecules() {
     // calculation of ordermaps for system with molecules sharing their name and being composed of multiple residues
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/multiple_resid_same_name.tpr")
         .trajectory("tests/files/multiple_resid_same_name.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::aaorder(
             "resname POPC POPE and name C1A C3A C1B C3B",
             "resname POPC POPE and name D2A C4A C2B C4B",
@@ -1638,16 +1586,12 @@ fn test_aa_order_error_leaflets_yaml_multiple_threads() {
 
 #[test]
 fn test_aa_order_error_tab() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output(path_to_output)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -1670,16 +1614,12 @@ fn test_aa_order_error_tab() {
 
 #[test]
 fn test_aa_order_error_leaflets_tab() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output(path_to_output)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -1703,16 +1643,12 @@ fn test_aa_order_error_leaflets_tab() {
 
 #[test]
 fn test_aa_order_error_csv() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output(path_to_output)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -1735,16 +1671,12 @@ fn test_aa_order_error_csv() {
 
 #[test]
 fn test_aa_order_error_leaflets_csv() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output(path_to_output)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -1768,9 +1700,6 @@ fn test_aa_order_error_leaflets_csv() {
 
 #[test]
 fn test_aa_order_error_xvg() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
@@ -1779,7 +1708,6 @@ fn test_aa_order_error_xvg() {
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_xvg(pattern)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -1804,9 +1732,6 @@ fn test_aa_order_error_xvg() {
 
 #[test]
 fn test_aa_order_error_leaflets_xvg() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
@@ -1815,7 +1740,6 @@ fn test_aa_order_error_leaflets_xvg() {
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output_yaml(path_to_yaml)
         .output_xvg(pattern)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
@@ -1940,13 +1864,9 @@ fn test_aa_order_error_leaflets_limit() {
 
 #[test]
 fn test_aa_order_basic_rust_api() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
             "@membrane and element name hydrogen",
@@ -1960,6 +1880,8 @@ fn test_aa_order_basic_rust_api() {
         AnalysisResults::AA(x) => x,
         AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
     };
+
+    assert_eq!(results.analysis().structure(), "tests/files/pcpepg.tpr");
 
     assert_eq!(results.molecules().count(), 3);
 
@@ -2078,13 +2000,9 @@ fn test_aa_order_basic_rust_api() {
 
 #[test]
 fn test_aa_order_error_rust_api() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
             "@membrane and element name hydrogen",
@@ -2225,13 +2143,9 @@ fn test_aa_order_error_rust_api() {
 
 #[test]
 fn test_aa_order_leaflets_rust_api() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
             "@membrane and element name hydrogen",
@@ -2398,13 +2312,9 @@ fn test_aa_order_leaflets_rust_api() {
 
 #[test]
 fn test_aa_order_error_leaflets_rust_api() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let analysis = Analysis::new()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::aaorder(
             "@membrane and element name carbon",
             "@membrane and element name hydrogen",

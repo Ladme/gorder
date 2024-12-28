@@ -145,6 +145,10 @@ pub enum ConfigError {
     )]
     CouldNotParseConfig(String, serde_yaml::Error),
 
+    /// Only used in the `gorder` application.
+    #[error("{} no yaml output file specified in the configuration file '{}' ({} add '{}' to your configuration file)", "error:".red().bold(), .0.yellow(), "hint:".blue().bold(), "output: output.yaml".bright_blue())]
+    NoYamlOutput(String),
+
     #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "step".yellow()
     )]
     InvalidStep,

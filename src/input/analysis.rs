@@ -95,13 +95,12 @@ pub struct Analysis {
     #[getset(get = "pub")]
     index: Option<String>,
 
-    /// Path to an output YAML file where the full results of the analysis will be saved.
-    /// The path to an output YAML file must always be specified, even if other output formats
-    /// are requested, as it is the only format that contains the complete results of the analysis.
-    #[builder(setter(into))]
+    /// Optional path to an output YAML file where the full results of the analysis will be saved.
+    /// YAML file is the only output file containing the full results of the analysis.
+    #[builder(setter(into, strip_option), default)]
     #[getset(get = "pub")]
     #[serde(alias = "output", alias = "output_yml")]
-    output_yaml: String,
+    output_yaml: Option<String>,
 
     /// Optional path to an output TABLE file where the analysis results will be saved
     /// in a human-readable format.
@@ -339,7 +338,7 @@ impl Analysis {
 
     /// Alias for `output_yaml`.
     #[inline(always)]
-    pub fn output(&self) -> &String {
+    pub fn output(&self) -> &Option<String> {
         &self.output_yaml
     }
 }
@@ -425,7 +424,7 @@ mod tests_yaml {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert!(analysis.index().is_none());
-        assert_eq!(analysis.output(), "order.yaml");
+        assert!(analysis.output().is_none());
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
         assert!(analysis.output_csv().is_none());
@@ -457,7 +456,7 @@ mod tests_yaml {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
-        assert_eq!(analysis.output(), "order.yaml");
+        assert_eq!(analysis.output().as_ref().unwrap(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
         assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
@@ -635,7 +634,6 @@ mod tests_builder {
         let analysis = Analysis::new()
             .structure("system.tpr")
             .trajectory("md.xtc")
-            .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
                 "@membrane and element name hydrogen",
@@ -646,7 +644,7 @@ mod tests_builder {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert!(analysis.index().is_none());
-        assert_eq!(analysis.output(), "order.yaml");
+        assert!(analysis.output().is_none());
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
         assert!(analysis.output_csv().is_none());
@@ -712,7 +710,7 @@ mod tests_builder {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
-        assert_eq!(analysis.output(), "order.yaml");
+        assert_eq!(analysis.output().as_ref().unwrap(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
         assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");

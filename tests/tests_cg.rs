@@ -81,16 +81,12 @@ fn test_cg_order_basic_ndx_yaml() {
 
 #[test]
 fn test_cg_order_basic_table() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output_yaml(path_to_yaml)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .silent()
@@ -109,9 +105,6 @@ fn test_cg_order_basic_table() {
 
 #[test]
 fn test_cg_order_basic_xvg() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
@@ -120,7 +113,6 @@ fn test_cg_order_basic_xvg() {
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output_yaml(path_to_yaml)
         .output_xvg(pattern)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .silent()
@@ -140,16 +132,12 @@ fn test_cg_order_basic_xvg() {
 
 #[test]
 fn test_cg_order_basic_csv() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output_yaml(path_to_yaml)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .silent()
@@ -265,16 +253,12 @@ fn test_cg_order_leaflets_table() {
         LeafletClassification::local("@membrane", "name PO4", 2.5),
         LeafletClassification::individual("name PO4", "name C4A C4B"),
     ] {
-        let output_yaml = NamedTempFile::new().unwrap();
-        let path_to_yaml = output_yaml.path().to_str().unwrap();
-
         let output_table = NamedTempFile::new().unwrap();
         let path_to_table = output_table.path().to_str().unwrap();
 
         let analysis = Analysis::new()
             .structure("tests/files/cg.tpr")
             .trajectory("tests/files/cg.xtc")
-            .output_yaml(path_to_yaml)
             .output_tab(path_to_table)
             .analysis_type(AnalysisType::cgorder("@membrane"))
             .leaflets(method)
@@ -300,9 +284,6 @@ fn test_cg_order_leaflets_xvg() {
         LeafletClassification::local("@membrane", "name PO4", 2.5),
         LeafletClassification::individual("name PO4", "name C4A C4B"),
     ] {
-        let output_yaml = NamedTempFile::new().unwrap();
-        let path_to_yaml = output_yaml.path().to_str().unwrap();
-
         let directory = TempDir::new().unwrap();
         let path_to_dir = directory.path().to_str().unwrap();
 
@@ -311,7 +292,6 @@ fn test_cg_order_leaflets_xvg() {
         let analysis = Analysis::new()
             .structure("tests/files/cg.tpr")
             .trajectory("tests/files/cg.xtc")
-            .output_yaml(path_to_yaml)
             .output_xvg(pattern)
             .analysis_type(AnalysisType::cgorder("@membrane"))
             .leaflets(method)
@@ -338,16 +318,12 @@ fn test_cg_order_leaflets_csv() {
         LeafletClassification::local("@membrane", "name PO4", 2.5),
         LeafletClassification::individual("name PO4", "name C4A C4B"),
     ] {
-        let output_yaml = NamedTempFile::new().unwrap();
-        let path_to_yaml = output_yaml.path().to_str().unwrap();
-
         let output_csv = NamedTempFile::new().unwrap();
         let path_to_csv = output_csv.path().to_str().unwrap();
 
         let analysis = Analysis::new()
             .structure("tests/files/cg.tpr")
             .trajectory("tests/files/cg.xtc")
-            .output_yaml(path_to_yaml)
             .output_csv(path_to_csv)
             .analysis_type(AnalysisType::cgorder("@membrane"))
             .leaflets(method)
@@ -419,16 +395,12 @@ fn test_cg_order_leaflets_limit_yaml() {
 
 #[test]
 fn test_cg_order_leaflets_limit_tab() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output_yaml(path_to_yaml)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .min_samples(2000)
@@ -449,16 +421,12 @@ fn test_cg_order_leaflets_limit_tab() {
 
 #[test]
 fn test_cg_order_leaflets_limit_csv() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output_yaml(path_to_yaml)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .min_samples(2000)
@@ -1065,16 +1033,12 @@ fn test_cg_order_error_leaflets_yaml_multiple_threads() {
 
 #[test]
 fn test_cg_order_error_tab() {
-    let output: NamedTempFile = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output(path_to_output)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .estimate_error(EstimateError::default())
@@ -1094,16 +1058,12 @@ fn test_cg_order_error_tab() {
 
 #[test]
 fn test_cg_order_error_leaflets_tab() {
-    let output: NamedTempFile = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output(path_to_output)
         .output_tab(path_to_table)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
@@ -1124,16 +1084,12 @@ fn test_cg_order_error_leaflets_tab() {
 
 #[test]
 fn test_cg_order_error_csv() {
-    let output: NamedTempFile = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output(path_to_output)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .estimate_error(EstimateError::default())
@@ -1153,16 +1109,12 @@ fn test_cg_order_error_csv() {
 
 #[test]
 fn test_cg_order_error_leaflets_csv() {
-    let output: NamedTempFile = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output(path_to_output)
         .output_csv(path_to_csv)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
@@ -1183,9 +1135,6 @@ fn test_cg_order_error_leaflets_csv() {
 
 #[test]
 fn test_cg_order_error_xvg() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
@@ -1194,7 +1143,6 @@ fn test_cg_order_error_xvg() {
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output_yaml(path_to_yaml)
         .output_xvg(pattern)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .estimate_error(EstimateError::default())
@@ -1216,9 +1164,6 @@ fn test_cg_order_error_xvg() {
 
 #[test]
 fn test_cg_order_error_leaflets_xvg() {
-    let output_yaml = NamedTempFile::new().unwrap();
-    let path_to_yaml = output_yaml.path().to_str().unwrap();
-
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
@@ -1227,7 +1172,6 @@ fn test_cg_order_error_leaflets_xvg() {
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output_yaml(path_to_yaml)
         .output_xvg(pattern)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
@@ -1343,13 +1287,9 @@ fn test_cg_order_error_leaflets_limit() {
 
 #[test]
 fn test_cg_order_basic_rust_api() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .silent()
         .overwrite()
@@ -1360,6 +1300,8 @@ fn test_cg_order_basic_rust_api() {
         AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
         AnalysisResults::CG(x) => x,
     };
+
+    assert_eq!(results.analysis().structure(), "tests/files/cg.tpr");
 
     assert_eq!(results.molecules().count(), 3);
 
@@ -1431,13 +1373,9 @@ fn test_cg_order_basic_rust_api() {
 
 #[test]
 fn test_cg_order_error_rust_api() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .estimate_error(EstimateError::default())
         .silent()
@@ -1531,13 +1469,9 @@ fn test_cg_order_error_rust_api() {
 
 #[test]
 fn test_cg_order_leaflets_rust_api() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
         .silent()
@@ -1649,13 +1583,9 @@ fn test_cg_order_leaflets_rust_api() {
 
 #[test]
 fn test_cg_order_error_leaflets_rust_api() {
-    let output = NamedTempFile::new().unwrap();
-    let path_to_output = output.path().to_str().unwrap();
-
     let analysis = Analysis::new()
         .structure("tests/files/cg.tpr")
         .trajectory("tests/files/cg.xtc")
-        .output(path_to_output)
         .analysis_type(AnalysisType::cgorder("@membrane"))
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
         .estimate_error(EstimateError::default())
