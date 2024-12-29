@@ -2533,3 +2533,249 @@ fn test_aa_order_error_leaflets_rust_api() {
         assert!(molecule.get_bond(145, 189).is_none());
     }
 }
+
+#[test]
+fn test_aa_order_ordermaps_rust_api() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "resname POPC and name C22 C24 C218",
+            "@membrane and element name hydrogen",
+        ))
+        .map(
+            OrderMap::builder()
+                .bin_size([0.1, 4.0])
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(x) => x,
+        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+    };
+
+    assert_eq!(results.molecules().count(), 1);
+
+    // average ordermaps for the entire molecule
+    let molecule = results.get_molecule("POPC").unwrap();
+    let map = molecule.average_ordermaps().total().as_ref().unwrap();
+    assert!(molecule.average_ordermaps().upper().is_none());
+    assert!(molecule.average_ordermaps().lower().is_none());
+
+    let span_x = map.span_x();
+    let span_y = map.span_y();
+    let bin = map.tile_dim();
+
+    assert_relative_eq!(span_x.0, 0.0);
+    assert_relative_eq!(span_x.1, 9.15673);
+    assert_relative_eq!(span_y.0, 0.0);
+    assert_relative_eq!(span_y.1, 9.15673);
+    assert_relative_eq!(bin.0, 0.1);
+    assert_relative_eq!(bin.1, 4.0);
+
+    assert_relative_eq!(
+        map.get_at_convert(0.6, 8.0).unwrap(),
+        0.1653,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(4.3, 0.0).unwrap(),
+        0.1340,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(9.2, 4.0).unwrap(),
+        0.1990,
+        epsilon = 1e-4
+    );
+
+    // ordermaps for a selected atom
+    let atom = molecule.get_atom(47).unwrap();
+    let map = atom.ordermaps().total().as_ref().unwrap();
+    assert!(atom.ordermaps().upper().is_none());
+    assert!(atom.ordermaps().lower().is_none());
+
+    assert_relative_eq!(
+        map.get_at_convert(0.6, 8.0).unwrap(),
+        0.2224,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(4.3, 0.0).unwrap(),
+        0.1532,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(9.2, 4.0).unwrap(),
+        0.0982,
+        epsilon = 1e-4
+    );
+
+    // ordermaps for a selected bond
+    let bond = atom.get_bond(49).unwrap();
+    let map = bond.ordermaps().total().as_ref().unwrap();
+    assert!(bond.ordermaps().upper().is_none());
+    assert!(bond.ordermaps().lower().is_none());
+
+    assert_relative_eq!(
+        map.get_at_convert(0.6, 8.0).unwrap(),
+        0.2901,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(4.3, 0.0).unwrap(),
+        0.1163,
+        epsilon = 1e-4
+    );
+    assert!(map.get_at_convert(9.2, 4.0).unwrap().is_nan());
+}
+
+#[test]
+fn test_aa_order_ordermaps_leaflets_rust_api() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "resname POPC and name C22 C24 C218",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .map(
+            OrderMap::builder()
+                .bin_size([0.1, 4.0])
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(x) => x,
+        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+    };
+
+    assert_eq!(results.molecules().count(), 1);
+
+    // average ordermaps for the entire molecule
+    let molecule = results.get_molecule("POPC").unwrap();
+    let total = molecule.average_ordermaps().total().as_ref().unwrap();
+
+    let span_x = total.span_x();
+    let span_y = total.span_y();
+    let bin = total.tile_dim();
+
+    assert_relative_eq!(span_x.0, 0.0);
+    assert_relative_eq!(span_x.1, 9.15673);
+    assert_relative_eq!(span_y.0, 0.0);
+    assert_relative_eq!(span_y.1, 9.15673);
+    assert_relative_eq!(bin.0, 0.1);
+    assert_relative_eq!(bin.1, 4.0);
+
+    assert_relative_eq!(
+        total.get_at_convert(0.6, 8.0).unwrap(),
+        0.1653,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        total.get_at_convert(9.2, 4.0).unwrap(),
+        0.1990,
+        epsilon = 1e-4
+    );
+
+    let upper = molecule.average_ordermaps().upper().as_ref().unwrap();
+
+    assert_relative_eq!(
+        upper.get_at_convert(0.6, 8.0).unwrap(),
+        0.1347,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        upper.get_at_convert(9.2, 4.0).unwrap(),
+        0.3196,
+        epsilon = 1e-4
+    );
+
+    let lower = molecule.average_ordermaps().lower().as_ref().unwrap();
+
+    assert_relative_eq!(
+        lower.get_at_convert(0.6, 8.0).unwrap(),
+        0.2104,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        lower.get_at_convert(9.2, 4.0).unwrap(),
+        0.1106,
+        epsilon = 1e-4
+    );
+
+    // ordermaps for a selected atom
+    let atom = molecule.get_atom(47).unwrap();
+    let total = atom.ordermaps().total().as_ref().unwrap();
+
+    assert_relative_eq!(
+        total.get_at_convert(0.6, 8.0).unwrap(),
+        0.2224,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        total.get_at_convert(9.2, 4.0).unwrap(),
+        0.0982,
+        epsilon = 1e-4
+    );
+
+    let upper = atom.ordermaps().upper().as_ref().unwrap();
+
+    assert_relative_eq!(
+        upper.get_at_convert(0.6, 8.0).unwrap(),
+        0.2039,
+        epsilon = 1e-4
+    );
+    assert!(upper.get_at_convert(9.2, 4.0).unwrap().is_nan());
+
+    let lower = atom.ordermaps().lower().as_ref().unwrap();
+
+    assert_relative_eq!(
+        lower.get_at_convert(0.6, 8.0).unwrap(),
+        0.2540,
+        epsilon = 1e-4
+    );
+    assert!(lower.get_at_convert(9.2, 4.0).unwrap().is_nan());
+
+    // ordermaps for a selected bond
+    let bond = atom.get_bond(49).unwrap();
+    let total = bond.ordermaps().total().as_ref().unwrap();
+
+    assert_relative_eq!(
+        total.get_at_convert(0.6, 8.0).unwrap(),
+        0.2901,
+        epsilon = 1e-4
+    );
+    assert!(total.get_at_convert(9.2, 4.0).unwrap().is_nan());
+
+    let upper = bond.ordermaps().upper().as_ref().unwrap();
+
+    assert_relative_eq!(
+        upper.get_at_convert(0.6, 8.0).unwrap(),
+        0.3584,
+        epsilon = 1e-4
+    );
+    assert!(upper.get_at_convert(9.2, 4.0).unwrap().is_nan());
+
+    let lower = bond.ordermaps().lower().as_ref().unwrap();
+
+    assert_relative_eq!(
+        lower.get_at_convert(0.6, 8.0).unwrap(),
+        0.1715,
+        epsilon = 1e-4
+    );
+    assert!(lower.get_at_convert(9.2, 4.0).unwrap().is_nan());
+}

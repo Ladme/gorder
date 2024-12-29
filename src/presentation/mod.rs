@@ -398,14 +398,17 @@ impl OrderCollection {
     }
 }
 
-/// Collection of (up to) 3 order maps: for the full membrane, the upper leaflet,
+/// Collection of (up to) 3 ordermaps: for the full membrane, the upper leaflet,
 /// and the lower leaflet.
 #[derive(Debug, Clone, Default, Getters)]
 pub struct OrderMapsCollection {
+    /// Ordermap for the full membrane.
     #[getset(get = "pub")]
     total: Option<GridMapF32>,
+    /// Ordermap for the upper leaflet.
     #[getset(get = "pub")]
     upper: Option<GridMapF32>,
+    /// Ordermap for the lower leaflet.
     #[getset(get = "pub")]
     lower: Option<GridMapF32>,
 }

@@ -1755,3 +1755,208 @@ fn test_cg_order_error_leaflets_rust_api() {
         assert!(molecule.get_bond(15, 16).is_none());
     }
 }
+
+#[test]
+fn test_cg_order_ordermaps_rust_api() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "resname POPC and name C1B C2B C3B C4B",
+        ))
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .min_samples(10)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
+        AnalysisResults::CG(x) => x,
+    };
+
+    assert_eq!(results.molecules().count(), 1);
+
+    // average ordermaps for the entire molecule
+    let molecule = results.get_molecule("POPC").unwrap();
+    let map = molecule.average_ordermaps().total().as_ref().unwrap();
+    assert!(molecule.average_ordermaps().upper().is_none());
+    assert!(molecule.average_ordermaps().lower().is_none());
+
+    let span_x = map.span_x();
+    let span_y = map.span_y();
+    let bin = map.tile_dim();
+
+    assert_relative_eq!(span_x.0, 0.0);
+    assert_relative_eq!(span_x.1, 12.747616);
+    assert_relative_eq!(span_y.0, 0.0);
+    assert_relative_eq!(span_y.1, 12.747616);
+    assert_relative_eq!(bin.0, 1.0);
+    assert_relative_eq!(bin.1, 1.0);
+
+    assert_relative_eq!(
+        map.get_at_convert(1.0, 8.0).unwrap(),
+        0.3590,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(7.0, 0.0).unwrap(),
+        0.3765,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(13.0, 11.0).unwrap(),
+        0.4296,
+        epsilon = 1e-4
+    );
+
+    // ordermaps for a selected bond
+    let bond = molecule.get_bond(9, 10).unwrap();
+    let map = bond.ordermaps().total().as_ref().unwrap();
+    assert!(bond.ordermaps().upper().is_none());
+    assert!(bond.ordermaps().lower().is_none());
+
+    assert_relative_eq!(
+        map.get_at_convert(1.0, 8.0).unwrap(),
+        0.3967,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(7.0, 0.0).unwrap(),
+        0.3213,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        map.get_at_convert(13.0, 11.0).unwrap(),
+        0.4104,
+        epsilon = 1e-4
+    );
+}
+
+#[test]
+fn test_cg_order_ordermaps_leaflets_rust_api() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "resname POPC and name C1B C2B C3B C4B",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .min_samples(10)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
+        AnalysisResults::CG(x) => x,
+    };
+
+    assert_eq!(results.molecules().count(), 1);
+
+    // average ordermaps for the entire molecule
+    let molecule = results.get_molecule("POPC").unwrap();
+    let total = molecule.average_ordermaps().total().as_ref().unwrap();
+
+    let span_x = total.span_x();
+    let span_y = total.span_y();
+    let bin = total.tile_dim();
+
+    assert_relative_eq!(span_x.0, 0.0);
+    assert_relative_eq!(span_x.1, 12.747616);
+    assert_relative_eq!(span_y.0, 0.0);
+    assert_relative_eq!(span_y.1, 12.747616);
+    assert_relative_eq!(bin.0, 1.0);
+    assert_relative_eq!(bin.1, 1.0);
+
+    assert_relative_eq!(
+        total.get_at_convert(1.0, 8.0).unwrap(),
+        0.3590,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        total.get_at_convert(13.0, 11.0).unwrap(),
+        0.4296,
+        epsilon = 1e-4
+    );
+
+    let upper = molecule.average_ordermaps().upper().as_ref().unwrap();
+
+    assert_relative_eq!(
+        upper.get_at_convert(1.0, 8.0).unwrap(),
+        0.3418,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        upper.get_at_convert(13.0, 11.0).unwrap(),
+        0.4051,
+        epsilon = 1e-4
+    );
+
+    let lower = molecule.average_ordermaps().lower().as_ref().unwrap();
+
+    assert_relative_eq!(
+        lower.get_at_convert(1.0, 8.0).unwrap(),
+        0.3662,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        lower.get_at_convert(13.0, 11.0).unwrap(),
+        0.4506,
+        epsilon = 1e-4
+    );
+
+    // ordermaps for a selected bond
+    let bond = molecule.get_bond(9, 10).unwrap();
+    let total = bond.ordermaps().total().as_ref().unwrap();
+
+    assert_relative_eq!(
+        total.get_at_convert(1.0, 8.0).unwrap(),
+        0.3967,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        total.get_at_convert(13.0, 11.0).unwrap(),
+        0.4104,
+        epsilon = 1e-4
+    );
+
+    let upper = bond.ordermaps().upper().as_ref().unwrap();
+
+    assert_relative_eq!(
+        upper.get_at_convert(1.0, 8.0).unwrap(),
+        0.3573,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        upper.get_at_convert(13.0, 11.0).unwrap(),
+        0.4807,
+        epsilon = 1e-4
+    );
+
+    let lower = bond.ordermaps().lower().as_ref().unwrap();
+
+    assert_relative_eq!(
+        lower.get_at_convert(1.0, 8.0).unwrap(),
+        0.4118,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        lower.get_at_convert(13.0, 11.0).unwrap(),
+        0.3563,
+        epsilon = 1e-4
+    );
+}
