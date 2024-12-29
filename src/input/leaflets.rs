@@ -8,6 +8,8 @@ use std::fmt;
 use getset::{CopyGetters, Getters};
 use serde::Deserialize;
 
+use super::frequency::Frequency;
+
 /// Parameters for the classification of lipids into membrane leaflets.
 #[derive(Debug, Clone, Deserialize)]
 pub enum LeafletClassification {
@@ -38,6 +40,7 @@ impl LeafletClassification {
         Self::Global(GlobalParams {
             membrane: membrane.to_string(),
             heads: heads.to_string(),
+            frequency: Frequency::default(),
         })
     }
 
@@ -54,6 +57,7 @@ impl LeafletClassification {
             membrane: membrane.to_string(),
             heads: heads.to_string(),
             radius,
+            frequency: Frequency::default(),
         })
     }
 
@@ -69,7 +73,30 @@ impl LeafletClassification {
         Self::Individual(IndividualParams {
             heads: heads.to_string(),
             methyls: methyls.to_string(),
+            frequency: Frequency::default(),
         })
+    }
+
+    /// Assign lipids to leaflets every N analyzed trajectory frames or only once (using the first trajectory frame).
+    /// (Note that this is 'analyzed trajectory frames' - if you skip some frames using `step`,
+    /// they will not be counted here.)
+    pub fn with_frequency(mut self, frequency: Frequency) -> Self {
+        match &mut self {
+            LeafletClassification::Global(x) => x.frequency = frequency,
+            LeafletClassification::Local(x) => x.frequency = frequency,
+            LeafletClassification::Individual(x) => x.frequency = frequency,
+        }
+
+        self
+    }
+
+    /// Get the frequency of the analysis.
+    pub fn get_frequency(&self) -> Frequency {
+        match self {
+            LeafletClassification::Global(x) => x.frequency(),
+            LeafletClassification::Local(x) => x.frequency(),
+            LeafletClassification::Individual(x) => x.frequency(),
+        }
     }
 
     /// Returns a radius of the cylinder for the calculation of local membrane center of geometry, if the method is Local.
@@ -93,6 +120,10 @@ pub struct GlobalParams {
     /// There must only be one such atom/bead per lipid molecule.
     #[getset(get = "pub")]
     heads: String,
+    /// Frequency of leaflet assignment.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    frequency: Frequency,
 }
 
 /// Parameters for classification of lipids.
@@ -110,6 +141,10 @@ pub struct LocalParams {
     /// Radius of a cylinder for the calculation of local membrane center of geometry (in nm).
     #[getset(get_copy = "pub")]
     radius: f32,
+    /// Frequency of leaflet assignment.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    frequency: Frequency,
 }
 
 /// Parameters for classification of lipids.
@@ -125,4 +160,8 @@ pub struct IndividualParams {
     /// There should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
     #[getset(get = "pub")]
     methyls: String,
+    /// Frequency of leaflet assignment.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    frequency: Frequency,
 }

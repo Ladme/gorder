@@ -21,6 +21,13 @@ pub enum GridSpanError {
     Invalid(f32, f32),
 }
 
+/// Errors that can occur when creating a `Frequency` structure.
+#[derive(Error, Debug)]
+pub enum FrequencyError {
+    #[error("{} action cannot be performed once every '{}' frames (frequency has to be at least 1)", "error:".red().bold(), "0".yellow())]
+    EveryZero,
+}
+
 /// Errors that can occur when analyzing system topology.
 #[derive(Error, Debug)]
 pub enum TopologyError {

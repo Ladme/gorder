@@ -455,6 +455,7 @@ mod tests_yaml {
 
     use super::*;
     use crate::errors::ErrorEstimationError;
+    use crate::input::frequency::Frequency;
     use crate::{
         errors::OrderMapConfigError,
         input::{ordermap::Plane, GridSpan},
@@ -512,7 +513,15 @@ mod tests_yaml {
         assert_eq!(analysis.step(), 5);
         assert_eq!(analysis.min_samples(), 10);
         assert_eq!(analysis.n_threads(), 4);
-        assert!(analysis.leaflets().is_some());
+        let leaflets = analysis.leaflets().as_ref().unwrap();
+        match leaflets {
+            LeafletClassification::Global(x) => {
+                assert_eq!(x.heads(), "name P");
+                assert_eq!(x.membrane(), "@membrane");
+                assert!(matches!(x.frequency(), Frequency::Once));
+            }
+            _ => panic!("Incorrect leaflet classification type returned."),
+        }
 
         let map = analysis.map().as_ref().unwrap();
 
@@ -712,6 +721,16 @@ mod tests_yaml {
             )),
         }
     }
+
+    #[test]
+    fn analysis_yaml_fail_zero_frequency() {
+        match Analysis::from_file("tests/files/inputs/leaflets_zero_frequency.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(e) => assert!(e
+                .to_string()
+                .contains("invalid value: integer `0`, expected a nonzero usize")),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -720,6 +739,7 @@ mod tests_builder {
     use approx::assert_relative_eq;
 
     use crate::input::ordermap::Plane;
+    use crate::input::Frequency;
 
     use super::super::GridSpan;
     use super::*;
@@ -781,7 +801,10 @@ mod tests_builder {
             .step(5)
             .min_samples(10)
             .n_threads(4)
-            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .leaflets(
+                LeafletClassification::global("@membrane", "name P")
+                    .with_frequency(Frequency::once()),
+            )
             .map(
                 OrderMap::builder()
                     .output_directory(".")
@@ -818,7 +841,16 @@ mod tests_builder {
         assert_eq!(analysis.step(), 5);
         assert_eq!(analysis.min_samples(), 10);
         assert_eq!(analysis.n_threads(), 4);
-        assert!(analysis.leaflets().is_some());
+
+        let leaflets = analysis.leaflets().as_ref().unwrap();
+        match leaflets {
+            LeafletClassification::Global(x) => {
+                assert_eq!(x.heads(), "name P");
+                assert_eq!(x.membrane(), "@membrane");
+                assert!(matches!(x.frequency(), Frequency::Once));
+            }
+            _ => panic!("Incorrect leaflet classification type returned."),
+        }
 
         let map = analysis.map().as_ref().unwrap();
 

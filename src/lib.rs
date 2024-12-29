@@ -370,7 +370,7 @@ use std::fmt::Display;
 pub mod prelude {
     pub use super::input::{
         analysis::AnalysisBuilder, ordermap::OrderMapBuilder, Analysis, AnalysisType, Axis,
-        EstimateError, GridSpan, LeafletClassification, OrderMap, Plane,
+        EstimateError, Frequency, GridSpan, LeafletClassification, OrderMap, Plane,
     };
 
     pub use super::analysis::molecule::AtomType;

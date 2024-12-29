@@ -3,7 +3,7 @@
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
-use crate::input::Plane;
+use crate::input::{Frequency, LeafletClassification, Plane};
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::cgresults::CGOrderResults;
 use crate::presentation::csv_presenter::{CsvPresenter, CsvProperties, CsvWrite};
@@ -562,11 +562,32 @@ impl Analysis {
                 self.map().as_ref().unwrap().plane().expect(PANIC_MESSAGE)
             );
         }
-        if self.leaflets().is_some() {
-            log::info!(
-                "Will classify lipids into membrane leaflets using the '{}' method.",
-                self.leaflets().as_ref().expect(PANIC_MESSAGE)
-            )
+        if let Some(leaflets) = self.leaflets() {
+            leaflets.info();
+        }
+    }
+}
+
+impl LeafletClassification {
+    /// Print basic information about the leaflet classification.
+    #[inline(always)]
+    fn info(&self) {
+        log::info!(
+            "Will classify lipids into membrane leaflets {} using the '{}' method.",
+            self.get_frequency(),
+            self
+        )
+    }
+}
+
+impl std::fmt::Display for Frequency {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Frequency::Every(n) if n.get() == 1 => write!(f, "every frame"),
+            Frequency::Every(n) if n.get() == 2 => write!(f, "every 2nd frame"),
+            Frequency::Every(n) if n.get() == 3 => write!(f, "every 3rd frame"),
+            Frequency::Every(n) => write!(f, "every {}th frame", n),
+            Frequency::Once => write!(f, "once at the start of the analysis"),
         }
     }
 }
@@ -601,5 +622,28 @@ impl SystemTopology {
         for molecule in self.molecule_types() {
             molecule.info();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_frequency_display() {
+        let freq = Frequency::once();
+        assert_eq!(freq.to_string(), "once at the start of the analysis");
+
+        let freq = Frequency::every(1).unwrap();
+        assert_eq!(freq.to_string(), "every frame");
+
+        let freq = Frequency::every(2).unwrap();
+        assert_eq!(freq.to_string(), "every 2nd frame");
+
+        let freq = Frequency::every(3).unwrap();
+        assert_eq!(freq.to_string(), "every 3rd frame");
+
+        let freq = Frequency::every(10).unwrap();
+        assert_eq!(freq.to_string(), "every 10th frame");
     }
 }
