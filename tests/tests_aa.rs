@@ -1863,6 +1863,57 @@ fn test_aa_order_error_leaflets_limit() {
 }
 
 #[test]
+fn test_aa_order_error_blocks_10_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .estimate_error(EstimateError::new(Some(10), None).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_error_blocks10.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_error_blocks_too_many() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .estimate_error(EstimateError::new(Some(100), None).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed but it succeeded."),
+        Err(e) => {
+            assert!(e.to_string().contains("fewer than the number of blocks"))
+        }
+    }
+}
+
+#[test]
 fn test_aa_order_convergence() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
