@@ -1489,6 +1489,14 @@ fn test_cg_order_error_rust_api() {
         AnalysisResults::CG(x) => x,
     };
 
+    assert!(results
+        .analysis()
+        .estimate_error()
+        .as_ref()
+        .unwrap()
+        .output_convergence()
+        .is_none());
+
     assert_eq!(results.molecules().count(), 3);
 
     assert!(results.get_molecule("POPC").is_some());
@@ -1502,6 +1510,13 @@ fn test_cg_order_error_rust_api() {
 
     let expected_bond_orders = [0.3682, 0.3759, 0.3789];
     let expected_bond_errors = [0.0125, 0.0164, 0.0159];
+
+    let expected_convergence_frames = (1..=101).into_iter().collect::<Vec<usize>>();
+    let expected_convergence_values = [
+        [0.2756, 0.2902, 0.2943],
+        [0.2830, 0.2995, 0.2972],
+        [0.3198, 0.3066, 0.3059],
+    ];
 
     for (i, molecule) in results.molecules().enumerate() {
         assert_eq!(molecule.molecule(), expected_molecule_names[i]);
@@ -1524,6 +1539,31 @@ fn test_cg_order_error_rust_api() {
         assert!(average_maps.total().is_none());
         assert!(average_maps.upper().is_none());
         assert!(average_maps.lower().is_none());
+
+        // convergence (available even if `output_convergence` is not specified)
+        let convergence = molecule.convergence().unwrap();
+        assert_eq!(
+            convergence.frames().len(),
+            expected_convergence_frames.len()
+        );
+        for (val, exp) in convergence
+            .frames()
+            .iter()
+            .zip(expected_convergence_frames.iter())
+        {
+            assert_eq!(val, exp);
+        }
+
+        for (j, frame) in [0, 50, 100].into_iter().enumerate() {
+            assert_relative_eq!(
+                *convergence.total().as_ref().unwrap().get(frame).unwrap(),
+                expected_convergence_values.get(i).unwrap().get(j).unwrap(),
+                epsilon = 1e-4
+            );
+        }
+
+        assert!(convergence.upper().is_none());
+        assert!(convergence.lower().is_none());
 
         // bonds
         assert_eq!(molecule.bonds().count(), 11);
@@ -1700,6 +1740,14 @@ fn test_cg_order_error_leaflets_rust_api() {
         AnalysisResults::CG(x) => x,
     };
 
+    assert!(results
+        .analysis()
+        .estimate_error()
+        .as_ref()
+        .unwrap()
+        .output_convergence()
+        .is_none());
+
     assert_eq!(results.molecules().count(), 3);
 
     assert!(results.get_molecule("POPC").is_some());
@@ -1721,6 +1769,13 @@ fn test_cg_order_error_leaflets_rust_api() {
         assert!(average_maps.total().is_none());
         assert!(average_maps.upper().is_none());
         assert!(average_maps.lower().is_none());
+
+        // convergence (available even if `output_convergence` is not specified)
+        let convergence = molecule.convergence().unwrap();
+        assert_eq!(convergence.frames().len(), 101);
+        assert!(convergence.total().is_some());
+        assert!(convergence.upper().is_some());
+        assert!(convergence.lower().is_some());
 
         // bonds
         assert_eq!(molecule.bonds().count(), 11);

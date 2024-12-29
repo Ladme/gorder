@@ -2155,6 +2155,13 @@ fn test_aa_order_error_rust_api() {
     let expected_atom2_order = [0.2040, 0.2317, 0.2020];
     let expected_atom2_errors = [0.0125, 0.0091, 0.0656];
 
+    let expected_convergence_frames = (1..=51).into_iter().collect::<Vec<usize>>();
+    let expected_convergence_values = [
+        [0.1494, 0.1460, 0.1455],
+        [0.1422, 0.1353, 0.1378],
+        [0.1572, 0.1507, 0.1561],
+    ];
+
     for (i, molecule) in results.molecules().enumerate() {
         assert_eq!(molecule.molecule(), expected_molecule_names[i]);
 
@@ -2176,6 +2183,31 @@ fn test_aa_order_error_rust_api() {
         assert!(average_maps.total().is_none());
         assert!(average_maps.upper().is_none());
         assert!(average_maps.lower().is_none());
+
+        // convergence (available even if `output_convergence` is not specified)
+        let convergence = molecule.convergence().unwrap();
+        assert_eq!(
+            convergence.frames().len(),
+            expected_convergence_frames.len()
+        );
+        for (val, exp) in convergence
+            .frames()
+            .iter()
+            .zip(expected_convergence_frames.iter())
+        {
+            assert_eq!(val, exp);
+        }
+
+        for (j, frame) in [0, 25, 50].into_iter().enumerate() {
+            assert_relative_eq!(
+                *convergence.total().as_ref().unwrap().get(frame).unwrap(),
+                expected_convergence_values.get(i).unwrap().get(j).unwrap(),
+                epsilon = 1e-4
+            );
+        }
+
+        assert!(convergence.upper().is_none());
+        assert!(convergence.lower().is_none());
 
         // atoms
         assert_eq!(molecule.atoms().count(), expected_atom_numbers[i]);
@@ -2444,6 +2476,14 @@ fn test_aa_order_error_leaflets_rust_api() {
         AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
     };
 
+    assert!(results
+        .analysis()
+        .estimate_error()
+        .as_ref()
+        .unwrap()
+        .output_convergence()
+        .is_none());
+
     assert_eq!(results.molecules().count(), 3);
 
     assert!(results.get_molecule("POPE").is_some());
@@ -2474,6 +2514,13 @@ fn test_aa_order_error_leaflets_rust_api() {
         assert!(average_maps.total().is_none());
         assert!(average_maps.upper().is_none());
         assert!(average_maps.lower().is_none());
+
+        // convergence (available even if `output_convergence` is not specified)
+        let convergence = molecule.convergence().unwrap();
+        assert_eq!(convergence.frames().len(), 51);
+        assert!(convergence.total().is_some());
+        assert!(convergence.upper().is_some());
+        assert!(convergence.lower().is_some());
 
         // atoms
         assert_eq!(molecule.atoms().count(), expected_atom_numbers[i]);
