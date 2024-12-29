@@ -14,7 +14,7 @@ const DEFAULT_N_BLOCKS: usize = 5;
 #[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
 pub struct EstimateError {
     /// Number of blocks to divide the trajectory into for error estimation.
-    /// Default value is 5, and it is recommended not to change this value.
+    /// Default value is 5 and you should not tweak it to get lower error estimates.
     #[getset(get_copy = "pub")]
     #[serde(default = "default_n_blocks")]
     n_blocks: usize,
@@ -78,6 +78,7 @@ impl EstimateError {
         Ok(())
     }
 
+    /// Optional name of the file where convergence data will be written.
     pub fn output_convergence(&self) -> Option<&str> {
         self.output_convergence.as_deref()
     }

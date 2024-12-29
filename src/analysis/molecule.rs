@@ -761,7 +761,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let ordermap_params = OrderMap::new()
+        let ordermap_params = OrderMap::builder()
             .dim([GridSpan::Auto, GridSpan::Auto])
             .output_directory(".")
             .plane(Plane::XY)
@@ -792,7 +792,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let ordermap_params = OrderMap::new()
+        let ordermap_params = OrderMap::builder()
             .dim([GridSpan::Auto, GridSpan::Auto])
             .output_directory(".")
             .plane(Plane::XY)

@@ -1,5 +1,6 @@
 ## Version 0.3.0
 - Implemented error estimation and convergence analysis (see the corresponding section of the manual for details).
+- Reworked the Rust API so you can now access the results without having to write output files.
 - YAML and TAB files now display average order parameter calculated from all bonds of a single molecule type.
 - Average ordermap displaying order parameters collected from all bonds of a single molecule type is now automatically written when performing ordermaps analysis.
 - YAML format has been reworked, molecule types are no longer stored in a list but are instead stored in a dictionary.

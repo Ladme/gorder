@@ -35,7 +35,7 @@ fn test_aa_order_basic_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -62,7 +62,7 @@ fn test_aa_order_basic_ndx_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .index("tests/files/pcpepg.ndx")
@@ -87,7 +87,7 @@ fn test_aa_order_basic_fail_overlap() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -111,7 +111,7 @@ fn test_aa_order_basic_table() {
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_tab(path_to_table)
@@ -140,7 +140,7 @@ fn test_aa_order_basic_xvg() {
 
     let pattern = format!("{}/order.xvg", path_to_dir);
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_xvg(pattern)
@@ -168,7 +168,7 @@ fn test_aa_order_basic_csv() {
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_csv(path_to_csv)
@@ -198,7 +198,7 @@ fn test_aa_order_basic_xvg_weird_names() {
 
         let pattern = format!("{}/{}", path_to_dir, name);
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output_xvg(pattern)
@@ -232,7 +232,7 @@ fn test_aa_order_basic_yaml_multiple_threads() {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
@@ -262,7 +262,7 @@ fn test_aa_order_basic_table_multiple_threads() {
         let output_table = NamedTempFile::new().unwrap();
         let path_to_table = output_table.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output_tab(path_to_table)
@@ -296,7 +296,7 @@ fn test_aa_order_leaflets_yaml() {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
@@ -331,7 +331,7 @@ fn test_aa_order_leaflets_yaml_multiple_threads() {
             let output = NamedTempFile::new().unwrap();
             let path_to_output = output.path().to_str().unwrap();
 
-            let analysis = Analysis::new()
+            let analysis = Analysis::builder()
                 .structure("tests/files/pcpepg.tpr")
                 .trajectory("tests/files/pcpepg.xtc")
                 .output(path_to_output)
@@ -375,7 +375,7 @@ fn test_aa_order_leaflets_yaml_different_membrane_normals() {
             let output = NamedTempFile::new().unwrap();
             let path_to_output = output.path().to_str().unwrap();
 
-            let analysis = Analysis::new()
+            let analysis = Analysis::builder()
                 .structure("tests/files/pcpepg.tpr")
                 .trajectory(input_traj)
                 .output(path_to_output)
@@ -411,7 +411,7 @@ fn test_aa_order_leaflets_table() {
         let output_table = NamedTempFile::new().unwrap();
         let path_to_table = output_table.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output_tab(path_to_table)
@@ -447,7 +447,7 @@ fn test_aa_order_leaflets_xvg() {
 
         let pattern = format!("{}/order.xvg", path_to_dir);
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output_xvg(pattern)
@@ -482,7 +482,7 @@ fn test_aa_order_leaflets_csv() {
         let output_csv = NamedTempFile::new().unwrap();
         let path_to_csv = output_csv.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output_csv(path_to_csv)
@@ -511,7 +511,7 @@ fn test_aa_order_leaflets_yaml_supershort() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg_selected.xtc")
         .output(path_to_output)
@@ -539,7 +539,7 @@ fn test_aa_order_one_different_hydrogen_numbers_table() {
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_tab(path_to_table)
@@ -567,7 +567,7 @@ fn test_aa_order_one_different_hydrogen_numbers_csv() {
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_csv(path_to_csv)
@@ -595,7 +595,7 @@ fn test_aa_order_limit_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -623,7 +623,7 @@ fn test_aa_order_leaflets_limit_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -652,7 +652,7 @@ fn test_aa_order_leaflets_limit_tab() {
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_tab(path_to_table)
@@ -681,7 +681,7 @@ fn test_aa_order_leaflets_limit_csv() {
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_csv(path_to_csv)
@@ -710,7 +710,7 @@ fn test_aa_order_begin_end_step_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -742,7 +742,7 @@ fn test_aa_order_begin_end_step_yaml_multiple_threads() {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
@@ -775,7 +775,7 @@ fn test_aa_order_begin_end_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -806,7 +806,7 @@ fn test_aa_order_begin_end_yaml_multiple_threads() {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
@@ -835,7 +835,7 @@ fn test_aa_order_begin_end_yaml_multiple_threads() {
 
 #[test]
 fn test_aa_order_no_molecules() {
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output("THIS_FILE_SHOULD_NOT_BE_CREATED_1")
@@ -855,7 +855,7 @@ fn test_aa_order_no_molecules() {
 
 #[test]
 fn test_aa_order_empty_molecules() {
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output("THIS_FILE_SHOULD_NOT_BE_CREATED_2")
@@ -926,7 +926,7 @@ fn test_aa_order_basic_all_formats_backup() {
 
     let xvg_pattern = format!("{}/order.xvg", path_to_dir);
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_yaml(&file_paths[0])
@@ -971,7 +971,7 @@ fn test_aa_order_maps_basic() {
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -980,7 +980,7 @@ fn test_aa_order_maps_basic() {
             "@membrane and element name hydrogen",
         ))
         .map(
-            OrderMap::new()
+            OrderMap::builder()
                 .bin_size([0.1, 4.0])
                 .output_directory(path_to_dir)
                 .min_samples(5)
@@ -1034,7 +1034,7 @@ fn test_aa_order_maps_leaflets() {
         let directory = TempDir::new().unwrap();
         let path_to_dir = directory.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
@@ -1044,7 +1044,7 @@ fn test_aa_order_maps_leaflets() {
             ))
             .leaflets(method)
             .map(
-                OrderMap::new()
+                OrderMap::builder()
                     .bin_size([0.1, 4.0])
                     .output_directory(path_to_dir)
                     .min_samples(5)
@@ -1135,7 +1135,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
             let directory = TempDir::new().unwrap();
             let path_to_dir = directory.path().to_str().unwrap();
 
-            let analysis = Analysis::new()
+            let analysis = Analysis::builder()
                 .structure(structure)
                 .trajectory(input_traj)
                 .membrane_normal(normal)
@@ -1146,7 +1146,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
                 ))
                 .leaflets(method)
                 .map(
-                    OrderMap::new()
+                    OrderMap::builder()
                         .bin_size([0.1, 4.0])
                         .output_directory(path_to_dir)
                         .min_samples(5)
@@ -1220,7 +1220,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
         let directory = TempDir::new().unwrap();
         let path_to_dir = directory.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
@@ -1230,7 +1230,7 @@ fn test_aa_order_maps_basic_multiple_threads() {
             ))
             .n_threads(n_threads)
             .map(
-                OrderMap::new()
+                OrderMap::builder()
                     .bin_size([0.1, 4.0])
                     .output_directory(path_to_dir)
                     .min_samples(5)
@@ -1278,7 +1278,7 @@ fn test_aa_order_maps_basic_weird_molecules() {
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/multiple_resid_same_name.tpr")
         .trajectory("tests/files/multiple_resid_same_name.xtc")
         .analysis_type(AnalysisType::aaorder(
@@ -1286,7 +1286,7 @@ fn test_aa_order_maps_basic_weird_molecules() {
             "resname POPC POPE and name D2A C4A C2B C4B",
         ))
         .map(
-            OrderMap::new()
+            OrderMap::builder()
                 .bin_size([0.1, 4.0])
                 .output_directory(path_to_dir)
                 .min_samples(1)
@@ -1353,7 +1353,7 @@ fn test_aa_order_maps_basic_backup() {
     let backup_file = format!("{}/to_backup.txt", path_to_dir);
     create_file_for_backup!(&backup_file);
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -1362,7 +1362,7 @@ fn test_aa_order_maps_basic_backup() {
             "@membrane and element name hydrogen",
         ))
         .map(
-            OrderMap::new()
+            OrderMap::builder()
                 .bin_size([0.1, 4.0])
                 .output_directory(path_to_dir)
                 .min_samples(5)
@@ -1428,7 +1428,7 @@ fn test_aa_order_maps_basic_different_plane() {
     let directory = TempDir::new().unwrap();
     let path_to_dir = directory.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -1437,7 +1437,7 @@ fn test_aa_order_maps_basic_different_plane() {
             "@membrane and element name hydrogen",
         ))
         .map(
-            OrderMap::new()
+            OrderMap::builder()
                 .bin_size([4.0, 0.1])
                 .output_directory(path_to_dir)
                 .min_samples(5)
@@ -1469,7 +1469,7 @@ fn test_aa_order_error_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -1498,7 +1498,7 @@ fn test_aa_order_error_yaml_multiple_threads() {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
@@ -1528,7 +1528,7 @@ fn test_aa_order_error_leaflets_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output(path_to_output)
@@ -1558,7 +1558,7 @@ fn test_aa_order_error_leaflets_yaml_multiple_threads() {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .output(path_to_output)
@@ -1589,7 +1589,7 @@ fn test_aa_order_error_tab() {
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_tab(path_to_table)
@@ -1617,7 +1617,7 @@ fn test_aa_order_error_leaflets_tab() {
     let output_table = NamedTempFile::new().unwrap();
     let path_to_table = output_table.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_tab(path_to_table)
@@ -1646,7 +1646,7 @@ fn test_aa_order_error_csv() {
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_csv(path_to_csv)
@@ -1674,7 +1674,7 @@ fn test_aa_order_error_leaflets_csv() {
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_csv(path_to_csv)
@@ -1705,7 +1705,7 @@ fn test_aa_order_error_xvg() {
 
     let pattern = format!("{}/order.xvg", path_to_dir);
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_xvg(pattern)
@@ -1737,7 +1737,7 @@ fn test_aa_order_error_leaflets_xvg() {
 
     let pattern = format!("{}/order.xvg", path_to_dir);
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_xvg(pattern)
@@ -1774,7 +1774,7 @@ fn test_aa_order_error_limit() {
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_yaml(path_to_yaml)
@@ -1823,7 +1823,7 @@ fn test_aa_order_error_leaflets_limit() {
     let output_csv = NamedTempFile::new().unwrap();
     let path_to_csv = output_csv.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .output_yaml(path_to_yaml)
@@ -1867,7 +1867,7 @@ fn test_aa_order_convergence() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .analysis_type(AnalysisType::aaorder(
@@ -1894,7 +1894,7 @@ fn test_aa_order_leaflets_convergence() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .analysis_type(AnalysisType::aaorder(
@@ -1923,7 +1923,7 @@ fn test_aa_order_convergence_multiple_threads() {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("tests/files/pcpepg.tpr")
             .trajectory("tests/files/pcpepg.xtc")
             .analysis_type(AnalysisType::aaorder(
@@ -1952,7 +1952,7 @@ fn test_aa_order_convergence_step() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .analysis_type(AnalysisType::aaorder(
@@ -1977,7 +1977,7 @@ fn test_aa_order_convergence_step() {
 
 #[test]
 fn test_aa_order_basic_rust_api() {
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .analysis_type(AnalysisType::aaorder(
@@ -2113,7 +2113,7 @@ fn test_aa_order_basic_rust_api() {
 
 #[test]
 fn test_aa_order_error_rust_api() {
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .analysis_type(AnalysisType::aaorder(
@@ -2256,7 +2256,7 @@ fn test_aa_order_error_rust_api() {
 
 #[test]
 fn test_aa_order_leaflets_rust_api() {
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .analysis_type(AnalysisType::aaorder(
@@ -2425,7 +2425,7 @@ fn test_aa_order_leaflets_rust_api() {
 
 #[test]
 fn test_aa_order_error_leaflets_rust_api() {
-    let analysis = Analysis::new()
+    let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
         .trajectory("tests/files/pcpepg.xtc")
         .analysis_type(AnalysisType::aaorder(

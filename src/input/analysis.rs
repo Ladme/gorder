@@ -298,8 +298,7 @@ where
 
 impl Analysis {
     /// Start providing the analysis parameters.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> AnalysisBuilder {
+    pub fn builder() -> AnalysisBuilder {
         AnalysisBuilder::default()
     }
 
@@ -727,7 +726,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_pass_basic() {
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .analysis_type(AnalysisType::aaorder(
@@ -767,7 +766,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_pass_full() {
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .index("index.ndx")
@@ -784,7 +783,7 @@ mod tests_builder {
             .n_threads(4)
             .leaflets(LeafletClassification::global("@membrane", "name P"))
             .map(
-                OrderMap::new()
+                OrderMap::builder()
                     .output_directory(".")
                     .dim([
                         GridSpan::Manual {
@@ -845,7 +844,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_pass_default_ordermap() {
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -868,7 +867,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_incomplete() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -882,7 +881,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_zero_step() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -901,7 +900,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_zero_min_samples() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -920,7 +919,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_zero_threads() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -939,7 +938,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_start_higher_than_end() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")

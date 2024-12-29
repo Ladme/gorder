@@ -10,7 +10,6 @@ use serde::Deserialize;
 
 /// Parameters for the classification of lipids into membrane leaflets.
 #[derive(Debug, Clone, Deserialize)]
-#[allow(private_interfaces)]
 pub enum LeafletClassification {
     Global(GlobalParams),
     Local(LocalParams),
@@ -86,13 +85,13 @@ impl LeafletClassification {
 /// Based on the global membrane center of geometry; useful for disrupted membranes; fast.
 #[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct GlobalParams {
+pub struct GlobalParams {
     /// Selection of all lipids forming the membrane.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     membrane: String,
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     heads: String,
 }
 
@@ -100,16 +99,16 @@ pub(crate) struct GlobalParams {
 /// Based on the local membrane center of geometry; useful for curved membranes; slow.
 #[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct LocalParams {
+pub struct LocalParams {
     /// Selection of all lipids forming the membrane.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     membrane: String,
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     heads: String,
     /// Radius of a cylinder for the calculation of local membrane center of geometry (in nm).
-    #[getset(get_copy = "pub(crate)")]
+    #[getset(get_copy = "pub")]
     radius: f32,
 }
 
@@ -117,13 +116,13 @@ pub(crate) struct LocalParams {
 /// Based on the orientation of the lipid tails; less reliable; fast.
 #[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct IndividualParams {
+pub struct IndividualParams {
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     heads: String,
     /// Reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails.
     /// There should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     methyls: String,
 }

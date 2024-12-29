@@ -52,7 +52,7 @@ impl OrderResults for AAOrderResults {
         }
     }
 
-    fn new(molecules: IndexMap<String, Self::MoleculeResults>, analysis: Analysis) -> Self {
+    fn new(molecules: IndexMap<String, AAMoleculeResults>, analysis: Analysis) -> Self {
         Self {
             molecules,
             analysis,

@@ -20,7 +20,7 @@ pub(crate) mod topology;
 
 impl Analysis {
     /// Perform the analysis.
-    pub fn run<'a>(mut self) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
+    pub fn run(mut self) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
         self.init_ordermap(self.membrane_normal());
         self.info();
 

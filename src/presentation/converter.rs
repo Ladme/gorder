@@ -339,7 +339,7 @@ mod tests {
     use super::*;
 
     fn prepare_converter_aa() -> ResultsConverter<AAOrderResults> {
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("system.gro")
             .trajectory("md.xtc")
             .analysis_type(AnalysisType::aaorder(
@@ -356,7 +356,7 @@ mod tests {
     }
 
     fn prepare_converter_cg() -> ResultsConverter<CGOrderResults> {
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("system.gro")
             .trajectory("md.xtc")
             .analysis_type(AnalysisType::cgorder("@membrane"))
@@ -526,7 +526,7 @@ mod tests {
     }
 
     fn prepare_ordermap_params() -> OrderMap {
-        OrderMap::new()
+        OrderMap::builder()
             .output_directory("ordermaps")
             .plane(Plane::XY)
             .bin_size([1.0, 1.0])
@@ -584,7 +584,7 @@ mod tests {
     }
 
     fn prepare_ordermap_params_limit() -> OrderMap {
-        OrderMap::new()
+        OrderMap::builder()
             .output_directory("ordermaps")
             .plane(Plane::XY)
             .bin_size([1.0, 1.0])

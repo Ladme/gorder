@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn new_map_auto() {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
-        let params = OrderMap::new()
+        let params = OrderMap::builder()
             .output_directory(".")
             .bin_size([0.05, 0.2])
             .plane(Plane::XY)
@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn new_map_manual() {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
-        let params = OrderMap::new()
+        let params = OrderMap::builder()
             .output_directory(".")
             .dim([
                 GridSpan::Manual {
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn new_map_fail_bin_size() {
         let simbox = SimBox::from([10.0, 3.0, 6.0]);
-        let params = OrderMap::new()
+        let params = OrderMap::builder()
             .output_directory(".")
             .bin_size([1.0, 5.0])
             .plane(Plane::XY)
@@ -306,7 +306,7 @@ mod tests {
         .unwrap();
 
         let map1 = Map {
-            params: OrderMap::new().output_directory(".").build().unwrap(),
+            params: OrderMap::builder().output_directory(".").build().unwrap(),
             values: map1_values,
             samples: map1_samples,
         };
@@ -337,7 +337,7 @@ mod tests {
         .unwrap();
 
         let map2 = Map {
-            params: OrderMap::new().output_directory(".").build().unwrap(),
+            params: OrderMap::builder().output_directory(".").build().unwrap(),
             values: map2_values,
             samples: map2_samples,
         };
@@ -398,7 +398,7 @@ mod tests {
         .unwrap();
 
         let mut map1 = Map {
-            params: OrderMap::new().output_directory(".").build().unwrap(),
+            params: OrderMap::builder().output_directory(".").build().unwrap(),
             values: map1_values,
             samples: map1_samples,
         };
@@ -429,7 +429,7 @@ mod tests {
         .unwrap();
 
         let map2 = Map {
-            params: OrderMap::new().output_directory(".").build().unwrap(),
+            params: OrderMap::builder().output_directory(".").build().unwrap(),
             values: map2_values,
             samples: map2_samples,
         };

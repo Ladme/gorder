@@ -112,7 +112,7 @@ impl Default for OrderMap {
     /// Warning: this sets NO output directory for the ordermaps, i.e. ordermaps will not be written out
     /// and will only be available using public API.
     fn default() -> Self {
-        Self::new().build().unwrap_or_else(|e| {
+        Self::builder().build().unwrap_or_else(|e| {
             panic!(
                 "FATAL GORDER ERROR | OrderMap::default | Could not build default OrderMap (`{}`)",
                 e
@@ -187,8 +187,7 @@ fn validate_bin_size(size: [f32; 2]) -> Result<(), OrderMapConfigError> {
 
 impl OrderMap {
     /// Start providing ordermap parameters.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> OrderMapBuilder {
+    pub fn builder() -> OrderMapBuilder {
         OrderMapBuilder::default()
     }
 
@@ -265,7 +264,7 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_pass_basic() {
-        let map = OrderMap::new().build().unwrap();
+        let map = OrderMap::builder().build().unwrap();
 
         assert!(map.output_directory().is_none());
         assert_relative_eq!(map.bin_size_x(), 0.1);
@@ -289,7 +288,7 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_pass_full() {
-        let map = OrderMap::new()
+        let map = OrderMap::builder()
             .output_directory("ordermaps")
             .bin_size([0.2, 0.01])
             .dim([GridSpan::manual(-5.0, 10.0).unwrap(), GridSpan::Auto])
@@ -313,7 +312,7 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_fail_zero_min_samples() {
-        match OrderMap::new()
+        match OrderMap::builder()
             .output_directory("ordermaps")
             .min_samples(0)
             .build()
@@ -326,7 +325,7 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_fail_invalid_bin_size_x() {
-        match OrderMap::new()
+        match OrderMap::builder()
             .output_directory("ordermaps")
             .bin_size([0.0, 0.1])
             .build()
@@ -341,7 +340,7 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_fail_invalid_bin_size_y() {
-        match OrderMap::new()
+        match OrderMap::builder()
             .output_directory("ordermaps")
             .bin_size([0.1, -0.3])
             .build()

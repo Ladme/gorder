@@ -30,7 +30,7 @@ pub struct CGOrderResults {
 impl PublicOrderResults for CGOrderResults {
     type MoleculeResults = CGMoleculeResults;
 
-    fn molecules(&self) -> impl Iterator<Item = &Self::MoleculeResults> {
+    fn molecules(&self) -> impl Iterator<Item = &CGMoleculeResults> {
         self.molecules.values()
     }
 
@@ -53,7 +53,7 @@ impl OrderResults for CGOrderResults {
         }
     }
 
-    fn new(molecules: IndexMap<String, Self::MoleculeResults>, analysis: Analysis) -> Self {
+    fn new(molecules: IndexMap<String, CGMoleculeResults>, analysis: Analysis) -> Self {
         Self {
             molecules,
             analysis,
