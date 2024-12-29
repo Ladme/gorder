@@ -4,21 +4,29 @@
 //! Implementation of a structure describing the topology of the entire system.
 
 use crate::input::{Analysis, EstimateError};
+use crate::PANIC_MESSAGE;
 
 use super::molecule::MoleculeType;
 use crate::errors::ErrorEstimationError;
 use crate::presentation::converter::{MolConvert, ResultsConverter};
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::prelude::Dimension;
+use groan_rs::system::ParallelTrajData;
 use std::ops::Add;
 
 /// Structure describing the topology of the system.
 #[derive(Debug, Clone, CopyGetters, Getters, MutGetters)]
 pub(crate) struct SystemTopology {
+    /// ID of a thread working with this SystemTopology.
+    #[getset(get = "pub(super)")]
+    thread_id: usize,
+    /// All molecule types for which order parameters are calculated.
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     molecule_types: Vec<MoleculeType>,
+    /// Normal of the membrane.
     #[getset(get_copy = "pub(super)")]
     membrane_normal: Dimension,
+    /// Parameters of error estimation.
     #[getset(get = "pub(super)")]
     estimate_error: Option<EstimateError>,
 }
@@ -31,6 +39,7 @@ impl SystemTopology {
         estimate_error: Option<EstimateError>,
     ) -> SystemTopology {
         SystemTopology {
+            thread_id: 0,
             molecule_types,
             membrane_normal,
             estimate_error,
@@ -95,6 +104,7 @@ impl Add<SystemTopology> for SystemTopology {
     #[inline]
     fn add(self, rhs: SystemTopology) -> Self::Output {
         Self {
+            thread_id: self.thread_id, // at this point, the thread_id does not matter
             molecule_types: self
                 .molecule_types
                 .into_iter()
@@ -104,5 +114,24 @@ impl Add<SystemTopology> for SystemTopology {
             membrane_normal: self.membrane_normal,
             estimate_error: self.estimate_error,
         }
+    }
+}
+
+impl ParallelTrajData for SystemTopology {
+    fn reduce(mut data: Vec<Self>) -> Self {
+        // sort the data by `thread_id` - `groan_rs` does not guarantee the order
+        // of data returned from the individual threads; although there is probably no reason
+        // to have a different order than a simple sequential, we should make sure in case this ever changes
+        data.sort_by(|a, b| a.thread_id.cmp(&b.thread_id));
+
+        let mut iter = data.into_iter();
+        let first = iter.next().unwrap_or_else(|| {
+            panic!(
+                "FATAL GORDER ERROR | SystemTopology::reduce | Vector should not be empty. {}",
+                PANIC_MESSAGE
+            )
+        });
+
+        iter.fold(first, |acc, top| acc + top)
     }
 }

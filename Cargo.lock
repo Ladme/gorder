@@ -499,9 +499,8 @@ dependencies = [
 
 [[package]]
 name = "groan_rs"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2607b4e86ce47230eec8ec209f1a28dbe1096b63fa35248ed7249f03369bcf2d"
+version = "0.10.0-dev.1"
+source = "git+https://github.com/Ladme/groan_rs.git?branch=v0.10#4b7a4b1fd5a138ef58b4989f8710991bbd81c92e"
 dependencies = [
  "cc",
  "colored",

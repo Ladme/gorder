@@ -11,7 +11,9 @@ exclude = ["/tests", "/validation"]
 
 [dependencies]
 backitup = "0.1.1"
-groan_rs = { version = "0.9.0", features = ["parallel"] }
+groan_rs = { git = "https://github.com/Ladme/groan_rs.git", branch = "v0.10", features = [
+    "parallel",
+] }
 colored = "2.1"
 thiserror = "2.0.3"
 derive_builder = "0.20.2"
