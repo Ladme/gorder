@@ -113,10 +113,11 @@
 //!         .min_samples(100)                          // Minimum required samples
 //!         .n_threads(4)                              // Number of threads to use
 //!         .leaflets(                                 // Calculate order for individual leaflets
-//!             LeafletClassification::global(         // Method for classifying lipids
+//!             LeafletClassification::global(         // Method for classifying lipids into leaflets
 //!                 "@membrane",                       // Lipids for membrane center
 //!                 "name PO4"                         // Lipid heads selection
 //!             )
+//!             .with_frequency(Frequency::once())     // Frequency of classification
 //!         )
 //!         .ordermaps(                                // Construct maps of order parameters
 //!             OrderMap::builder()
