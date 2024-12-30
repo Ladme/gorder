@@ -69,6 +69,8 @@ pub(super) fn analyze_coarse_grained<'a>(
         analysis.membrane_normal().into(),
         analysis.map().as_ref(),
         analysis.estimate_error().as_ref(),
+        analysis.n_threads(),
+        analysis.step(),
     )?;
 
     if !sanity_check_molecules(&molecules) {
@@ -79,6 +81,8 @@ pub(super) fn analyze_coarse_grained<'a>(
         molecules,
         analysis.membrane_normal().into(),
         analysis.estimate_error().clone(),
+        analysis.step(),
+        analysis.n_threads(),
     );
     data.info();
 
@@ -116,6 +120,8 @@ pub(super) fn analyze_coarse_grained<'a>(
         Some(analysis.step()),
         progress_printer,
     )?;
+
+    result.log_total_analyzed_frames();
 
     // print basic info about error estimation
     result.error_info()?;
@@ -157,9 +163,14 @@ mod tests {
             Dimension::Z,
             None,
             None,
+            1,
+            1,
         )
         .unwrap();
-        (system, SystemTopology::new(molecules, Dimension::Z, None))
+        (
+            system,
+            SystemTopology::new(molecules, Dimension::Z, None, 1, 1),
+        )
     }
 
     fn expected_total_orders() -> [Vec<f32>; 3] {

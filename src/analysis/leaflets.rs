@@ -4,11 +4,16 @@
 //! Contains structures and methods for the assignment of lipids into membrane leaflets.
 
 use core::f32;
+use std::{
+    num::NonZeroUsize,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use super::common::{create_group, macros::group_name};
 use crate::{
     errors::{AnalysisError, TopologyError},
-    input::LeafletClassification,
+    input::{Frequency, LeafletClassification},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
@@ -18,6 +23,15 @@ use groan_rs::{
     structures::group::Group,
     system::System,
 };
+use hashbrown::HashMap;
+use parking_lot::Mutex;
+
+use once_cell::{sync::Lazy, unsync::OnceCell};
+
+/// [`TIMEOUT`] in seconds.
+static TIMEOUT_SECONDS: u64 = 5;
+/// Global timeout duration for spin-lock used when fetching data for leaflet assignment.
+static TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(TIMEOUT_SECONDS));
 
 impl LeafletClassification {
     /// Create groups in the system that are required for leaflet classification.
@@ -34,72 +48,6 @@ impl LeafletClassification {
             Self::Individual(params) => {
                 create_group(system, "Heads", params.heads())?;
                 create_group(system, "Methyls", params.methyls())?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-/// Type of leaflet classification method used for a molecule.
-#[derive(Debug, Clone)]
-pub(super) enum MoleculeLeafletClassification {
-    Global(GlobalClassification, AssignedLeaflets),
-    Local(LocalClassification, AssignedLeaflets),
-    Individual(IndividualClassification, AssignedLeaflets),
-}
-
-impl MoleculeLeafletClassification {
-    /// Convert the input `LeafletClassification` into an enum that is used in the analysis.
-    pub(super) fn new(params: &LeafletClassification, membrane_normal: Dimension) -> Self {
-        match params {
-            LeafletClassification::Global(_) => Self::Global(
-                GlobalClassification {
-                    heads: Vec::new(),
-                    membrane_center: Vector3D::new(0.0, 0.0, 0.0),
-                    membrane_normal,
-                },
-                AssignedLeaflets::default(),
-            ),
-            LeafletClassification::Local(_) => Self::Local(
-                LocalClassification {
-                    heads: Vec::new(),
-                    radius: params.get_radius().expect(PANIC_MESSAGE),
-                    membrane_center: Vec::new(),
-                    membrane_normal,
-                },
-                AssignedLeaflets::default(),
-            ),
-            LeafletClassification::Individual(_) => Self::Individual(
-                IndividualClassification {
-                    heads: Vec::new(),
-                    methyls: Vec::new(),
-                    membrane_normal,
-                },
-                AssignedLeaflets::default(),
-            ),
-        }
-    }
-
-    /// Insert new molecule into the leaflet classifier.
-    #[inline(always)]
-    pub(super) fn insert(
-        &mut self,
-        molecule: &Group,
-        system: &System,
-    ) -> Result<(), TopologyError> {
-        match self {
-            Self::Global(x, y) => {
-                x.insert(molecule, system)?;
-                y.assignment.push(None);
-            }
-            Self::Local(x, y) => {
-                x.insert(molecule, system)?;
-                y.assignment.push(None);
-            }
-            Self::Individual(x, y) => {
-                x.insert(molecule, system)?;
-                y.assignment.push(None);
             }
         }
 
@@ -156,7 +104,109 @@ fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>
     Ok(atoms)
 }
 
+/// Type of leaflet classification method used for a molecule.
+#[derive(Debug, Clone)]
+pub(super) enum MoleculeLeafletClassification {
+    Global(GlobalClassification, AssignedLeaflets),
+    Local(LocalClassification, AssignedLeaflets),
+    Individual(IndividualClassification, AssignedLeaflets),
+}
+
 impl MoleculeLeafletClassification {
+    /// Convert the input `LeafletClassification` into an enum that is used in the analysis.
+    pub(super) fn new(
+        params: &LeafletClassification,
+        membrane_normal: Dimension,
+        n_threads: usize,
+        step_size: usize,
+    ) -> Self {
+        let needs_shared_storage = match (params.get_frequency(), n_threads) {
+            // shared storage is not needed if only one thread is used
+            // (there is no other thread to share data with, duh)
+            (Frequency::Every(_) | Frequency::Once, 1) => false,
+            // shared storage is not needed if the frequency is performed for every analyzed frame
+            // (each thread handles lipid assignment locally and no data need to be shared)
+            (Frequency::Every(x), _) if x.get() == step_size => false,
+            // shared storage is needed in all other cases
+            _ => true,
+        };
+
+        match params {
+            LeafletClassification::Global(_) => Self::Global(
+                GlobalClassification {
+                    heads: Vec::new(),
+                    membrane_center: Vector3D::new(0.0, 0.0, 0.0),
+                    membrane_normal,
+                    frequency: params.get_frequency()
+                        * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                },
+                AssignedLeaflets::new(needs_shared_storage),
+            ),
+            LeafletClassification::Local(_) => Self::Local(
+                LocalClassification {
+                    heads: Vec::new(),
+                    radius: params.get_radius().expect(PANIC_MESSAGE),
+                    membrane_center: Vec::new(),
+                    membrane_normal,
+                    frequency: params.get_frequency()
+                        * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                },
+                AssignedLeaflets::new(needs_shared_storage),
+            ),
+            LeafletClassification::Individual(_) => Self::Individual(
+                IndividualClassification {
+                    heads: Vec::new(),
+                    methyls: Vec::new(),
+                    membrane_normal,
+                    frequency: params.get_frequency()
+                        * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                },
+                AssignedLeaflets::new(needs_shared_storage),
+            ),
+        }
+    }
+
+    /// Insert new molecule into the leaflet classifier.
+    #[inline(always)]
+    pub(super) fn insert(
+        &mut self,
+        molecule: &Group,
+        system: &System,
+    ) -> Result<(), TopologyError> {
+        match self {
+            Self::Global(x, _) => {
+                x.insert(molecule, system)?;
+            }
+            Self::Local(x, _) => {
+                x.insert(molecule, system)?;
+            }
+            Self::Individual(x, _) => {
+                x.insert(molecule, system)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Calculate the number of molecules assigned to the upper and to the lower leaflet.
+    pub(super) fn statistics(&self) -> (usize, usize) {
+        match self {
+            Self::Global(_, y) | Self::Local(_, y) | Self::Individual(_, y) => {
+                y.calc_assignment_statistics()
+            }
+        }
+    }
+
+    /// Get frequency at which the assignment should be performed.
+    #[inline(always)]
+    fn get_frequency(&self) -> Frequency {
+        match self {
+            Self::Global(x, _) => x.frequency,
+            Self::Local(x, _) => x.frequency,
+            Self::Individual(x, _) => x.frequency,
+        }
+    }
+
     /// Identify leaflet in which the molecule with the specified index is located.
     #[inline(always)]
     #[allow(unused)]
@@ -179,24 +229,58 @@ impl MoleculeLeafletClassification {
     }
 
     /// Assign all lipids into their respective leaflets.
-    #[inline(always)]
-    pub(super) fn assign_lipids(&mut self, system: &System) -> Result<(), AnalysisError> {
+    #[inline]
+    pub(super) fn assign_lipids(
+        &mut self,
+        system: &System,
+        current_frame: usize,
+        membrane_center: &OnceCell<Vector3D>, // only used for the `global` classification method
+    ) -> Result<(), AnalysisError> {
+        match self.get_frequency() {
+            Frequency::Once if current_frame == 0 => (), // continue
+            Frequency::Every(n) if current_frame % n == 0 => (), // continue
+            _ => return Ok(()),                          // perform no assignment
+        }
+
         match self {
-            MoleculeLeafletClassification::Global(x, y) => y.assign_lipids(system, x),
-            MoleculeLeafletClassification::Local(x, y) => y.assign_lipids(system, x),
-            MoleculeLeafletClassification::Individual(x, y) => y.assign_lipids(system, x),
+            MoleculeLeafletClassification::Global(x, y) => {
+                // calculate global membrane center of mass
+                let center = membrane_center.get_or_try_init(|| {
+                    system
+                        .group_get_center(group_name!("Membrane"))
+                        .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
+                })?;
+
+                x.set_membrane_center(center.clone());
+                y.assign_lipids(system, x, current_frame)
+            }
+            MoleculeLeafletClassification::Local(x, y) => {
+                x.set_membrane_center(system, x.membrane_normal)?;
+                y.assign_lipids(system, x, current_frame)
+            }
+            MoleculeLeafletClassification::Individual(x, y) => {
+                y.assign_lipids(system, x, current_frame)
+            }
         }
     }
 
     /// Get the leaflet a molecule with target index is located in.
     /// This performs no calculation, this only returns the already calculated leaflet assignment.
     #[inline(always)]
-    pub(super) fn get_assigned_leaflet(&self, molecule_index: usize) -> Option<Leaflet> {
+    pub(super) fn get_assigned_leaflet(
+        &mut self,
+        molecule_index: usize,
+        current_frame: usize,
+    ) -> Leaflet {
         match self {
-            MoleculeLeafletClassification::Global(_, y)
-            | MoleculeLeafletClassification::Local(_, y)
-            | MoleculeLeafletClassification::Individual(_, y) => {
-                y.get_assigned_leaflet(molecule_index)
+            MoleculeLeafletClassification::Global(x, y) => {
+                y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
+            }
+            MoleculeLeafletClassification::Local(x, y) => {
+                y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
+            }
+            MoleculeLeafletClassification::Individual(x, y) => {
+                y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
             }
         }
     }
@@ -227,6 +311,9 @@ pub(super) struct GlobalClassification {
     /// Orientation of the membrane normal.
     #[getset(get_copy = "pub(super)")]
     membrane_normal: Dimension,
+    /// Frequency with which the assignment should be performed.
+    /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
+    frequency: Frequency,
 }
 
 impl GlobalClassification {
@@ -275,6 +362,9 @@ pub(super) struct LocalClassification {
     /// Orientation of the membrane normal.
     #[getset(get_copy = "pub(super)")]
     membrane_normal: Dimension,
+    /// Frequency with which the assignment should be performed.
+    /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
+    frequency: Frequency,
 }
 
 impl LocalClassification {
@@ -378,6 +468,9 @@ pub(crate) struct IndividualClassification {
     /// Orientation of the membrane normal.
     #[getset(get_copy = "pub(super)")]
     membrane_normal: Dimension,
+    /// Frequency with which the assignment should be performed.
+    /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
+    frequency: Frequency,
 }
 
 impl IndividualClassification {
@@ -435,37 +528,192 @@ impl LeafletClassifier for IndividualClassification {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+/// Vector of leaflet assignments for each molecule of the given type.
+#[derive(Debug, Clone)]
 pub(super) struct AssignedLeaflets {
-    assignment: Vec<Option<Leaflet>>,
+    /// Locally stored leaflet assignment.
+    local: Option<Vec<Leaflet>>,
+    /// Leaflet assignment for each relevant frame. Shared across all threads.
+    /// `None` if not needed, i.e. if the analysis is not multithreaded or if the frequency of leaflet assignment is 1.
+    shared: Option<SharedAssignedLeaflets>,
+    /// Index of the frame the data in `local` correspond to.
+    local_frame: Option<usize>,
 }
 
 impl AssignedLeaflets {
+    /// Create a new structure for storing information about positions of lipids in leaflets.
+    /// `shared` specifies whether shared storage should be set-up.
+    /// Use `true` if the analysis is multithreaded and the leaflet assignment is NOT performed every thread.
+    /// Use `false` in all other cases.
+    fn new(shared: bool) -> Self {
+        if shared {
+            AssignedLeaflets {
+                local: None,
+                shared: Some(SharedAssignedLeaflets::default()),
+                local_frame: None,
+            }
+        } else {
+            AssignedLeaflets {
+                local: None,
+                shared: None,
+                local_frame: None,
+            }
+        }
+    }
+
     /// Assign all lipids into membrane leaflets.
-    ///
-    /// ## Panic
-    /// Panics if the number of molecules in the classifier does not match the number of molecules in the assignment vector.
     fn assign_lipids(
         &mut self,
         system: &System,
         classifier: &impl LeafletClassifier,
+        current_frame: usize,
     ) -> Result<(), AnalysisError> {
-        assert_eq!(classifier.n_molecules(), self.assignment.len(), "FATAL GORDER ERROR | AssignedLeaflets::assign_lipids | Inconsistent number of molecules.");
+        self.local = Some(
+            (0..classifier.n_molecules())
+                .map(|index| classifier.identify_leaflet(system, index))
+                .collect::<Result<Vec<_>, _>>()?,
+        );
 
-        self.assignment
-            .iter_mut()
-            .enumerate()
-            .try_for_each(|(index, assignment)| {
-                *assignment = Some(classifier.identify_leaflet(system, index)?);
-                Ok(())
-            })?;
+        self.local_frame = Some(current_frame);
+
+        // copy the current assignment to shared assignment, so other threads can also access it
+        // this should only be done if the number of threads is higher than 1 and the frequency is NOT 1
+        if let Some(shared) = self.shared.as_mut() {
+            shared.copy_to(
+                self.local_frame.expect(PANIC_MESSAGE),
+                self.local.as_ref().expect(PANIC_MESSAGE),
+            )
+        }
 
         Ok(())
     }
 
     /// Get the leaflet that was assigned to molecule of target index.
-    fn get_assigned_leaflet(&self, molecule_index: usize) -> Option<Leaflet> {
-        *self.assignment.get(molecule_index).expect(PANIC_MESSAGE)
+    fn get_assigned_leaflet(
+        &mut self,
+        molecule_index: usize,
+        current_frame: usize,
+        assignment_frequency: Frequency,
+    ) -> Leaflet {
+        match assignment_frequency {
+            Frequency::Every(n) if n.get() == 1 => self.get_leaflet_from_local(molecule_index),
+            Frequency::Every(n) => {
+                // check whether a suitable local assignment is accessible
+                let closest_frame = (current_frame / n.get()) * n.get();
+                match self.local_frame {
+                    // get leaflet assignment from the locally stored data
+                    Some(x) if x == closest_frame => self.get_leaflet_from_local(molecule_index),
+                    // copy assignment from shared data into locally stored data
+                    Some(_) | None => {
+                        self.copy_from_shared_assignment(closest_frame);
+                        self.get_leaflet_from_local(molecule_index)
+                    }
+                }
+            }
+            Frequency::Once => {
+                match self.local_frame {
+                    Some(0) => self.get_leaflet_from_local(molecule_index),
+                    Some(x) => panic!(
+                        "FATAL GORDER ERROR | AssignLeaflets::get_assigned_leaflet | Local data is from frame `{}` but frequency is Once. (Why was assignment performed for this frame?) {}", 
+                        x, PANIC_MESSAGE
+                    ),
+                    None => {
+                        self.copy_from_shared_assignment(0);
+                        self.get_leaflet_from_local(molecule_index)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Get the leaflet that was assigned to molecule of target index from the local assignment storage.
+    fn get_leaflet_from_local(&self, molecule_index: usize) -> Leaflet {
+        self.local
+            .as_ref()
+            .unwrap_or_else(||
+                panic!("FATAL GORDER ERROR | AssignedLeaflets::get_leaflet_from_local | Molecule not assigned. Local assignment should exist. {}", 
+                PANIC_MESSAGE)
+            ).get(molecule_index)
+            .unwrap_or_else(||
+                panic!("FATAL GORDER ERROR | AssignedLeaflets::get_leaflet_from_local | Molecule not found. Molecule with internal `gorder` index `{}` should exist. {}",
+                molecule_index, PANIC_MESSAGE))
+            .clone()
+    }
+
+    /// Copy the leaflet assignment for the specified frame into storage local for the thread.
+    ///
+    /// ## Panic
+    /// Panics if the `shared` storage is `None`.
+    fn copy_from_shared_assignment(&mut self, frame: usize) {
+        self.local = Some(self
+            .shared
+            .as_ref()
+            .unwrap_or_else(||
+                panic!("FATAL GORDER ERROR | AssignedLeaflets::copy_from_shared_assignment | Data for frame `{}` requested from shared storage, but shared storage has not been set-up. {}", 
+                frame, PANIC_MESSAGE))
+            .copy_from(frame));
+
+        self.local_frame = Some(frame);
+    }
+
+    /// Returns the number of molecules in the upper and the lower leaflet.
+    ///
+    /// ## Panic
+    /// Panics if `local` is `None`.
+    fn calc_assignment_statistics(&self) -> (usize, usize) {
+        self.local
+            .as_ref()
+            .expect(PANIC_MESSAGE)
+            .iter()
+            .fold((0, 0), |(upper, lower), mol| match mol {
+                Leaflet::Upper => (upper + 1, lower),
+                Leaflet::Lower => (upper, lower + 1),
+            })
+    }
+}
+
+/// Stores leaflet assignment for each relevant frame. Shared among all threads.
+#[derive(Debug, Clone, Default)]
+pub(super) struct SharedAssignedLeaflets(Arc<Mutex<HashMap<usize, Vec<Leaflet>>>>);
+
+impl SharedAssignedLeaflets {
+    /// Copy the leaflet assignment for the specified frame.
+    /// This requires waiting for the thread responsible for performing the leaflet assignment
+    /// for the `frame_to_fetch` to finish the analysis of this frame.
+    fn copy_from(&self, frame: usize) -> Vec<Leaflet> {
+        let start_time = Instant::now();
+        let mut warning_logged = false;
+
+        loop {
+            let shared_data = self.0.lock();
+            let assignment = shared_data.get(&frame);
+            if let Some(assign) = assignment {
+                return assign.clone();
+            }
+
+            if !warning_logged && start_time.elapsed() > *TIMEOUT {
+                log::warn!(
+                    "DEADLOCKED? Thread has been waiting for shared leaflet assignment data (frame '{}') for longer than {} seconds.
+Try decreasing the number of threads or increasing the frequency of leaflet assignment.
+If this does not help, please report this bug (`github.com/Ladme/gorder/issues` or `ladmeb@gmail.com`).
+(Note: there is no hard timeout for deadlock. This program may possibly run indefinitely until you kill it.)",
+                    frame,
+                    TIMEOUT_SECONDS,
+                );
+                warning_logged = true;
+            }
+        }
+    }
+
+    /// Copy the leaflet assignment to shared storage.
+    fn copy_to(&mut self, frame: usize, assignment: &[Leaflet]) {
+        let mut shared_data = self.0.lock();
+        let previous = shared_data.insert(frame, assignment.to_owned());
+
+        // defensive check; no other thread should have read the same frame
+        assert!(previous.is_none(), "FATAL GORDER ERROR | SharedAssignedLeaflets::copy_to | Leaflet assignment for frame index `{}` already exists, but it should not. {}", 
+            frame, PANIC_MESSAGE
+        );
     }
 }
 
@@ -481,6 +729,8 @@ mod tests {
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
             Dimension::Z,
+            1,
+            1,
         );
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
@@ -505,6 +755,8 @@ mod tests {
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 3.3),
             Dimension::Z,
+            1,
+            1,
         );
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
@@ -531,6 +783,8 @@ mod tests {
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
             Dimension::Z,
+            1,
+            1,
         );
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
@@ -591,7 +845,8 @@ mod tests {
     ) where
         F: Fn(&TopologyError) -> bool,
     {
-        let mut molecule_classifier = MoleculeLeafletClassification::new(&classifier, Dimension::Z);
+        let mut molecule_classifier =
+            MoleculeLeafletClassification::new(&classifier, Dimension::Z, 1, 1);
         let group = Group::from_query(group_query, system).unwrap();
         match molecule_classifier.insert(&group, system) {
             Err(e) if is_expected_error(&e) => (),
@@ -702,7 +957,8 @@ mod tests {
             "(name C218 C316 and not resid 144) or (resid 144 and name C218)",
         );
 
-        let mut molecule_classifier = MoleculeLeafletClassification::new(&classifier, Dimension::Z);
+        let mut molecule_classifier =
+            MoleculeLeafletClassification::new(&classifier, Dimension::Z, 1, 1);
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
 
@@ -724,6 +980,8 @@ mod tests {
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
             Dimension::Z,
+            1,
+            1,
         );
 
         let membrane_center = system
@@ -757,6 +1015,8 @@ mod tests {
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5),
             Dimension::Z,
+            1,
+            1,
         );
 
         system
@@ -790,6 +1050,8 @@ mod tests {
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
             Dimension::Z,
+            1,
+            1,
         );
 
         match &mut classifier {

@@ -69,6 +69,7 @@ impl LeafletClassification {
     ///    there must only be one such atom/bead per lipid molecule.
     /// - `methyls`: reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails;
     ///    there should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
+    #[inline(always)]
     pub fn individual(heads: &str, methyls: &str) -> LeafletClassification {
         Self::Individual(IndividualParams {
             heads: heads.to_string(),
@@ -80,6 +81,7 @@ impl LeafletClassification {
     /// Assign lipids to leaflets every N analyzed trajectory frames or only once (using the first trajectory frame).
     /// (Note that this is 'analyzed trajectory frames' - if you skip some frames using `step`,
     /// they will not be counted here.)
+    #[inline(always)]
     pub fn with_frequency(mut self, frequency: Frequency) -> Self {
         match &mut self {
             LeafletClassification::Global(x) => x.frequency = frequency,
@@ -91,6 +93,7 @@ impl LeafletClassification {
     }
 
     /// Get the frequency of the analysis.
+    #[inline(always)]
     pub fn get_frequency(&self) -> Frequency {
         match self {
             LeafletClassification::Global(x) => x.frequency(),
@@ -101,6 +104,7 @@ impl LeafletClassification {
 
     /// Returns a radius of the cylinder for the calculation of local membrane center of geometry, if the method is Local.
     /// Otherwise, returns None.
+    #[inline(always)]
     pub(crate) fn get_radius(&self) -> Option<f32> {
         match self {
             Self::Local(x) => Some(x.radius),

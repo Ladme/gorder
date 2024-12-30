@@ -489,6 +489,7 @@ dependencies = [
  "indexmap",
  "log",
  "once_cell",
+ "parking_lot",
  "serde",
  "serde_yaml",
  "statistical",

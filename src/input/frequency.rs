@@ -1,7 +1,7 @@
 // Released under MIT License.
 // Copyright (c) 2024 Ladislav Bartos
 
-use std::num::NonZeroUsize;
+use std::{num::NonZeroUsize, ops::Mul};
 
 use serde::Deserialize;
 
@@ -39,6 +39,18 @@ impl Default for Frequency {
     #[inline(always)]
     fn default() -> Self {
         Frequency::Every(NonZeroUsize::try_from(1).expect(PANIC_MESSAGE))
+    }
+}
+
+impl Mul<NonZeroUsize> for Frequency {
+    type Output = Frequency;
+
+    #[inline(always)]
+    fn mul(self, rhs: NonZeroUsize) -> Frequency {
+        match self {
+            Frequency::Every(n) => Frequency::every(n.get() * rhs.get()).expect(PANIC_MESSAGE),
+            Frequency::Once => Frequency::once(),
+        }
     }
 }
 
@@ -93,5 +105,17 @@ mod tests {
                 "invalid value: integer `0`, expected a nonzero usize"
             ),
         }
+    }
+
+    #[test]
+    fn test_frequency_mul() {
+        let freq = Frequency::every(7).unwrap() * NonZeroUsize::new(4).unwrap();
+        match freq {
+            Frequency::Every(x) => assert_eq!(x.get(), 28),
+            _ => panic!("Invalid frequency type returned."),
+        }
+
+        let freq = Frequency::once() * NonZeroUsize::new(4).unwrap();
+        assert!(matches!(freq, Frequency::Once));
     }
 }

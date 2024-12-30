@@ -257,7 +257,7 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
     /// Create (and potentially back up) an output file, open it and write the results into it.
     fn write(&self, filename: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
         log::info!(
-            "Writing the order parameters into {} file '{}'...",
+            "Writing order parameters into {} file '{}'...",
             self.file_format(),
             filename.as_ref().to_str().expect(PANIC_MESSAGE)
         );
@@ -583,10 +583,10 @@ impl LeafletClassification {
 impl std::fmt::Display for Frequency {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Frequency::Every(n) if n.get() == 1 => write!(f, "every frame"),
-            Frequency::Every(n) if n.get() == 2 => write!(f, "every 2nd frame"),
-            Frequency::Every(n) if n.get() == 3 => write!(f, "every 3rd frame"),
-            Frequency::Every(n) => write!(f, "every {}th frame", n),
+            Frequency::Every(n) if n.get() == 1 => write!(f, "every analyzed frame"),
+            Frequency::Every(n) if n.get() == 2 => write!(f, "every 2nd analyzed frame"),
+            Frequency::Every(n) if n.get() == 3 => write!(f, "every 3rd analyzed frame"),
+            Frequency::Every(n) => write!(f, "every {}th analyzed frame", n),
             Frequency::Once => write!(f, "once at the start of the analysis"),
         }
     }
@@ -635,15 +635,15 @@ mod tests {
         assert_eq!(freq.to_string(), "once at the start of the analysis");
 
         let freq = Frequency::every(1).unwrap();
-        assert_eq!(freq.to_string(), "every frame");
+        assert_eq!(freq.to_string(), "every analyzed frame");
 
         let freq = Frequency::every(2).unwrap();
-        assert_eq!(freq.to_string(), "every 2nd frame");
+        assert_eq!(freq.to_string(), "every 2nd analyzed frame");
 
         let freq = Frequency::every(3).unwrap();
-        assert_eq!(freq.to_string(), "every 3rd frame");
+        assert_eq!(freq.to_string(), "every 3rd analyzed frame");
 
         let freq = Frequency::every(10).unwrap();
-        assert_eq!(freq.to_string(), "every 10th frame");
+        assert_eq!(freq.to_string(), "every 10th analyzed frame");
     }
 }

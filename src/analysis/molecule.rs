@@ -104,6 +104,7 @@ impl MoleculeType {
         frame: &System,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
+        frame_index: usize,
     ) -> Result<(), AnalysisError> {
         self.order_bonds
             .bond_types
@@ -111,13 +112,23 @@ impl MoleculeType {
             .try_for_each(|bond_type| {
                 bond_type.analyze_frame(
                     frame,
-                    self.leaflet_classification.as_ref(),
+                    &mut self.leaflet_classification,
                     simbox,
                     membrane_normal,
+                    frame_index,
                 )
             })?;
 
         Ok(())
+    }
+
+    /// Initialize reading of a new frame.
+    #[inline(always)]
+    pub(super) fn init_new_frame(&mut self) {
+        self.order_bonds
+            .bond_types
+            .iter_mut()
+            .for_each(|bond| bond.init_new_frame());
     }
 }
 
@@ -495,12 +506,11 @@ impl BondType {
     fn analyze_frame(
         &mut self,
         frame: &System,
-        leaflet_classification: Option<&MoleculeLeafletClassification>,
+        leaflet_classification: &mut Option<MoleculeLeafletClassification>,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
+        frame_index: usize,
     ) -> Result<(), AnalysisError> {
-        self.init_new_frame();
-
         for (molecule_index, (index1, index2)) in self.bonds.iter().enumerate() {
             let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
             let atom2 = unsafe { frame.get_atom_unchecked(*index2) };
@@ -525,11 +535,8 @@ impl BondType {
             }
 
             // get the assignment of molecule (assignment is performed earlier)
-            if let Some(classifier) = leaflet_classification {
-                match classifier
-                    .get_assigned_leaflet(molecule_index)
-                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | BondType::analyze_frame | Molecule with internal gorder index '{}' is not assigned into a leaflet.", molecule_index))
-                {
+            if let Some(classifier) = leaflet_classification.as_mut() {
+                match classifier.get_assigned_leaflet(molecule_index, frame_index) {
                     Leaflet::Upper => {
                         *self.upper.as_mut().expect(PANIC_MESSAGE) += sch;
                         if let Some(map) = self.upper_map.as_mut() {

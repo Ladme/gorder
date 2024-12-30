@@ -70,6 +70,8 @@ pub(super) fn classify_molecules(
     membrane_normal: Dimension,
     ordermap_params: Option<&OrderMap>,
     estimate_error: Option<&EstimateError>,
+    n_threads: usize,
+    step_size: usize,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -114,6 +116,8 @@ pub(super) fn classify_molecules(
                 leaflet_classification,
                 ordermap_params,
                 estimate_error.is_some(),
+                n_threads,
+                step_size,
             )?);
         }
     }
@@ -158,33 +162,29 @@ pub(super) fn analyze_frame(
         return Err(AnalysisError::ZeroBox);
     }
 
-    let membrane_normal = data.membrane_normal();
-    let membrane_center = OnceCell::new();
+    // initialize the reading of the next frame
+    data.init_new_frame();
+    let frame_index = data.frame();
 
-    // assign molecules to leaflets
+    let membrane_center = OnceCell::new(); // used with global classification method
+    let membrane_normal = data.membrane_normal().into();
     for molecule in data.molecule_types_mut().iter_mut() {
+        // assign molecules to leaflets
         if let Some(classifier) = molecule.leaflet_classification_mut() {
-            match classifier {
-                MoleculeLeafletClassification::Global(x, _) => {
-                    let center = membrane_center.get_or_try_init(|| {
-                        frame
-                            .group_get_center(group_name!("Membrane"))
-                            .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
-                    })?;
-
-                    x.set_membrane_center(center.clone());
-                }
-                MoleculeLeafletClassification::Local(x, _) => {
-                    x.set_membrane_center(frame, membrane_normal)?;
-                }
-                MoleculeLeafletClassification::Individual(_, _) => (),
-            };
-
-            classifier.assign_lipids(frame)?;
+            classifier.assign_lipids(frame, frame_index, &membrane_center)?;
         }
-
-        molecule.analyze_frame(frame, simbox, &membrane_normal.into())?;
+        // calculate order parameters
+        molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index)?;
     }
+
+    // print information about leaflet assignment for quick sanity check by the user
+    // only do this for the first frame (this also guarantees that only one thread prints this information)
+    if data.frame() == 0 {
+        data.log_first_frame_leaflet_assignment_info();
+    }
+
+    // increase the frame counter
+    data.increase_frame_counter();
 
     Ok(())
 }
@@ -284,13 +284,16 @@ fn create_new_molecule_type(
     leaflet_classification: Option<&LeafletClassification>,
     ordermap_params: Option<&OrderMap>,
     errors: bool,
+    n_threads: usize,
+    step_size: usize,
 ) -> Result<MoleculeType, TopologyError> {
     // create a name of the molecule
     let name = residues.join("-");
 
     // construct a leaflet classifier
     let classifier = if let Some(params) = leaflet_classification {
-        let mut leaflet_classifier = MoleculeLeafletClassification::new(params, membrane_normal);
+        let mut leaflet_classifier =
+            MoleculeLeafletClassification::new(params, membrane_normal, n_threads, step_size);
         leaflet_classifier.insert(all_atom_indices, system)?;
 
         Some(leaflet_classifier)
@@ -1204,6 +1207,8 @@ mod tests {
             Dimension::Z,
             None,
             None,
+            1,
+            1,
         )
         .unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
@@ -1654,6 +1659,8 @@ mod tests {
             Dimension::Z,
             None,
             None,
+            1,
+            1,
         )
         .unwrap();
         let expected_names = ["POPE", "POPG"];
@@ -2329,8 +2336,18 @@ mod tests {
         let mut system = System::from_file("tests/files/same_name.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC").unwrap();
 
-        let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, None).unwrap();
+        let molecules = classify_molecules(
+            &system,
+            "Atoms",
+            "Atoms",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
 
         let expected_names = ["POPC1", "POPC2"];
         let expected_n_instances = [2, 1];
@@ -2354,8 +2371,18 @@ mod tests {
         let mut system = System::from_file("tests/files/multiple_resid.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
 
-        let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, None).unwrap();
+        let molecules = classify_molecules(
+            &system,
+            "Atoms",
+            "Atoms",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
 
         let expected_names = ["POPC-POPE", "POPC"];
         let expected_n_instances = [2, 1];
@@ -2379,8 +2406,18 @@ mod tests {
         let mut system = System::from_file("tests/files/multiple_resid_same_name.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
 
-        let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, None).unwrap();
+        let molecules = classify_molecules(
+            &system,
+            "Atoms",
+            "Atoms",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
 
         let expected_names = ["POPC-POPE1", "POPC-POPE2", "POPC"];
         let expected_n_instances = [1, 1, 1];
@@ -2404,8 +2441,18 @@ mod tests {
         let mut system = System::from_file("tests/files/cyclic.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC").unwrap();
 
-        let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, None).unwrap();
+        let molecules = classify_molecules(
+            &system,
+            "Atoms",
+            "Atoms",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
 
         assert_eq!(molecules.len(), 1);
         assert_eq!(molecules[0].order_bonds().bond_types().len(), 14);

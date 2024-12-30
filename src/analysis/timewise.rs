@@ -185,7 +185,8 @@ impl<T: TimeWiseAddTreatment> TimeWiseData<T> {
     }
 
     /// Estimate the calculation error from the order parameters calculated for the individual blocks.
-    /// Returns samples standard deviation or None if the structure is empty.
+    /// Returns samples standard deviation or None if the structure is empty, or if the number of samples
+    /// in a block is zero.
     pub(super) fn estimate_error(&self, n_blocks: usize) -> Option<f32> {
         if self.order.is_empty() {
             return None;
@@ -209,11 +210,15 @@ impl<T: TimeWiseAddTreatment> TimeWiseData<T> {
             }
         }
 
-        let orders: Vec<f32> = blocks_order
-            .into_iter()
-            .zip(blocks_samples)
-            .map(|(o, s)| (o / s).into())
-            .collect();
+        let mut orders: Vec<f32> = Vec::new();
+        for (o, s) in blocks_order.into_iter().zip(blocks_samples) {
+            if s > 0 {
+                orders.push((o / s).into())
+            } else {
+                // can't estimate error if the number of samples in any block is 0
+                return None;
+            }
+        }
 
         match std::panic::catch_unwind(|| statistical::standard_deviation(&orders, None)) {
                 Ok(result) => Some(result),
