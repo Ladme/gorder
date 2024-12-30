@@ -30,8 +30,15 @@ use once_cell::{sync::Lazy, unsync::OnceCell};
 
 /// [`TIMEOUT`] in seconds.
 static TIMEOUT_SECONDS: u64 = 5;
-/// Global timeout duration for spin-lock used when fetching data for leaflet assignment.
+/// Global soft timeout duration for spin-lock used when fetching data for leaflet assignment.
+/// After this time a warning is logged.
 static TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(TIMEOUT_SECONDS));
+
+/// [`HARD_TIMEOUT`] in seconds.
+static HARD_TIMEOUT_SECONDS: u64 = 125;
+/// Global HARD timeout duration for spin-lock used when fetching data for leaflet assignment.
+/// After this time a PANIC is raised.
+static HARD_TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(HARD_TIMEOUT_SECONDS));
 
 impl LeafletClassification {
     /// Create groups in the system that are required for leaflet classification.
@@ -126,7 +133,7 @@ impl MoleculeLeafletClassification {
             (Frequency::Every(_) | Frequency::Once, 1) => false,
             // shared storage is not needed if the frequency is performed for every analyzed frame
             // (each thread handles lipid assignment locally and no data need to be shared)
-            (Frequency::Every(x), _) if x.get() == step_size => false,
+            (Frequency::Every(x), _) if x.get() == 1 => false,
             // shared storage is needed in all other cases
             _ => true,
         };
@@ -545,6 +552,7 @@ impl AssignedLeaflets {
     /// `shared` specifies whether shared storage should be set-up.
     /// Use `true` if the analysis is multithreaded and the leaflet assignment is NOT performed every thread.
     /// Use `false` in all other cases.
+    #[inline(always)]
     fn new(shared: bool) -> Self {
         if shared {
             AssignedLeaflets {
@@ -577,7 +585,7 @@ impl AssignedLeaflets {
         self.local_frame = Some(current_frame);
 
         // copy the current assignment to shared assignment, so other threads can also access it
-        // this should only be done if the number of threads is higher than 1 and the frequency is NOT 1
+        // this should only be done if the number of threads is higher than 1 and the input frequency is NOT 1
         if let Some(shared) = self.shared.as_mut() {
             shared.copy_to(
                 self.local_frame.expect(PANIC_MESSAGE),
@@ -596,7 +604,6 @@ impl AssignedLeaflets {
         assignment_frequency: Frequency,
     ) -> Leaflet {
         match assignment_frequency {
-            Frequency::Every(n) if n.get() == 1 => self.get_leaflet_from_local(molecule_index),
             Frequency::Every(n) => {
                 // check whether a suitable local assignment is accessible
                 let closest_frame = (current_frame / n.get()) * n.get();
@@ -627,6 +634,7 @@ impl AssignedLeaflets {
     }
 
     /// Get the leaflet that was assigned to molecule of target index from the local assignment storage.
+    #[inline]
     fn get_leaflet_from_local(&self, molecule_index: usize) -> Leaflet {
         self.local
             .as_ref()
@@ -644,6 +652,7 @@ impl AssignedLeaflets {
     ///
     /// ## Panic
     /// Panics if the `shared` storage is `None`.
+    #[inline]
     fn copy_from_shared_assignment(&mut self, frame: usize) {
         self.local = Some(self
             .shared
@@ -684,6 +693,7 @@ impl SharedAssignedLeaflets {
         let start_time = Instant::now();
         let mut warning_logged = false;
 
+        // spin-lock: waiting for the requested frame to be available
         loop {
             let shared_data = self.0.lock();
             let assignment = shared_data.get(&frame);
@@ -691,17 +701,29 @@ impl SharedAssignedLeaflets {
                 return assign.clone();
             }
 
-            if !warning_logged && start_time.elapsed() > *TIMEOUT {
-                log::warn!(
-                    "DEADLOCKED? Thread has been waiting for shared leaflet assignment data (frame '{}') for longer than {} seconds.
-Try decreasing the number of threads or increasing the frequency of leaflet assignment.
-If this does not help, please report this bug (`github.com/Ladme/gorder/issues` or `ladmeb@gmail.com`).
-(Note: there is no hard timeout for deadlock. This program may possibly run indefinitely until you kill it.)",
+            // defensive check for a deadlock
+            if start_time.elapsed() > *TIMEOUT {
+                if !warning_logged {
+                    log::warn!("DEADLOCK DETECTED? Thread has been waiting for shared leaflet assignment data (frame '{}') for more than {} seconds.
+This may be due to resource contention or a bug. Ensure that your CPU is not oversubscribed and that you have not lost access to the trajectory file.
+If `gorder` is causing oversubscription, reduce the number of threads used for the analysis.
+If other computationally intensive software is running alongside `gorder`, consider terminating it.
+If the issue persists, please report it by opening an issue at `github.com/Ladme/gorder/issues` or sending an email to `ladmeb@gmail.com`. 
+(Note: This thread will terminate in {} seconds to prevent resource exhaustion.)",
                     frame,
                     TIMEOUT_SECONDS,
+                    HARD_TIMEOUT_SECONDS - TIMEOUT_SECONDS,
                 );
-                warning_logged = true;
+                    warning_logged = true;
+                }
+
+                if start_time.elapsed() > *HARD_TIMEOUT {
+                    panic!("FATAL GORDER ERROR | SharedAssignedLeaflets::copy_from | Deadlock. Could not get shared data for leaflet assignment. Spent more than `{}` seconds inside the spin-lock. {}", 
+                    HARD_TIMEOUT_SECONDS, PANIC_MESSAGE)
+                }
             }
+
+            // shared data unlock here
         }
     }
 
@@ -1072,5 +1094,175 @@ mod tests {
             classifier.identify_leaflet(&system, 1).unwrap(),
             Leaflet::Lower
         );
+    }
+
+    macro_rules! test_classification_new {
+        ($name:ident, $classification:expr, $variant:path, $frequency:pat) => {
+            #[test]
+            fn $name() {
+                let single_threaded =
+                    MoleculeLeafletClassification::new(&$classification, Dimension::Z, 1, 2);
+                match single_threaded {
+                    $variant(x, y) => {
+                        assert!(matches!(x.frequency, $frequency));
+                        assert!(y.shared.is_none());
+                        assert!(y.local.is_none());
+                        assert!(y.local_frame.is_none());
+                    }
+                    _ => panic!("Incorrect structure constructed."),
+                }
+
+                let multi_threaded =
+                    MoleculeLeafletClassification::new(&$classification, Dimension::Z, 4, 2);
+                match multi_threaded {
+                    $variant(x, y) => {
+                        assert!(matches!(x.frequency, $frequency));
+                        match x.frequency {
+                            Frequency::Every(n) if n.get() == 2 => assert!(y.shared.is_none()),
+                            Frequency::Every(n) if n.get() == 10 => {
+                                assert!(y.shared.is_some());
+                            }
+                            Frequency::Every(n) => panic!("Unexpected real frequency '{}': neither 2 (init 1) nor 10 (init 5) detected.", n),
+                            _ => assert!(y.shared.is_some()),
+                        }
+                        assert!(y.local.is_none());
+                        assert!(y.local_frame.is_none());
+                    }
+                    _ => panic!("Incorrect structure constructed."),
+                }
+            }
+        };
+    }
+
+    test_classification_new!(
+        test_global_leaflet_classification_new_once,
+        LeafletClassification::global("@membrane", "name P").with_frequency(Frequency::once()),
+        MoleculeLeafletClassification::Global,
+        Frequency::Once
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_new_once,
+        LeafletClassification::local("@membrane", "name P", 2.5).with_frequency(Frequency::once()),
+        MoleculeLeafletClassification::Local,
+        Frequency::Once
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_new_once,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_frequency(Frequency::once()),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Once
+    );
+
+    test_classification_new!(
+        test_global_leaflet_classification_new_every_five,
+        LeafletClassification::global("@membrane", "name P")
+            .with_frequency(Frequency::every(5).unwrap()),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_)
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_new_every_five,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_frequency(Frequency::every(5).unwrap()),
+        MoleculeLeafletClassification::Local,
+        Frequency::Every(_)
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_new_every_five,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_frequency(Frequency::every(5).unwrap()),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Every(_)
+    );
+
+    test_classification_new!(
+        test_global_leaflet_classification_new_every_one,
+        LeafletClassification::global("@membrane", "name P")
+            .with_frequency(Frequency::every(1).unwrap()),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_)
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_new_every_one,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_frequency(Frequency::every(1).unwrap()),
+        MoleculeLeafletClassification::Local,
+        Frequency::Every(_)
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_new_every_one,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_frequency(Frequency::every(1).unwrap()),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Every(_)
+    );
+}
+
+#[cfg(test)]
+mod tests_assigned_leaflets {
+    use super::*;
+
+    // TODO: tests
+}
+
+#[cfg(test)]
+mod tests_shared_assigned_leaflets {
+    use std::thread;
+
+    use super::*;
+
+    #[test]
+    fn test_copy_from() {
+        let shared = SharedAssignedLeaflets(Arc::new(Mutex::new(
+            [(100, vec![Leaflet::Upper, Leaflet::Lower, Leaflet::Upper])].into(),
+        )));
+
+        let local = shared.copy_from(100);
+        assert_eq!(local[0], Leaflet::Upper);
+        assert_eq!(local[1], Leaflet::Lower);
+        assert_eq!(local[2], Leaflet::Upper);
+    }
+
+    #[test]
+    fn test_copy_to() {
+        let local = vec![Leaflet::Upper, Leaflet::Lower, Leaflet::Upper];
+        let mut shared = SharedAssignedLeaflets::default();
+        shared.copy_to(100, &local);
+
+        let local2 = shared.copy_from(100);
+        assert_eq!(local2[0], Leaflet::Upper);
+        assert_eq!(local2[1], Leaflet::Lower);
+        assert_eq!(local2[2], Leaflet::Upper);
+    }
+
+    #[test]
+    fn test_producer_consumer() {
+        let shared = SharedAssignedLeaflets::default();
+        let mut shared_clone = shared.clone();
+
+        // the consumer thread
+        let consumer = thread::spawn(move || {
+            let local = shared.copy_from(100);
+            assert_eq!(local[0], Leaflet::Upper);
+            assert_eq!(local[1], Leaflet::Lower);
+            assert_eq!(local[2], Leaflet::Upper);
+        });
+
+        // the producer thread
+        let producer = thread::spawn(move || {
+            let local = vec![Leaflet::Upper, Leaflet::Lower, Leaflet::Upper];
+            thread::sleep(Duration::from_millis(100)); // simulate work
+            shared_clone.copy_to(100, &local);
+        });
+
+        producer.join().expect("Producer thread panicked");
+        consumer.join().expect("Consumer thread panicked");
     }
 }

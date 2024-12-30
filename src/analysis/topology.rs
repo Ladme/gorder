@@ -53,7 +53,7 @@ impl SystemTopology {
     ) -> SystemTopology {
         SystemTopology {
             thread_id: 0,
-            frame: 0,
+            frame: step_size, // will be modified in initialization
             n_threads,
             step_size,
             total_frames: 0,
@@ -229,6 +229,65 @@ impl ParallelTrajData for SystemTopology {
 
     fn initialize(&mut self, thread_id: usize) {
         self.thread_id = thread_id;
-        self.frame = thread_id;
+        self.frame *= thread_id;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // this tests whether the SystemTopology structures correctly initialize and iterate through frames
+    // this is important for shared data to be properly read in leaflet assignment
+    #[test]
+    fn test_simulated_iteration() {
+        for n_frames in 0..301 {
+            for step in [1, 2, 3, 4, 5, 7, 10, 15, 20, 100] {
+                let expected_visited_frames = (0..n_frames)
+                    .step_by(step)
+                    .map(|i| i)
+                    .collect::<Vec<usize>>();
+
+                for n_threads in [1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 32, 64, 128] {
+                    let mut visited_frames = Vec::new();
+
+                    let mut threads = (0..n_threads)
+                        .map(|i| {
+                            let mut top =
+                                SystemTopology::new(vec![], Dimension::Z, None, step, n_threads);
+                            top.initialize(i);
+                            top
+                        })
+                        .collect::<Vec<SystemTopology>>();
+
+                    loop {
+                        let mut all_done = true;
+
+                        for top in threads.iter_mut() {
+                            if top.frame < n_frames {
+                                visited_frames.push(top.frame);
+                                all_done = false;
+                            }
+                            top.increase_frame_counter();
+                        }
+
+                        if all_done {
+                            break;
+                        }
+                    }
+
+                    /*println!(
+                        "n_frames {} step {} n_threads {}",
+                        n_frames, step, n_threads
+                    );
+                    println!("VISITED {:?}", visited_frames);
+                    println!("EXPECTED {:?}\n", expected_visited_frames);*/
+                    assert_eq!(visited_frames.len(), expected_visited_frames.len());
+                    for (val, exp) in visited_frames.iter().zip(expected_visited_frames.iter()) {
+                        assert_eq!(val, exp);
+                    }
+                }
+            }
+        }
     }
 }
