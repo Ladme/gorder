@@ -24,6 +24,9 @@ pub struct AAOrderResults {
     /// Parameters of the analysis.
     #[serde(skip)]
     analysis: Analysis,
+    /// Total number of analyzed frames.
+    #[serde(skip)]
+    n_analyzed_frames: usize,
 }
 
 impl PublicOrderResults for AAOrderResults {
@@ -40,6 +43,10 @@ impl PublicOrderResults for AAOrderResults {
     fn analysis(&self) -> &Analysis {
         &self.analysis
     }
+
+    fn n_analyzed_frames(&self) -> usize {
+        self.n_analyzed_frames
+    }
 }
 
 impl OrderResults for AAOrderResults {
@@ -49,13 +56,19 @@ impl OrderResults for AAOrderResults {
         Self {
             molecules: IndexMap::new(),
             analysis,
+            n_analyzed_frames: 0,
         }
     }
 
-    fn new(molecules: IndexMap<String, AAMoleculeResults>, analysis: Analysis) -> Self {
+    fn new(
+        molecules: IndexMap<String, AAMoleculeResults>,
+        analysis: Analysis,
+        n_analyzed_frames: usize,
+    ) -> Self {
         Self {
             molecules,
             analysis,
+            n_analyzed_frames,
         }
     }
 

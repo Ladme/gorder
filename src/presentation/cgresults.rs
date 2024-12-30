@@ -25,6 +25,9 @@ pub struct CGOrderResults {
     /// Parameters of the analysis.
     #[serde(skip)]
     analysis: Analysis,
+    /// Total number of analyzed frames.
+    #[serde(skip)]
+    n_analyzed_frames: usize,
 }
 
 impl PublicOrderResults for CGOrderResults {
@@ -41,6 +44,10 @@ impl PublicOrderResults for CGOrderResults {
     fn analysis(&self) -> &Analysis {
         &self.analysis
     }
+
+    fn n_analyzed_frames(&self) -> usize {
+        self.n_analyzed_frames
+    }
 }
 
 impl OrderResults for CGOrderResults {
@@ -50,13 +57,19 @@ impl OrderResults for CGOrderResults {
         Self {
             molecules: IndexMap::new(),
             analysis,
+            n_analyzed_frames: 0,
         }
     }
 
-    fn new(molecules: IndexMap<String, CGMoleculeResults>, analysis: Analysis) -> Self {
+    fn new(
+        molecules: IndexMap<String, CGMoleculeResults>,
+        analysis: Analysis,
+        n_analyzed_frames: usize,
+    ) -> Self {
         Self {
             molecules,
             analysis,
+            n_analyzed_frames,
         }
     }
 }

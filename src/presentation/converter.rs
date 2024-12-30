@@ -56,6 +56,7 @@ impl<O: MolConvert> ResultsConverter<O> {
                 )
                 .collect::<IndexMap<String, O::MoleculeResults>>(),
             self.analysis,
+            topology.total_frames(),
         )
     }
 

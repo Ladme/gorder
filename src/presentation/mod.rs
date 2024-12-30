@@ -67,6 +67,14 @@ impl AnalysisResults {
             AnalysisResults::CG(x) => x.write_all_results(),
         }
     }
+
+    /// Get the total number of analyzed frames.
+    pub fn n_analyzed_frames(&self) -> usize {
+        match self {
+            AnalysisResults::AA(x) => x.n_analyzed_frames(),
+            AnalysisResults::CG(x) => x.n_analyzed_frames(),
+        }
+    }
 }
 
 /// Type alias for a gridmap of f32 values.
@@ -87,6 +95,9 @@ pub trait PublicOrderResults {
 
     /// Get the parameters of the analysis.
     fn analysis(&self) -> &Analysis;
+
+    /// Get the total number of analyzed frames.
+    fn n_analyzed_frames(&self) -> usize;
 }
 
 /// Trait implemented by all structures providing the full results of the analysis.
@@ -99,7 +110,11 @@ pub(crate) trait OrderResults:
     fn empty(analysis: Analysis) -> Self;
 
     /// Create a new `OrderResults` structure.
-    fn new(molecules: IndexMap<String, Self::MoleculeResults>, analysis: Analysis) -> Self;
+    fn new(
+        molecules: IndexMap<String, Self::MoleculeResults>,
+        analysis: Analysis,
+        n_analyzed_frames: usize,
+    ) -> Self;
 
     /// Return the maximal number of bonds for heavy atoms in the system.
     /// Only makes sense for atomistic order. Returns 0 by default.

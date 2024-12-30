@@ -29,7 +29,7 @@ pub(crate) struct SystemTopology {
     /// Step size of the analysis.
     step_size: usize,
     /// Total number of frames analyzed by this thread.
-    #[getset(get_copy = "pub(super)")]
+    #[getset(get_copy = "pub(crate)")]
     total_frames: usize,
     /// All molecule types for which order parameters are calculated.
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]

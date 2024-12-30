@@ -727,7 +727,9 @@ fn test_aa_order_begin_end_step_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap().write().unwrap();
+    let results = analysis.run().unwrap();
+    assert_eq!(results.n_analyzed_frames(), 4);
+    results.write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -760,7 +762,9 @@ fn test_aa_order_begin_end_step_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap().write().unwrap();
+        let results = analysis.run().unwrap();
+        assert_eq!(results.n_analyzed_frames(), 4);
+        results.write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -791,7 +795,9 @@ fn test_aa_order_begin_end_yaml() {
         .build()
         .unwrap();
 
-    analysis.run().unwrap().write().unwrap();
+    let results = analysis.run().unwrap();
+    assert_eq!(results.n_analyzed_frames(), 11);
+    results.write().unwrap();
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -823,7 +829,9 @@ fn test_aa_order_begin_end_yaml_multiple_threads() {
             .build()
             .unwrap();
 
-        analysis.run().unwrap().write().unwrap();
+        let results = analysis.run().unwrap();
+        assert_eq!(results.n_analyzed_frames(), 11);
+        results.write().unwrap();
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -2045,6 +2053,7 @@ fn test_aa_order_basic_rust_api() {
         AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
     };
 
+    assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.analysis().structure(), "tests/files/pcpepg.tpr");
 
     assert_eq!(results.molecules().count(), 3);
@@ -2182,6 +2191,7 @@ fn test_aa_order_error_rust_api() {
         AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
     };
 
+    assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.molecules().count(), 3);
 
     assert!(results.get_molecule("POPE").is_some());
@@ -2357,6 +2367,7 @@ fn test_aa_order_leaflets_rust_api() {
         AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
     };
 
+    assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.molecules().count(), 3);
 
     assert!(results.get_molecule("POPE").is_some());
@@ -2527,6 +2538,7 @@ fn test_aa_order_error_leaflets_rust_api() {
         AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
     };
 
+    assert_eq!(results.n_analyzed_frames(), 51);
     assert!(results
         .analysis()
         .estimate_error()
@@ -2658,6 +2670,7 @@ fn test_aa_order_ordermaps_rust_api() {
         AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
     };
 
+    assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.molecules().count(), 1);
 
     // average ordermaps for the entire molecule
@@ -2761,6 +2774,7 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
         AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
     };
 
+    assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.molecules().count(), 1);
 
     // average ordermaps for the entire molecule
