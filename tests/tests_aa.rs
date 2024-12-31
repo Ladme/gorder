@@ -2174,6 +2174,237 @@ fn test_aa_order_convergence_step() {
 }
 
 #[test]
+fn test_aa_order_leaflets_asymmetric_multiple_threads() {
+    for n_threads in [1, 2, 5, 8] {
+        let output_yaml = NamedTempFile::new().unwrap();
+        let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+        let output_tab = NamedTempFile::new().unwrap();
+        let path_to_tab = output_tab.path().to_str().unwrap();
+
+        let output_csv = NamedTempFile::new().unwrap();
+        let path_to_csv = output_csv.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let xvg_pattern = format!("{}/order.xvg", path_to_dir);
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/asymmetric/aa_asym.tpr")
+            .trajectory("tests/files/asymmetric/aa_asym.xtc")
+            .output_yaml(path_to_yaml)
+            .output_tab(path_to_tab)
+            .output_csv(path_to_csv)
+            .output_xvg(xvg_pattern)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_yaml,
+            "tests/files/asymmetric/aa_order_asymmetric.yaml",
+            1
+        ));
+
+        assert!(diff_files_ignore_first(
+            path_to_tab,
+            "tests/files/asymmetric/aa_order_asymmetric.tab",
+            1
+        ));
+
+        assert!(diff_files_ignore_first(
+            path_to_csv,
+            "tests/files/asymmetric/aa_order_asymmetric.csv",
+            0
+        ));
+
+        for molecule in ["POPC", "POPE"] {
+            let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
+            let path_expected = format!(
+                "tests/files/asymmetric/aa_order_asymmetric_{}.xvg",
+                molecule
+            );
+
+            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_asymmetric_error_multiple_threads() {
+    for n_threads in [1, 2, 5, 8] {
+        let output_yaml = NamedTempFile::new().unwrap();
+        let path_to_yaml = output_yaml.path().to_str().unwrap();
+
+        let output_tab = NamedTempFile::new().unwrap();
+        let path_to_tab = output_tab.path().to_str().unwrap();
+
+        let output_csv = NamedTempFile::new().unwrap();
+        let path_to_csv = output_csv.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let xvg_pattern = format!("{}/order.xvg", path_to_dir);
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/asymmetric/aa_asym.tpr")
+            .trajectory("tests/files/asymmetric/aa_asym.xtc")
+            .output_yaml(path_to_yaml)
+            .output_tab(path_to_tab)
+            .output_csv(path_to_csv)
+            .output_xvg(xvg_pattern)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .estimate_error(EstimateError::default())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_yaml,
+            "tests/files/asymmetric/aa_order_asymmetric_errors.yaml",
+            1
+        ));
+
+        assert!(diff_files_ignore_first(
+            path_to_tab,
+            "tests/files/asymmetric/aa_order_asymmetric_errors.tab",
+            1
+        ));
+
+        assert!(diff_files_ignore_first(
+            path_to_csv,
+            "tests/files/asymmetric/aa_order_asymmetric_errors.csv",
+            0
+        ));
+
+        for molecule in ["POPC", "POPE"] {
+            let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
+            let path_expected = format!(
+                "tests/files/asymmetric/aa_order_asymmetric_{}.xvg",
+                molecule
+            );
+
+            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_asymmetric_ordermaps_multiple_threads() {
+    for n_threads in [1, 2, 5, 8] {
+        let analysis = Analysis::builder()
+            .structure("tests/files/asymmetric/aa_asym.tpr")
+            .trajectory("tests/files/asymmetric/aa_asym.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and name C22 C24 C218",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .ordermaps(
+                OrderMap::builder()
+                    .bin_size([2.0, 2.0])
+                    .dim([
+                        GridSpan::manual(2.0, 8.0).unwrap(),
+                        GridSpan::manual(2.0, 8.0).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        let result = match analysis.run().unwrap() {
+            AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+            AnalysisResults::AA(x) => x,
+        };
+
+        for molecule in result.molecules() {
+            for atom in molecule.atoms() {
+                let total = atom.ordermaps().total().as_ref().unwrap();
+                let upper = atom.ordermaps().upper().as_ref().unwrap();
+                let lower = atom.ordermaps().lower().as_ref().unwrap();
+
+                if molecule.molecule() == "POPC" {
+                    for ((_, _, t), (_, _, u)) in
+                        total.extract_convert().zip(upper.extract_convert())
+                    {
+                        assert_relative_eq!(t, u, epsilon = 1e-4);
+                    }
+
+                    for (_, _, l) in lower.extract_convert() {
+                        assert!(l.is_nan());
+                    }
+                } else if molecule.molecule() == "POPE" {
+                    for ((_, _, t), (_, _, l)) in
+                        total.extract_convert().zip(lower.extract_convert())
+                    {
+                        assert_relative_eq!(t, l, epsilon = 1e-4);
+                    }
+
+                    for (_, _, u) in upper.extract_convert() {
+                        assert!(u.is_nan());
+                    }
+                } else {
+                    panic!("Unexpected molecule.")
+                }
+
+                for bond in atom.bonds() {
+                    let total = bond.ordermaps().total().as_ref().unwrap();
+                    let upper = bond.ordermaps().upper().as_ref().unwrap();
+                    let lower = bond.ordermaps().lower().as_ref().unwrap();
+
+                    if molecule.molecule() == "POPC" {
+                        for ((_, _, t), (_, _, u)) in
+                            total.extract_convert().zip(upper.extract_convert())
+                        {
+                            assert_relative_eq!(t, u, epsilon = 1e-4);
+                        }
+
+                        for (_, _, l) in lower.extract_convert() {
+                            assert!(l.is_nan());
+                        }
+                    } else if molecule.molecule() == "POPE" {
+                        for ((_, _, t), (_, _, l)) in
+                            total.extract_convert().zip(lower.extract_convert())
+                        {
+                            assert_relative_eq!(t, l, epsilon = 1e-4);
+                        }
+
+                        for (_, _, u) in upper.extract_convert() {
+                            assert!(u.is_nan());
+                        }
+                    } else {
+                        panic!("Unexpected molecule.")
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn test_aa_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")

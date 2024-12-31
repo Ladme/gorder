@@ -216,7 +216,7 @@ impl<T: TimeWiseAddTreatment> TimeWiseData<T> {
                 orders.push((o / s).into())
             } else {
                 // can't estimate error if the number of samples in any block is 0
-                return None;
+                return Some(f32::NAN);
             }
         }
 

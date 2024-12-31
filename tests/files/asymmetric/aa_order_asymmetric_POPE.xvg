@@ -1,0 +1,82 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'aa_asym.tpr' and trajectory file 'aa_asym.xtc'.
+@    title "Atomistic order parameters for molecule type POPE"
+@    xaxis label "Atom"
+@    yaxis label "-Sch"
+@    s0 legend "Full membrane"
+@    s1 legend "Upper leaflet"
+@    s2 legend "Lower leaflet"
+@TYPE xy
+# Atom C12:
+1      0.0143      NaN   0.0143 
+# Atom C11:
+2     -0.0649      NaN  -0.0649 
+# Atom C1:
+3      0.2319      NaN   0.2319 
+# Atom C2:
+4      0.2148      NaN   0.2148 
+# Atom C22:
+5      0.1025      NaN   0.1025 
+# Atom C3:
+6      0.0946      NaN   0.0946 
+# Atom C32:
+7      0.2303      NaN   0.2303 
+# Atom C23:
+8      0.2388      NaN   0.2388 
+# Atom C24:
+9      0.2481      NaN   0.2481 
+# Atom C25:
+10     0.2475      NaN   0.2475 
+# Atom C26:
+11     0.2283      NaN   0.2283 
+# Atom C27:
+12     0.2177      NaN   0.2177 
+# Atom C28:
+13     0.1294      NaN   0.1294 
+# Atom C29:
+14     0.0852      NaN   0.0852 
+# Atom C210:
+15     0.0852      NaN   0.0852 
+# Atom C211:
+16     0.1120      NaN   0.1120 
+# Atom C212:
+17     0.1808      NaN   0.1808 
+# Atom C213:
+18     0.1936      NaN   0.1936 
+# Atom C214:
+19     0.1976      NaN   0.1976 
+# Atom C215:
+20     0.1773      NaN   0.1773 
+# Atom C216:
+21     0.1615      NaN   0.1615 
+# Atom C217:
+22     0.1229      NaN   0.1229 
+# Atom C218:
+23     0.0411      NaN   0.0411 
+# Atom C33:
+24     0.2089      NaN   0.2089 
+# Atom C34:
+25     0.2510      NaN   0.2510 
+# Atom C35:
+26     0.2645      NaN   0.2645 
+# Atom C36:
+27     0.2798      NaN   0.2798 
+# Atom C37:
+28     0.2744      NaN   0.2744 
+# Atom C38:
+29     0.2764      NaN   0.2764 
+# Atom C39:
+30     0.2616      NaN   0.2616 
+# Atom C310:
+31     0.2501      NaN   0.2501 
+# Atom C311:
+32     0.2360      NaN   0.2360 
+# Atom C312:
+33     0.2169      NaN   0.2169 
+# Atom C313:
+34     0.1956      NaN   0.1956 
+# Atom C314:
+35     0.1688      NaN   0.1688 
+# Atom C315:
+36     0.1247      NaN   0.1247 
+# Atom C316:
+37     0.0398      NaN   0.0398 

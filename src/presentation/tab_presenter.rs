@@ -130,9 +130,10 @@ impl TabWrite for Order {
         writer: &mut impl Write,
         _properties: &TabProperties,
     ) -> Result<(), WriteError> {
-        match self.error {
-            Some(e) => write_result!(writer, " {: >7.4} ± {: ^7.4} ", self.value, e),
-            None => write_result!(writer, " {: ^8.4} ", self.value),
+        match (self.value.is_nan(), self.error) {
+            (false, Some(e)) => write_result!(writer, " {: >7.4} ± {: ^7.4} ", self.value, e),
+            (_, None) => write_result!(writer, " {: ^8.4} ", self.value),
+            (true, Some(_)) => write_result!(writer, " {: ^17.4} ", f32::NAN),
         }
 
         Ok(())

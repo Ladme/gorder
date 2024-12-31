@@ -1,0 +1,101 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'cg_asym.tpr' and trajectory file 'cg_asym.xtc'.
+POPE:
+  average order:
+    total: 0.3175
+    upper: 0.3175
+    lower: .nan
+  order parameters:
+    POPE NH3 (0) - POPE PO4 (1):
+      total: -0.1357
+      upper: -0.1357
+      lower: .nan
+    POPE PO4 (1) - POPE GL1 (2):
+      total: 0.6157
+      upper: 0.6157
+      lower: .nan
+    POPE GL1 (2) - POPE GL2 (3):
+      total: -0.174
+      upper: -0.174
+      lower: .nan
+    POPE GL1 (2) - POPE C1A (4):
+      total: 0.4018
+      upper: 0.4018
+      lower: .nan
+    POPE GL2 (3) - POPE C1B (8):
+      total: 0.5144
+      upper: 0.5144
+      lower: .nan
+    POPE C1A (4) - POPE D2A (5):
+      total: 0.3983
+      upper: 0.3983
+      lower: .nan
+    POPE D2A (5) - POPE C3A (6):
+      total: 0.3174
+      upper: 0.3174
+      lower: .nan
+    POPE C3A (6) - POPE C4A (7):
+      total: 0.2647
+      upper: 0.2647
+      lower: .nan
+    POPE C1B (8) - POPE C2B (9):
+      total: 0.5346
+      upper: 0.5346
+      lower: .nan
+    POPE C2B (9) - POPE C3B (10):
+      total: 0.4551
+      upper: 0.4551
+      lower: .nan
+    POPE C3B (10) - POPE C4B (11):
+      total: 0.3002
+      upper: 0.3002
+      lower: .nan
+POPG:
+  average order:
+    total: 0.2926
+    upper: .nan
+    lower: 0.2926
+  order parameters:
+    POPG GL0 (0) - POPG PO4 (1):
+      total: -0.0017
+      upper: .nan
+      lower: -0.0017
+    POPG PO4 (1) - POPG GL1 (2):
+      total: 0.5924
+      upper: .nan
+      lower: 0.5924
+    POPG GL1 (2) - POPG GL2 (3):
+      total: -0.1683
+      upper: .nan
+      lower: -0.1683
+    POPG GL1 (2) - POPG C1A (4):
+      total: 0.3901
+      upper: .nan
+      lower: 0.3901
+    POPG GL2 (3) - POPG C1B (8):
+      total: 0.4888
+      upper: .nan
+      lower: 0.4888
+    POPG C1A (4) - POPG D2A (5):
+      total: 0.3606
+      upper: .nan
+      lower: 0.3606
+    POPG D2A (5) - POPG C3A (6):
+      total: 0.256
+      upper: .nan
+      lower: 0.256
+    POPG C3A (6) - POPG C4A (7):
+      total: 0.201
+      upper: .nan
+      lower: 0.201
+    POPG C1B (8) - POPG C2B (9):
+      total: 0.485
+      upper: .nan
+      lower: 0.485
+    POPG C2B (9) - POPG C3B (10):
+      total: 0.3803
+      upper: .nan
+      lower: 0.3803
+    POPG C3B (10) - POPG C4B (11):
+      total: 0.2345
+      upper: .nan
+      lower: 0.2345

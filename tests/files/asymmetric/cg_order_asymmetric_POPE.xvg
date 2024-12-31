@@ -1,0 +1,30 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'cg_asym.tpr' and trajectory file 'cg_asym.xtc'.
+@    title "Coarse-grained order parameters for molecule type POPE"
+@    xaxis label "Bond"
+@    yaxis label "S"
+@    s0 legend "Full membrane"
+@    s1 legend "Upper leaflet"
+@    s2 legend "Lower leaflet"
+@TYPE xy
+# Bond NH3 - PO4:
+1     -0.1357  -0.1357      NaN 
+# Bond PO4 - GL1:
+2      0.6157   0.6157      NaN 
+# Bond GL1 - GL2:
+3     -0.1740  -0.1740      NaN 
+# Bond GL1 - C1A:
+4      0.4018   0.4018      NaN 
+# Bond GL2 - C1B:
+5      0.5144   0.5144      NaN 
+# Bond C1A - D2A:
+6      0.3983   0.3983      NaN 
+# Bond D2A - C3A:
+7      0.3174   0.3174      NaN 
+# Bond C3A - C4A:
+8      0.2647   0.2647      NaN 
+# Bond C1B - C2B:
+9      0.5346   0.5346      NaN 
+# Bond C2B - C3B:
+10     0.4551   0.4551      NaN 
+# Bond C3B - C4B:
+11     0.3002   0.3002      NaN 
