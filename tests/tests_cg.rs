@@ -1481,6 +1481,71 @@ fn test_cg_order_convergence_step() {
 }
 
 #[test]
+fn test_cg_order_leaflets_scrambling_various_methods_and_frequencies() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for n_threads in [1, 2, 5, 8, 128] {
+        for method in [
+            LeafletClassification::global("@membrane", "name PO4"),
+            LeafletClassification::local("@membrane", "name PO4", 3.0),
+            LeafletClassification::individual("name PO4", "name C4A C4B"),
+        ] {
+            for freq in [
+                Frequency::every(1).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ] {
+                let analysis = Analysis::builder()
+                    .structure("tests/files/scrambling/cg_scrambling.tpr")
+                    .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                    .analysis_type(AnalysisType::cgorder("@membrane"))
+                    .output_yaml(path_to_output)
+                    .leaflets(method.clone().with_frequency(freq))
+                    .n_threads(n_threads)
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                analysis.run().unwrap().write().unwrap();
+
+                let test_file = match (method.clone(), freq) {
+                    (LeafletClassification::Global(_), Frequency::Every(n)) if n.get() == 1 => {
+                        "order_global.yaml"
+                    }
+                    (LeafletClassification::Global(_), Frequency::Every(n)) if n.get() == 10 => {
+                        "order_global_every_10.yaml"
+                    }
+                    (LeafletClassification::Local(_), Frequency::Every(n)) if n.get() == 1 => {
+                        "order_local.yaml"
+                    }
+                    (LeafletClassification::Local(_), Frequency::Every(n)) if n.get() == 10 => {
+                        "order_local_every_10.yaml"
+                    }
+                    (LeafletClassification::Individual(_), Frequency::Every(n)) if n.get() == 1 => {
+                        "order_individual.yaml"
+                    }
+                    (LeafletClassification::Individual(_), Frequency::Every(n))
+                        if n.get() == 10 =>
+                    {
+                        "order_individual_every_10.yaml"
+                    }
+                    (_, Frequency::Once) => "order_once.yaml",
+                    _ => unreachable!("Unexpected method-frequency combination."),
+                };
+
+                assert!(diff_files_ignore_first(
+                    path_to_output,
+                    &format!("tests/files/scrambling/{}", test_file),
+                    1
+                ));
+            }
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/cg.tpr")

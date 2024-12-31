@@ -1,0 +1,51 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'cg_scrambling.tpr' and trajectory file 'cg_scrambling.xtc'.
+POPC:
+  average order:
+    total: 0.272
+    upper: 0.2766
+    lower: 0.2673
+  order parameters:
+    POPC NC3 (0) - POPC PO4 (1):
+      total: -0.1276
+      upper: -0.1263
+      lower: -0.1289
+    POPC PO4 (1) - POPC GL1 (2):
+      total: 0.5738
+      upper: 0.5707
+      lower: 0.577
+    POPC GL1 (2) - POPC GL2 (3):
+      total: -0.1764
+      upper: -0.1747
+      lower: -0.1783
+    POPC GL1 (2) - POPC C1A (4):
+      total: 0.3707
+      upper: 0.3695
+      lower: 0.3721
+    POPC GL2 (3) - POPC C1B (8):
+      total: 0.4643
+      upper: 0.4676
+      lower: 0.461
+    POPC C1A (4) - POPC D2A (5):
+      total: 0.3332
+      upper: 0.3343
+      lower: 0.3321
+    POPC D2A (5) - POPC C3A (6):
+      total: 0.2558
+      upper: 0.2649
+      lower: 0.2464
+    POPC C3A (6) - POPC C4A (7):
+      total: 0.2086
+      upper: 0.2195
+      lower: 0.1973
+    POPC C1B (8) - POPC C2B (9):
+      total: 0.4657
+      upper: 0.4746
+      lower: 0.4566
+    POPC C2B (9) - POPC C3B (10):
+      total: 0.3817
+      upper: 0.3918
+      lower: 0.3713
+    POPC C3B (10) - POPC C4B (11):
+      total: 0.2424
+      upper: 0.2512
+      lower: 0.2333
