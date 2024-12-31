@@ -6,12 +6,12 @@
 use std::fmt;
 
 use getset::{CopyGetters, Getters};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::frequency::Frequency;
 
 /// Parameters for the classification of lipids into membrane leaflets.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum LeafletClassification {
     Global(GlobalParams),
     Local(LocalParams),
@@ -114,7 +114,7 @@ impl LeafletClassification {
 }
 
 /// Based on the global membrane center of geometry; useful for disrupted membranes; fast.
-#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct GlobalParams {
     /// Selection of all lipids forming the membrane.
@@ -132,7 +132,7 @@ pub struct GlobalParams {
 
 /// Parameters for classification of lipids.
 /// Based on the local membrane center of geometry; useful for curved membranes; slow.
-#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct LocalParams {
     /// Selection of all lipids forming the membrane.
@@ -153,7 +153,7 @@ pub struct LocalParams {
 
 /// Parameters for classification of lipids.
 /// Based on the orientation of the lipid tails; less reliable; fast.
-#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct IndividualParams {
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).

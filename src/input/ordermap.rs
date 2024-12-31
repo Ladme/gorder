@@ -8,12 +8,12 @@ use std::fmt;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters, Setters};
 use groan_rs::prelude::{SimBox, Vector3D};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::errors::{GridSpanError, OrderMapConfigError};
 
 /// Orientation of the order map. Should correspond to the plane in which the membrane is built.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
 pub enum Plane {
     #[default]
     #[serde(alias = "xy")]
@@ -65,7 +65,7 @@ impl fmt::Display for Plane {
 }
 
 /// Parameters for constructing ordermaps.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize)]
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct OrderMap {
@@ -217,7 +217,7 @@ impl OrderMapBuilder {
 }
 
 /// Specifies the span of an ordermap grid.
-#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub enum GridSpan {
     /// Span should be obtained from the input structure file.

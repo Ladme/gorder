@@ -3,12 +3,12 @@
 
 use std::{num::NonZeroUsize, ops::Mul};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{errors::FrequencyError, PANIC_MESSAGE};
 
 /// Frequency of some action being performed.
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub enum Frequency {
     /// Perform the action every N analyzed trajectory frames.

@@ -114,11 +114,18 @@ pub enum WriteError {
     )]
     CouldNotWriteYaml(serde_yaml::Error),
 
-    #[error("{} could not write results in the output file ({})", "error:".red().bold(), .0)]
+    #[error("{} could not export analysis options in yaml format (serde_yaml error: `{}`)", "error:".red().bold(), .0.to_string()
+    )]
+    CouldNotExportAnalysis(serde_yaml::Error),
+
+    #[error("{} could not write results to the output file ({})", "error:".red().bold(), .0)]
     CouldNotWriteResults(std::io::Error),
 
     #[error("{}", .0)]
     CouldNotWriteOrderMap(OrderMapWriteError),
+
+    #[error("{} could not write a line to the output file '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotWriteLine(Box<Path>),
 }
 
 /// Errors that can occur while writing the order maps.

@@ -1,0 +1,7 @@
+# Test file for binary application. Writing of the analysis results should fail.
+structure: tests/files/pcpepg.tpr
+trajectory: tests/files/pcpepg.xtc
+type: !AAOrder
+  heavy_atoms: "@membrane and element name carbon"
+  hydrogens: "@membrane and element name hydrogen"
+output_yaml: this_directory_does_not_exist/temp_aa_order.yaml

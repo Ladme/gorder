@@ -75,6 +75,14 @@ impl AnalysisResults {
             AnalysisResults::CG(x) => x.n_analyzed_frames(),
         }
     }
+
+    /// Get the analysis options.
+    pub fn analysis(&self) -> &Analysis {
+        match self {
+            AnalysisResults::AA(x) => x.analysis(),
+            AnalysisResults::CG(x) => x.analysis(),
+        }
+    }
 }
 
 /// Type alias for a gridmap of f32 values.

@@ -9,7 +9,7 @@ use std::path::Path;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
 use getset::{MutGetters, Setters};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::errors::ConfigError;
 
@@ -18,7 +18,7 @@ use super::OrderMap;
 use super::{Axis, EstimateError};
 
 /// Type of analysis to perform.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub enum AnalysisType {
     AAOrder {
@@ -76,7 +76,9 @@ impl AnalysisType {
 }
 
 /// Structure holding all the information necessary to perform the analysis.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, MutGetters, Deserialize)]
+#[derive(
+    Debug, Clone, Builder, Getters, CopyGetters, Setters, MutGetters, Deserialize, Serialize,
+)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
@@ -264,6 +266,7 @@ where
         serde_yaml::Value::String(keyword) if keyword == "default" || keyword == "true" => {
             Ok(Some(OrderMap::default()))
         }
+        serde_yaml::Value::Null => Ok(None),
         serde_yaml::Value::Bool(true) => Ok(Some(OrderMap::default())),
         serde_yaml::Value::Bool(false) => Err(serde::de::Error::custom("Invalid value 'false' for 'order_map'. If you do not want to calculate ordermaps, just omit this field.")),
         serde_yaml::Value::Mapping(_) => serde_yaml::from_value(value)
@@ -285,6 +288,7 @@ where
         serde_yaml::Value::String(keyword) if keyword == "default" => {
             Ok(Some(EstimateError::default()))
         }
+        serde_yaml::Value::Null => Ok(None),
         serde_yaml::Value::Bool(true) => Ok(Some(EstimateError::default())),
         serde_yaml::Value::Bool(false) => Err(serde::de::Error::custom("Invalid value 'false' for 'estimate_error'. If you do not want to calculate error, just omit this field.")),
         serde_yaml::Value::Mapping(_) => serde_yaml::from_value(value)

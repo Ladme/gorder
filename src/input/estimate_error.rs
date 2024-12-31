@@ -5,13 +5,13 @@
 
 use crate::errors::ErrorEstimationError;
 use getset::{CopyGetters, Getters};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Default number of blocks to use for error estimation.
 const DEFAULT_N_BLOCKS: usize = 5;
 
 /// Parameters for estimating the error of the analysis.
-#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
 pub struct EstimateError {
     /// Number of blocks to divide the trajectory into for error estimation.
     /// Default value is 5 and you should not tweak it to get lower error estimates.

@@ -6,14 +6,14 @@
 use std::fmt;
 
 use groan_rs::prelude::{Dimension, Vector3D};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::PANIC_MESSAGE;
 
 use super::ordermap::Plane;
 
 /// Represents the X, Y, or Z axis.
-#[derive(Debug, Clone, PartialEq, Eq, Copy, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Deserialize, Serialize)]
 pub enum Axis {
     #[serde(alias = "x")]
     X,

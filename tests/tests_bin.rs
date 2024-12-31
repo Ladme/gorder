@@ -136,6 +136,72 @@ fn test_bin_estimate_error() {
 }
 
 #[test]
+fn test_bin_cg_order_maps_export_config() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/maps_cg_for_export_config.yaml",
+            "--overwrite",
+            "--export-config",
+            "temp_analysis_out.yaml",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    // remove everything and rerun the analysis using output config to check that it works
+    std::fs::remove_file("temp_cg_order_maps_for_export_config.yaml").unwrap();
+    std::fs::remove_dir_all("temp_cg_ordermaps_for_export_config").unwrap();
+
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args(["temp_analysis_out.yaml", "--overwrite"])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_order_maps_for_export_config.yaml",
+        "tests/files/cg_order_small.yaml",
+        1
+    ));
+    std::fs::remove_file("temp_cg_order_maps_for_export_config.yaml").unwrap();
+
+    let expected_file_names = [
+        "ordermap_POPC-C1B-8--POPC-C2B-9_full.dat",
+        "ordermap_POPC-C2B-9--POPC-C3B-10_full.dat",
+        "ordermap_POPC-C3B-10--POPC-C4B-11_full.dat",
+        "ordermap_average_full.dat",
+    ];
+
+    for file in expected_file_names {
+        let real_file = format!("temp_cg_ordermaps_for_export_config/POPC/{}", file);
+        let test_file = format!("tests/files/ordermaps_cg/{}", file);
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+    }
+
+    std::fs::remove_dir_all("temp_cg_ordermaps_for_export_config").unwrap();
+    std::fs::remove_file("temp_analysis_out.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_aa_order_writing_fail() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/writing_fail.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .failure()
+        .stdout("")
+        .stderr(
+            "[E] error: could not create file \'this_directory_does_not_exist/temp_aa_order.yaml\'\n",
+        );
+}
+
+#[test]
 fn test_bin_aa_order_fail() {
     Command::cargo_bin("gorder")
         .unwrap()
@@ -178,4 +244,32 @@ fn test_bin_missing_maps_output_fail() {
         .failure()
         .stdout("")
         .stderr("[E] error: no output directory for ordermaps specified in the configuration file \'tests/files/inputs/default_ordermap.yaml\'\n");
+}
+
+#[test]
+fn test_bin_output_config_writing_fails() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/basic_aa_config_fails.yaml",
+            "--silent",
+            "--overwrite",
+            "--export-config",
+            "this_directory_does_not_exist/analysis_out.yaml",
+        ])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr(
+            "[E] Analysis completed successfully, but exporting the analysis options failed!
+ |      error: could not create file \'this_directory_does_not_exist/analysis_out.yaml\'\n",
+        );
+
+    assert!(diff_files_ignore_first(
+        "temp_aa_order_config_fails.yaml",
+        "tests/files/aa_order_basic.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_aa_order_config_fails.yaml").unwrap();
 }
