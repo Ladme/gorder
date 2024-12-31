@@ -10,12 +10,13 @@ use crate::errors::AnalysisError;
 use crate::input::EstimateError;
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::OrderMap, PANIC_MESSAGE};
+use colored::Colorize;
 use groan_rs::prelude::Dimension;
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
 use once_cell::unsync::OnceCell;
 
-/// A prefix used as an identifier for Gorder groups.
+/// A prefix used as an identifier for gorder groups.
 pub(super) const GORDER_GROUP_PREFIX: &str = "xxxGorderReservedxxx-";
 
 #[macro_use]
@@ -27,6 +28,25 @@ pub(crate) mod macros {
     }
 
     pub(crate) use group_name;
+}
+
+/// Return a (hopefully) useful hint that can help solving an empty group error.
+fn get_hint(group: &str) -> String {
+    let (yaml_name, yaml_type) = match group {
+        "HeavyAtoms" => ("heavy_atoms".bright_blue(), "analysis_type".bright_blue()),
+        "Hydrogens" => ("hydrogens".bright_blue(), "analysis_type".bright_blue()),
+        "Beads" => ("beads".bright_blue(), "analysis_type".bright_blue()),
+        "Membrane" => ("membrane".bright_blue(), "leaflets".bright_blue()),
+        "Heads" => ("heads".bright_blue(), "leaflets".bright_blue()),
+        "Methyls" => ("methyls".bright_blue(), "leaflets".bright_blue()),
+        // unknown group name; this should not happen, but it's not important so we will pretend it's okay
+        _ => return String::from("a query specifying the group selects no atoms"),
+    };
+
+    format!(
+        "the query specified for '{}' inside '{}' selects no atoms; is the query correct?",
+        yaml_name, yaml_type
+    )
 }
 
 /// Create a group while handling all potential errors. Also check that the group is not empty.
@@ -54,7 +74,11 @@ pub(super) fn create_group(
             group, PANIC_MESSAGE,
         )
     }) {
-        Err(TopologyError::EmptyGroup(group.to_owned()))
+        let hint = get_hint(group);
+        Err(TopologyError::EmptyGroup {
+            group: group.to_owned(),
+            hint,
+        })
     } else {
         Ok(())
     }

@@ -9,3 +9,4 @@
 - Changed how average order parameters for heavy atoms are calculated leading to situations where you may get order parameter for an atom even if all order parameters for its bonds are reported as NaN.
 - Fixed a small bug which caused rounding errors to be different between YAML and the other formats occasionally leading to slightly different results.
 - CG bonds in XVG files are now correctly numbered starting from 1.
+- Some errors should be more understandable.

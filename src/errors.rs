@@ -31,11 +31,17 @@ pub enum FrequencyError {
 /// Errors that can occur when analyzing system topology.
 #[derive(Error, Debug)]
 pub enum TopologyError {
-    #[error("{}", .0)]
+    #[error("{} {}", .0, 
+        if matches!(.0, SelectError::GroupNotFound(_)) {
+            format!("({} one of your atom selection queries uses a name for a group not defined in your system; maybe an NDX file is missing?)", "hint:".blue().bold()) 
+        } else {
+            String::from("")
+        }
+    )]
     InvalidQuery(SelectError),
 
-    #[error("{} group '{}' is empty", "error:".red().bold(), .0.yellow())]
-    EmptyGroup(String),
+    #[error("{} group '{}' is empty ({} {})", "error:".red().bold(), .group.yellow(), "hint:".blue().bold(), .hint)]
+    EmptyGroup { group: String, hint: String },
 
     #[error("{} {} atoms are part of both '{}' (query: '{}') and '{}' (query: '{}')", "error:".red().bold(), .n_overlapping.to_string().yellow(), .name1.yellow(), .query1.yellow(), .name2.yellow(), .query2.yellow()
     )]
