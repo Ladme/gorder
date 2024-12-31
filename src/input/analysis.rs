@@ -273,7 +273,7 @@ where
             .map(Some)
             .map_err(serde::de::Error::custom),
         _ => Err(serde::de::Error::custom(
-            "Invalid value for 'order_map'. Expected 'default', 'true', 'null' or a valid structure.",
+            "Invalid value for 'order_map'. Expected 'default', 'true', 'null', or a valid structure.",
         )),
     }
 }
@@ -700,7 +700,7 @@ mod tests_yaml {
         match Analysis::from_file("tests/files/inputs/ordermap_unknown_keyword.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
             Err(e) => assert!(e.to_string().contains(
-                "Invalid value for 'order_map'. Expected 'default', 'true', or a valid structure."
+                "Invalid value for 'order_map'. Expected 'default', 'true', 'null', or a valid structure."
             )),
         }
     }
@@ -721,7 +721,7 @@ mod tests_yaml {
         match Analysis::from_file("tests/files/inputs/estimate_error_unknown_keyword.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
             Err(e) => assert!(e.to_string().contains(
-                "Invalid value for 'estimate_error'. Expected 'default', 'true', or a valid structure."
+                "Invalid value for 'estimate_error'. Expected 'default', 'true', 'null', or a valid structure."
             )),
         }
     }
