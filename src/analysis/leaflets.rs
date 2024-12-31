@@ -235,6 +235,16 @@ impl MoleculeLeafletClassification {
         }
     }
 
+    /// Determine whether assignment should be performed for this trajectory frame.
+    #[inline(always)]
+    fn should_assign(&self, current_frame: usize) -> bool {
+        match self.get_frequency() {
+            Frequency::Once if current_frame == 0 => true,
+            Frequency::Every(n) if current_frame % n == 0 => true,
+            _ => false,
+        }
+    }
+
     /// Assign all lipids into their respective leaflets.
     #[inline]
     pub(super) fn assign_lipids(
@@ -243,6 +253,10 @@ impl MoleculeLeafletClassification {
         current_frame: usize,
         membrane_center: &OnceCell<Vector3D>, // only used for the `global` classification method
     ) -> Result<(), AnalysisError> {
+        if !self.should_assign(current_frame) {
+            return Ok(());
+        }
+
         match self.get_frequency() {
             Frequency::Once if current_frame == 0 => (), // continue
             Frequency::Every(n) if current_frame % n == 0 => (), // continue
@@ -709,7 +723,7 @@ This may be due to resource contention or a bug. Ensure that your CPU is not ove
 If `gorder` is causing oversubscription, reduce the number of threads used for the analysis.
 If other computationally intensive software is running alongside `gorder`, consider terminating it.
 If the issue persists, please report it by opening an issue at `github.com/Ladme/gorder/issues` or sending an email to `ladmeb@gmail.com`. 
-(Note: This thread will terminate in {} seconds to prevent resource exhaustion.)",
+(Note: If no progress is made, this thread will terminate in {} seconds to prevent resource exhaustion.)",
                     frame,
                     TIMEOUT_SECONDS,
                     HARD_TIMEOUT_SECONDS - TIMEOUT_SECONDS,
@@ -1203,13 +1217,325 @@ mod tests {
         MoleculeLeafletClassification::Individual,
         Frequency::Every(_)
     );
+
+    #[test]
+    fn test_should_assign_every() {
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::individual("name P", "name C218 C316"),
+            Dimension::Z,
+            1,
+            1,
+        );
+
+        for i in 0..50 {
+            assert!(classifier.should_assign(i));
+        }
+
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::global("@membrane", "name P"),
+            Dimension::Z,
+            1,
+            5,
+        );
+
+        assert!(classifier.should_assign(0));
+        assert!(!classifier.should_assign(1));
+        assert!(!classifier.should_assign(7));
+        assert!(classifier.should_assign(10));
+        assert!(classifier.should_assign(15));
+        assert!(!classifier.should_assign(16));
+
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::local("@membrane", "name P", 2.5),
+            Dimension::Z,
+            3,
+            5,
+        );
+
+        assert!(classifier.should_assign(0));
+        assert!(!classifier.should_assign(1));
+        assert!(!classifier.should_assign(7));
+        assert!(classifier.should_assign(10));
+        assert!(classifier.should_assign(15));
+        assert!(!classifier.should_assign(16));
+
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::global("@membrane", "name P")
+                .with_frequency(Frequency::every(4).unwrap()),
+            Dimension::Z,
+            1,
+            1,
+        );
+
+        assert!(classifier.should_assign(0));
+        assert!(!classifier.should_assign(1));
+        assert!(classifier.should_assign(8));
+        assert!(!classifier.should_assign(9));
+        assert!(!classifier.should_assign(10));
+        assert!(!classifier.should_assign(11));
+        assert!(classifier.should_assign(12));
+        assert!(classifier.should_assign(40));
+
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::individual("name P", "name C218 C316")
+                .with_frequency(Frequency::every(5).unwrap()),
+            Dimension::Z,
+            1,
+            7,
+        );
+
+        assert!(classifier.should_assign(0));
+        assert!(!classifier.should_assign(1));
+        assert!(!classifier.should_assign(5));
+        assert!(!classifier.should_assign(7));
+        assert!(classifier.should_assign(35));
+        assert!(!classifier.should_assign(50));
+        assert!(classifier.should_assign(70));
+        assert!(!classifier.should_assign(244));
+        assert!(classifier.should_assign(245));
+
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::local("@membrane", "name P", 2.5)
+                .with_frequency(Frequency::every(2).unwrap()),
+            Dimension::Z,
+            6,
+            11,
+        );
+
+        assert!(classifier.should_assign(0));
+        assert!(!classifier.should_assign(1));
+        assert!(!classifier.should_assign(2));
+        assert!(!classifier.should_assign(6));
+        assert!(!classifier.should_assign(11));
+        assert!(classifier.should_assign(22));
+        assert!(!classifier.should_assign(33));
+        assert!(classifier.should_assign(44));
+        assert!(!classifier.should_assign(813));
+        assert!(classifier.should_assign(814));
+        assert!(!classifier.should_assign(815));
+    }
+
+    #[test]
+    fn test_should_assign_once() {
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::global("@membrane", "name P").with_frequency(Frequency::once()),
+            Dimension::Z,
+            1,
+            1,
+        );
+
+        assert!(classifier.should_assign(0));
+        for i in 1..51 {
+            assert!(!classifier.should_assign(i));
+        }
+
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::individual("name P", "name C218 C316")
+                .with_frequency(Frequency::once()),
+            Dimension::Z,
+            1,
+            7,
+        );
+
+        assert!(classifier.should_assign(0));
+        for i in 1..51 {
+            assert!(!classifier.should_assign(i));
+        }
+
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::local("@membrane", "name P", 2.5)
+                .with_frequency(Frequency::once()),
+            Dimension::Z,
+            6,
+            11,
+        );
+
+        assert!(classifier.should_assign(0));
+        for i in 1..51 {
+            assert!(!classifier.should_assign(i));
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests_assigned_leaflets {
     use super::*;
 
-    // TODO: tests
+    #[test]
+    fn test_get_assigned_leaflet_local_no_shared() {
+        let mut data = AssignedLeaflets {
+            local: Some(vec![Leaflet::Upper, Leaflet::Lower, Leaflet::Upper]),
+            local_frame: Some(0),
+            shared: None,
+        };
+
+        let assignment = data.get_assigned_leaflet(1, 0, Frequency::every(4).unwrap());
+        assert_eq!(assignment, Leaflet::Lower);
+        assert!(data.shared.is_none());
+
+        let assignment = data.get_assigned_leaflet(1, 0, Frequency::once());
+        assert_eq!(assignment, Leaflet::Lower);
+        assert!(data.shared.is_none());
+    }
+
+    #[test]
+    fn test_get_assigned_leaflet_local_and_shared() {
+        // should be ignored since local data is loaded
+        let shared = SharedAssignedLeaflets(Arc::new(Mutex::new(
+            [(0, vec![Leaflet::Upper, Leaflet::Upper, Leaflet::Upper])].into(),
+        )));
+
+        let mut data = AssignedLeaflets {
+            local: Some(vec![Leaflet::Upper, Leaflet::Lower, Leaflet::Upper]),
+            local_frame: Some(0),
+            shared: Some(shared),
+        };
+
+        let assignment = data.get_assigned_leaflet(1, 0, Frequency::every(4).unwrap());
+        assert_eq!(assignment, Leaflet::Lower);
+
+        let assignment = data.get_assigned_leaflet(1, 0, Frequency::once());
+        assert_eq!(assignment, Leaflet::Lower);
+    }
+
+    #[test]
+    fn test_get_assigned_leaflet_shared_only() {
+        let shared = SharedAssignedLeaflets(Arc::new(Mutex::new(
+            [(0, vec![Leaflet::Upper, Leaflet::Lower, Leaflet::Upper])].into(),
+        )));
+
+        let mut data = AssignedLeaflets {
+            local: None,
+            local_frame: None,
+            shared: Some(shared),
+        };
+
+        let assignment = data.get_assigned_leaflet(1, 0, Frequency::every(4).unwrap());
+        assert_eq!(assignment, Leaflet::Lower);
+        let local = data.local.as_ref().unwrap();
+        assert_eq!(local[0], Leaflet::Upper);
+        assert_eq!(local[1], Leaflet::Lower);
+        assert_eq!(local[2], Leaflet::Upper);
+        assert_eq!(data.local_frame.unwrap(), 0);
+
+        // reset local data
+        data.local = None;
+        data.local_frame = None;
+
+        let assignment = data.get_assigned_leaflet(1, 0, Frequency::once());
+        assert_eq!(assignment, Leaflet::Lower);
+        let local = data.local.as_ref().unwrap();
+        assert_eq!(local[0], Leaflet::Upper);
+        assert_eq!(local[1], Leaflet::Lower);
+        assert_eq!(local[2], Leaflet::Upper);
+        assert_eq!(data.local_frame.unwrap(), 0);
+
+        // if shared data change, `get_assigne_leaflet` should still provide the same assignment since it's already loaded to local
+        data.shared = None;
+
+        let assignment = data.get_assigned_leaflet(1, 0, Frequency::every(1).unwrap());
+        assert_eq!(assignment, Leaflet::Lower);
+        let local = data.local.as_ref().unwrap();
+        assert_eq!(local[0], Leaflet::Upper);
+        assert_eq!(local[1], Leaflet::Lower);
+        assert_eq!(local[2], Leaflet::Upper);
+        assert_eq!(data.local_frame.unwrap(), 0);
+    }
+
+    #[test]
+    fn test_copy_from_shared() {
+        let shared = SharedAssignedLeaflets(Arc::new(Mutex::new(
+            [
+                (0, vec![Leaflet::Upper, Leaflet::Lower, Leaflet::Upper]),
+                (10, vec![Leaflet::Lower, Leaflet::Upper, Leaflet::Lower]),
+                (21, vec![Leaflet::Upper, Leaflet::Upper, Leaflet::Lower]),
+            ]
+            .into(),
+        )));
+
+        let mut data = AssignedLeaflets {
+            local: None,
+            local_frame: None,
+            shared: Some(shared),
+        };
+
+        data.copy_from_shared_assignment(10);
+        assert_eq!(data.get_leaflet_from_local(2), Leaflet::Lower);
+        assert_eq!(data.local_frame.unwrap(), 10);
+
+        data.copy_from_shared_assignment(0);
+        assert_eq!(data.get_leaflet_from_local(2), Leaflet::Upper);
+        assert_eq!(data.local_frame.unwrap(), 0);
+
+        data.copy_from_shared_assignment(21);
+        assert_eq!(data.get_leaflet_from_local(2), Leaflet::Lower);
+        assert_eq!(data.local_frame.unwrap(), 21);
+    }
+
+    fn prepare_data(use_shared: bool) -> (System, GlobalClassification, AssignedLeaflets) {
+        let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::global("@membrane", "name P"),
+            Dimension::Z,
+            1,
+            1,
+        );
+
+        let membrane_center = system
+            .selection_iter("@membrane")
+            .unwrap()
+            .get_center()
+            .unwrap();
+
+        let mut extracted_classifier = match classifier {
+            MoleculeLeafletClassification::Global(x, _) => x,
+            _ => panic!("Unexpected classification method."),
+        };
+
+        extracted_classifier.heads_mut().push(1385);
+        extracted_classifier.heads_mut().push(11885);
+        extracted_classifier.set_membrane_center(membrane_center);
+
+        let data = AssignedLeaflets {
+            local: None,
+            local_frame: None,
+            shared: if use_shared {
+                Some(SharedAssignedLeaflets::default())
+            } else {
+                None
+            },
+        };
+
+        (system, extracted_classifier, data)
+    }
+
+    #[test]
+    fn test_assign_lipids_no_shared() {
+        let (system, classifier, mut leaflets) = prepare_data(false);
+
+        leaflets.assign_lipids(&system, &classifier, 15).unwrap();
+
+        assert_eq!(leaflets.local_frame.unwrap(), 15);
+        assert_eq!(leaflets.get_leaflet_from_local(0), Leaflet::Upper);
+        assert_eq!(leaflets.get_leaflet_from_local(1), Leaflet::Lower);
+        assert!(leaflets.shared.is_none());
+    }
+
+    #[test]
+    fn test_assign_lipids_with_shared() {
+        let (system, classifier, mut leaflets) = prepare_data(true);
+
+        leaflets.assign_lipids(&system, &classifier, 15).unwrap();
+
+        assert_eq!(leaflets.local_frame.unwrap(), 15);
+        assert_eq!(leaflets.get_leaflet_from_local(0), Leaflet::Upper);
+        assert_eq!(leaflets.get_leaflet_from_local(1), Leaflet::Lower);
+
+        let mutex = leaflets.shared.as_ref().unwrap().0.lock();
+        let shared = mutex.get(&15).unwrap();
+        assert_eq!(shared[0], Leaflet::Upper);
+        assert_eq!(shared[1], Leaflet::Lower);
+    }
 }
 
 #[cfg(test)]
