@@ -37,7 +37,7 @@ $ gorder YOUR_INPUT_YAML_FILE
 
 ## Features
 - **Atomistic and coarse-grained systems.** `gorder` is able to calculate atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
-- **Powerful selection language.** `gorder` allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files.
+- **Powerful selection language.** `gorder` allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files. (Read more about the language [here](https://ladme.github.io/gsl-guide/).)
 - **Largely automatic.** `gorder` automatically recognizes bonds and classifies molecule types based on their topology.
 - **Various output formats.** `gorder` can output results in YAML, XVG, CSV, and custom "table" format.
 - **Leaflet-wise analysis.** `gorder` can perform scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculate lipid order parameters for individual leaflets.
