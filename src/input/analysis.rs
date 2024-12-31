@@ -273,7 +273,7 @@ where
             .map(Some)
             .map_err(serde::de::Error::custom),
         _ => Err(serde::de::Error::custom(
-            "Invalid value for 'order_map'. Expected 'default', 'true', or a valid structure.",
+            "Invalid value for 'order_map'. Expected 'default', 'true', 'null' or a valid structure.",
         )),
     }
 }
@@ -295,7 +295,7 @@ where
             .map(Some)
             .map_err(serde::de::Error::custom),
         _ => Err(serde::de::Error::custom(
-            "Invalid value for 'estimate_error'. Expected 'default', 'true', or a valid structure.",
+            "Invalid value for 'estimate_error'. Expected 'default', 'true', 'null', or a valid structure.",
         )),
     }
 }
