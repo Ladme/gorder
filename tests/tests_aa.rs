@@ -358,6 +358,50 @@ fn test_aa_order_leaflets_yaml_multiple_threads() {
 }
 
 #[test]
+fn test_aa_order_leaflets_yaml_multiple_threads_various_frequencies() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        for method in [
+            LeafletClassification::global("@membrane", "name P"),
+            LeafletClassification::local("@membrane", "name P", 2.5),
+            LeafletClassification::individual("name P", "name C218 C316"),
+        ] {
+            for freq in [
+                Frequency::every(4).unwrap(),
+                Frequency::every(20).unwrap(),
+                Frequency::every(100).unwrap(),
+                Frequency::once(),
+            ] {
+                let output = NamedTempFile::new().unwrap();
+                let path_to_output = output.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/pcpepg.tpr")
+                    .trajectory("tests/files/pcpepg.xtc")
+                    .output(path_to_output)
+                    .analysis_type(AnalysisType::aaorder(
+                        "@membrane and element name carbon",
+                        "@membrane and element name hydrogen",
+                    ))
+                    .leaflets(method.clone().with_frequency(freq))
+                    .n_threads(n_threads)
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                analysis.run().unwrap().write().unwrap();
+
+                assert!(diff_files_ignore_first(
+                    path_to_output,
+                    "tests/files/aa_order_leaflets.yaml",
+                    1
+                ));
+            }
+        }
+    }
+}
+
+#[test]
 fn test_aa_order_leaflets_yaml_different_membrane_normals() {
     for (input_traj, normal) in [
         "tests/files/pcpepg_switched_xy.xtc",
@@ -771,6 +815,101 @@ fn test_aa_order_begin_end_step_yaml_multiple_threads() {
             "tests/files/aa_order_begin_end_step.yaml",
             1
         ));
+    }
+}
+
+#[test]
+fn test_aa_order_step_yaml_leaflets_multiple_threads_various_frequencies() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        for method in [
+            LeafletClassification::global("@membrane", "name P"),
+            LeafletClassification::local("@membrane", "name P", 2.5),
+            LeafletClassification::individual("name P", "name C218 C316"),
+        ] {
+            for freq in [
+                Frequency::every(1).unwrap(),
+                Frequency::every(5).unwrap(),
+                Frequency::every(30).unwrap(),
+                Frequency::once(),
+            ] {
+                let output = NamedTempFile::new().unwrap();
+                let path_to_output = output.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/pcpepg.tpr")
+                    .trajectory("tests/files/pcpepg.xtc")
+                    .output(path_to_output)
+                    .analysis_type(AnalysisType::aaorder(
+                        "@membrane and element name carbon",
+                        "@membrane and element name hydrogen",
+                    ))
+                    .step(5)
+                    .leaflets(method.clone().with_frequency(freq))
+                    .n_threads(n_threads)
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                let results = analysis.run().unwrap();
+                assert_eq!(results.n_analyzed_frames(), 11);
+                results.write().unwrap();
+
+                assert!(diff_files_ignore_first(
+                    path_to_output,
+                    "tests/files/aa_order_step.yaml",
+                    1
+                ));
+            }
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_begin_end_step_yaml_leaflets_multiple_threads_various_frequencies() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        for method in [
+            LeafletClassification::global("@membrane", "name P"),
+            LeafletClassification::local("@membrane", "name P", 2.5),
+            LeafletClassification::individual("name P", "name C218 C316"),
+        ] {
+            for freq in [
+                Frequency::every(2).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ] {
+                let output = NamedTempFile::new().unwrap();
+                let path_to_output = output.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/pcpepg.tpr")
+                    .trajectory("tests/files/pcpepg.xtc")
+                    .output(path_to_output)
+                    .analysis_type(AnalysisType::aaorder(
+                        "@membrane and element name carbon",
+                        "@membrane and element name hydrogen",
+                    ))
+                    .begin(450_000.0)
+                    .end(450_200.0)
+                    .step(3)
+                    .leaflets(method.clone().with_frequency(freq))
+                    .n_threads(n_threads)
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                let results = analysis.run().unwrap();
+                assert_eq!(results.n_analyzed_frames(), 4);
+                results.write().unwrap();
+
+                assert!(diff_files_ignore_first(
+                    path_to_output,
+                    "tests/files/aa_order_begin_end_step.yaml",
+                    1
+                ));
+            }
+        }
     }
 }
 

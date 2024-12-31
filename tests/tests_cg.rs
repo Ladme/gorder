@@ -247,6 +247,47 @@ fn test_cg_order_leaflets_yaml_multiple_threads() {
 }
 
 #[test]
+fn test_cg_order_leaflets_yaml_multiple_threads_various_frequencies() {
+    for n_threads in [1, 2, 5, 8, 128] {
+        for method in [
+            LeafletClassification::global("@membrane", "name PO4"),
+            LeafletClassification::local("@membrane", "name PO4", 2.5),
+            LeafletClassification::individual("name PO4", "name C4A C4B"),
+        ] {
+            for freq in [
+                Frequency::every(4).unwrap(),
+                Frequency::every(20).unwrap(),
+                Frequency::every(200).unwrap(),
+                Frequency::once(),
+            ] {
+                let output = NamedTempFile::new().unwrap();
+                let path_to_output = output.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/cg.tpr")
+                    .trajectory("tests/files/cg.xtc")
+                    .output(path_to_output)
+                    .analysis_type(AnalysisType::cgorder("@membrane"))
+                    .leaflets(method.clone().with_frequency(freq))
+                    .n_threads(n_threads)
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                analysis.run().unwrap().write().unwrap();
+
+                assert!(diff_files_ignore_first(
+                    path_to_output,
+                    "tests/files/cg_order_leaflets.yaml",
+                    1
+                ));
+            }
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_leaflets_table() {
     for method in [
         LeafletClassification::global("@membrane", "name PO4"),
@@ -505,6 +546,51 @@ fn test_cg_order_begin_end_step_yaml_multiple_threads() {
             "tests/files/cg_order_begin_end_step.yaml",
             1
         ));
+    }
+}
+
+#[test]
+fn test_cg_order_begin_end_step_yaml_leaflets_multiple_threads_various_frequencies() {
+    for n_threads in [1, 2, 5, 8, 128] {
+        for method in [
+            LeafletClassification::global("@membrane", "name PO4"),
+            LeafletClassification::local("@membrane", "name PO4", 2.5),
+            LeafletClassification::individual("name PO4", "name C4A C4B"),
+        ] {
+            for freq in [
+                Frequency::every(2).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ] {
+                let output = NamedTempFile::new().unwrap();
+                let path_to_output = output.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/cg.tpr")
+                    .trajectory("tests/files/cg.xtc")
+                    .output(path_to_output)
+                    .analysis_type(AnalysisType::cgorder("@membrane"))
+                    .begin(350_000.0)
+                    .end(356_000.0)
+                    .step(5)
+                    .leaflets(method.clone().with_frequency(freq))
+                    .n_threads(n_threads)
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                let results = analysis.run().unwrap();
+                assert_eq!(results.n_analyzed_frames(), 13);
+                results.write().unwrap();
+
+                assert!(diff_files_ignore_first(
+                    path_to_output,
+                    "tests/files/cg_order_begin_end_step.yaml",
+                    1
+                ));
+            }
+        }
     }
 }
 

@@ -718,7 +718,7 @@ impl SharedAssignedLeaflets {
             // defensive check for a deadlock
             if start_time.elapsed() > *TIMEOUT {
                 if !warning_logged {
-                    log::warn!("DEADLOCK DETECTED? Thread has been waiting for shared leaflet assignment data (frame '{}') for more than {} seconds.
+                    log::warn!("DEADLOCKED? Thread has been waiting for shared leaflet assignment data (frame '{}') for more than {} seconds.
 This may be due to resource contention or a bug. Ensure that your CPU is not oversubscribed and that you have not lost access to the trajectory file.
 If `gorder` is causing oversubscription, reduce the number of threads used for the analysis.
 If other computationally intensive software is running alongside `gorder`, consider terminating it.
