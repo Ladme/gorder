@@ -32,15 +32,15 @@ AVERAGE           0.2972 ± 0.0052  |
 
 Molecule type POPG
                         FULL       |
-GL0 - PO4            NaN ±   NaN   |
-PO4 - GL1            NaN ±   NaN   |
-GL1 - GL2            NaN ±   NaN   |
-GL1 - C1A            NaN ±   NaN   |
-GL2 - C1B            NaN ±   NaN   |
-C1A - D2A            NaN ±   NaN   |
-D2A - C3A            NaN ±   NaN   |
-C3A - C4A            NaN ±   NaN   |
-C1B - C2B            NaN ±   NaN   |
-C2B - C3B            NaN ±   NaN   |
-C3B - C4B            NaN ±   NaN   |
+GL0 - PO4               NaN        |
+PO4 - GL1               NaN        |
+GL1 - GL2               NaN        |
+GL1 - C1A               NaN        |
+GL2 - C1B               NaN        |
+C1A - D2A               NaN        |
+D2A - C3A               NaN        |
+C3A - C4A               NaN        |
+C1B - C2B               NaN        |
+C2B - C3B               NaN        |
+C3B - C4B               NaN        |
 AVERAGE           0.3059 ± 0.0089  |

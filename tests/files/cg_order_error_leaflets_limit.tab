@@ -32,15 +32,15 @@ AVERAGE           0.2972 ± 0.0052    0.2965 ± 0.0068    0.2980 ± 0.0080  |
 
 Molecule type POPG
                         FULL              UPPER              LOWER       |
-GL0 - PO4        -0.0149 ± 0.0265       NaN ±   NaN        NaN ±   NaN   |
-PO4 - GL1         0.6046 ± 0.0129       NaN ±   NaN        NaN ±   NaN   |
-GL1 - GL2        -0.2053 ± 0.0107       NaN ±   NaN        NaN ±   NaN   |
-GL1 - C1A         0.4208 ± 0.0206       NaN ±   NaN        NaN ±   NaN   |
-GL2 - C1B         0.4750 ± 0.0286       NaN ±   NaN        NaN ±   NaN   |
-C1A - D2A         0.3789 ± 0.0159       NaN ±   NaN        NaN ±   NaN   |
-D2A - C3A         0.2965 ± 0.0280       NaN ±   NaN        NaN ±   NaN   |
-C3A - C4A         0.2409 ± 0.0140       NaN ±   NaN        NaN ±   NaN   |
-C1B - C2B         0.4936 ± 0.0357       NaN ±   NaN        NaN ±   NaN   |
-C2B - C3B         0.4083 ± 0.0252       NaN ±   NaN        NaN ±   NaN   |
-C3B - C4B         0.2669 ± 0.0364       NaN ±   NaN        NaN ±   NaN   |
+GL0 - PO4        -0.0149 ± 0.0265          NaN                NaN        |
+PO4 - GL1         0.6046 ± 0.0129          NaN                NaN        |
+GL1 - GL2        -0.2053 ± 0.0107          NaN                NaN        |
+GL1 - C1A         0.4208 ± 0.0206          NaN                NaN        |
+GL2 - C1B         0.4750 ± 0.0286          NaN                NaN        |
+C1A - D2A         0.3789 ± 0.0159          NaN                NaN        |
+D2A - C3A         0.2965 ± 0.0280          NaN                NaN        |
+C3A - C4A         0.2409 ± 0.0140          NaN                NaN        |
+C1B - C2B         0.4936 ± 0.0357          NaN                NaN        |
+C2B - C3B         0.4083 ± 0.0252          NaN                NaN        |
+C3B - C4B         0.2669 ± 0.0364          NaN                NaN        |
 AVERAGE           0.3059 ± 0.0089    0.3085 ± 0.0149    0.3033 ± 0.0156  |
