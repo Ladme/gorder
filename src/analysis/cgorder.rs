@@ -5,11 +5,14 @@
 
 use groan_rs::{
     files::FileType,
-    prelude::{ProgressPrinter, XtcReader},
+    prelude::{GroupXtcReader, ProgressPrinter},
     system::System,
 };
 
-use crate::presentation::{AnalysisResults, OrderResults};
+use crate::{
+    analysis::common::prepare_master_group,
+    presentation::{AnalysisResults, OrderResults},
+};
 use crate::{
     analysis::{
         common::{analyze_frame, macros::group_name, sanity_check_molecules},
@@ -104,17 +107,20 @@ pub(super) fn analyze_coarse_grained<'a>(
         error_estimation.info();
     }
 
+    prepare_master_group(&mut system, &analysis);
+
     log::info!(
         "Performing the analysis using {} thread(s)...",
         analysis.n_threads()
     );
 
     // run the analysis in parallel
-    let result = system.traj_iter_map_reduce::<XtcReader, SystemTopology, AnalysisError>(
+    let result = system.traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
         analysis.trajectory(),
         analysis.n_threads(),
         analyze_frame,
         data,
+        Some(group_name!("Master")),
         Some(analysis.begin()),
         Some(analysis.end()),
         Some(analysis.step()),

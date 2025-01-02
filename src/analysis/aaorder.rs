@@ -4,18 +4,14 @@
 //! Contains the implementation of the calculation of the atomistic order parameters.
 
 use super::{common::macros::group_name, topology::SystemTopology};
-use crate::analysis::common::{analyze_frame, sanity_check_molecules};
+use crate::analysis::common::{analyze_frame, prepare_master_group, sanity_check_molecules};
 use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
 
-use groan_rs::prelude::OrderedAtomIterator;
-use groan_rs::{
-    files::FileType,
-    prelude::{ProgressPrinter, XtcReader},
-    system::System,
-};
+use groan_rs::prelude::{GroupXtcReader, OrderedAtomIterator};
+use groan_rs::{files::FileType, prelude::ProgressPrinter, system::System};
 
 /// Calculate the atomistic order parameters.
 pub(super) fn analyze_atomistic<'a>(
@@ -134,17 +130,20 @@ pub(super) fn analyze_atomistic<'a>(
         error_estimation.info();
     }
 
+    prepare_master_group(&mut system, &analysis);
+
     log::info!(
         "Performing the analysis using {} thread(s)...",
         analysis.n_threads()
     );
 
     // run the analysis in parallel
-    let result = system.traj_iter_map_reduce::<XtcReader, SystemTopology, AnalysisError>(
+    let result = system.traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
         analysis.trajectory(),
         analysis.n_threads(),
         analyze_frame,
         data,
+        Some(group_name!("Master")),
         Some(analysis.begin()),
         Some(analysis.end()),
         Some(analysis.step()),

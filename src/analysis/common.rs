@@ -7,7 +7,7 @@ use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
 use super::topology::SystemTopology;
 use crate::errors::AnalysisError;
-use crate::input::EstimateError;
+use crate::input::{Analysis, AnalysisType, EstimateError};
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::OrderMap, PANIC_MESSAGE};
 use colored::Colorize;
@@ -372,6 +372,42 @@ fn solve_name_conflicts(molecules: &mut [MoleculeType]) {
             *count -= 1;
         }
     }
+}
+
+/// Prepare a master group which atoms will be read from an xtc trajectory.
+pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
+    let mut groups = Vec::new();
+    match analysis.analysis_type() {
+        AnalysisType::AAOrder {
+            heavy_atoms: _,
+            hydrogens: _,
+        } => {
+            groups.push(group_name!("HeavyAtoms"));
+            groups.push(group_name!("Hydrogens"));
+        }
+        AnalysisType::CGOrder { beads: _ } => {
+            groups.push(group_name!("Beads"));
+        }
+    }
+
+    match analysis.leaflets() {
+        None => (),
+        Some(LeafletClassification::Global(_)) | Some(LeafletClassification::Local(_)) => {
+            groups.push(group_name!("Membrane"));
+            groups.push(group_name!("Heads"));
+        }
+        Some(LeafletClassification::Individual(_)) => {
+            groups.push(group_name!("Heads"));
+            groups.push(group_name!("Methyls"));
+        }
+    }
+
+    create_group(system, "Master", &groups.join(" ")).unwrap_or_else(|_| {
+        panic!(
+            "FATAL GORDER ERROR | common::prepare_master_group | Merging groups failed: `{:?}`. {}",
+            groups, PANIC_MESSAGE
+        )
+    });
 }
 
 #[cfg(test)]
