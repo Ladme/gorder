@@ -1,6 +1,6 @@
 [package]
 name = "gorder"
-version = "0.3.0-dev.2"
+version = "0.3.0-dev.3"
 description = "Calculating lipid order parameters from Gromacs simulations"
 edition = "2021"
 license = "MIT"
@@ -11,9 +11,7 @@ exclude = ["/tests", "/validation"]
 
 [dependencies]
 backitup = "0.1.1"
-groan_rs = { git = "https://github.com/Ladme/groan_rs.git", branch = "v0.10", features = [
-    "parallel",
-] }
+groan_rs = { path = "../groan_rs", features = ["parallel", "no-xdrfile"] }
 colored = "2.1"
 thiserror = "2.0.3"
 derive_builder = "0.20.2"
