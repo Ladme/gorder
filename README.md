@@ -81,7 +81,7 @@ A Martini 3 simulation of a membrane consisting of 512 POPC lipids was used to v
 Run time of the analyses performed in the Validation section by various programs:
 ![Bar chart showing the run time of various programs.](validation/aaorder_benchmark.png)
 
-*Benchmarks were conducted on Debian 12 with an 8-core Intel Core i7-10700 CPU. Benchmarking of `gmx order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). The `NMR lipids` script and `calc_op.tcl` were dramatically slower, so only approximate values obtained using GNU's `time` are reported.*
+*Benchmarks were conducted on Debian 12 with an 8-core Intel Core i7-10700 CPU and SK Hynix BC511 HFM512GDJTNI SSD. Benchmarking of `gmx order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). The `NMR lipids` script and `calc_op.tcl` were dramatically slower, so only approximate values obtained using GNU's `time` are reported.*
 
 <sup>a</sup> Note that, unlike `calc_op.tcl` and `gmx order`, the `OrderParameter.py` script provides information about the order of individual C-H bonds. `gorder` also provides this information.
 
@@ -91,7 +91,7 @@ Run time of the analyses performed in the Validation section by various programs
 Run time of the analyses performed in the Validation section by various programs:
 ![Bar chart showing the run time of various programs.](validation/cgorder_benchmark.png)
 
-*Benchmarks were conducted on Debian 12 with with an 8-core Intel Core i7-10700 CPU. Benchmarking of `order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). `do-order` and `lipyphilic` were dramatically slower, so only an approximate value obtained using GNU's `time` is reported.*
+*Benchmarks were conducted on Debian 12 with with an 8-core Intel Core i7-10700 CPU and SK Hynix BC511 HFM512GDJTNI SSD. Benchmarking of `order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). `do-order` and `lipyphilic` were dramatically slower, so only an approximate value obtained using GNU's `time` is reported.*
 
 <sup>a</sup> Note that the `do-order` script is not able to calculate order parameters for individual leaflets in the same run. In contrast, both `order` and `gorder` were run with this capability enabled.
 

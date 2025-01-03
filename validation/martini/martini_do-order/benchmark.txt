@@ -1,0 +1,5 @@
+Using python 3.12 and gromacs 2021.4
+
+Note the this script, unlike both `order` and `gorder` does not calculate order parameters for individual leaflets.
+
+5m52.094s  = ~352 s
