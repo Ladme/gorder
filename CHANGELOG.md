@@ -1,7 +1,7 @@
 ## Version 0.3.0
 - **Error estimation and convergence analysis**: Implemented error estimation and convergence analysis. Refer to the corresponding section of the manual for more details.
 - **Leaflet classification**: Leaflet classification can now also be performed either every N analyzed trajectory frames or only once at the start of the analysis.
-- **Improved XTC file reading**: Switched to using the `molly` crate for reading XTC files. This allows reading only the parts of the XTC files that are needed, making `gorder` almost twice as fast compared to version 0.2.
+- **Improved XTC file reading**: Switched to using the `molly` crate for reading XTC files. This allows reading only the parts of the XTC files that are needed, making `gorder` more than twice as fast compared to version 0.2.
 - **Reworked Rust API**: The Rust API has been restructured, enabling access to results without the need to write output files.
 - **Enhanced output files**:
   - YAML and TAB files now display the average order parameter calculated from all bonds of a single molecule type.
