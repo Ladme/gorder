@@ -1,0 +1,46 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+
+Molecule type POPC
+                        FULL       |
+NC3 - PO4        -0.1352 ± 0.0030  |
+PO4 - GL1         0.5899 ± 0.0060  |
+GL1 - GL2        -0.1867 ± 0.0074  |
+GL1 - C1A         0.3896 ± 0.0124  |
+GL2 - C1B         0.4916 ± 0.0114  |
+C1A - D2A         0.3682 ± 0.0125  |
+D2A - C3A         0.2931 ± 0.0085  |
+C3A - C4A         0.2390 ± 0.0109  |
+C1B - C2B         0.5039 ± 0.0126  |
+C2B - C3B         0.4175 ± 0.0131  |
+C3B - C4B         0.2661 ± 0.0136  |
+AVERAGE           0.2943 ± 0.0067  |
+
+Molecule type POPE
+                        FULL       |
+NH3 - PO4        -0.1342 ± 0.0069  |
+PO4 - GL1         0.6126 ± 0.0039  |
+GL1 - GL2        -0.1913 ± 0.0056  |
+GL1 - C1A         0.4086 ± 0.0101  |
+GL2 - C1B         0.4889 ± 0.0078  |
+C1A - D2A         0.3759 ± 0.0164  |
+D2A - C3A         0.3026 ± 0.0136  |
+C3A - C4A         0.2454 ± 0.0110  |
+C1B - C2B         0.4894 ± 0.0073  |
+C2B - C3B         0.4087 ± 0.0150  |
+C3B - C4B         0.2629 ± 0.0128  |
+AVERAGE           0.2972 ± 0.0052  |
+
+Molecule type POPG
+                        FULL       |
+GL0 - PO4        -0.0149 ± 0.0265  |
+PO4 - GL1         0.6046 ± 0.0129  |
+GL1 - GL2        -0.2053 ± 0.0107  |
+GL1 - C1A         0.4208 ± 0.0206  |
+GL2 - C1B         0.4750 ± 0.0286  |
+C1A - D2A         0.3789 ± 0.0159  |
+D2A - C3A         0.2965 ± 0.0280  |
+C3A - C4A         0.2409 ± 0.0140  |
+C1B - C2B         0.4936 ± 0.0357  |
+C2B - C3B         0.4083 ± 0.0252  |
+C3B - C4B         0.2669 ± 0.0364  |
+AVERAGE           0.3059 ± 0.0089  |

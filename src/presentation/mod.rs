@@ -1,24 +1,39 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
-use std::{
-    fs::File,
-    io::{BufWriter, Write},
-    path::{Path, PathBuf},
-};
-
+use crate::input::{Frequency, LeafletClassification, Plane};
+use crate::presentation::aaresults::AAOrderResults;
+use crate::presentation::cgresults::CGOrderResults;
+use crate::presentation::csv_presenter::{CsvPresenter, CsvProperties, CsvWrite};
+use crate::presentation::ordermaps_presenter::MapWrite;
+use crate::presentation::ordermaps_presenter::{OrderMapPresenter, OrderMapProperties};
+use crate::presentation::tab_presenter::{TabPresenter, TabProperties, TabWrite};
+use crate::presentation::xvg_presenter::{XvgPresenter, XvgProperties, XvgWrite};
+use crate::presentation::yaml_presenter::{YamlPresenter, YamlProperties, YamlWrite};
 use crate::{
     analysis::{
-        molecule::{AtomType, BondTopology, BondType, MoleculeType},
+        molecule::{AtomType, BondTopology, MoleculeType},
         topology::SystemTopology,
     },
     errors::WriteError,
     input::Analysis,
     PANIC_MESSAGE,
 };
+use convergence::{ConvPresenter, ConvProperties, Convergence};
+use getset::{CopyGetters, Getters};
+use groan_rs::prelude::GridMap;
+use indexmap::IndexMap;
+use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
+use std::fmt::Debug;
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
+};
+use strum_macros::Display;
 
 macro_rules! write_result {
     ($dst:expr, $($arg:tt)*) => {
@@ -26,219 +41,259 @@ macro_rules! write_result {
     };
 }
 
-pub(crate) mod aapresenter;
-pub(crate) mod cgpresenter;
-pub(crate) mod ordermap;
+pub mod aaresults;
+pub mod cgresults;
+pub(crate) mod converter;
+mod csv_presenter;
+//pub(crate) mod ordermap;
+pub mod convergence;
+pub mod ordermaps_presenter;
+mod tab_presenter;
+mod xvg_presenter;
+mod yaml_presenter;
 
-/// Trait for presentation of results for individual molcules.
-/// General for both AAOrder and CGOrder.
-pub(crate) trait MoleculeResults: Serialize {
-    /// Get the name of the molecule.
-    fn name(&self) -> &str;
-
-    /// Get the maximal number of order bonds associated with any order atom in this molecule.
-    /// For CG, this should be zero.
-    fn max_bonds(&self) -> usize;
-
-    /// Check whether order parameters for individual membrane
-    /// leaflets have been calculated for at least one order bond of the molecule.
-    fn has_assigned_leaflets(&self) -> bool;
-
-    /// Write information about the molecule in human-readable table format.
-    fn write_tab(&self, writer: &mut impl Write) -> Result<(), WriteError>;
-
-    /// Write information about the molecule in an xvg format.
-    fn write_xvg(&self, writer: &mut impl Write) -> Result<(), WriteError>;
-
-    /// Write information about the molecule in an csv format.
-    fn write_csv(
-        &self,
-        writer: &mut impl Write,
-        max_bonds: usize,
-        assigned_leaflets: bool,
-    ) -> Result<(), WriteError>;
+/// Enum representing any of the types of results that can be returned by the `gorder`.
+#[derive(Debug, Clone)]
+pub enum AnalysisResults {
+    AA(AAOrderResults),
+    CG(CGOrderResults),
 }
 
-/// Trait implemented by structures presenting the results of the order calculation.
-/// General for both AAOrder and CGOrder.
-pub(crate) trait ResultsPresenter: Serialize {
-    /// Get reference to the results associated with the individual molecules.
-    fn molecules(&self) -> &[impl MoleculeResults];
-
-    /// Write the header for a csv file.
-    fn write_csv_header(
-        writer: &mut impl Write,
-        max_bonds: usize,
-        assigned_leaflets: bool,
-    ) -> Result<(), WriteError>;
-
-    /// Write the results of the analysis into a yaml file.
-    #[inline]
-    fn write_yaml(
-        &self,
-        filename: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let writer = Self::prepare_file(
-            &filename,
-            input_structure,
-            input_trajectory,
-            "yaml",
-            overwrite,
-            true,
-        )?;
-
-        serde_yaml::to_writer(writer, self)
-            .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))?;
-
-        Ok(())
-    }
-
-    /// Write the results of the analysis into a table.
-    #[inline]
-    fn write_tab(
-        &self,
-        filename: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let mut writer = Self::prepare_file(
-            &filename,
-            input_structure,
-            input_trajectory,
-            "tab",
-            overwrite,
-            true,
-        )?;
-
-        for mol in self.molecules().iter() {
-            mol.write_tab(&mut writer)?;
+impl AnalysisResults {
+    /// Write the results of the analysis into output files.
+    pub fn write(&self) -> Result<(), WriteError> {
+        match self {
+            AnalysisResults::AA(x) => x.write_all_results(),
+            AnalysisResults::CG(x) => x.write_all_results(),
         }
-
-        Ok(())
     }
 
-    /// Write the results of the analysis for the individual molecules into xvg files.
-    fn write_xvg(
-        &self,
-        file_pattern: impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        overwrite: bool,
-    ) -> Result<(), WriteError> {
-        let extension = file_pattern
-            .as_ref()
-            .extension()
-            .and_then(|x| x.to_str())
-            .map(Some)
-            .unwrap_or(None);
-
-        let path_buf = Self::strip_extension(file_pattern.as_ref());
-        let file_path = path_buf.to_str().expect(PANIC_MESSAGE);
-
-        // all molecule names must be unique
-        let names: Vec<String> = self
-            .molecules()
-            .iter()
-            .map(|x| x.name().to_owned())
-            .collect();
-
-        for (i, mol) in self.molecules().iter().enumerate() {
-            let filename = match extension {
-                Some(x) => format!("{}_{}.{}", file_path, names[i], x),
-                None => format!("{}_{}", file_path, names[i]),
-            };
-
-            log::info!("Writing an xvg file '{}'...", filename);
-
-            let mut writer = Self::prepare_file(
-                &filename,
-                input_structure,
-                input_trajectory,
-                "xvg",
-                overwrite,
-                true,
-            )?;
-
-            mol.write_xvg(&mut writer)?;
+    /// Get the total number of analyzed frames.
+    pub fn n_analyzed_frames(&self) -> usize {
+        match self {
+            AnalysisResults::AA(x) => x.n_analyzed_frames(),
+            AnalysisResults::CG(x) => x.n_analyzed_frames(),
         }
-
-        Ok(())
     }
 
-    /// Write the results of the analysis into an csv file.
-    fn write_csv(&self, filename: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
-        let mut writer = Self::prepare_file(&filename, "", "", "csv", overwrite, false)?;
-
-        let max_bonds = self
-            .molecules()
-            .iter()
-            .map(|x| x.max_bonds())
-            .max()
-            .unwrap_or(0);
-
-        let leaflets = self.molecules().iter().any(|x| x.has_assigned_leaflets());
-
-        Self::write_csv_header(&mut writer, max_bonds, leaflets)?;
-
-        for molecule in self.molecules().iter() {
-            molecule.write_csv(&mut writer, max_bonds, leaflets)?;
+    /// Get the analysis options.
+    pub fn analysis(&self) -> &Analysis {
+        match self {
+            AnalysisResults::AA(x) => x.analysis(),
+            AnalysisResults::CG(x) => x.analysis(),
         }
-
-        Ok(())
     }
+}
 
+/// Type alias for a gridmap of f32 values.
+pub type GridMapF32 = GridMap<f32, f32, fn(&f32) -> f32>;
+
+/// Public trait implemented by results-containing structures.
+pub trait PublicOrderResults {
+    #[allow(private_bounds)]
+    type MoleculeResults: MoleculeResults;
+
+    /// Get the results for all molecules.
+    fn molecules(&self) -> impl Iterator<Item = &Self::MoleculeResults>;
+
+    /// Get the results for a molecule with the specified name.
+    /// O(1) complexity.
+    /// Returns `None` if such molecule does not exist.
+    fn get_molecule(&self, name: &str) -> Option<&Self::MoleculeResults>;
+
+    /// Get the parameters of the analysis.
+    fn analysis(&self) -> &Analysis;
+
+    /// Get the total number of analyzed frames.
+    fn n_analyzed_frames(&self) -> usize;
+}
+
+/// Trait implemented by all structures providing the full results of the analysis.
+pub(crate) trait OrderResults:
+    Debug + Clone + CsvWrite + TabWrite + YamlWrite + PublicOrderResults
+{
+    type OrderType: OrderType;
+
+    /// Create an empty `OrderResults` structure (i.e., without any molecules).
+    fn empty(analysis: Analysis) -> Self;
+
+    /// Create a new `OrderResults` structure.
+    fn new(
+        molecules: IndexMap<String, Self::MoleculeResults>,
+        analysis: Analysis,
+        n_analyzed_frames: usize,
+    ) -> Self;
+
+    /// Return the maximal number of bonds for heavy atoms in the system.
+    /// Only makes sense for atomistic order. Returns 0 by default.
     #[inline(always)]
-    fn strip_extension(file_path: &Path) -> PathBuf {
-        if let Some(stem) = file_path.file_stem() {
-            if let Some(parent) = file_path.parent() {
-                return parent.join(stem);
+    fn max_bonds(&self) -> usize {
+        0
+    }
+
+    /// Write results of the analysis into the output files.
+    fn write_all_results(&self) -> Result<(), WriteError> {
+        if self.molecules().count() == 0 {
+            log::warn!("Nothing to write.");
+            return Ok(());
+        }
+
+        let analysis = self.analysis();
+        let errors = analysis.estimate_error().is_some();
+        let leaflets = analysis.leaflets().is_some();
+        let input_structure = analysis.structure();
+        let input_trajectory = analysis.trajectory();
+        let overwrite = analysis.overwrite();
+
+        if let Some(yaml) = analysis.output_yaml() {
+            YamlPresenter::new(self, YamlProperties::new(input_structure, input_trajectory))
+                .write(yaml, overwrite)?;
+        }
+
+        if let Some(tab) = analysis.output_tab() {
+            TabPresenter::new(
+                self,
+                TabProperties::new(self, input_structure, input_trajectory, errors, leaflets),
+            )
+            .write(tab, overwrite)?;
+        }
+
+        if let Some(xvg) = analysis.output_xvg() {
+            log::info!("Writing the order parameters into xvg file(s)...");
+
+            XvgPresenter::new(
+                self,
+                XvgProperties::new(input_structure, input_trajectory, leaflets),
+            )
+            .write(xvg, overwrite)?;
+        }
+
+        if let Some(csv) = analysis.output_csv() {
+            CsvPresenter::new(self, CsvProperties::new(self, errors, leaflets))
+                .write(csv, overwrite)?;
+        }
+
+        if let Some(estimate_error) = analysis.estimate_error() {
+            if let Some(convergence) = estimate_error.output_convergence() {
+                ConvPresenter::new(
+                    self,
+                    ConvProperties::new(input_structure, input_trajectory, leaflets),
+                )
+                .write(convergence, overwrite)?;
             }
         }
-        file_path.to_path_buf()
-    }
 
-    /// Back up a file, create a new one and write a header into it.
-    #[inline(always)]
-    fn prepare_file(
-        filename: &impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
-        file_type: &str,
-        overwrite: bool,
-        write_header: bool,
-    ) -> Result<BufWriter<File>, WriteError> {
-        Self::try_backup_file(filename, overwrite, file_type)?;
-        let mut writer = Self::create_and_open_file(filename)?;
-        if write_header {
-            Self::write_header(&mut writer, filename, input_structure, input_trajectory)?;
+        if let Some(map) = analysis.map() {
+            if let Some(output_dir) = map.output_directory() {
+                OrderMapPresenter::new(
+                    self,
+                    OrderMapProperties::new(map.plane().unwrap_or(Plane::XY).into()),
+                )
+                .write(output_dir, overwrite)?;
+            }
         }
 
-        Ok(writer)
+        Ok(())
     }
+}
 
-    /// Write header into an output file.
+/// Trait implemented by all structures providing the results of the analysis for a single molecule type.
+pub(crate) trait MoleculeResults:
+    Debug + Clone + CsvWrite + TabWrite + XvgWrite + MapWrite + PublicMoleculeResults
+{
+    /// Return the maximal number of bonds for heavy atoms in the molecule.
+    /// Only makes sense for atomistic order. Returns 0 by default.
     #[inline(always)]
-    fn write_header(
-        writer: &mut BufWriter<File>,
-        filename: &impl AsRef<Path>,
-        input_structure: &str,
-        input_trajectory: &str,
+    fn max_bonds(&self) -> usize {
+        0
+    }
+}
+
+/// Public trait implemented by molecule results.
+pub trait PublicMoleculeResults {
+    /// Data about convergence of the order parameters.
+    fn convergence(&self) -> Option<&Convergence>;
+
+    /// Get the name of the molecule
+    fn molecule(&self) -> &str;
+}
+
+/// All supported output file formats.
+#[derive(Debug, Clone, Display)]
+pub(crate) enum OutputFormat {
+    #[strum(serialize = "yaml")]
+    YAML,
+    #[strum(serialize = "csv")]
+    CSV,
+    #[strum(serialize = "xvg")]
+    XVG,
+    #[strum(serialize = "tab")]
+    TAB,
+    #[strum(serialize = "map")]
+    MAP,
+    #[strum(serialize = "convergence")]
+    CONV, // convergence data file (xvg format)
+}
+
+/// Trait implemented by all structures that store properties of Presenters.
+pub(crate) trait PresenterProperties: Debug + Clone {
+    /// Is the data for leaflets available?
+    fn leaflets(&self) -> bool;
+}
+
+/// Trait implemented by all structures presenting results of the analysis.
+pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
+    /// Structure describing properties of the presenter.
+    type Properties: PresenterProperties;
+
+    /// Create a new presenter structure.
+    fn new(results: &'a R, properties: Self::Properties) -> Self;
+
+    /// Get the format of the output file that this Presenter creates.
+    fn file_format(&self) -> OutputFormat;
+
+    /// Write the results into an open output file.
+    fn write_results(&self, writer: &mut impl Write) -> Result<(), WriteError>;
+
+    /// Write empty (missing) order parameter into the output file.
+    fn write_empty_order(
+        writer: &mut impl Write,
+        properties: &Self::Properties,
+    ) -> Result<(), WriteError>;
+
+    /// Write empty (missing) order parameters for an entire collection.
+    fn write_empty_bond_collection(
+        writer: &mut impl Write,
+        properties: &Self::Properties,
     ) -> Result<(), WriteError> {
-        writeln!(
-            writer,
-            "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.",
-            crate::GORDER_VERSION, input_structure, input_trajectory
-        )
-        .map_err(|_| WriteError::CouldNotWriteYaml(Box::from(filename.as_ref())))
+        if properties.leaflets() {
+            for _ in 0..3 {
+                Self::write_empty_order(writer, properties)?;
+            }
+        } else {
+            Self::write_empty_order(writer, properties)?;
+        }
+
+        Ok(())
     }
 
-    /// Create and open file for buffered writing.
+    /// Create (and potentially back up) an output file, open it and write the results into it.
+    fn write(&self, filename: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
+        log::info!(
+            "Writing order parameters into {} file '{}'...",
+            self.file_format(),
+            filename.as_ref().to_str().expect(PANIC_MESSAGE)
+        );
+        log::logger().flush();
+
+        self.try_backup(&filename, overwrite)?;
+        let mut writer = Self::create_and_open(&filename)?;
+        self.write_results(&mut writer)
+    }
+
+    /// Create and open a file for buffered writing.
     #[inline(always)]
-    fn create_and_open_file(filename: &impl AsRef<Path>) -> Result<BufWriter<File>, WriteError> {
+    fn create_and_open(filename: &impl AsRef<Path>) -> Result<BufWriter<File>, WriteError> {
         let file = File::create(filename.as_ref())
             .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
 
@@ -246,16 +301,12 @@ pub(crate) trait ResultsPresenter: Serialize {
     }
 
     /// Back up an output file, if it is necessary and if it is requested.
-    fn try_backup_file(
-        filename: &impl AsRef<Path>,
-        overwrite: bool,
-        file_type: &str,
-    ) -> Result<(), WriteError> {
+    fn try_backup(&self, filename: &impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
         if filename.as_ref().exists() {
             if !overwrite {
                 log::warn!(
                     "Output {} file '{}' already exists. Backing it up.",
-                    file_type,
+                    self.file_format(),
                     filename.as_ref().to_str().expect(PANIC_MESSAGE)
                 );
                 backitup::backup(filename.as_ref())
@@ -263,7 +314,7 @@ pub(crate) trait ResultsPresenter: Serialize {
             } else {
                 log::warn!(
                     "Output {} file '{}' already exists. It will be overwritten as requested.",
-                    file_type,
+                    self.file_format(),
                     filename.as_ref().to_str().expect(PANIC_MESSAGE)
                 );
             }
@@ -271,129 +322,237 @@ pub(crate) trait ResultsPresenter: Serialize {
 
         Ok(())
     }
+
+    /// Write header into the output file specifying version of the library used and some other basic info.
+    fn write_header(
+        writer: &mut impl Write,
+        structure: &str,
+        trajectory: &str,
+    ) -> Result<(), WriteError> {
+        write_result!(writer, "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.\n",
+        crate::GORDER_VERSION, structure, trajectory);
+
+        Ok(())
+    }
+}
+
+/// Single order parameter value, optionally with its estimated error.
+#[derive(Debug, Clone, Copy, CopyGetters)]
+pub struct Order {
+    /// Value of the order parameter (mean from the analyzed frames).
+    #[getset(get_copy = "pub")]
+    value: f32,
+    /// Estimated error for this order parameter (standard deviation of N blocks).
+    #[getset(get_copy = "pub")]
+    error: Option<f32>,
+}
+
+impl From<f32> for Order {
+    #[inline(always)]
+    fn from(value: f32) -> Self {
+        Order { value, error: None }
+    }
+}
+
+impl From<[f32; 2]> for Order {
+    #[inline(always)]
+    fn from(value: [f32; 2]) -> Self {
+        Order {
+            value: value[0],
+            error: Some(value[1]),
+        }
+    }
+}
+
+impl Serialize for Order {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        if let Some(error) = self.error {
+            // serialize as a dictionary if `error` is present
+            let mut map = serializer.serialize_map(Some(2))?;
+            map.serialize_entry("mean", &self.value.round_to_4())?;
+            map.serialize_entry("error", &error.round_to_4())?;
+            map.end()
+        } else {
+            // serialize as a single float rounded to 4 decimal places
+            serializer.serialize_f64(self.value.round_to_4())
+        }
+    }
+}
+
+// Helper trait for rounding a float to 4 decimal places
+trait RoundTo4 {
+    fn round_to_4(self) -> f64;
+}
+
+impl RoundTo4 for f32 {
+    fn round_to_4(self) -> f64 {
+        (self as f64 * 10_000.0).round() / 10_000.0
+    }
+}
+
+/// Collection of (up to) 3 order parameters: for the full membrane, the upper leaflet,
+/// and the lower leaflet.
+#[derive(Debug, Clone, Default, Serialize, Getters)]
+pub struct OrderCollection {
+    /// Order parameter for the full membrane.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[getset(get = "pub")]
+    total: Option<Order>,
+    /// Order parameter for the upper leaflet.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[getset(get = "pub")]
+    upper: Option<Order>,
+    /// Order parameter for the lower leaflet.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[getset(get = "pub")]
+    lower: Option<Order>,
+}
+
+impl OrderCollection {
+    fn new(total: Option<Order>, upper: Option<Order>, lower: Option<Order>) -> Self {
+        Self {
+            total,
+            upper,
+            lower,
+        }
+    }
+}
+
+/// Collection of (up to) 3 ordermaps: for the full membrane, the upper leaflet,
+/// and the lower leaflet.
+#[derive(Debug, Clone, Default, Getters)]
+pub struct OrderMapsCollection {
+    /// Ordermap for the full membrane.
+    #[getset(get = "pub")]
+    total: Option<GridMapF32>,
+    /// Ordermap for the upper leaflet.
+    #[getset(get = "pub")]
+    upper: Option<GridMapF32>,
+    /// Ordermap for the lower leaflet.
+    #[getset(get = "pub")]
+    lower: Option<GridMapF32>,
+}
+
+impl OrderMapsCollection {
+    pub(super) fn new(
+        total: Option<GridMapF32>,
+        upper: Option<GridMapF32>,
+        lower: Option<GridMapF32>,
+    ) -> Self {
+        Self {
+            total,
+            upper,
+            lower,
+        }
+    }
 }
 
 /// Order parameters calculated for a single bond.
-#[derive(Debug, Clone, Serialize)]
-struct BondResults {
-    #[serde(serialize_with = "round_serialize_f32")]
-    total: f32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "round_serialize_option_f32")]
-    upper: Option<f32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(serialize_with = "round_serialize_option_f32")]
-    lower: Option<f32>,
+#[derive(Debug, Clone, Serialize, Getters)]
+pub struct BondResults {
+    /// Name of the bond.
+    #[serde(skip)]
+    #[getset(get = "pub(super)")] // intentionally not public
+    bond: BondTopology,
+    /// Name of the molecule this bond belongs to.
+    #[serde(skip)]
+    #[getset(get = "pub")]
+    molecule: String,
+    /// Order parameters calculated for this bond.
+    #[serde(flatten)]
+    #[getset(get = "pub")]
+    order: OrderCollection,
+    /// Ordermaps calculated for this bond.
+    #[serde(skip)]
+    #[getset(get = "pub")]
+    ordermaps: OrderMapsCollection,
+}
+
+impl BondResults {
+    /// Atom types involved in the bond.
+    pub fn atoms(&self) -> (&AtomType, &AtomType) {
+        (self.bond.atom1(), self.bond.atom2())
+    }
 }
 
 /// Empty struct used as a marker.
+#[derive(Default, Debug, Clone)]
 pub(crate) struct AAOrder {}
 /// Empty struct used as a marker.
+#[derive(Default, Debug, Clone)]
 pub(crate) struct CGOrder {}
 
 /// Trait implemented only by `AAOrder` and `CGOrder` structs.
-pub(crate) trait OrderType {
+pub(crate) trait OrderType: Debug + Clone {
     /// Used to convert an order parameter to its final value depending on the analysis type.
-    /// Atomistic order parameters are reported as -S_CD.
-    /// Coarse grained order parameters are reported as P2.
-    fn convert(order: f32) -> f32;
+    /// Atomistic order parameters are reported as -S_CH.
+    /// Coarse grained order parameters are reported as S.
+    fn convert(order: f32, error: Option<f32>) -> Order;
 
     /// String to use as a label for z-axis in the ordermap.
     fn zlabel() -> &'static str;
+
+    /// String to use as a label for y-axis in xvg files.
+    fn xvg_ylabel() -> &'static str;
 }
 
 impl OrderType for AAOrder {
     #[inline(always)]
-    fn convert(order: f32) -> f32 {
-        -order
+    fn convert(order: f32, error: Option<f32>) -> Order {
+        Order {
+            value: -order,
+            error,
+        }
     }
 
     #[inline(always)]
     fn zlabel() -> &'static str {
         "order parameter ($-S_{CH}$)"
     }
+
+    #[inline(always)]
+    fn xvg_ylabel() -> &'static str {
+        "-Sch"
+    }
 }
 
 impl OrderType for CGOrder {
     #[inline(always)]
-    fn convert(order: f32) -> f32 {
-        order
+    fn convert(order: f32, error: Option<f32>) -> Order {
+        Order {
+            value: order,
+            error,
+        }
     }
 
     #[inline(always)]
     fn zlabel() -> &'static str {
         "order parameter ($S$)"
     }
+
+    #[inline(always)]
+    fn xvg_ylabel() -> &'static str {
+        "S"
+    }
 }
 
 impl BondResults {
     #[inline(always)]
-    fn convert_from<O: OrderType>(value: &BondType) -> Self {
-        let (total, upper, lower) = value.calc_order();
-
-        BondResults {
-            total: O::convert(total),
-            upper: upper.map(|x| O::convert(x)),
-            lower: lower.map(|x| O::convert(x)),
+    fn new(
+        bond: &BondTopology,
+        molecule: &str,
+        order: OrderCollection,
+        ordermaps: OrderMapsCollection,
+    ) -> Self {
+        Self {
+            bond: bond.clone(),
+            molecule: molecule.to_owned(),
+            order,
+            ordermaps,
         }
-    }
-}
-
-impl BondResults {
-    /// Write results for a single bond in human readable table format.
-    fn write_tab(&self, writer: &mut impl Write, leaflets: bool) -> Result<(), WriteError> {
-        write_result!(writer, " {: ^8.4} ", self.total);
-        if leaflets {
-            for value in [self.upper, self.lower] {
-                match value {
-                    Some(unwrapped) => write_result!(writer, " {: ^8.4} ", unwrapped),
-                    None => write_result!(writer, "          "),
-                }
-            }
-        }
-
-        write_result!(writer, "|");
-
-        Ok(())
-    }
-
-    /// Write results for a single bond in csv format.
-    fn write_csv(&self, writer: &mut impl Write, leaflets: bool) -> Result<(), WriteError> {
-        write_result!(writer, ",{:.4}", self.total);
-
-        if leaflets {
-            for value in [self.upper, self.lower] {
-                match value {
-                    Some(unwrapped) => write_result!(writer, ",{:.4}", unwrapped),
-                    None => write_result!(writer, ","),
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Write results for a single bond in xvg format.
-    fn write_xvg(
-        &self,
-        writer: &mut impl Write,
-        number: usize,
-        bond_topology: &BondTopology,
-    ) -> Result<(), WriteError> {
-        write_result!(
-            writer,
-            "# Bond {} - {}:\n",
-            bond_topology.atom1().atom_name(),
-            bond_topology.atom2().atom_name()
-        );
-
-        write_result!(writer, "{:<4} {: >8.4} ", number, self.total);
-
-        for order in [self.upper, self.lower].into_iter().flatten() {
-            write_result!(writer, "{: >8.4} ", order);
-        }
-
-        Ok(())
     }
 }
 
@@ -412,23 +571,6 @@ impl Serialize for AtomType {
     }
 }
 
-/// Assumes that `None` value is ignored.
-#[inline(always)]
-fn round_serialize_option_f32<S>(x: &Option<f32>, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    s.serialize_f32((x.expect(PANIC_MESSAGE) * 10000.0).round() / 10000.0)
-}
-
-#[inline(always)]
-fn round_serialize_f32<S>(x: &f32, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    s.serialize_f32((x * 10000.0).round() / 10000.0)
-}
-
 impl Analysis {
     /// Print basic information about the analysis for the user.
     pub(crate) fn info(&self) {
@@ -443,11 +585,32 @@ impl Analysis {
                 self.map().as_ref().unwrap().plane().expect(PANIC_MESSAGE)
             );
         }
-        if self.leaflets().is_some() {
-            log::info!(
-                "Will classify lipids into membrane leaflets using the '{}' method.",
-                self.leaflets().as_ref().expect(PANIC_MESSAGE)
-            )
+        if let Some(leaflets) = self.leaflets() {
+            leaflets.info();
+        }
+    }
+}
+
+impl LeafletClassification {
+    /// Print basic information about the leaflet classification.
+    #[inline(always)]
+    fn info(&self) {
+        log::info!(
+            "Will classify lipids into membrane leaflets {} using the '{}' method.",
+            self.get_frequency(),
+            self
+        )
+    }
+}
+
+impl std::fmt::Display for Frequency {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Frequency::Every(n) if n.get() == 1 => write!(f, "every analyzed frame"),
+            Frequency::Every(n) if n.get() == 2 => write!(f, "every 2nd analyzed frame"),
+            Frequency::Every(n) if n.get() == 3 => write!(f, "every 3rd analyzed frame"),
+            Frequency::Every(n) => write!(f, "every {}th analyzed frame", n),
+            Frequency::Once => write!(f, "once at the start of the analysis"),
         }
     }
 }
@@ -490,31 +653,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_serialize_atom_type() {
-        let atom = AtomType::new_raw(5, "POPC", "CA");
-        let serialized = serde_yaml::to_string(&atom).unwrap();
-        assert_eq!(serialized, "POPC CA (5)\n");
-    }
+    fn test_frequency_display() {
+        let freq = Frequency::once();
+        assert_eq!(freq.to_string(), "once at the start of the analysis");
 
-    #[test]
-    fn test_serialize_bond_results() {
-        let bond_results = BondResults {
-            total: 0.777,
-            upper: None,
-            lower: None,
-        };
-        let serialized = serde_yaml::to_string(&bond_results).unwrap();
-        assert_eq!(serialized, "total: 0.777\n");
-    }
+        let freq = Frequency::every(1).unwrap();
+        assert_eq!(freq.to_string(), "every analyzed frame");
 
-    #[test]
-    fn test_serialize_bond_results_leaflets() {
-        let bond_results = BondResults {
-            total: 0.777,
-            upper: Some(0.765),
-            lower: Some(0.789),
-        };
-        let serialized = serde_yaml::to_string(&bond_results).unwrap();
-        assert_eq!(serialized, "total: 0.777\nupper: 0.765\nlower: 0.789\n");
+        let freq = Frequency::every(2).unwrap();
+        assert_eq!(freq.to_string(), "every 2nd analyzed frame");
+
+        let freq = Frequency::every(3).unwrap();
+        assert_eq!(freq.to_string(), "every 3rd analyzed frame");
+
+        let freq = Frequency::every(10).unwrap();
+        assert_eq!(freq.to_string(), "every 10th analyzed frame");
     }
 }

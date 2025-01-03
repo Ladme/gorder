@@ -1,0 +1,2422 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'aa_asym.tpr' and trajectory file 'aa_asym.xtc'.
+POPC:
+  average order:
+    total:
+      mean: 0.1123
+      error: 0.0016
+    upper:
+      mean: 0.1123
+      error: 0.0016
+    lower:
+      mean: .nan
+      error: .nan
+  order parameters:
+    POPC C12 (1):
+      total:
+        mean: 0.074
+        error: 0.0089
+      upper:
+        mean: 0.074
+        error: 0.0089
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H12A (2):
+          total:
+            mean: 0.0909
+            error: 0.0133
+          upper:
+            mean: 0.0909
+            error: 0.0133
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H12B (3):
+          total:
+            mean: 0.057
+            error: 0.01
+          upper:
+            mean: 0.057
+            error: 0.01
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C13 (4):
+      total:
+        mean: -0.007
+        error: 0.0109
+      upper:
+        mean: -0.007
+        error: 0.0109
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H13A (5):
+          total:
+            mean: -0.0109
+            error: 0.0229
+          upper:
+            mean: -0.0109
+            error: 0.0229
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H13B (6):
+          total:
+            mean: -0.0054
+            error: 0.0132
+          upper:
+            mean: -0.0054
+            error: 0.0132
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H13C (7):
+          total:
+            mean: -0.0047
+            error: 0.0082
+          upper:
+            mean: -0.0047
+            error: 0.0082
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C14 (8):
+      total:
+        mean: -0.0083
+        error: 0.0034
+      upper:
+        mean: -0.0083
+        error: 0.0034
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H14A (9):
+          total:
+            mean: -0.0097
+            error: 0.0216
+          upper:
+            mean: -0.0097
+            error: 0.0216
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H14B (10):
+          total:
+            mean: 0.0075
+            error: 0.0147
+          upper:
+            mean: 0.0075
+            error: 0.0147
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H14C (11):
+          total:
+            mean: -0.0228
+            error: 0.0192
+          upper:
+            mean: -0.0228
+            error: 0.0192
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C15 (12):
+      total:
+        mean: -0.0168
+        error: 0.0062
+      upper:
+        mean: -0.0168
+        error: 0.0062
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H15A (13):
+          total:
+            mean: -0.0079
+            error: 0.0261
+          upper:
+            mean: -0.0079
+            error: 0.0261
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H15B (14):
+          total:
+            mean: -0.0149
+            error: 0.0159
+          upper:
+            mean: -0.0149
+            error: 0.0159
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H15C (15):
+          total:
+            mean: -0.0276
+            error: 0.0246
+          upper:
+            mean: -0.0276
+            error: 0.0246
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C11 (16):
+      total:
+        mean: -0.0369
+        error: 0.0089
+      upper:
+        mean: -0.0369
+        error: 0.0089
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H11A (17):
+          total:
+            mean: -0.0506
+            error: 0.0122
+          upper:
+            mean: -0.0506
+            error: 0.0122
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H11B (18):
+          total:
+            mean: -0.0231
+            error: 0.0202
+          upper:
+            mean: -0.0231
+            error: 0.0202
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C1 (24):
+      total:
+        mean: 0.2477
+        error: 0.0128
+      upper:
+        mean: 0.2477
+        error: 0.0128
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC HA (25):
+          total:
+            mean: 0.2341
+            error: 0.0139
+          upper:
+            mean: 0.2341
+            error: 0.0139
+          lower:
+            mean: .nan
+            error: .nan
+        POPC HB (26):
+          total:
+            mean: 0.2614
+            error: 0.0127
+          upper:
+            mean: 0.2614
+            error: 0.0127
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C2 (27):
+      total:
+        mean: 0.2156
+        error: 0.0201
+      upper:
+        mean: 0.2156
+        error: 0.0201
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC HS (28):
+          total:
+            mean: 0.2156
+            error: 0.0201
+          upper:
+            mean: 0.2156
+            error: 0.0201
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C22 (32):
+      total:
+        mean: 0.0892
+        error: 0.0121
+      upper:
+        mean: 0.0892
+        error: 0.0121
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H2R (33):
+          total:
+            mean: 0.0896
+            error: 0.0269
+          upper:
+            mean: 0.0896
+            error: 0.0269
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H2S (34):
+          total:
+            mean: 0.0889
+            error: 0.0144
+          upper:
+            mean: 0.0889
+            error: 0.0144
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C3 (35):
+      total:
+        mean: 0.1095
+        error: 0.0097
+      upper:
+        mean: 0.1095
+        error: 0.0097
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC HX (36):
+          total:
+            mean: 0.1844
+            error: 0.0236
+          upper:
+            mean: 0.1844
+            error: 0.0236
+          lower:
+            mean: .nan
+            error: .nan
+        POPC HY (37):
+          total:
+            mean: 0.0347
+            error: 0.0419
+          upper:
+            mean: 0.0347
+            error: 0.0419
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C32 (41):
+      total:
+        mean: 0.218
+        error: 0.0106
+      upper:
+        mean: 0.218
+        error: 0.0106
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H2X (42):
+          total:
+            mean: 0.2417
+            error: 0.0068
+          upper:
+            mean: 0.2417
+            error: 0.0068
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H2Y (43):
+          total:
+            mean: 0.1944
+            error: 0.0153
+          upper:
+            mean: 0.1944
+            error: 0.0153
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C23 (44):
+      total:
+        mean: 0.2005
+        error: 0.0167
+      upper:
+        mean: 0.2005
+        error: 0.0167
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H3R (45):
+          total:
+            mean: 0.1949
+            error: 0.0178
+          upper:
+            mean: 0.1949
+            error: 0.0178
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H3S (46):
+          total:
+            mean: 0.2062
+            error: 0.0254
+          upper:
+            mean: 0.2062
+            error: 0.0254
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C24 (47):
+      total:
+        mean: 0.2029
+        error: 0.0144
+      upper:
+        mean: 0.2029
+        error: 0.0144
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H4R (48):
+          total:
+            mean: 0.2024
+            error: 0.0181
+          upper:
+            mean: 0.2024
+            error: 0.0181
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H4S (49):
+          total:
+            mean: 0.2035
+            error: 0.0233
+          upper:
+            mean: 0.2035
+            error: 0.0233
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C25 (50):
+      total:
+        mean: 0.2189
+        error: 0.0091
+      upper:
+        mean: 0.2189
+        error: 0.0091
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H5R (51):
+          total:
+            mean: 0.2253
+            error: 0.0201
+          upper:
+            mean: 0.2253
+            error: 0.0201
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H5S (52):
+          total:
+            mean: 0.2124
+            error: 0.0188
+          upper:
+            mean: 0.2124
+            error: 0.0188
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C26 (53):
+      total:
+        mean: 0.1965
+        error: 0.0066
+      upper:
+        mean: 0.1965
+        error: 0.0066
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H6R (54):
+          total:
+            mean: 0.1947
+            error: 0.0045
+          upper:
+            mean: 0.1947
+            error: 0.0045
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H6S (55):
+          total:
+            mean: 0.1983
+            error: 0.0121
+          upper:
+            mean: 0.1983
+            error: 0.0121
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C27 (56):
+      total:
+        mean: 0.1868
+        error: 0.0126
+      upper:
+        mean: 0.1868
+        error: 0.0126
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H7R (57):
+          total:
+            mean: 0.1815
+            error: 0.0177
+          upper:
+            mean: 0.1815
+            error: 0.0177
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H7S (58):
+          total:
+            mean: 0.1922
+            error: 0.0247
+          upper:
+            mean: 0.1922
+            error: 0.0247
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C28 (59):
+      total:
+        mean: 0.1049
+        error: 0.0158
+      upper:
+        mean: 0.1049
+        error: 0.0158
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H8R (60):
+          total:
+            mean: 0.1184
+            error: 0.0245
+          upper:
+            mean: 0.1184
+            error: 0.0245
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H8S (61):
+          total:
+            mean: 0.0914
+            error: 0.0174
+          upper:
+            mean: 0.0914
+            error: 0.0174
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C29 (62):
+      total:
+        mean: 0.0546
+        error: 0.0152
+      upper:
+        mean: 0.0546
+        error: 0.0152
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H91 (63):
+          total:
+            mean: 0.0546
+            error: 0.0152
+          upper:
+            mean: 0.0546
+            error: 0.0152
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C210 (64):
+      total:
+        mean: 0.037
+        error: 0.0299
+      upper:
+        mean: 0.037
+        error: 0.0299
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H101 (65):
+          total:
+            mean: 0.037
+            error: 0.0299
+          upper:
+            mean: 0.037
+            error: 0.0299
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C211 (66):
+      total:
+        mean: 0.0646
+        error: 0.0121
+      upper:
+        mean: 0.0646
+        error: 0.0121
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H11R (67):
+          total:
+            mean: 0.0534
+            error: 0.0143
+          upper:
+            mean: 0.0534
+            error: 0.0143
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H11S (68):
+          total:
+            mean: 0.0759
+            error: 0.0236
+          upper:
+            mean: 0.0759
+            error: 0.0236
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C212 (69):
+      total:
+        mean: 0.0984
+        error: 0.0191
+      upper:
+        mean: 0.0984
+        error: 0.0191
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H12R (70):
+          total:
+            mean: 0.1009
+            error: 0.022
+          upper:
+            mean: 0.1009
+            error: 0.022
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H12S (71):
+          total:
+            mean: 0.096
+            error: 0.0197
+          upper:
+            mean: 0.096
+            error: 0.0197
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C213 (72):
+      total:
+        mean: 0.0991
+        error: 0.0182
+      upper:
+        mean: 0.0991
+        error: 0.0182
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H13R (73):
+          total:
+            mean: 0.0987
+            error: 0.0121
+          upper:
+            mean: 0.0987
+            error: 0.0121
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H13S (74):
+          total:
+            mean: 0.0995
+            error: 0.0249
+          upper:
+            mean: 0.0995
+            error: 0.0249
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C214 (75):
+      total:
+        mean: 0.1039
+        error: 0.0195
+      upper:
+        mean: 0.1039
+        error: 0.0195
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H14R (76):
+          total:
+            mean: 0.1149
+            error: 0.0208
+          upper:
+            mean: 0.1149
+            error: 0.0208
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H14S (77):
+          total:
+            mean: 0.0929
+            error: 0.0191
+          upper:
+            mean: 0.0929
+            error: 0.0191
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C215 (78):
+      total:
+        mean: 0.0913
+        error: 0.0107
+      upper:
+        mean: 0.0913
+        error: 0.0107
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H15R (79):
+          total:
+            mean: 0.0949
+            error: 0.0135
+          upper:
+            mean: 0.0949
+            error: 0.0135
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H15S (80):
+          total:
+            mean: 0.0878
+            error: 0.0193
+          upper:
+            mean: 0.0878
+            error: 0.0193
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C216 (81):
+      total:
+        mean: 0.0881
+        error: 0.0077
+      upper:
+        mean: 0.0881
+        error: 0.0077
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H16R (82):
+          total:
+            mean: 0.0854
+            error: 0.0167
+          upper:
+            mean: 0.0854
+            error: 0.0167
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H16S (83):
+          total:
+            mean: 0.0908
+            error: 0.0149
+          upper:
+            mean: 0.0908
+            error: 0.0149
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C217 (84):
+      total:
+        mean: 0.0711
+        error: 0.0104
+      upper:
+        mean: 0.0711
+        error: 0.0104
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H17R (85):
+          total:
+            mean: 0.0663
+            error: 0.0135
+          upper:
+            mean: 0.0663
+            error: 0.0135
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H17S (86):
+          total:
+            mean: 0.076
+            error: 0.0135
+          upper:
+            mean: 0.076
+            error: 0.0135
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C218 (87):
+      total:
+        mean: 0.022
+        error: 0.0076
+      upper:
+        mean: 0.022
+        error: 0.0076
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H18R (88):
+          total:
+            mean: 0.0143
+            error: 0.0177
+          upper:
+            mean: 0.0143
+            error: 0.0177
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H18S (89):
+          total:
+            mean: 0.0256
+            error: 0.008
+          upper:
+            mean: 0.0256
+            error: 0.008
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H18T (90):
+          total:
+            mean: 0.0262
+            error: 0.0176
+          upper:
+            mean: 0.0262
+            error: 0.0176
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C33 (91):
+      total:
+        mean: 0.17
+        error: 0.0117
+      upper:
+        mean: 0.17
+        error: 0.0117
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H3X (92):
+          total:
+            mean: 0.1914
+            error: 0.007
+          upper:
+            mean: 0.1914
+            error: 0.007
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H3Y (93):
+          total:
+            mean: 0.1487
+            error: 0.0207
+          upper:
+            mean: 0.1487
+            error: 0.0207
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C34 (94):
+      total:
+        mean: 0.1986
+        error: 0.0105
+      upper:
+        mean: 0.1986
+        error: 0.0105
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H4X (95):
+          total:
+            mean: 0.2043
+            error: 0.0215
+          upper:
+            mean: 0.2043
+            error: 0.0215
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H4Y (96):
+          total:
+            mean: 0.1929
+            error: 0.0128
+          upper:
+            mean: 0.1929
+            error: 0.0128
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C35 (97):
+      total:
+        mean: 0.2011
+        error: 0.014
+      upper:
+        mean: 0.2011
+        error: 0.014
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H5X (98):
+          total:
+            mean: 0.1975
+            error: 0.0122
+          upper:
+            mean: 0.1975
+            error: 0.0122
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H5Y (99):
+          total:
+            mean: 0.2048
+            error: 0.0171
+          upper:
+            mean: 0.2048
+            error: 0.0171
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C36 (100):
+      total:
+        mean: 0.2083
+        error: 0.0142
+      upper:
+        mean: 0.2083
+        error: 0.0142
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H6X (101):
+          total:
+            mean: 0.2062
+            error: 0.0172
+          upper:
+            mean: 0.2062
+            error: 0.0172
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H6Y (102):
+          total:
+            mean: 0.2104
+            error: 0.0165
+          upper:
+            mean: 0.2104
+            error: 0.0165
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C37 (103):
+      total:
+        mean: 0.197
+        error: 0.0085
+      upper:
+        mean: 0.197
+        error: 0.0085
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H7X (104):
+          total:
+            mean: 0.1988
+            error: 0.0111
+          upper:
+            mean: 0.1988
+            error: 0.0111
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H7Y (105):
+          total:
+            mean: 0.1952
+            error: 0.0117
+          upper:
+            mean: 0.1952
+            error: 0.0117
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C38 (106):
+      total:
+        mean: 0.1951
+        error: 0.0096
+      upper:
+        mean: 0.1951
+        error: 0.0096
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H8X (107):
+          total:
+            mean: 0.1897
+            error: 0.0069
+          upper:
+            mean: 0.1897
+            error: 0.0069
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H8Y (108):
+          total:
+            mean: 0.2005
+            error: 0.0136
+          upper:
+            mean: 0.2005
+            error: 0.0136
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C39 (109):
+      total:
+        mean: 0.1722
+        error: 0.0142
+      upper:
+        mean: 0.1722
+        error: 0.0142
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H9X (110):
+          total:
+            mean: 0.1711
+            error: 0.0198
+          upper:
+            mean: 0.1711
+            error: 0.0198
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H9Y (111):
+          total:
+            mean: 0.1733
+            error: 0.0098
+          upper:
+            mean: 0.1733
+            error: 0.0098
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C310 (112):
+      total:
+        mean: 0.1581
+        error: 0.0109
+      upper:
+        mean: 0.1581
+        error: 0.0109
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H10X (113):
+          total:
+            mean: 0.1593
+            error: 0.0203
+          upper:
+            mean: 0.1593
+            error: 0.0203
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H10Y (114):
+          total:
+            mean: 0.1569
+            error: 0.0136
+          upper:
+            mean: 0.1569
+            error: 0.0136
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C311 (115):
+      total:
+        mean: 0.1328
+        error: 0.0176
+      upper:
+        mean: 0.1328
+        error: 0.0176
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H11X (116):
+          total:
+            mean: 0.1345
+            error: 0.0258
+          upper:
+            mean: 0.1345
+            error: 0.0258
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H11Y (117):
+          total:
+            mean: 0.1311
+            error: 0.0176
+          upper:
+            mean: 0.1311
+            error: 0.0176
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C312 (118):
+      total:
+        mean: 0.1189
+        error: 0.0218
+      upper:
+        mean: 0.1189
+        error: 0.0218
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H12X (119):
+          total:
+            mean: 0.1161
+            error: 0.0236
+          upper:
+            mean: 0.1161
+            error: 0.0236
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H12Y (120):
+          total:
+            mean: 0.1218
+            error: 0.0208
+          upper:
+            mean: 0.1218
+            error: 0.0208
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C313 (121):
+      total:
+        mean: 0.0986
+        error: 0.013
+      upper:
+        mean: 0.0986
+        error: 0.013
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H13X (122):
+          total:
+            mean: 0.1018
+            error: 0.0161
+          upper:
+            mean: 0.1018
+            error: 0.0161
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H13Y (123):
+          total:
+            mean: 0.0954
+            error: 0.0182
+          upper:
+            mean: 0.0954
+            error: 0.0182
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C314 (124):
+      total:
+        mean: 0.091
+        error: 0.0113
+      upper:
+        mean: 0.091
+        error: 0.0113
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H14X (125):
+          total:
+            mean: 0.1024
+            error: 0.0098
+          upper:
+            mean: 0.1024
+            error: 0.0098
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H14Y (126):
+          total:
+            mean: 0.0796
+            error: 0.0173
+          upper:
+            mean: 0.0796
+            error: 0.0173
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C315 (127):
+      total:
+        mean: 0.0671
+        error: 0.012
+      upper:
+        mean: 0.0671
+        error: 0.012
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H15X (128):
+          total:
+            mean: 0.0804
+            error: 0.0156
+          upper:
+            mean: 0.0804
+            error: 0.0156
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H15Y (129):
+          total:
+            mean: 0.0538
+            error: 0.0287
+          upper:
+            mean: 0.0538
+            error: 0.0287
+          lower:
+            mean: .nan
+            error: .nan
+    POPC C316 (130):
+      total:
+        mean: 0.0196
+        error: 0.0058
+      upper:
+        mean: 0.0196
+        error: 0.0058
+      lower:
+        mean: .nan
+        error: .nan
+      bonds:
+        POPC H16X (131):
+          total:
+            mean: 0.0227
+            error: 0.0142
+          upper:
+            mean: 0.0227
+            error: 0.0142
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H16Y (132):
+          total:
+            mean: 0.0209
+            error: 0.0153
+          upper:
+            mean: 0.0209
+            error: 0.0153
+          lower:
+            mean: .nan
+            error: .nan
+        POPC H16Z (133):
+          total:
+            mean: 0.0152
+            error: 0.0131
+          upper:
+            mean: 0.0152
+            error: 0.0131
+          lower:
+            mean: .nan
+            error: .nan
+POPE:
+  average order:
+    total:
+      mean: 0.175
+      error: 0.0015
+    upper:
+      mean: .nan
+      error: .nan
+    lower:
+      mean: 0.175
+      error: 0.0015
+  order parameters:
+    POPE C12 (4):
+      total:
+        mean: 0.0143
+        error: 0.0109
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.0143
+        error: 0.0109
+      bonds:
+        POPE H12A (5):
+          total:
+            mean: 0.0359
+            error: 0.0144
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0359
+            error: 0.0144
+        POPE H12B (6):
+          total:
+            mean: -0.0072
+            error: 0.016
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: -0.0072
+            error: 0.016
+    POPE C11 (7):
+      total:
+        mean: -0.0649
+        error: 0.0094
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: -0.0649
+        error: 0.0094
+      bonds:
+        POPE H11A (8):
+          total:
+            mean: -0.0892
+            error: 0.0094
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: -0.0892
+            error: 0.0094
+        POPE H11B (9):
+          total:
+            mean: -0.0406
+            error: 0.0133
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: -0.0406
+            error: 0.0133
+    POPE C1 (15):
+      total:
+        mean: 0.2319
+        error: 0.0117
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2319
+        error: 0.0117
+      bonds:
+        POPE HA (16):
+          total:
+            mean: 0.2384
+            error: 0.0092
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2384
+            error: 0.0092
+        POPE HB (17):
+          total:
+            mean: 0.2254
+            error: 0.0145
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2254
+            error: 0.0145
+    POPE C2 (18):
+      total:
+        mean: 0.2148
+        error: 0.0109
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2148
+        error: 0.0109
+      bonds:
+        POPE HS (19):
+          total:
+            mean: 0.2148
+            error: 0.0109
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2148
+            error: 0.0109
+    POPE C22 (23):
+      total:
+        mean: 0.1025
+        error: 0.0139
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1025
+        error: 0.0139
+      bonds:
+        POPE H2R (24):
+          total:
+            mean: 0.0779
+            error: 0.0216
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0779
+            error: 0.0216
+        POPE H2S (25):
+          total:
+            mean: 0.127
+            error: 0.0116
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.127
+            error: 0.0116
+    POPE C3 (26):
+      total:
+        mean: 0.0946
+        error: 0.0077
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.0946
+        error: 0.0077
+      bonds:
+        POPE HX (27):
+          total:
+            mean: 0.1962
+            error: 0.0143
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1962
+            error: 0.0143
+        POPE HY (28):
+          total:
+            mean: -0.007
+            error: 0.0154
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: -0.007
+            error: 0.0154
+    POPE C32 (32):
+      total:
+        mean: 0.2303
+        error: 0.0059
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2303
+        error: 0.0059
+      bonds:
+        POPE H2X (33):
+          total:
+            mean: 0.2377
+            error: 0.0042
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2377
+            error: 0.0042
+        POPE H2Y (34):
+          total:
+            mean: 0.2228
+            error: 0.0077
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2228
+            error: 0.0077
+    POPE C23 (35):
+      total:
+        mean: 0.2388
+        error: 0.0104
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2388
+        error: 0.0104
+      bonds:
+        POPE H3R (36):
+          total:
+            mean: 0.231
+            error: 0.0048
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.231
+            error: 0.0048
+        POPE H3S (37):
+          total:
+            mean: 0.2467
+            error: 0.0169
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2467
+            error: 0.0169
+    POPE C24 (38):
+      total:
+        mean: 0.2481
+        error: 0.0108
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2481
+        error: 0.0108
+      bonds:
+        POPE H4R (39):
+          total:
+            mean: 0.2397
+            error: 0.0059
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2397
+            error: 0.0059
+        POPE H4S (40):
+          total:
+            mean: 0.2566
+            error: 0.0194
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2566
+            error: 0.0194
+    POPE C25 (41):
+      total:
+        mean: 0.2475
+        error: 0.0088
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2475
+        error: 0.0088
+      bonds:
+        POPE H5R (42):
+          total:
+            mean: 0.2437
+            error: 0.0121
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2437
+            error: 0.0121
+        POPE H5S (43):
+          total:
+            mean: 0.2513
+            error: 0.0086
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2513
+            error: 0.0086
+    POPE C26 (44):
+      total:
+        mean: 0.2283
+        error: 0.0047
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2283
+        error: 0.0047
+      bonds:
+        POPE H6R (45):
+          total:
+            mean: 0.2252
+            error: 0.0131
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2252
+            error: 0.0131
+        POPE H6S (46):
+          total:
+            mean: 0.2315
+            error: 0.011
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2315
+            error: 0.011
+    POPE C27 (47):
+      total:
+        mean: 0.2177
+        error: 0.0053
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2177
+        error: 0.0053
+      bonds:
+        POPE H7R (48):
+          total:
+            mean: 0.2233
+            error: 0.0142
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2233
+            error: 0.0142
+        POPE H7S (49):
+          total:
+            mean: 0.2122
+            error: 0.008
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2122
+            error: 0.008
+    POPE C28 (50):
+      total:
+        mean: 0.1294
+        error: 0.013
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1294
+        error: 0.013
+      bonds:
+        POPE H8R (51):
+          total:
+            mean: 0.1307
+            error: 0.0124
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1307
+            error: 0.0124
+        POPE H8S (52):
+          total:
+            mean: 0.128
+            error: 0.0155
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.128
+            error: 0.0155
+    POPE C29 (53):
+      total:
+        mean: 0.0852
+        error: 0.0242
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.0852
+        error: 0.0242
+      bonds:
+        POPE H91 (54):
+          total:
+            mean: 0.0852
+            error: 0.0242
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0852
+            error: 0.0242
+    POPE C210 (55):
+      total:
+        mean: 0.0852
+        error: 0.0141
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.0852
+        error: 0.0141
+      bonds:
+        POPE H101 (56):
+          total:
+            mean: 0.0852
+            error: 0.0141
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0852
+            error: 0.0141
+    POPE C211 (57):
+      total:
+        mean: 0.112
+        error: 0.0104
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.112
+        error: 0.0104
+      bonds:
+        POPE H11R (58):
+          total:
+            mean: 0.1036
+            error: 0.0191
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1036
+            error: 0.0191
+        POPE H11S (59):
+          total:
+            mean: 0.1204
+            error: 0.0196
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1204
+            error: 0.0196
+    POPE C212 (60):
+      total:
+        mean: 0.1808
+        error: 0.0104
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1808
+        error: 0.0104
+      bonds:
+        POPE H12R (61):
+          total:
+            mean: 0.1732
+            error: 0.0114
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1732
+            error: 0.0114
+        POPE H12S (62):
+          total:
+            mean: 0.1883
+            error: 0.0097
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1883
+            error: 0.0097
+    POPE C213 (63):
+      total:
+        mean: 0.1936
+        error: 0.009
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1936
+        error: 0.009
+      bonds:
+        POPE H13R (64):
+          total:
+            mean: 0.1964
+            error: 0.015
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1964
+            error: 0.015
+        POPE H13S (65):
+          total:
+            mean: 0.1909
+            error: 0.0091
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1909
+            error: 0.0091
+    POPE C214 (66):
+      total:
+        mean: 0.1976
+        error: 0.0068
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1976
+        error: 0.0068
+      bonds:
+        POPE H14R (67):
+          total:
+            mean: 0.1946
+            error: 0.0134
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1946
+            error: 0.0134
+        POPE H14S (68):
+          total:
+            mean: 0.2006
+            error: 0.0135
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2006
+            error: 0.0135
+    POPE C215 (69):
+      total:
+        mean: 0.1773
+        error: 0.0125
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1773
+        error: 0.0125
+      bonds:
+        POPE H15R (70):
+          total:
+            mean: 0.181
+            error: 0.0151
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.181
+            error: 0.0151
+        POPE H15S (71):
+          total:
+            mean: 0.1737
+            error: 0.0164
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1737
+            error: 0.0164
+    POPE C216 (72):
+      total:
+        mean: 0.1615
+        error: 0.0095
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1615
+        error: 0.0095
+      bonds:
+        POPE H16R (73):
+          total:
+            mean: 0.1632
+            error: 0.0092
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1632
+            error: 0.0092
+        POPE H16S (74):
+          total:
+            mean: 0.1598
+            error: 0.0248
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1598
+            error: 0.0248
+    POPE C217 (75):
+      total:
+        mean: 0.1229
+        error: 0.0084
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1229
+        error: 0.0084
+      bonds:
+        POPE H17R (76):
+          total:
+            mean: 0.1336
+            error: 0.0132
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1336
+            error: 0.0132
+        POPE H17S (77):
+          total:
+            mean: 0.1123
+            error: 0.0077
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1123
+            error: 0.0077
+    POPE C218 (78):
+      total:
+        mean: 0.0411
+        error: 0.0055
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.0411
+        error: 0.0055
+      bonds:
+        POPE H18R (79):
+          total:
+            mean: 0.0478
+            error: 0.004
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0478
+            error: 0.004
+        POPE H18S (80):
+          total:
+            mean: 0.0451
+            error: 0.0212
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0451
+            error: 0.0212
+        POPE H18T (81):
+          total:
+            mean: 0.0304
+            error: 0.0167
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0304
+            error: 0.0167
+    POPE C33 (82):
+      total:
+        mean: 0.2089
+        error: 0.0077
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2089
+        error: 0.0077
+      bonds:
+        POPE H3X (83):
+          total:
+            mean: 0.213
+            error: 0.0054
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.213
+            error: 0.0054
+        POPE H3Y (84):
+          total:
+            mean: 0.2048
+            error: 0.0166
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2048
+            error: 0.0166
+    POPE C34 (85):
+      total:
+        mean: 0.251
+        error: 0.0104
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.251
+        error: 0.0104
+      bonds:
+        POPE H4X (86):
+          total:
+            mean: 0.2481
+            error: 0.0165
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2481
+            error: 0.0165
+        POPE H4Y (87):
+          total:
+            mean: 0.254
+            error: 0.0113
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.254
+            error: 0.0113
+    POPE C35 (88):
+      total:
+        mean: 0.2645
+        error: 0.0076
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2645
+        error: 0.0076
+      bonds:
+        POPE H5X (89):
+          total:
+            mean: 0.2708
+            error: 0.0126
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2708
+            error: 0.0126
+        POPE H5Y (90):
+          total:
+            mean: 0.2582
+            error: 0.0103
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2582
+            error: 0.0103
+    POPE C36 (91):
+      total:
+        mean: 0.2798
+        error: 0.0063
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2798
+        error: 0.0063
+      bonds:
+        POPE H6X (92):
+          total:
+            mean: 0.2846
+            error: 0.0088
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2846
+            error: 0.0088
+        POPE H6Y (93):
+          total:
+            mean: 0.275
+            error: 0.0084
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.275
+            error: 0.0084
+    POPE C37 (94):
+      total:
+        mean: 0.2744
+        error: 0.0088
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2744
+        error: 0.0088
+      bonds:
+        POPE H7X (95):
+          total:
+            mean: 0.279
+            error: 0.0135
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.279
+            error: 0.0135
+        POPE H7Y (96):
+          total:
+            mean: 0.2699
+            error: 0.0091
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2699
+            error: 0.0091
+    POPE C38 (97):
+      total:
+        mean: 0.2764
+        error: 0.0072
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2764
+        error: 0.0072
+      bonds:
+        POPE H8X (98):
+          total:
+            mean: 0.2774
+            error: 0.006
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2774
+            error: 0.006
+        POPE H8Y (99):
+          total:
+            mean: 0.2755
+            error: 0.0141
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2755
+            error: 0.0141
+    POPE C39 (100):
+      total:
+        mean: 0.2616
+        error: 0.0061
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2616
+        error: 0.0061
+      bonds:
+        POPE H9X (101):
+          total:
+            mean: 0.2679
+            error: 0.0142
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2679
+            error: 0.0142
+        POPE H9Y (102):
+          total:
+            mean: 0.2552
+            error: 0.0056
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2552
+            error: 0.0056
+    POPE C310 (103):
+      total:
+        mean: 0.2501
+        error: 0.0067
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2501
+        error: 0.0067
+      bonds:
+        POPE H10X (104):
+          total:
+            mean: 0.2513
+            error: 0.002
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2513
+            error: 0.002
+        POPE H10Y (105):
+          total:
+            mean: 0.249
+            error: 0.0118
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.249
+            error: 0.0118
+    POPE C311 (106):
+      total:
+        mean: 0.236
+        error: 0.0099
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.236
+        error: 0.0099
+      bonds:
+        POPE H11X (107):
+          total:
+            mean: 0.2325
+            error: 0.0124
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2325
+            error: 0.0124
+        POPE H11Y (108):
+          total:
+            mean: 0.2394
+            error: 0.0162
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2394
+            error: 0.0162
+    POPE C312 (109):
+      total:
+        mean: 0.2169
+        error: 0.0069
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.2169
+        error: 0.0069
+      bonds:
+        POPE H12X (110):
+          total:
+            mean: 0.2199
+            error: 0.0098
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.2199
+            error: 0.0098
+        POPE H12Y (111):
+          total:
+            mean: 0.214
+            error: 0.0134
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.214
+            error: 0.0134
+    POPE C313 (112):
+      total:
+        mean: 0.1956
+        error: 0.0052
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1956
+        error: 0.0052
+      bonds:
+        POPE H13X (113):
+          total:
+            mean: 0.1969
+            error: 0.0079
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1969
+            error: 0.0079
+        POPE H13Y (114):
+          total:
+            mean: 0.1944
+            error: 0.0097
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1944
+            error: 0.0097
+    POPE C314 (115):
+      total:
+        mean: 0.1688
+        error: 0.0053
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1688
+        error: 0.0053
+      bonds:
+        POPE H14X (116):
+          total:
+            mean: 0.1695
+            error: 0.0066
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1695
+            error: 0.0066
+        POPE H14Y (117):
+          total:
+            mean: 0.168
+            error: 0.0094
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.168
+            error: 0.0094
+    POPE C315 (118):
+      total:
+        mean: 0.1247
+        error: 0.0068
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.1247
+        error: 0.0068
+      bonds:
+        POPE H15X (119):
+          total:
+            mean: 0.1284
+            error: 0.0053
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1284
+            error: 0.0053
+        POPE H15Y (120):
+          total:
+            mean: 0.1211
+            error: 0.013
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.1211
+            error: 0.013
+    POPE C316 (121):
+      total:
+        mean: 0.0398
+        error: 0.0041
+      upper:
+        mean: .nan
+        error: .nan
+      lower:
+        mean: 0.0398
+        error: 0.0041
+      bonds:
+        POPE H16X (122):
+          total:
+            mean: 0.042
+            error: 0.0112
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.042
+            error: 0.0112
+        POPE H16Y (123):
+          total:
+            mean: 0.0432
+            error: 0.0212
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0432
+            error: 0.0212
+        POPE H16Z (124):
+          total:
+            mean: 0.0342
+            error: 0.0116
+          upper:
+            mean: .nan
+            error: .nan
+          lower:
+            mean: 0.0342
+            error: 0.0116

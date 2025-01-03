@@ -1,5 +1,5 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! Contains the implementation of the main `Analysis` structure and its methods.
 
@@ -9,16 +9,16 @@ use std::path::Path;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
 use getset::{MutGetters, Setters};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::errors::ConfigError;
 
-use super::Axis;
 use super::LeafletClassification;
 use super::OrderMap;
+use super::{Axis, EstimateError};
 
 /// Type of analysis to perform.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub enum AnalysisType {
     AAOrder {
@@ -76,7 +76,9 @@ impl AnalysisType {
 }
 
 /// Structure holding all the information necessary to perform the analysis.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, MutGetters, Deserialize)]
+#[derive(
+    Debug, Clone, Builder, Getters, CopyGetters, Setters, MutGetters, Deserialize, Serialize,
+)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
@@ -95,13 +97,12 @@ pub struct Analysis {
     #[getset(get = "pub")]
     index: Option<String>,
 
-    /// Path to an output YAML file where the full results of the analysis will be saved.
-    /// The path to an output YAML file must always be specified, even if other output formats
-    /// are requested, as it is the only format that contains the complete results of the analysis.
-    #[builder(setter(into))]
+    /// Optional path to an output YAML file where the full results of the analysis will be saved.
+    /// YAML file is the only output file containing the full results of the analysis.
+    #[builder(setter(into, strip_option), default)]
     #[getset(get = "pub")]
-    #[serde(alias = "output")]
-    output_yaml: String,
+    #[serde(alias = "output", alias = "output_yml")]
+    output_yaml: Option<String>,
 
     /// Optional path to an output TABLE file where the analysis results will be saved
     /// in a human-readable format.
@@ -179,8 +180,16 @@ pub struct Analysis {
     /// If not provided, no ordermap will be calculated.
     #[builder(setter(strip_option), default)]
     #[serde(alias = "maps", alias = "ordermap", alias = "ordermaps")]
+    #[serde(deserialize_with = "deserialize_order_map", default)]
     #[getset(get = "pub", get_mut = "pub(crate)")]
     map: Option<OrderMap>,
+
+    /// Optional specification of calculation error estimation.
+    /// If provided, calculation error will be provided for each bond.
+    #[builder(setter(strip_option), default)]
+    #[serde(deserialize_with = "deserialize_estimate_error", default)]
+    #[getset(get = "pub")]
+    estimate_error: Option<EstimateError>,
 
     /// If true, suppress all output to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
@@ -247,10 +256,53 @@ fn validate_begin_end(begin: f32, end: f32) -> Result<(), ConfigError> {
     }
 }
 
+fn deserialize_order_map<'de, D>(deserializer: D) -> Result<Option<OrderMap>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: serde_yaml::Value = Deserialize::deserialize(deserializer)?;
+
+    match value {
+        serde_yaml::Value::String(keyword) if keyword == "default" || keyword == "true" => {
+            Ok(Some(OrderMap::default()))
+        }
+        serde_yaml::Value::Null => Ok(None),
+        serde_yaml::Value::Bool(true) => Ok(Some(OrderMap::default())),
+        serde_yaml::Value::Bool(false) => Err(serde::de::Error::custom("Invalid value 'false' for 'order_map'. If you do not want to calculate ordermaps, just omit this field.")),
+        serde_yaml::Value::Mapping(_) => serde_yaml::from_value(value)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+        _ => Err(serde::de::Error::custom(
+            "Invalid value for 'order_map'. Expected 'default', 'true', 'null', or a valid structure.",
+        )),
+    }
+}
+
+fn deserialize_estimate_error<'de, D>(deserializer: D) -> Result<Option<EstimateError>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: serde_yaml::Value = Deserialize::deserialize(deserializer)?;
+
+    match value {
+        serde_yaml::Value::String(keyword) if keyword == "default" => {
+            Ok(Some(EstimateError::default()))
+        }
+        serde_yaml::Value::Null => Ok(None),
+        serde_yaml::Value::Bool(true) => Ok(Some(EstimateError::default())),
+        serde_yaml::Value::Bool(false) => Err(serde::de::Error::custom("Invalid value 'false' for 'estimate_error'. If you do not want to calculate error, just omit this field.")),
+        serde_yaml::Value::Mapping(_) => serde_yaml::from_value(value)
+            .map(Some)
+            .map_err(serde::de::Error::custom),
+        _ => Err(serde::de::Error::custom(
+            "Invalid value for 'estimate_error'. Expected 'default', 'true', 'null', or a valid structure.",
+        )),
+    }
+}
+
 impl Analysis {
     /// Start providing the analysis parameters.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> AnalysisBuilder {
+    pub fn builder() -> AnalysisBuilder {
         AnalysisBuilder::default()
     }
 
@@ -277,6 +329,13 @@ impl Analysis {
         // check the validity of the order map, if present
         if let Some(ref map) = self.map {
             map.validate().map_err(ConfigError::InvalidOrderMap)?;
+        }
+
+        // check the validity of error estimation
+        if let Some(ref error) = self.estimate_error {
+            error
+                .validate()
+                .map_err(ConfigError::InvalidErrorEstimation)?;
         }
 
         Ok(())
@@ -326,7 +385,7 @@ impl Analysis {
 
     /// Alias for `output_yaml`.
     #[inline(always)]
-    pub fn output(&self) -> &String {
+    pub fn output(&self) -> &Option<String> {
         &self.output_yaml
     }
 }
@@ -398,12 +457,13 @@ impl AnalysisBuilder {
 mod tests_yaml {
     use approx::assert_relative_eq;
 
+    use super::*;
+    use crate::errors::ErrorEstimationError;
+    use crate::input::frequency::Frequency;
     use crate::{
         errors::OrderMapConfigError,
         input::{ordermap::Plane, GridSpan},
     };
-
-    use super::*;
 
     #[test]
     fn analysis_yaml_pass_basic() {
@@ -412,7 +472,7 @@ mod tests_yaml {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert!(analysis.index().is_none());
-        assert_eq!(analysis.output(), "order.yaml");
+        assert!(analysis.output().is_none());
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
         assert!(analysis.output_csv().is_none());
@@ -444,7 +504,7 @@ mod tests_yaml {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
-        assert_eq!(analysis.output(), "order.yaml");
+        assert_eq!(analysis.output().as_ref().unwrap(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
         assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
@@ -457,11 +517,19 @@ mod tests_yaml {
         assert_eq!(analysis.step(), 5);
         assert_eq!(analysis.min_samples(), 10);
         assert_eq!(analysis.n_threads(), 4);
-        assert!(analysis.leaflets().is_some());
+        let leaflets = analysis.leaflets().as_ref().unwrap();
+        match leaflets {
+            LeafletClassification::Global(x) => {
+                assert_eq!(x.heads(), "name P");
+                assert_eq!(x.membrane(), "@membrane");
+                assert!(matches!(x.frequency(), Frequency::Once));
+            }
+            _ => panic!("Incorrect leaflet classification type returned."),
+        }
 
         let map = analysis.map().as_ref().unwrap();
 
-        assert_eq!(map.output_directory(), ".");
+        assert_eq!(map.output_directory().as_ref().unwrap(), ".");
         matches!(
             map.dim_x(),
             GridSpan::Manual {
@@ -474,6 +542,10 @@ mod tests_yaml {
         assert_eq!(map.bin_size_x(), 0.05);
         assert_eq!(map.bin_size_y(), 0.02);
         assert_eq!(map.plane().unwrap(), Plane::XY);
+
+        let ee = analysis.estimate_error().as_ref().unwrap();
+        assert_eq!(ee.n_blocks(), 10);
+        assert_eq!(ee.output_convergence().unwrap(), "convergence.xvg");
     }
 
     #[test]
@@ -481,12 +553,44 @@ mod tests_yaml {
         let analysis = Analysis::from_file("tests/files/inputs/default_ordermap.yaml").unwrap();
 
         let ordermap = analysis.map.unwrap();
-        assert_eq!(ordermap.output_directory(), "ordermaps");
+        assert!(ordermap.output_directory().is_none());
         assert_relative_eq!(ordermap.bin_size_x(), 0.1);
         assert_relative_eq!(ordermap.bin_size_y(), 0.1);
         assert_eq!(ordermap.min_samples(), 1);
         matches!(ordermap.dim_x(), GridSpan::Auto);
         matches!(ordermap.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn analysis_yaml_pass_true_ordermap() {
+        let analysis = Analysis::from_file("tests/files/inputs/true_ordermap.yaml").unwrap();
+
+        let ordermap = analysis.map.unwrap();
+        assert!(ordermap.output_directory().is_none());
+        assert_relative_eq!(ordermap.bin_size_x(), 0.1);
+        assert_relative_eq!(ordermap.bin_size_y(), 0.1);
+        assert_eq!(ordermap.min_samples(), 1);
+        matches!(ordermap.dim_x(), GridSpan::Auto);
+        matches!(ordermap.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn analysis_yaml_pass_default_estimate_error() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/default_estimate_error.yaml").unwrap();
+
+        let ee = analysis.estimate_error.unwrap();
+        assert_eq!(ee.n_blocks(), 5);
+        assert!(ee.output_convergence().is_none());
+    }
+
+    #[test]
+    fn analysis_yaml_pass_true_estimate_error() {
+        let analysis = Analysis::from_file("tests/files/inputs/true_estimate_error.yaml").unwrap();
+
+        let ee = analysis.estimate_error.unwrap();
+        assert_eq!(ee.n_blocks(), 5);
+        assert!(ee.output_convergence().is_none());
     }
 
     #[test]
@@ -590,6 +694,47 @@ mod tests_yaml {
             Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
+
+    #[test]
+    fn analysis_yaml_fail_ordermap_unknown_keyword() {
+        match Analysis::from_file("tests/files/inputs/ordermap_unknown_keyword.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(e) => assert!(e.to_string().contains(
+                "Invalid value for 'order_map'. Expected 'default', 'true', 'null', or a valid structure."
+            )),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_estimate_error_invalid_n_blocks() {
+        match Analysis::from_file("tests/files/inputs/estimate_error_invalid_n_blocks.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidErrorEstimation(ErrorEstimationError::NotEnoughBlocks(x))) => {
+                assert_eq!(x, 1);
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_estimate_error_unknown_keyword() {
+        match Analysis::from_file("tests/files/inputs/estimate_error_unknown_keyword.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(e) => assert!(e.to_string().contains(
+                "Invalid value for 'estimate_error'. Expected 'default', 'true', 'null', or a valid structure."
+            )),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_zero_frequency() {
+        match Analysis::from_file("tests/files/inputs/leaflets_zero_frequency.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(e) => assert!(e
+                .to_string()
+                .contains("invalid value: integer `0`, expected a nonzero usize")),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -598,16 +743,16 @@ mod tests_builder {
     use approx::assert_relative_eq;
 
     use crate::input::ordermap::Plane;
+    use crate::input::Frequency;
 
     use super::super::GridSpan;
     use super::*;
 
     #[test]
     fn analysis_builder_pass_basic() {
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
-            .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
                 "@membrane and element name hydrogen",
@@ -618,7 +763,7 @@ mod tests_builder {
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert!(analysis.index().is_none());
-        assert_eq!(analysis.output(), "order.yaml");
+        assert!(analysis.output().is_none());
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
         assert!(analysis.output_csv().is_none());
@@ -645,7 +790,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_pass_full() {
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .index("index.ndx")
@@ -660,9 +805,12 @@ mod tests_builder {
             .step(5)
             .min_samples(10)
             .n_threads(4)
-            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .leaflets(
+                LeafletClassification::global("@membrane", "name P")
+                    .with_frequency(Frequency::once()),
+            )
             .map(
-                OrderMap::new()
+                OrderMap::builder()
                     .output_directory(".")
                     .dim([
                         GridSpan::Manual {
@@ -677,13 +825,14 @@ mod tests_builder {
                     .build()
                     .unwrap(),
             )
+            .estimate_error(EstimateError::new(Some(10), Some("convergence.xvg")).unwrap())
             .build()
             .unwrap();
 
         assert_eq!(analysis.structure(), "system.tpr");
         assert_eq!(analysis.trajectory(), "md.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
-        assert_eq!(analysis.output(), "order.yaml");
+        assert_eq!(analysis.output().as_ref().unwrap(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
         assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
@@ -696,11 +845,20 @@ mod tests_builder {
         assert_eq!(analysis.step(), 5);
         assert_eq!(analysis.min_samples(), 10);
         assert_eq!(analysis.n_threads(), 4);
-        assert!(analysis.leaflets().is_some());
+
+        let leaflets = analysis.leaflets().as_ref().unwrap();
+        match leaflets {
+            LeafletClassification::Global(x) => {
+                assert_eq!(x.heads(), "name P");
+                assert_eq!(x.membrane(), "@membrane");
+                assert!(matches!(x.frequency(), Frequency::Once));
+            }
+            _ => panic!("Incorrect leaflet classification type returned."),
+        }
 
         let map = analysis.map().as_ref().unwrap();
 
-        assert_eq!(map.output_directory(), ".");
+        assert_eq!(map.output_directory().as_ref().unwrap(), ".");
         matches!(
             map.dim_x(),
             GridSpan::Manual {
@@ -713,11 +871,16 @@ mod tests_builder {
         assert_eq!(map.bin_size_x(), 0.05);
         assert_eq!(map.bin_size_y(), 0.02);
         assert_eq!(map.plane().unwrap(), Plane::XY);
+
+        let ee = analysis.estimate_error().as_ref().unwrap();
+
+        assert_eq!(ee.n_blocks(), 10);
+        assert_eq!(ee.output_convergence().unwrap(), "convergence.xvg");
     }
 
     #[test]
     fn analysis_builder_pass_default_ordermap() {
-        let analysis = Analysis::new()
+        let analysis = Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -725,17 +888,12 @@ mod tests_builder {
                 "@membrane and element name carbon",
                 "@membrane and element name hydrogen",
             ))
-            .map(
-                OrderMap::new()
-                    .output_directory("ordermaps")
-                    .build()
-                    .unwrap(),
-            )
+            .map(OrderMap::default())
             .build()
             .unwrap();
 
         let ordermap = analysis.map.unwrap();
-        assert_eq!(ordermap.output_directory(), "ordermaps");
+        assert!(ordermap.output_directory().is_none());
         assert_relative_eq!(ordermap.bin_size_x(), 0.1);
         assert_relative_eq!(ordermap.bin_size_y(), 0.1);
         assert_eq!(ordermap.min_samples(), 1);
@@ -745,7 +903,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_incomplete() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -759,7 +917,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_zero_step() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -778,7 +936,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_zero_min_samples() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -797,7 +955,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_zero_threads() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")
@@ -816,7 +974,7 @@ mod tests_builder {
 
     #[test]
     fn analysis_builder_fail_start_higher_than_end() {
-        match Analysis::new()
+        match Analysis::builder()
             .structure("system.tpr")
             .trajectory("md.xtc")
             .output("order.yaml")

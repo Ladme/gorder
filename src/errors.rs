@@ -1,5 +1,5 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! This module contains error types that can be returned by the `gorder` crate.
 
@@ -16,20 +16,35 @@ fn path_to_yellow(path: &Path) -> ColoredString {
 /// Errors that can occur when creating a `GridSpan` structure.
 #[derive(Error, Debug)]
 pub enum GridSpanError {
-    #[error("{} the first coordinate for the grid span ('{}' nm) is higher than the second coordinate for the grid span ('{}' nm)", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
+    #[error("{} the first coordinate for the grid span ('{}' nm) is higher than the second coordinate for the grid span ('{}' nm)", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow()
+    )]
     Invalid(f32, f32),
+}
+
+/// Errors that can occur when creating a `Frequency` structure.
+#[derive(Error, Debug)]
+pub enum FrequencyError {
+    #[error("{} action cannot be performed once every '{}' frames (frequency has to be at least 1)", "error:".red().bold(), "0".yellow())]
+    EveryZero,
 }
 
 /// Errors that can occur when analyzing system topology.
 #[derive(Error, Debug)]
 pub enum TopologyError {
-    #[error("{}", .0)]
+    #[error("{} {}", .0, 
+        if matches!(.0, SelectError::GroupNotFound(_)) {
+            format!("({} one of your atom selection queries uses a name for a group not defined in your system; maybe an NDX file is missing?)", "hint:".blue().bold()) 
+        } else {
+            String::from("")
+        }
+    )]
     InvalidQuery(SelectError),
 
-    #[error("{} group '{}' is empty", "error:".red().bold(), .0.yellow())]
-    EmptyGroup(String),
+    #[error("{} group '{}' is empty ({} {})", "error:".red().bold(), .group.yellow(), "hint:".blue().bold(), .hint)]
+    EmptyGroup { group: String, hint: String },
 
-    #[error("{} {} atoms are part of both '{}' (query: '{}') and '{}' (query: '{}')", "error:".red().bold(), .n_overlapping.to_string().yellow(), .name1.yellow(), .query1.yellow(), .name2.yellow(), .query2.yellow())]
+    #[error("{} {} atoms are part of both '{}' (query: '{}') and '{}' (query: '{}')", "error:".red().bold(), .n_overlapping.to_string().yellow(), .name1.yellow(), .query1.yellow(), .name2.yellow(), .query2.yellow()
+    )]
     AtomsOverlap {
         n_overlapping: usize,
         name1: String,
@@ -38,16 +53,20 @@ pub enum TopologyError {
         query2: String,
     },
 
-    #[error("{} molecule starting with atom index '{}' contains multiple head group atoms", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} molecule starting with atom index '{}' contains multiple head group atoms", "error:".red().bold(), .0.to_string().yellow()
+    )]
     MultipleHeads(usize),
 
-    #[error("{} molecule starting with atom index '{}' contains no head group atom", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} molecule starting with atom index '{}' contains no head group atom", "error:".red().bold(), .0.to_string().yellow()
+    )]
     NoHead(usize),
 
-    #[error("{} molecule starting with atom index '{}' contains no methyl group atom", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} molecule starting with atom index '{}' contains no methyl group atom", "error:".red().bold(), .0.to_string().yellow()
+    )]
     NoMethyl(usize),
 
-    #[error("{} molecule starting with atom index '{}' contains a number of methyl group atoms ('{}') not consistent with other molecules ('{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+    #[error("{} molecule starting with atom index '{}' contains a number of methyl group atoms ('{}') not consistent with other molecules ('{}')", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow()
+    )]
     InconsistentNumberOfMethyls(usize, usize, usize),
 
     #[error("{} system has undefined simulation box", "error:".red().bold())]
@@ -75,13 +94,15 @@ pub enum AnalysisError {
     #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
     ZeroBox,
 
-    #[error("{} atom with atom index '{}' has an undefined position", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} atom with atom index '{}' has an undefined position", "error:".red().bold(), .0.to_string().yellow()
+    )]
     UndefinedPosition(usize),
 
     #[error("{} could not calculate global membrane center", "error:".red().bold())]
     InvalidGlobalMembraneCenter,
 
-    #[error("{} could not calculate local membrane center for molecule with a head identifier index '{}'", "error:".red().bold(), .0.to_string().yellow())]
+    #[error("{} could not calculate local membrane center for molecule with a head identifier index '{}'", "error:".red().bold(), .0.to_string().yellow()
+    )]
     InvalidLocalMembraneCenter(usize),
 }
 
@@ -91,17 +112,26 @@ pub enum WriteError {
     #[error("{} could not create file '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotCreateFile(Box<Path>),
 
-    #[error("{} could not create a backup for file '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    #[error("{} could not create a backup for file '{}'", "error:".red().bold(), path_to_yellow(.0)
+    )]
     CouldNotBackupFile(Box<Path>),
 
-    #[error("{} could not write output file header into '{}'", "error:".red().bold(), path_to_yellow(.0))]
-    CouldNotWriteHeader(Box<Path>),
+    #[error("{} could not write results in yaml format (serde_yaml error: `{}`)", "error:".red().bold(), .0.to_string()
+    )]
+    CouldNotWriteYaml(serde_yaml::Error),
 
-    #[error("{} could not write results in yaml format into '{}'", "error:".red().bold(), path_to_yellow(.0))]
-    CouldNotWriteYaml(Box<Path>),
+    #[error("{} could not export analysis options in yaml format (serde_yaml error: `{}`)", "error:".red().bold(), .0.to_string()
+    )]
+    CouldNotExportAnalysis(serde_yaml::Error),
 
-    #[error("{} could not write results in the output file ({})", "error:".red().bold(), .0)]
+    #[error("{} could not write results to the output file ({})", "error:".red().bold(), .0)]
     CouldNotWriteResults(std::io::Error),
+
+    #[error("{}", .0)]
+    CouldNotWriteOrderMap(OrderMapWriteError),
+
+    #[error("{} could not write a line to the output file '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotWriteLine(Box<Path>),
 }
 
 /// Errors that can occur while writing the order maps.
@@ -110,10 +140,12 @@ pub enum OrderMapWriteError {
     #[error("{} could not create directory '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotCreateDirectory(Box<Path>),
 
-    #[error("{} could not create a backup for directory '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    #[error("{} could not create a backup for directory '{}'", "error:".red().bold(), path_to_yellow(.0)
+    )]
     CouldNotBackupDirectory(Box<Path>),
 
-    #[error("{} could not remove an existing directory '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    #[error("{} could not remove an existing directory '{}'", "error:".red().bold(), path_to_yellow(.0)
+    )]
     CouldNotRemoveDirectory(Box<Path>),
 
     #[error("{} could not create file '{}'", "error:".red().bold(), path_to_yellow(.0))]
@@ -128,21 +160,42 @@ pub enum OrderMapWriteError {
 pub enum ConfigError {
     #[error("{} could not open the configuration file '{}'", "error:".red().bold(), .0.yellow())]
     CouldNotOpenConfig(String),
-    #[error("{} could not understand the contents of the configuration file '{}' ({})", "error:".red().bold(), .0.yellow(), .1)]
+
+    #[error("{} could not understand the contents of the configuration file '{}' ({})", "error:".red().bold(), .0.yellow(), .1
+    )]
     CouldNotParseConfig(String, serde_yaml::Error),
-    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "step".yellow())]
+
+    /// Only used in the `gorder` application.
+    #[error("{} no yaml output file specified in the configuration file '{}' ({} add '{}' to your configuration file)", "error:".red().bold(), .0.yellow(), "hint:".blue().bold(), "output: output.yaml".bright_blue())]
+    NoYamlOutput(String),
+
+    // Only used in the `gorder` application.
+    #[error("{} no output directory for ordermaps specified in the configuration file '{}'", "error:".red().bold(), .0.yellow())]
+    NoOrdermapsOutput(String),
+
+    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "step".yellow()
+    )]
     InvalidStep,
-    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "min_samples".yellow())]
+
+    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "min_samples".yellow()
+    )]
     InvalidMinSamples,
-    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "n_threads".yellow())]
+
+    #[error("{} the specified value of '{}' is invalid (must be positive)", "error:".red().bold(), "n_threads".yellow()
+    )]
     InvalidNThreads,
+
     #[error("{} invalid values of '{}' and '{}' (begin is higher than end)",
             "error:".red().bold(),
             "begin".yellow(),
             "end".yellow())]
     InvalidBeginEnd,
+
     #[error("{}", .0)]
     InvalidOrderMap(OrderMapConfigError),
+
+    #[error("{}", .0)]
+    InvalidErrorEstimation(ErrorEstimationError),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.
@@ -153,16 +206,19 @@ pub enum OrderMapConfigError {
             "min_samples".yellow(), 
             "ordermap".yellow())]
     InvalidMinSamples,
+
     #[error("{} invalid span of '{}': minimum ('{}') is higher than maximum ('{}')",
             "error:".red().bold(),
             "ordermap".yellow(),
             .0.to_string().yellow(), .1.to_string().yellow())]
     InvalidGridSpan(f32, f32),
+
     #[error("{} invalid bin size of '{}': value is '{}', must be positive", 
             "error:".red().bold(), 
             "ordermap".yellow(), 
             .0.to_string().yellow())]
     InvalidBinSize(f32),
+
     #[error("{} invalid bin size of '{}': bin size of '{}x{}' is larger than grid span of '{}x{}'",
             "error:".red().bold(),
             "ordermap".yellow(),
@@ -171,4 +227,17 @@ pub enum OrderMapConfigError {
             .1.0.to_string().yellow(),
             .1.1.to_string().yellow())]
     BinTooLarge((f32, f32), (f32, f32)),
+}
+
+/// Errors that can occur when estimating the error of the calculation.
+#[derive(Error, Debug)]
+pub enum ErrorEstimationError {
+    #[error("{} number of blocks for error estimation must be at least 2, not '{}'",
+    "error:".red().bold(), .0.to_string().yellow(),
+    )]
+    NotEnoughBlocks(usize),
+
+    #[error("{} read '{}' trajectory frame(s) which is fewer than the number of blocks ('{}')",
+    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
+    NotEnoughData(usize, usize),
 }

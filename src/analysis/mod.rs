@@ -1,36 +1,35 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! This module contains the implementation of the analysis logic.
 
 use groan_rs::prelude::Vector3D;
 
 use crate::input::{Analysis, AnalysisType, Axis};
+use crate::presentation::AnalysisResults;
 
 mod aaorder;
 mod cgorder;
 mod common;
 mod leaflets;
 pub(crate) mod molecule;
+pub(crate) mod order;
 pub(crate) mod ordermap;
-pub(crate) mod orderval;
+pub(crate) mod timewise;
 pub(crate) mod topology;
 
 impl Analysis {
-    /// Perform the analysis and write out the results.
-    #[inline(always)]
-    pub fn run(mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    /// Perform the analysis.
+    pub fn run(mut self) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
         self.init_ordermap(self.membrane_normal());
-
         self.info();
+
         match self.analysis_type() {
             AnalysisType::AAOrder {
                 heavy_atoms: _,
                 hydrogens: _,
-            } => crate::analysis::aaorder::analyze_atomistic(&self),
-            AnalysisType::CGOrder { beads: _ } => {
-                crate::analysis::cgorder::analyze_coarse_grained(&self)
-            }
+            } => aaorder::analyze_atomistic(self),
+            AnalysisType::CGOrder { beads: _ } => cgorder::analyze_coarse_grained(self),
         }
     }
 
@@ -51,7 +50,6 @@ pub(super) fn calc_sch(vector: &Vector3D, membrane_normal: &Vector3D) -> f32 {
     let angle = vector.angle(membrane_normal);
 
     let cos = angle.cos();
-    
 
     (1.5 * cos * cos) - 0.5
 }

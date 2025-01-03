@@ -1,29 +1,33 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! Contains the implementation of the calculation of the coarse-grained order parameters.
 
 use groan_rs::{
     files::FileType,
-    prelude::{ProgressPrinter, XtcReader},
+    prelude::{GroupXtcReader, ProgressPrinter},
     system::System,
 };
 
 use crate::{
+    analysis::common::prepare_master_group,
+    presentation::{AnalysisResults, OrderResults},
+};
+use crate::{
     analysis::{
-        common::{analyze_frame, macros::group_name, sanity_check_molecules, write_results},
+        common::{analyze_frame, macros::group_name, sanity_check_molecules},
         topology::SystemTopology,
     },
     errors::AnalysisError,
     input::Analysis,
-    presentation::{cgpresenter::CGOrderResults, CGOrder},
+    presentation::cgresults::CGOrderResults,
     PANIC_MESSAGE,
 };
 
 /// Analyze the coarse-grained order parameters.
-pub(super) fn analyze_coarse_grained(
-    analysis: &Analysis,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub(super) fn analyze_coarse_grained<'a>(
+    analysis: Analysis,
+) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
     log::info!("Read molecular topology from '{}'.", analysis.structure());
 
@@ -40,7 +44,7 @@ pub(super) fn analyze_coarse_grained(
         &mut system,
         "Beads",
         analysis.beads().as_ref().unwrap_or_else(||
-             panic!("FATAL GORDER ERROR | cgorder::analyze_coarse_grained | Selection of order beads should be provided. {}", PANIC_MESSAGE)),
+            panic!("FATAL GORDER ERROR | cgorder::analyze_coarse_grained | Selection of order beads should be provided. {}", PANIC_MESSAGE)),
     )?;
 
     log::info!(
@@ -67,14 +71,22 @@ pub(super) fn analyze_coarse_grained(
         analysis.leaflets().as_ref(),
         analysis.membrane_normal().into(),
         analysis.map().as_ref(),
-        analysis.min_samples(),
+        analysis.estimate_error().as_ref(),
+        analysis.n_threads(),
+        analysis.step(),
     )?;
 
     if !sanity_check_molecules(&molecules) {
-        return Ok(());
+        return Ok(AnalysisResults::CG(CGOrderResults::empty(analysis)));
     }
 
-    let data = SystemTopology::new(molecules, analysis.membrane_normal().into());
+    let data = SystemTopology::new(
+        molecules,
+        analysis.membrane_normal().into(),
+        analysis.estimate_error().clone(),
+        analysis.step(),
+        analysis.n_threads(),
+    );
     data.info();
 
     let progress_printer = if analysis.silent() {
@@ -91,33 +103,38 @@ pub(super) fn analyze_coarse_grained(
         analysis.step()
     );
 
+    if let Some(error_estimation) = analysis.estimate_error() {
+        error_estimation.info();
+    }
+
+    prepare_master_group(&mut system, &analysis);
+
     log::info!(
         "Performing the analysis using {} thread(s)...",
         analysis.n_threads()
     );
 
     // run the analysis in parallel
-    let result = system.traj_iter_map_reduce::<XtcReader, SystemTopology, AnalysisError>(
+    let result = system.traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
         analysis.trajectory(),
         analysis.n_threads(),
         analyze_frame,
         data,
+        Some(group_name!("Master")),
         Some(analysis.begin()),
         Some(analysis.end()),
         Some(analysis.step()),
         progress_printer,
     )?;
 
-    // write out the maps
-    result.handle_ordermap_directory(analysis.overwrite())?;
-    result.prepare_directories()?;
-    result.write_ordermaps_bonds::<CGOrder>()?;
+    result.log_total_analyzed_frames();
 
-    // write out the results
-    let results = CGOrderResults::from(result);
-    write_results(results, analysis)?;
+    // print basic info about error estimation
+    result.error_info()?;
 
-    Ok(())
+    Ok(AnalysisResults::CG(
+        result.convert::<CGOrderResults>(analysis),
+    ))
 }
 
 #[cfg(test)]
@@ -125,12 +142,11 @@ mod tests {
     use approx::assert_relative_eq;
     use groan_rs::prelude::Dimension;
 
+    use super::*;
     use crate::{
         analysis::molecule::{BondType, MoleculeType},
         input::LeafletClassification,
     };
-
-    use super::*;
 
     fn prepare_data_for_tests(
         leaflet_classification: Option<LeafletClassification>,
@@ -152,11 +168,15 @@ mod tests {
             leaflet_classification.as_ref(),
             Dimension::Z,
             None,
+            None,
+            1,
             1,
         )
         .unwrap();
-
-        (system, SystemTopology::new(molecules, Dimension::Z))
+        (
+            system,
+            SystemTopology::new(molecules, Dimension::Z, None, 1, 1),
+        )
     }
 
     fn expected_total_orders() -> [Vec<f32>; 3] {

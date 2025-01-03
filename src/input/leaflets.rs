@@ -1,16 +1,17 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! Contains structures and methods for the assignment of lipids into membrane leaflets.
 
 use std::fmt;
 
 use getset::{CopyGetters, Getters};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+use super::frequency::Frequency;
 
 /// Parameters for the classification of lipids into membrane leaflets.
-#[derive(Debug, Clone, Deserialize)]
-#[allow(private_interfaces)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum LeafletClassification {
     Global(GlobalParams),
     Local(LocalParams),
@@ -39,6 +40,7 @@ impl LeafletClassification {
         Self::Global(GlobalParams {
             membrane: membrane.to_string(),
             heads: heads.to_string(),
+            frequency: Frequency::default(),
         })
     }
 
@@ -55,6 +57,7 @@ impl LeafletClassification {
             membrane: membrane.to_string(),
             heads: heads.to_string(),
             radius,
+            frequency: Frequency::default(),
         })
     }
 
@@ -66,15 +69,42 @@ impl LeafletClassification {
     ///    there must only be one such atom/bead per lipid molecule.
     /// - `methyls`: reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails;
     ///    there should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
+    #[inline(always)]
     pub fn individual(heads: &str, methyls: &str) -> LeafletClassification {
         Self::Individual(IndividualParams {
             heads: heads.to_string(),
             methyls: methyls.to_string(),
+            frequency: Frequency::default(),
         })
+    }
+
+    /// Assign lipids to leaflets every N analyzed trajectory frames or only once (using the first trajectory frame).
+    /// (Note that this is 'analyzed trajectory frames' - if you skip some frames using `step`,
+    /// they will not be counted here.)
+    #[inline(always)]
+    pub fn with_frequency(mut self, frequency: Frequency) -> Self {
+        match &mut self {
+            LeafletClassification::Global(x) => x.frequency = frequency,
+            LeafletClassification::Local(x) => x.frequency = frequency,
+            LeafletClassification::Individual(x) => x.frequency = frequency,
+        }
+
+        self
+    }
+
+    /// Get the frequency of the analysis.
+    #[inline(always)]
+    pub fn get_frequency(&self) -> Frequency {
+        match self {
+            LeafletClassification::Global(x) => x.frequency(),
+            LeafletClassification::Local(x) => x.frequency(),
+            LeafletClassification::Individual(x) => x.frequency(),
+        }
     }
 
     /// Returns a radius of the cylinder for the calculation of local membrane center of geometry, if the method is Local.
     /// Otherwise, returns None.
+    #[inline(always)]
     pub(crate) fn get_radius(&self) -> Option<f32> {
         match self {
             Self::Local(x) => Some(x.radius),
@@ -84,46 +114,58 @@ impl LeafletClassification {
 }
 
 /// Based on the global membrane center of geometry; useful for disrupted membranes; fast.
-#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct GlobalParams {
+pub struct GlobalParams {
     /// Selection of all lipids forming the membrane.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     membrane: String,
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     heads: String,
+    /// Frequency of leaflet assignment.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    frequency: Frequency,
 }
 
 /// Parameters for classification of lipids.
 /// Based on the local membrane center of geometry; useful for curved membranes; slow.
-#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct LocalParams {
+pub struct LocalParams {
     /// Selection of all lipids forming the membrane.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     membrane: String,
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     heads: String,
     /// Radius of a cylinder for the calculation of local membrane center of geometry (in nm).
-    #[getset(get_copy = "pub(crate)")]
+    #[getset(get_copy = "pub")]
     radius: f32,
+    /// Frequency of leaflet assignment.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    frequency: Frequency,
 }
 
 /// Parameters for classification of lipids.
 /// Based on the orientation of the lipid tails; less reliable; fast.
-#[derive(Debug, Clone, Getters, CopyGetters, Deserialize)]
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub(crate) struct IndividualParams {
+pub struct IndividualParams {
     /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
     /// There must only be one such atom/bead per lipid molecule.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     heads: String,
     /// Reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails.
     /// There should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     methyls: String,
+    /// Frequency of leaflet assignment.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    frequency: Frequency,
 }

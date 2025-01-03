@@ -1,6 +1,8 @@
-# Order parameters calculated with 'gorder v0.1.0' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
-- molecule: POPE
-  order:
+# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+POPE:
+  average order:
+    total: 0.1455
+  order parameters:
     POPE C12 (4):
       total: -0.0046
       bonds:
@@ -258,8 +260,10 @@
           total: 0.0228
         POPE H16Z (124):
           total: 0.0319
-- molecule: POPC
-  order:
+POPC:
+  average order:
+    total: 0.1378
+  order parameters:
     POPC C12 (1):
       total: 0.1017
       bonds:
@@ -544,8 +548,10 @@
           total: 0.03
         POPC H16Z (133):
           total: 0.0359
-- molecule: POPG
-  order:
+POPG:
+  average order:
+    total: 0.1561
+  order parameters:
     POPG C13 (0):
       total: .nan
       bonds:
@@ -700,7 +706,7 @@
         POPG H17S (79):
           total: .nan
     POPG C218 (80):
-      total: .nan
+      total: 0.0312
       bonds:
         POPG H18R (81):
           total: .nan
@@ -800,7 +806,7 @@
         POPG H15Y (122):
           total: .nan
     POPG C316 (123):
-      total: .nan
+      total: 0.0336
       bonds:
         POPG H16X (124):
           total: .nan

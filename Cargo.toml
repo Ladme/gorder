@@ -1,6 +1,6 @@
 [package]
 name = "gorder"
-version = "0.2.0"
+version = "0.3.0"
 description = "Calculating lipid order parameters from Gromacs simulations"
 edition = "2021"
 license = "MIT"
@@ -11,19 +11,22 @@ exclude = ["/tests", "/validation"]
 
 [dependencies]
 backitup = "0.1.1"
-groan_rs = { version = "0.9.0", features = ["parallel"] }
+groan_rs = { version = "0.10.0-dev.1", features = ["parallel", "no-xdrfile"] }
 colored = "2.1"
 thiserror = "2.0.3"
 derive_builder = "0.20.2"
 getset = "0.1.3"
 log = "0.4.22"
-hashbrown = "0.15.2"
+hashbrown = { version = "0.15.2", features = ["serde"] }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_yaml = "0.9.34"
 indexmap = { version = "2.7.0", features = ["serde"] }
 clap = { version = "4.5.21", features = ["derive"] }
 colog = "1.3.0"
 once_cell = "1.20.2"
+statistical = "1.0.0"
+strum_macros = "0.26.4"
+parking_lot = "0.12.3"
 
 [dev-dependencies]
 approx = "0.5.1"

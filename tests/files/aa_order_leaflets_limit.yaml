@@ -1,6 +1,10 @@
-# Order parameters calculated with 'gorder v0.1.0' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
-- molecule: POPE
-  order:
+# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+POPE:
+  average order:
+    total: 0.1455
+    upper: 0.1492
+    lower: 0.1419
+  order parameters:
     POPE C12 (4):
       total: -0.0046
       upper: -0.0078
@@ -368,7 +372,7 @@
           lower: 0.2321
         POPE H8Y (99):
           total: 0.2386
-          upper: 0.2487
+          upper: 0.2486
           lower: 0.2288
     POPE C39 (100):
       total: 0.2282
@@ -478,8 +482,12 @@
           total: 0.0319
           upper: 0.0321
           lower: 0.0318
-- molecule: POPC
-  order:
+POPC:
+  average order:
+    total: 0.1378
+    upper: 0.1326
+    lower: 0.1431
+  order parameters:
     POPC C12 (1):
       total: 0.1017
       upper: 0.1179
@@ -600,7 +608,7 @@
         POPC HX (36):
           total: 0.1779
           upper: 0.1284
-          lower: 0.2274
+          lower: 0.2273
         POPC HY (37):
           total: 0.0193
           upper: 0.0524
@@ -1008,12 +1016,16 @@
           total: 0.0359
           upper: 0.0362
           lower: 0.0356
-- molecule: POPG
-  order:
+POPG:
+  average order:
+    total: 0.1561
+    upper: 0.1522
+    lower: 0.1606
+  order parameters:
     POPG C13 (0):
       total: 0.0079
-      upper: .nan
-      lower: .nan
+      upper: -0.0499
+      lower: 0.074
       bonds:
         POPG H13A (1):
           total: 0.0239
@@ -1034,8 +1046,8 @@
           lower: .nan
     POPG C11 (9):
       total: -0.0391
-      upper: .nan
-      lower: .nan
+      upper: -0.024
+      lower: -0.0562
       bonds:
         POPG H11A (10):
           total: -0.1011
@@ -1047,8 +1059,8 @@
           lower: .nan
     POPG C1 (17):
       total: 0.2653
-      upper: .nan
-      lower: .nan
+      upper: 0.2841
+      lower: 0.2438
       bonds:
         POPG HA (18):
           total: 0.2807
@@ -1069,8 +1081,8 @@
           lower: .nan
     POPG C22 (25):
       total: 0.0667
-      upper: .nan
-      lower: .nan
+      upper: 0.1184
+      lower: 0.0077
       bonds:
         POPG H2R (26):
           total: 0.1522
@@ -1082,8 +1094,8 @@
           lower: .nan
     POPG C3 (28):
       total: 0.1014
-      upper: .nan
-      lower: .nan
+      upper: 0.1172
+      lower: 0.0835
       bonds:
         POPG HX (29):
           total: 0.0661
@@ -1095,8 +1107,8 @@
           lower: .nan
     POPG C32 (34):
       total: 0.2247
-      upper: .nan
-      lower: .nan
+      upper: 0.2484
+      lower: 0.1976
       bonds:
         POPG H2X (35):
           total: 0.2474
@@ -1108,8 +1120,8 @@
           lower: .nan
     POPG C23 (37):
       total: 0.2556
-      upper: .nan
-      lower: .nan
+      upper: 0.2697
+      lower: 0.2395
       bonds:
         POPG H3R (38):
           total: 0.2758
@@ -1121,8 +1133,8 @@
           lower: .nan
     POPG C24 (40):
       total: 0.2584
-      upper: .nan
-      lower: .nan
+      upper: 0.259
+      lower: 0.2578
       bonds:
         POPG H4R (41):
           total: 0.2604
@@ -1134,8 +1146,8 @@
           lower: .nan
     POPG C25 (43):
       total: 0.2372
-      upper: .nan
-      lower: .nan
+      upper: 0.2203
+      lower: 0.2564
       bonds:
         POPG H5R (44):
           total: 0.2079
@@ -1147,8 +1159,8 @@
           lower: .nan
     POPG C26 (46):
       total: 0.2134
-      upper: .nan
-      lower: .nan
+      upper: 0.1962
+      lower: 0.2332
       bonds:
         POPG H6R (47):
           total: 0.1958
@@ -1160,8 +1172,8 @@
           lower: .nan
     POPG C27 (49):
       total: 0.1968
-      upper: .nan
-      lower: .nan
+      upper: 0.1725
+      lower: 0.2246
       bonds:
         POPG H7R (50):
           total: 0.1667
@@ -1173,8 +1185,8 @@
           lower: .nan
     POPG C28 (52):
       total: 0.134
-      upper: .nan
-      lower: .nan
+      upper: 0.0707
+      lower: 0.2064
       bonds:
         POPG H8R (53):
           total: 0.1464
@@ -1204,8 +1216,8 @@
           lower: .nan
     POPG C211 (59):
       total: 0.0561
-      upper: .nan
-      lower: .nan
+      upper: 0.0679
+      lower: 0.0428
       bonds:
         POPG H11R (60):
           total: -0.0149
@@ -1217,8 +1229,8 @@
           lower: .nan
     POPG C212 (62):
       total: 0.1385
-      upper: .nan
-      lower: .nan
+      upper: 0.1425
+      lower: 0.134
       bonds:
         POPG H12R (63):
           total: 0.1449
@@ -1230,8 +1242,8 @@
           lower: .nan
     POPG C213 (65):
       total: 0.1373
-      upper: .nan
-      lower: .nan
+      upper: 0.1316
+      lower: 0.1438
       bonds:
         POPG H13R (66):
           total: 0.1664
@@ -1243,8 +1255,8 @@
           lower: .nan
     POPG C214 (68):
       total: 0.151
-      upper: .nan
-      lower: .nan
+      upper: 0.1325
+      lower: 0.1721
       bonds:
         POPG H14R (69):
           total: 0.1667
@@ -1256,8 +1268,8 @@
           lower: .nan
     POPG C215 (71):
       total: 0.13
-      upper: .nan
-      lower: .nan
+      upper: 0.1176
+      lower: 0.1442
       bonds:
         POPG H15R (72):
           total: 0.1303
@@ -1269,8 +1281,8 @@
           lower: .nan
     POPG C216 (74):
       total: 0.1103
-      upper: .nan
-      lower: .nan
+      upper: 0.0873
+      lower: 0.1366
       bonds:
         POPG H16R (75):
           total: 0.1158
@@ -1282,8 +1294,8 @@
           lower: .nan
     POPG C217 (77):
       total: 0.0965
-      upper: .nan
-      lower: .nan
+      upper: 0.0865
+      lower: 0.1079
       bonds:
         POPG H17R (78):
           total: 0.0911
@@ -1295,8 +1307,8 @@
           lower: .nan
     POPG C218 (80):
       total: 0.0312
-      upper: .nan
-      lower: .nan
+      upper: 0.025
+      lower: 0.0383
       bonds:
         POPG H18R (81):
           total: 0.0158
@@ -1312,8 +1324,8 @@
           lower: .nan
     POPG C33 (84):
       total: 0.2127
-      upper: .nan
-      lower: .nan
+      upper: 0.2194
+      lower: 0.2051
       bonds:
         POPG H3X (85):
           total: 0.2108
@@ -1325,8 +1337,8 @@
           lower: .nan
     POPG C34 (87):
       total: 0.2411
-      upper: .nan
-      lower: .nan
+      upper: 0.26
+      lower: 0.2196
       bonds:
         POPG H4X (88):
           total: 0.2331
@@ -1338,8 +1350,8 @@
           lower: .nan
     POPG C35 (90):
       total: 0.2595
-      upper: .nan
-      lower: .nan
+      upper: 0.2621
+      lower: 0.2566
       bonds:
         POPG H5X (91):
           total: 0.2661
@@ -1351,8 +1363,8 @@
           lower: .nan
     POPG C36 (93):
       total: 0.2555
-      upper: .nan
-      lower: .nan
+      upper: 0.26
+      lower: 0.2504
       bonds:
         POPG H6X (94):
           total: 0.2481
@@ -1364,8 +1376,8 @@
           lower: .nan
     POPG C37 (96):
       total: 0.2498
-      upper: .nan
-      lower: .nan
+      upper: 0.2555
+      lower: 0.2432
       bonds:
         POPG H7X (97):
           total: 0.2509
@@ -1377,8 +1389,8 @@
           lower: .nan
     POPG C38 (99):
       total: 0.2393
-      upper: .nan
-      lower: .nan
+      upper: 0.2184
+      lower: 0.2632
       bonds:
         POPG H8X (100):
           total: 0.2365
@@ -1390,8 +1402,8 @@
           lower: .nan
     POPG C39 (102):
       total: 0.2273
-      upper: .nan
-      lower: .nan
+      upper: 0.1974
+      lower: 0.2614
       bonds:
         POPG H9X (103):
           total: 0.2239
@@ -1403,8 +1415,8 @@
           lower: .nan
     POPG C310 (105):
       total: 0.214
-      upper: .nan
-      lower: .nan
+      upper: 0.1924
+      lower: 0.2387
       bonds:
         POPG H10X (106):
           total: 0.2154
@@ -1416,8 +1428,8 @@
           lower: .nan
     POPG C311 (108):
       total: 0.2139
-      upper: .nan
-      lower: .nan
+      upper: 0.2023
+      lower: 0.2272
       bonds:
         POPG H11X (109):
           total: 0.2215
@@ -1429,8 +1441,8 @@
           lower: .nan
     POPG C312 (111):
       total: 0.2111
-      upper: .nan
-      lower: .nan
+      upper: 0.2009
+      lower: 0.2227
       bonds:
         POPG H12X (112):
           total: 0.2244
@@ -1442,8 +1454,8 @@
           lower: .nan
     POPG C313 (114):
       total: 0.1838
-      upper: .nan
-      lower: .nan
+      upper: 0.1842
+      lower: 0.1834
       bonds:
         POPG H13X (115):
           total: 0.1883
@@ -1455,8 +1467,8 @@
           lower: .nan
     POPG C314 (117):
       total: 0.1524
-      upper: .nan
-      lower: .nan
+      upper: 0.162
+      lower: 0.1415
       bonds:
         POPG H14X (118):
           total: 0.1545
@@ -1468,8 +1480,8 @@
           lower: .nan
     POPG C315 (120):
       total: 0.0946
-      upper: .nan
-      lower: .nan
+      upper: 0.0917
+      lower: 0.0979
       bonds:
         POPG H15X (121):
           total: 0.0912
@@ -1481,8 +1493,8 @@
           lower: .nan
     POPG C316 (123):
       total: 0.0336
-      upper: .nan
-      lower: .nan
+      upper: 0.031
+      lower: 0.0365
       bonds:
         POPG H16X (124):
           total: 0.0429

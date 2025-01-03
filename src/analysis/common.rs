@@ -1,21 +1,22 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! Implementations of common function used by both AAOrder and CGOrder calculations.
 
 use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
 use super::topology::SystemTopology;
-use crate::errors::{AnalysisError, WriteError};
-use crate::presentation::ResultsPresenter;
+use crate::errors::AnalysisError;
+use crate::input::{Analysis, AnalysisType, EstimateError};
 use crate::{errors::TopologyError, input::LeafletClassification};
-use crate::{input::Analysis, input::OrderMap, PANIC_MESSAGE};
+use crate::{input::OrderMap, PANIC_MESSAGE};
+use colored::Colorize;
 use groan_rs::prelude::Dimension;
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
 use once_cell::unsync::OnceCell;
 
-/// A prefix used as an identifier for Gorder groups.
+/// A prefix used as an identifier for gorder groups.
 pub(super) const GORDER_GROUP_PREFIX: &str = "xxxGorderReservedxxx-";
 
 #[macro_use]
@@ -27,6 +28,25 @@ pub(crate) mod macros {
     }
 
     pub(crate) use group_name;
+}
+
+/// Return a (hopefully) useful hint that can help solving an empty group error.
+fn get_hint(group: &str) -> String {
+    let (yaml_name, yaml_type) = match group {
+        "HeavyAtoms" => ("heavy_atoms".bright_blue(), "analysis_type".bright_blue()),
+        "Hydrogens" => ("hydrogens".bright_blue(), "analysis_type".bright_blue()),
+        "Beads" => ("beads".bright_blue(), "analysis_type".bright_blue()),
+        "Membrane" => ("membrane".bright_blue(), "leaflets".bright_blue()),
+        "Heads" => ("heads".bright_blue(), "leaflets".bright_blue()),
+        "Methyls" => ("methyls".bright_blue(), "leaflets".bright_blue()),
+        // unknown group name; this should not happen, but it's not important so we will pretend it's okay
+        _ => return String::from("a query specifying the group selects no atoms"),
+    };
+
+    format!(
+        "the query specified for '{}' inside '{}' selects no atoms; is the query correct?",
+        yaml_name, yaml_type
+    )
 }
 
 /// Create a group while handling all potential errors. Also check that the group is not empty.
@@ -54,7 +74,11 @@ pub(super) fn create_group(
             group, PANIC_MESSAGE,
         )
     }) {
-        Err(TopologyError::EmptyGroup(group.to_owned()))
+        let hint = get_hint(group);
+        Err(TopologyError::EmptyGroup {
+            group: group.to_owned(),
+            hint,
+        })
     } else {
         Ok(())
     }
@@ -69,7 +93,9 @@ pub(super) fn classify_molecules(
     leaflet_classification: Option<&LeafletClassification>,
     membrane_normal: Dimension,
     ordermap_params: Option<&OrderMap>,
-    min_samples: usize,
+    estimate_error: Option<&EstimateError>,
+    n_threads: usize,
+    step_size: usize,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -113,7 +139,9 @@ pub(super) fn classify_molecules(
                 membrane_normal,
                 leaflet_classification,
                 ordermap_params,
-                min_samples,
+                estimate_error.is_some(),
+                n_threads,
+                step_size,
             )?);
         }
     }
@@ -158,85 +186,29 @@ pub(super) fn analyze_frame(
         return Err(AnalysisError::ZeroBox);
     }
 
-    let membrane_normal = data.membrane_normal();
-    let membrane_center = OnceCell::new();
+    // initialize the reading of the next frame
+    data.init_new_frame();
+    let frame_index = data.frame();
 
-    // assign molecules to leaflets
+    let membrane_center = OnceCell::new(); // used with global classification method
+    let membrane_normal = data.membrane_normal().into();
     for molecule in data.molecule_types_mut().iter_mut() {
+        // assign molecules to leaflets
         if let Some(classifier) = molecule.leaflet_classification_mut() {
-            match classifier {
-                MoleculeLeafletClassification::Global(x, _) => {
-                    let center = membrane_center.get_or_try_init(|| {
-                        frame
-                            .group_get_center(group_name!("Membrane"))
-                            .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
-                    })?;
-
-                    x.set_membrane_center(center.clone());
-                }
-                MoleculeLeafletClassification::Local(x, _) => {
-                    x.set_membrane_center(frame, membrane_normal)?;
-                }
-                MoleculeLeafletClassification::Individual(_, _) => (),
-            };
-
-            classifier.assign_lipids(frame)?;
+            classifier.assign_lipids(frame, frame_index, &membrane_center)?;
         }
-
-        molecule.analyze_frame(frame, simbox, &membrane_normal.into())?;
+        // calculate order parameters
+        molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index)?;
     }
 
-    Ok(())
-}
-
-/// Write the results of the analysis into the requested output files.
-/// Note that writing of the ordermaps is handled elsewhere.
-pub(super) fn write_results(
-    results: impl ResultsPresenter,
-    analysis: &Analysis,
-) -> Result<(), WriteError> {
-    log::info!(
-        "Writing the order parameters into a yaml file '{}'...",
-        analysis.output()
-    );
-    log::logger().flush();
-
-    results.write_yaml(
-        analysis.output(),
-        analysis.structure(),
-        analysis.trajectory(),
-        analysis.overwrite(),
-    )?;
-
-    if let Some(tab) = analysis.output_tab() {
-        log::info!("Writing the order parameters into a table '{}'...", tab);
-
-        log::logger().flush();
-        results.write_tab(
-            tab,
-            analysis.structure(),
-            analysis.trajectory(),
-            analysis.overwrite(),
-        )?;
-    };
-
-    if let Some(xvg) = analysis.output_xvg() {
-        log::info!("Writing the order parameters into xvg file(s)...");
-
-        log::logger().flush();
-        results.write_xvg(
-            xvg,
-            analysis.structure(),
-            analysis.trajectory(),
-            analysis.overwrite(),
-        )?;
+    // print information about leaflet assignment for quick sanity check by the user
+    // only do this for the first frame (this also guarantees that only one thread prints this information)
+    if data.frame() == 0 {
+        data.log_first_frame_leaflet_assignment_info();
     }
 
-    if let Some(csv) = analysis.output_csv() {
-        log::info!("Writing the order parameters into a csv file '{}'...", csv);
-        log::logger().flush();
-        results.write_csv(csv, analysis.overwrite())?;
-    }
+    // increase the frame counter
+    data.increase_frame_counter();
 
     Ok(())
 }
@@ -335,14 +307,17 @@ fn create_new_molecule_type(
     membrane_normal: Dimension,
     leaflet_classification: Option<&LeafletClassification>,
     ordermap_params: Option<&OrderMap>,
-    min_samples: usize,
+    errors: bool,
+    n_threads: usize,
+    step_size: usize,
 ) -> Result<MoleculeType, TopologyError> {
     // create a name of the molecule
     let name = residues.join("-");
 
     // construct a leaflet classifier
     let classifier = if let Some(params) = leaflet_classification {
-        let mut leaflet_classifier = MoleculeLeafletClassification::new(params, membrane_normal);
+        let mut leaflet_classifier =
+            MoleculeLeafletClassification::new(params, membrane_normal, n_threads, step_size);
         leaflet_classifier.insert(all_atom_indices, system)?;
 
         Some(leaflet_classifier)
@@ -365,7 +340,7 @@ fn create_new_molecule_type(
         minimum_index,
         classifier,
         ordermap_params,
-        min_samples,
+        errors,
     )
 }
 
@@ -397,6 +372,42 @@ fn solve_name_conflicts(molecules: &mut [MoleculeType]) {
             *count -= 1;
         }
     }
+}
+
+/// Prepare a master group which atoms will be read from an xtc trajectory.
+pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
+    let mut groups = Vec::new();
+    match analysis.analysis_type() {
+        AnalysisType::AAOrder {
+            heavy_atoms: _,
+            hydrogens: _,
+        } => {
+            groups.push(group_name!("HeavyAtoms"));
+            groups.push(group_name!("Hydrogens"));
+        }
+        AnalysisType::CGOrder { beads: _ } => {
+            groups.push(group_name!("Beads"));
+        }
+    }
+
+    match analysis.leaflets() {
+        None => (),
+        Some(LeafletClassification::Global(_)) | Some(LeafletClassification::Local(_)) => {
+            groups.push(group_name!("Membrane"));
+            groups.push(group_name!("Heads"));
+        }
+        Some(LeafletClassification::Individual(_)) => {
+            groups.push(group_name!("Heads"));
+            groups.push(group_name!("Methyls"));
+        }
+    }
+
+    create_group(system, "Master", &groups.join(" ")).unwrap_or_else(|_| {
+        panic!(
+            "FATAL GORDER ERROR | common::prepare_master_group | Merging groups failed: `{:?}`. {}",
+            groups, PANIC_MESSAGE
+        )
+    });
 }
 
 #[cfg(test)]
@@ -1255,6 +1266,8 @@ mod tests {
             Some(&LeafletClassification::local("@membrane", "name P", 2.5)),
             Dimension::Z,
             None,
+            None,
+            1,
             1,
         )
         .unwrap();
@@ -1705,6 +1718,8 @@ mod tests {
             )),
             Dimension::Z,
             None,
+            None,
+            1,
             1,
         )
         .unwrap();
@@ -2381,8 +2396,18 @@ mod tests {
         let mut system = System::from_file("tests/files/same_name.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC").unwrap();
 
-        let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+        let molecules = classify_molecules(
+            &system,
+            "Atoms",
+            "Atoms",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
 
         let expected_names = ["POPC1", "POPC2"];
         let expected_n_instances = [2, 1];
@@ -2406,8 +2431,18 @@ mod tests {
         let mut system = System::from_file("tests/files/multiple_resid.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
 
-        let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+        let molecules = classify_molecules(
+            &system,
+            "Atoms",
+            "Atoms",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
 
         let expected_names = ["POPC-POPE", "POPC"];
         let expected_n_instances = [2, 1];
@@ -2431,8 +2466,18 @@ mod tests {
         let mut system = System::from_file("tests/files/multiple_resid_same_name.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
 
-        let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+        let molecules = classify_molecules(
+            &system,
+            "Atoms",
+            "Atoms",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
 
         let expected_names = ["POPC-POPE1", "POPC-POPE2", "POPC"];
         let expected_n_instances = [1, 1, 1];
@@ -2456,8 +2501,18 @@ mod tests {
         let mut system = System::from_file("tests/files/cyclic.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC").unwrap();
 
-        let molecules =
-            classify_molecules(&system, "Atoms", "Atoms", None, Dimension::Z, None, 1).unwrap();
+        let molecules = classify_molecules(
+            &system,
+            "Atoms",
+            "Atoms",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
 
         assert_eq!(molecules.len(), 1);
         assert_eq!(molecules[0].order_bonds().bond_types().len(), 14);

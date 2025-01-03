@@ -1,0 +1,31 @@
+# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'cg_asym.tpr' and trajectory file 'cg_asym.xtc'.
+
+Molecule type POPE
+                   FULL     UPPER     LOWER   |
+NH3 - PO4        -0.1357   -0.1357     NaN    |
+PO4 - GL1         0.6157    0.6157     NaN    |
+GL1 - GL2        -0.1740   -0.1740     NaN    |
+GL1 - C1A         0.4018    0.4018     NaN    |
+GL2 - C1B         0.5144    0.5144     NaN    |
+C1A - D2A         0.3983    0.3983     NaN    |
+D2A - C3A         0.3174    0.3174     NaN    |
+C3A - C4A         0.2647    0.2647     NaN    |
+C1B - C2B         0.5346    0.5346     NaN    |
+C2B - C3B         0.4551    0.4551     NaN    |
+C3B - C4B         0.3002    0.3002     NaN    |
+AVERAGE           0.3175    0.3175     NaN    |
+
+Molecule type POPG
+                   FULL     UPPER     LOWER   |
+GL0 - PO4        -0.0017     NaN     -0.0017  |
+PO4 - GL1         0.5924     NaN      0.5924  |
+GL1 - GL2        -0.1683     NaN     -0.1683  |
+GL1 - C1A         0.3901     NaN      0.3901  |
+GL2 - C1B         0.4888     NaN      0.4888  |
+C1A - D2A         0.3606     NaN      0.3606  |
+D2A - C3A         0.2560     NaN      0.2560  |
+C3A - C4A         0.2010     NaN      0.2010  |
+C1B - C2B         0.4850     NaN      0.4850  |
+C2B - C3B         0.3803     NaN      0.3803  |
+C3B - C4B         0.2345     NaN      0.2345  |
+AVERAGE           0.2926     NaN      0.2926  |

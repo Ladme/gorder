@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.1.0' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
 
 Molecule type POPE
                      TOTAL             |         HYDROGEN #1          |         HYDROGEN #2          |         HYDROGEN #3          |
@@ -40,6 +40,7 @@ C313       0.1606    0.1571    0.1641  |  0.1670    0.1658    0.1682  |  0.1542 
 C314       0.1344    0.1295    0.1392  |  0.1402    0.1381    0.1422  |  0.1286    0.1208    0.1361  |                              |
 C315       0.0942    0.0909    0.0975  |  0.0929    0.0853    0.1004  |  0.0955    0.0966    0.0945  |                              |
 C316       0.0288    0.0293    0.0283  |  0.0316    0.0393    0.0239  |  0.0228    0.0165    0.0291  |  0.0319    0.0321    0.0318  |
+AVERAGE    0.1455    0.1492    0.1419  |
 
 Molecule type POPC
                      TOTAL             |         HYDROGEN #1          |         HYDROGEN #2          |         HYDROGEN #3          |
@@ -84,45 +85,47 @@ C313       0.1691    0.1602    0.1781  |  0.1749    0.1658    0.1841  |  0.1634 
 C314       0.1400    0.1299    0.1501  |  0.1449    0.1348    0.1551  |  0.1350    0.1250    0.1451  |                              |
 C315       0.1023    0.0984    0.1062  |  0.1084    0.0978    0.1190  |  0.0963    0.0991    0.0935  |                              |
 C316       0.0327    0.0316    0.0337  |  0.0321    0.0295    0.0348  |  0.0300    0.0292    0.0309  |  0.0359    0.0362    0.0356  |
+AVERAGE    0.1378    0.1326    0.1431  |
 
 Molecule type POPG
                      TOTAL             |         HYDROGEN #1          |         HYDROGEN #2          |         HYDROGEN #3          |
             FULL     UPPER     LOWER   |   FULL     UPPER     LOWER   |   FULL     UPPER     LOWER   |   FULL     UPPER     LOWER   |
-C13        0.0079     NaN       NaN    |  0.0239     NaN       NaN    | -0.0081     NaN       NaN    |                              |
+C13        0.0079   -0.0499    0.0740  |  0.0239     NaN       NaN    | -0.0081     NaN       NaN    |                              |
 C12       -0.0214     NaN       NaN    | -0.0214     NaN       NaN    |                              |                              |
-C11       -0.0391     NaN       NaN    | -0.1011     NaN       NaN    |  0.0230     NaN       NaN    |                              |
-C1         0.2653     NaN       NaN    |  0.2807     NaN       NaN    |  0.2499     NaN       NaN    |                              |
+C11       -0.0391   -0.0240   -0.0562  | -0.1011     NaN       NaN    |  0.0230     NaN       NaN    |                              |
+C1         0.2653    0.2841    0.2438  |  0.2807     NaN       NaN    |  0.2499     NaN       NaN    |                              |
 C2         0.2518     NaN       NaN    |  0.2518     NaN       NaN    |                              |                              |
-C22        0.0667     NaN       NaN    |  0.1522     NaN       NaN    | -0.0188     NaN       NaN    |                              |
-C3         0.1014     NaN       NaN    |  0.0661     NaN       NaN    |  0.1368     NaN       NaN    |                              |
-C32        0.2247     NaN       NaN    |  0.2474     NaN       NaN    |  0.2020     NaN       NaN    |                              |
-C23        0.2556     NaN       NaN    |  0.2758     NaN       NaN    |  0.2354     NaN       NaN    |                              |
-C24        0.2584     NaN       NaN    |  0.2604     NaN       NaN    |  0.2565     NaN       NaN    |                              |
-C25        0.2372     NaN       NaN    |  0.2079     NaN       NaN    |  0.2665     NaN       NaN    |                              |
-C26        0.2134     NaN       NaN    |  0.1958     NaN       NaN    |  0.2311     NaN       NaN    |                              |
-C27        0.1968     NaN       NaN    |  0.1667     NaN       NaN    |  0.2269     NaN       NaN    |                              |
-C28        0.1340     NaN       NaN    |  0.1464     NaN       NaN    |  0.1217     NaN       NaN    |                              |
+C22        0.0667    0.1184    0.0077  |  0.1522     NaN       NaN    | -0.0188     NaN       NaN    |                              |
+C3         0.1014    0.1172    0.0835  |  0.0661     NaN       NaN    |  0.1368     NaN       NaN    |                              |
+C32        0.2247    0.2484    0.1976  |  0.2474     NaN       NaN    |  0.2020     NaN       NaN    |                              |
+C23        0.2556    0.2697    0.2395  |  0.2758     NaN       NaN    |  0.2354     NaN       NaN    |                              |
+C24        0.2584    0.2590    0.2578  |  0.2604     NaN       NaN    |  0.2565     NaN       NaN    |                              |
+C25        0.2372    0.2203    0.2564  |  0.2079     NaN       NaN    |  0.2665     NaN       NaN    |                              |
+C26        0.2134    0.1962    0.2332  |  0.1958     NaN       NaN    |  0.2311     NaN       NaN    |                              |
+C27        0.1968    0.1725    0.2246  |  0.1667     NaN       NaN    |  0.2269     NaN       NaN    |                              |
+C28        0.1340    0.0707    0.2064  |  0.1464     NaN       NaN    |  0.1217     NaN       NaN    |                              |
 C29        0.1228     NaN       NaN    |  0.1228     NaN       NaN    |                              |                              |
 C210       0.0101     NaN       NaN    |  0.0101     NaN       NaN    |                              |                              |
-C211       0.0561     NaN       NaN    | -0.0149     NaN       NaN    |  0.1272     NaN       NaN    |                              |
-C212       0.1385     NaN       NaN    |  0.1449     NaN       NaN    |  0.1321     NaN       NaN    |                              |
-C213       0.1373     NaN       NaN    |  0.1664     NaN       NaN    |  0.1082     NaN       NaN    |                              |
-C214       0.1510     NaN       NaN    |  0.1667     NaN       NaN    |  0.1353     NaN       NaN    |                              |
-C215       0.1300     NaN       NaN    |  0.1303     NaN       NaN    |  0.1298     NaN       NaN    |                              |
-C216       0.1103     NaN       NaN    |  0.1158     NaN       NaN    |  0.1047     NaN       NaN    |                              |
-C217       0.0965     NaN       NaN    |  0.0911     NaN       NaN    |  0.1019     NaN       NaN    |                              |
-C218       0.0312     NaN       NaN    |  0.0158     NaN       NaN    |  0.0381     NaN       NaN    |  0.0398     NaN       NaN    |
-C33        0.2127     NaN       NaN    |  0.2108     NaN       NaN    |  0.2147     NaN       NaN    |                              |
-C34        0.2411     NaN       NaN    |  0.2331     NaN       NaN    |  0.2491     NaN       NaN    |                              |
-C35        0.2595     NaN       NaN    |  0.2661     NaN       NaN    |  0.2529     NaN       NaN    |                              |
-C36        0.2555     NaN       NaN    |  0.2481     NaN       NaN    |  0.2630     NaN       NaN    |                              |
-C37        0.2498     NaN       NaN    |  0.2509     NaN       NaN    |  0.2486     NaN       NaN    |                              |
-C38        0.2393     NaN       NaN    |  0.2365     NaN       NaN    |  0.2422     NaN       NaN    |                              |
-C39        0.2273     NaN       NaN    |  0.2239     NaN       NaN    |  0.2306     NaN       NaN    |                              |
-C310       0.2140     NaN       NaN    |  0.2154     NaN       NaN    |  0.2125     NaN       NaN    |                              |
-C311       0.2139     NaN       NaN    |  0.2215     NaN       NaN    |  0.2064     NaN       NaN    |                              |
-C312       0.2111     NaN       NaN    |  0.2244     NaN       NaN    |  0.1978     NaN       NaN    |                              |
-C313       0.1838     NaN       NaN    |  0.1883     NaN       NaN    |  0.1794     NaN       NaN    |                              |
-C314       0.1524     NaN       NaN    |  0.1545     NaN       NaN    |  0.1504     NaN       NaN    |                              |
-C315       0.0946     NaN       NaN    |  0.0912     NaN       NaN    |  0.0980     NaN       NaN    |                              |
-C316       0.0336     NaN       NaN    |  0.0429     NaN       NaN    |  0.0123     NaN       NaN    |  0.0456     NaN       NaN    |
+C211       0.0561    0.0679    0.0428  | -0.0149     NaN       NaN    |  0.1272     NaN       NaN    |                              |
+C212       0.1385    0.1425    0.1340  |  0.1449     NaN       NaN    |  0.1321     NaN       NaN    |                              |
+C213       0.1373    0.1316    0.1438  |  0.1664     NaN       NaN    |  0.1082     NaN       NaN    |                              |
+C214       0.1510    0.1325    0.1721  |  0.1667     NaN       NaN    |  0.1353     NaN       NaN    |                              |
+C215       0.1300    0.1176    0.1442  |  0.1303     NaN       NaN    |  0.1298     NaN       NaN    |                              |
+C216       0.1103    0.0873    0.1366  |  0.1158     NaN       NaN    |  0.1047     NaN       NaN    |                              |
+C217       0.0965    0.0865    0.1079  |  0.0911     NaN       NaN    |  0.1019     NaN       NaN    |                              |
+C218       0.0312    0.0250    0.0383  |  0.0158     NaN       NaN    |  0.0381     NaN       NaN    |  0.0398     NaN       NaN    |
+C33        0.2127    0.2194    0.2051  |  0.2108     NaN       NaN    |  0.2147     NaN       NaN    |                              |
+C34        0.2411    0.2600    0.2196  |  0.2331     NaN       NaN    |  0.2491     NaN       NaN    |                              |
+C35        0.2595    0.2621    0.2566  |  0.2661     NaN       NaN    |  0.2529     NaN       NaN    |                              |
+C36        0.2555    0.2600    0.2504  |  0.2481     NaN       NaN    |  0.2630     NaN       NaN    |                              |
+C37        0.2498    0.2555    0.2432  |  0.2509     NaN       NaN    |  0.2486     NaN       NaN    |                              |
+C38        0.2393    0.2184    0.2632  |  0.2365     NaN       NaN    |  0.2422     NaN       NaN    |                              |
+C39        0.2273    0.1974    0.2614  |  0.2239     NaN       NaN    |  0.2306     NaN       NaN    |                              |
+C310       0.2140    0.1924    0.2387  |  0.2154     NaN       NaN    |  0.2125     NaN       NaN    |                              |
+C311       0.2139    0.2023    0.2272  |  0.2215     NaN       NaN    |  0.2064     NaN       NaN    |                              |
+C312       0.2111    0.2009    0.2227  |  0.2244     NaN       NaN    |  0.1978     NaN       NaN    |                              |
+C313       0.1838    0.1842    0.1834  |  0.1883     NaN       NaN    |  0.1794     NaN       NaN    |                              |
+C314       0.1524    0.1620    0.1415  |  0.1545     NaN       NaN    |  0.1504     NaN       NaN    |                              |
+C315       0.0946    0.0917    0.0979  |  0.0912     NaN       NaN    |  0.0980     NaN       NaN    |                              |
+C316       0.0336    0.0310    0.0365  |  0.0429     NaN       NaN    |  0.0123     NaN       NaN    |  0.0456     NaN       NaN    |
+AVERAGE    0.1561    0.1522    0.1606  |

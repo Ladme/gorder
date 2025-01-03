@@ -4,5 +4,4 @@ type: !AAOrder
   heavy_atoms: "@membrane and element name carbon"
   hydrogens: "@membrane and element name hydrogen"
 output: order.yaml
-map:
-  output_directory: ordermaps
+map: default

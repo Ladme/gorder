@@ -1,13 +1,10 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! Structures and methods for constructing and working with topology of a molecule type.
 
 use core::fmt;
-use std::{
-    num::NonZeroUsize,
-    ops::{Add, AddAssign},
-};
+use std::ops::Add;
 
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::{
@@ -17,16 +14,15 @@ use groan_rs::{
 };
 use hashbrown::HashSet;
 
+use super::{
+    leaflets::MoleculeLeafletClassification,
+    ordermap::{merge_option_maps, Map},
+};
+use crate::analysis::order::AnalysisOrder;
 use crate::{
     errors::{AnalysisError, TopologyError},
     input::OrderMap,
     Leaflet, PANIC_MESSAGE,
-};
-
-use super::{
-    leaflets::MoleculeLeafletClassification,
-    ordermap::{merge_option_maps, Map},
-    orderval::OrderValue,
 };
 
 /// Represents a specific type of molecule with all its atoms and bonds.
@@ -62,7 +58,7 @@ impl MoleculeType {
         min_index: usize,
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
-        min_samples: usize,
+        errors: bool,
     ) -> Result<Self, TopologyError> {
         Ok(Self {
             name,
@@ -73,7 +69,7 @@ impl MoleculeType {
                 min_index,
                 leaflet_classification.is_some(),
                 ordermap_params,
-                min_samples,
+                errors,
             )?,
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
@@ -108,6 +104,7 @@ impl MoleculeType {
         frame: &System,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
+        frame_index: usize,
     ) -> Result<(), AnalysisError> {
         self.order_bonds
             .bond_types
@@ -115,13 +112,23 @@ impl MoleculeType {
             .try_for_each(|bond_type| {
                 bond_type.analyze_frame(
                     frame,
-                    self.leaflet_classification.as_ref(),
+                    &mut self.leaflet_classification,
                     simbox,
                     membrane_normal,
+                    frame_index,
                 )
             })?;
 
         Ok(())
+    }
+
+    /// Initialize reading of a new frame.
+    #[inline(always)]
+    pub(super) fn init_new_frame(&mut self) {
+        self.order_bonds
+            .bond_types
+            .iter_mut()
+            .for_each(|bond| bond.init_new_frame());
     }
 }
 
@@ -167,7 +174,7 @@ impl MoleculeTopology {
 
             if !converted_bonds.insert(bond) {
                 panic!(
-                    "FATAL GORDER ERROR | MoleculeTopology::new | Bond between atoms '{}' and '{}' defined multiple times. {}", 
+                    "FATAL GORDER ERROR | MoleculeTopology::new | Bond between atoms '{}' and '{}' defined multiple times. {}",
                     index1, index2, PANIC_MESSAGE
                 );
             }
@@ -199,7 +206,7 @@ impl OrderBonds {
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
-        min_samples: usize,
+        errors: bool,
     ) -> Result<Self, TopologyError> {
         bonds_sanity_check(bonds, min_index);
 
@@ -224,8 +231,8 @@ impl OrderBonds {
                 min_index,
                 classify_leaflets,
                 ordermap,
-                min_samples,
                 simbox,
+                errors,
             )?;
             order_bonds.push(bond)
         }
@@ -296,7 +303,7 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
         for index in [index1, index2] {
             if index < min_index {
                 panic!(
-                    "FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}", 
+                    "FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}",
                     index1, min_index, PANIC_MESSAGE
                 );
             }
@@ -304,7 +311,7 @@ fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
 
         if index1 == index2 {
             panic!(
-                "FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}", 
+                "FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}",
                 index1, PANIC_MESSAGE
             );
         }
@@ -359,7 +366,7 @@ impl OrderAtoms {
 
 /// Structure describing a type of bond.
 /// Contains indices of all atoms that are involved in this bond type.
-#[derive(Debug, Clone, Getters, MutGetters)]
+#[derive(Debug, Clone, CopyGetters, Getters, MutGetters)]
 pub(crate) struct BondType {
     /// Atom types involved in this bond type.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
@@ -369,17 +376,13 @@ pub(crate) struct BondType {
     bonds: Vec<(usize, usize)>,
     /// Order parameter for this bond type calculated using lipids in the entire membrane.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    total: Order,
+    total: AnalysisOrder<super::timewise::AddExtend>,
     /// Order parameter for this bond type calculated using lipids in the upper leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    upper: Option<Order>,
+    upper: Option<AnalysisOrder<super::timewise::AddExtend>>,
     /// Order parameter for this bond type calculated using lipids in the lower leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    lower: Option<Order>,
-    /// Number of samples collected for this bond type that suffices to calculate the order parameter.
-    /// If the number of collected samples is lower than this value, the final order is NaN.
-    #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    min_samples: usize,
+    lower: Option<AnalysisOrder<super::timewise::AddExtend>>,
     /// Order parameter map of this bond calculated using lipids in the entire membrane.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     total_map: Option<Map>,
@@ -402,8 +405,8 @@ impl BondType {
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
-        min_samples: usize,
         simbox: &SimBox,
+        errors: bool,
     ) -> Result<Self, TopologyError> {
         let bond_topology = BondTopology::new(
             abs_index_1 - min_index,
@@ -424,7 +427,10 @@ impl BondType {
         };
 
         let (leaflet_order, leaflet_map) = if classify_leaflets {
-            (Some(Order::default()), optional_map.clone())
+            (
+                Some(AnalysisOrder::new(0.0, 0, errors)),
+                optional_map.clone(),
+            )
         } else {
             (None, None)
         };
@@ -432,10 +438,9 @@ impl BondType {
         Ok(Self {
             bond_topology,
             bonds: vec![real_bond],
-            total: Order::default(),
+            total: AnalysisOrder::new(0.0, 0, errors),
             upper: leaflet_order.clone(),
             lower: leaflet_order,
-            min_samples,
             total_map: optional_map,
             upper_map: leaflet_map.clone(),
             lower_map: leaflet_map,
@@ -489,13 +494,22 @@ impl BondType {
         self.bond_topology().get_other_atom(atom)
     }
 
+    /// Initialize reading of a new simulation frame.
+    #[inline(always)]
+    fn init_new_frame(&mut self) {
+        self.total.init_new_frame();
+        self.upper.as_mut().map(|x| x.init_new_frame());
+        self.lower.as_mut().map(|x| x.init_new_frame());
+    }
+
     /// Calculate the current order parameter for this bond type.
     fn analyze_frame(
         &mut self,
         frame: &System,
-        leaflet_classification: Option<&MoleculeLeafletClassification>,
+        leaflet_classification: &mut Option<MoleculeLeafletClassification>,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
+        frame_index: usize,
     ) -> Result<(), AnalysisError> {
         for (molecule_index, (index1, index2)) in self.bonds.iter().enumerate() {
             let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
@@ -521,11 +535,8 @@ impl BondType {
             }
 
             // get the assignment of molecule (assignment is performed earlier)
-            if let Some(classifier) = leaflet_classification {
-                match classifier
-                    .get_assigned_leaflet(molecule_index)
-                    .unwrap_or_else(|| panic!("FATAL GORDER ERROR | BondType::analyze_frame | Molecule with internal gorder index '{}' is not assigned into a leaflet.", molecule_index)) 
-                {
+            if let Some(classifier) = leaflet_classification.as_mut() {
+                match classifier.get_assigned_leaflet(molecule_index, frame_index) {
                     Leaflet::Upper => {
                         *self.upper.as_mut().expect(PANIC_MESSAGE) += sch;
                         if let Some(map) = self.upper_map.as_mut() {
@@ -544,29 +555,6 @@ impl BondType {
 
         Ok(())
     }
-
-    /// Calculate average order parameter for the full membrane and optionally for
-    /// the upper and lower leaflet from the collected data.
-    pub(crate) fn calc_order(&self) -> (f32, Option<f32>, Option<f32>) {
-        let checked_min_samples = NonZeroUsize::new(self.min_samples).unwrap_or_else(|| {
-            panic!(
-                "FATAL GORDER ERROR | BondType::calc_order | 'min_samples' is ZERO. {}",
-                PANIC_MESSAGE
-            )
-        });
-
-        let total_order = self.total.calc_order(checked_min_samples);
-        let upper_order = self
-            .upper
-            .as_ref()
-            .map(|x| x.calc_order(checked_min_samples));
-        let lower_order = self
-            .lower
-            .as_ref()
-            .map(|x| x.calc_order(checked_min_samples));
-
-        (total_order, upper_order, lower_order)
-    }
 }
 
 impl Add<BondType> for BondType {
@@ -578,9 +566,8 @@ impl Add<BondType> for BondType {
             bond_topology: self.bond_topology,
             bonds: self.bonds,
             total: self.total + rhs.total,
-            upper: merge_option_order(self.upper, rhs.upper),
-            lower: merge_option_order(self.lower, rhs.lower),
-            min_samples: self.min_samples,
+            upper: super::order::merge_option_order(self.upper, rhs.upper),
+            lower: super::order::merge_option_order(self.lower, rhs.lower),
             total_map: merge_option_maps(self.total_map, rhs.total_map),
             upper_map: merge_option_maps(self.upper_map, rhs.upper_map),
             lower_map: merge_option_maps(self.lower_map, rhs.lower_map),
@@ -624,7 +611,7 @@ impl BondTopology {
     /// Construct a new BondTopology using directly already constructed atom types.
     #[allow(unused)]
     #[inline(always)]
-    pub(super) fn new_from_types(atom_type1: AtomType, atom_type2: AtomType) -> BondTopology {
+    pub(crate) fn new_from_types(atom_type1: AtomType, atom_type2: AtomType) -> BondTopology {
         BondTopology {
             atom1: atom_type1,
             atom2: atom_type2,
@@ -653,15 +640,15 @@ impl BondTopology {
 
 /// Type of atom. Specific to a particular molecule.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters, CopyGetters)]
-pub(crate) struct AtomType {
+pub struct AtomType {
     /// Relative index of the atom in a molecule.
-    #[getset(get_copy = "pub(crate)", get_mut = "pub(super)")]
+    #[getset(get_copy = "pub", get_mut = "pub(super)")]
     relative_index: usize,
     /// Name of the residue of the atom.
-    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
+    #[getset(get = "pub", get_mut = "pub(super)")]
     residue_name: String,
     /// Name of the atom.
-    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
+    #[getset(get = "pub", get_mut = "pub(super)")]
     atom_name: String,
 }
 
@@ -701,77 +688,8 @@ impl fmt::Display for AtomType {
     }
 }
 
-/// Structure for calculating order parameters from the simulation.
-#[derive(Debug, Clone, Default, CopyGetters)]
-pub(crate) struct Order {
-    /// Cumulative order parameter calculated over the analysis.
-    #[getset(get_copy = "pub(super)")]
-    order: OrderValue,
-    /// Number of samples collected for this order parameter.
-    #[getset(get_copy = "pub(super)")]
-    n_samples: usize,
-}
-
-impl Order {
-    #[allow(unused)]
-    #[inline(always)]
-    pub(super) fn new(order: f32, n_samples: usize) -> Order {
-        Order {
-            order: OrderValue::from(order),
-            n_samples,
-        }
-    }
-
-    /// Calculate average order from the collected data.
-    ///
-    /// Return `f32::NAN` if the number of samples is lower than the required minimal number.
-    #[inline(always)]
-    pub(crate) fn calc_order(&self, min_samples: NonZeroUsize) -> f32 {
-        if self.n_samples < min_samples.into() {
-            f32::NAN
-        } else {
-            f32::from(self.order / self.n_samples)
-        }
-    }
-}
-
-impl Add<Order> for Order {
-    type Output = Order;
-
-    #[inline(always)]
-    fn add(self, rhs: Order) -> Self::Output {
-        Order {
-            order: self.order + rhs.order,
-            n_samples: self.n_samples + rhs.n_samples,
-        }
-    }
-}
-
-impl AddAssign<f32> for Order {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: f32) {
-        self.order += rhs;
-        self.n_samples += 1;
-    }
-}
-
-/// Helper function for merging optional Orders.
-#[inline]
-fn merge_option_order(lhs: Option<Order>, rhs: Option<Order>) -> Option<Order> {
-    match (lhs, rhs) {
-        (Some(x), Some(y)) => Some(x + y),
-        (None, None) => None,
-        (Some(_), None) | (None, Some(_)) => panic!(
-            "FATAL GORDER ERROR | molecule::merge_option_order | Inconsistent option value. {}",
-            PANIC_MESSAGE
-        ),
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
-
     use crate::input::{ordermap::Plane, GridSpan};
 
     use super::*;
@@ -800,8 +718,8 @@ mod tests {
             455,
             false,
             None,
-            1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            false,
         )
         .unwrap();
         let bond2 = BondType::new(
@@ -812,8 +730,8 @@ mod tests {
             455,
             false,
             None,
-            1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            false,
         )
         .unwrap();
 
@@ -836,8 +754,8 @@ mod tests {
             455,
             true,
             None,
-            1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            false,
         )
         .unwrap();
 
@@ -850,7 +768,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let ordermap_params = OrderMap::new()
+        let ordermap_params = OrderMap::builder()
             .dim([GridSpan::Auto, GridSpan::Auto])
             .output_directory(".")
             .plane(Plane::XY)
@@ -864,8 +782,8 @@ mod tests {
             455,
             false,
             Some(&ordermap_params),
-            1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            false,
         )
         .unwrap();
 
@@ -881,7 +799,7 @@ mod tests {
         let atom1 = Atom::new(17, "POPE", 456, "N");
         let atom2 = Atom::new(17, "POPE", 461, "HN");
 
-        let ordermap_params = OrderMap::new()
+        let ordermap_params = OrderMap::builder()
             .dim([GridSpan::Auto, GridSpan::Auto])
             .output_directory(".")
             .plane(Plane::XY)
@@ -895,8 +813,8 @@ mod tests {
             455,
             true,
             Some(&ordermap_params),
-            1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            false,
         )
         .unwrap();
 
@@ -920,8 +838,8 @@ mod tests {
             455,
             false,
             None,
-            1,
             &SimBox::from([10.0, 10.0, 10.0]),
+            false,
         )
         .unwrap();
 
@@ -932,68 +850,6 @@ mod tests {
         assert_eq!(bond.bonds[0], (455, 460));
         assert_eq!(bond.bonds[1], (1354, 1359));
         assert_eq!(bond.bonds[2], (1671, 1676));
-    }
-
-    #[test]
-    fn test_bond_calc_order_basic() {
-        let atom1 = Atom::new(17, "POPE", 456, "N");
-        let atom2 = Atom::new(17, "POPE", 461, "HN");
-
-        let mut bond = BondType::new(
-            455,
-            &atom1,
-            460,
-            &atom2,
-            455,
-            false,
-            None,
-            1,
-            &SimBox::from([10.0, 10.0, 10.0]),
-        )
-        .unwrap();
-
-        bond.total.n_samples = 17;
-        bond.total.order = OrderValue::from(3.978);
-
-        let (total, upper, lower) = bond.calc_order();
-
-        assert_relative_eq!(total, 0.234);
-        assert!(upper.is_none());
-        assert!(lower.is_none());
-    }
-
-    #[test]
-    fn test_bond_calc_order_leaflets() {
-        let atom1 = Atom::new(17, "POPE", 456, "N");
-        let atom2 = Atom::new(17, "POPE", 461, "HN");
-
-        let mut bond = BondType::new(
-            455,
-            &atom1,
-            460,
-            &atom2,
-            455,
-            true,
-            None,
-            1,
-            &SimBox::from([10.0, 10.0, 10.0]),
-        )
-        .unwrap();
-
-        bond.total.n_samples = 17;
-        bond.total.order = OrderValue::from(3.978);
-
-        bond.upper.as_mut().unwrap().n_samples = 8;
-        bond.upper.as_mut().unwrap().order = OrderValue::from(1.976);
-
-        bond.lower.as_mut().unwrap().n_samples = 9;
-        bond.lower.as_mut().unwrap().order = OrderValue::from(1.989);
-
-        let (total, upper, lower) = bond.calc_order();
-
-        assert_relative_eq!(total, 0.234);
-        assert_relative_eq!(upper.unwrap(), 0.247);
-        assert_relative_eq!(lower.unwrap(), 0.221);
     }
 
     #[test]
@@ -1055,7 +911,7 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds);
-        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1).unwrap();
+        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, false).unwrap();
 
         let expected_bonds = expected_bonds(&system);
 
@@ -1080,7 +936,8 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds);
-        let mut order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, 1).unwrap();
+        let mut order_bonds =
+            OrderBonds::new(&system, &bonds_set, 125, false, None, false).unwrap();
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
         let new_bonds_set = HashSet::from(new_bonds);

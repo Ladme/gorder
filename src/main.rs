@@ -1,11 +1,8 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 mod application;
 
 fn main() {
-    std::process::exit(match application::run() {
-        Ok(_) => 0,
-        Err(_) => 1,
-    });
+    std::process::exit(if application::run() { 0 } else { 1 });
 }

@@ -16,6 +16,7 @@ n_threads: 4
 leaflets: !Global
   membrane: "@membrane"
   heads: "name P"
+  frequency: !Once
 map:
   output_directory: "."
   dim: 
@@ -24,3 +25,6 @@ map:
   min_samples: 10
   bin_size: [0.05, 0.02] 
   plane: xy
+estimate_error:
+  n_blocks: 10
+  output_convergence: "convergence.xvg"

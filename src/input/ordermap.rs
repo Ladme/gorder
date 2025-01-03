@@ -1,5 +1,5 @@
 // Released under MIT License.
-// Copyright (c) 2024 Ladislav Bartos
+// Copyright (c) 2024-2025 Ladislav Bartos
 
 //! Contains structures and methods for the construction of maps of order parameters.
 
@@ -8,12 +8,12 @@ use std::fmt;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters, Setters};
 use groan_rs::prelude::{SimBox, Vector3D};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::errors::{GridSpanError, OrderMapConfigError};
 
 /// Orientation of the order map. Should correspond to the plane in which the membrane is built.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
 pub enum Plane {
     #[default]
     #[serde(alias = "xy")]
@@ -65,15 +65,15 @@ impl fmt::Display for Plane {
 }
 
 /// Parameters for constructing ordermaps.
-#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize)]
+#[derive(Debug, Clone, Builder, Getters, CopyGetters, Setters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct OrderMap {
     /// Directory where the output files containing the individual ordermaps will be saved.
-    #[builder(setter(into))]
+    #[builder(setter(into, strip_option), default)]
     #[serde(alias = "output_dir")]
     #[getset(get = "pub")]
-    output_directory: String,
+    output_directory: Option<String>,
 
     /// Minimum number of samples required in a grid tile to calculate the order parameter.
     /// The default value is 1.
@@ -105,6 +105,20 @@ pub struct OrderMap {
     #[builder(setter(strip_option), default)]
     #[getset(get_copy = "pub", set = "pub(crate)")]
     plane: Option<Plane>,
+}
+
+impl Default for OrderMap {
+    /// Set the default parameters for the ordermaps calculation.
+    /// Warning: this sets NO output directory for the ordermaps, i.e. ordermaps will not be written out
+    /// and will only be available using public API.
+    fn default() -> Self {
+        Self::builder().build().unwrap_or_else(|e| {
+            panic!(
+                "FATAL GORDER ERROR | OrderMap::default | Could not build default OrderMap (`{}`)",
+                e
+            )
+        })
+    }
 }
 
 impl OrderMap {
@@ -173,8 +187,7 @@ fn validate_bin_size(size: [f32; 2]) -> Result<(), OrderMapConfigError> {
 
 impl OrderMap {
     /// Start providing ordermap parameters.
-    #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> OrderMapBuilder {
+    pub fn builder() -> OrderMapBuilder {
         OrderMapBuilder::default()
     }
 
@@ -204,7 +217,7 @@ impl OrderMapBuilder {
 }
 
 /// Specifies the span of an ordermap grid.
-#[derive(Debug, Clone, Copy, Default, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub enum GridSpan {
     /// Span should be obtained from the input structure file.
@@ -251,12 +264,21 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_pass_basic() {
-        let map = OrderMap::new()
-            .output_directory("ordermaps")
-            .build()
-            .unwrap();
+        let map = OrderMap::builder().build().unwrap();
 
-        assert_eq!(map.output_directory(), "ordermaps");
+        assert!(map.output_directory().is_none());
+        assert_relative_eq!(map.bin_size_x(), 0.1);
+        assert_relative_eq!(map.bin_size_y(), 0.1);
+        assert_eq!(map.min_samples(), 1);
+        matches!(map.dim_x(), GridSpan::Auto);
+        matches!(map.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn test_ordermap_pass_default() {
+        let map = OrderMap::default();
+
+        assert!(map.output_directory().is_none());
         assert_relative_eq!(map.bin_size_x(), 0.1);
         assert_relative_eq!(map.bin_size_y(), 0.1);
         assert_eq!(map.min_samples(), 1);
@@ -266,7 +288,7 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_pass_full() {
-        let map = OrderMap::new()
+        let map = OrderMap::builder()
             .output_directory("ordermaps")
             .bin_size([0.2, 0.01])
             .dim([GridSpan::manual(-5.0, 10.0).unwrap(), GridSpan::Auto])
@@ -274,7 +296,7 @@ mod test_ordermap {
             .build()
             .unwrap();
 
-        assert_eq!(map.output_directory(), "ordermaps");
+        assert_eq!(map.output_directory().as_ref().unwrap(), "ordermaps");
         assert_relative_eq!(map.bin_size_x(), 0.2);
         assert_relative_eq!(map.bin_size_y(), 0.01);
         assert_eq!(map.min_samples(), 10);
@@ -289,17 +311,8 @@ mod test_ordermap {
     }
 
     #[test]
-    fn test_ordermap_fail_incomplete() {
-        match OrderMap::new().build() {
-            Ok(_) => panic!("Function should have failed but it succeeded."),
-            Err(OrderMapBuilderError::UninitializedField(x)) => assert_eq!(x, "output_directory"),
-            Err(e) => panic!("Unexpected error type returned {}", e),
-        }
-    }
-
-    #[test]
     fn test_ordermap_fail_zero_min_samples() {
-        match OrderMap::new()
+        match OrderMap::builder()
             .output_directory("ordermaps")
             .min_samples(0)
             .build()
@@ -312,7 +325,7 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_fail_invalid_bin_size_x() {
-        match OrderMap::new()
+        match OrderMap::builder()
             .output_directory("ordermaps")
             .bin_size([0.0, 0.1])
             .build()
@@ -327,7 +340,7 @@ mod test_ordermap {
 
     #[test]
     fn test_ordermap_fail_invalid_bin_size_y() {
-        match OrderMap::new()
+        match OrderMap::builder()
             .output_directory("ordermaps")
             .bin_size([0.1, -0.3])
             .build()

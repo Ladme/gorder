@@ -18,7 +18,7 @@ $ cargo install gorder
 
 ```yaml
 structure: system.tpr
-trajectory: md.xtc
+trajectory: md.xtc     # use your MD trajectory directly - no PBC handling or molecule fixing needed
 analysis_type: !AAOrder
     heavy_atoms: "@membrane and element name carbon"
     hydrogens: "@membrane and element name hydrogen"
@@ -37,18 +37,18 @@ $ gorder YOUR_INPUT_YAML_FILE
 
 ## Features
 - **Atomistic and coarse-grained systems.** `gorder` is able to calculate atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
-- **Powerful selection language.** `gorder` allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files.
-- **Largely automatic.** `gorder` automatically recognizes bonds and classifies molecule types based on their topology.
+- **Powerful selection language.** `gorder` allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files. (Read more about the language [here](https://ladme.github.io/gsl-guide/).)
+- **Automatic identification of molecule types.** `gorder` automatically recognizes bonds and classifies molecule types based on their topology.
 - **Various output formats.** `gorder` can output results in YAML, XVG, CSV, and custom "table" format.
 - **Leaflet-wise analysis.** `gorder` can perform scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculate lipid order parameters for individual leaflets.
 - **Order parameter maps.** `gorder` can construct 2D maps of order parameters, so you know what parts of the membrane are ordered and disordered.
+- **Error estimation.** `gorder` can automatically estimate the error of the analysis and indicate how well your analysis has converged.
 - **Supports any force-field.** `gorder` is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force-field? As long as your lipids have bonds, it will work.
-- **Very fast with multithreading.** `gorder` is very fast (see below) through multithreading support.
+- **Extremely fast.** `gorder` is extremely fast (see [below](#benchmarking)) due to its ability to read only the necessary atoms from XTC files and its support for multithreading.
 
 ## Planned
-- [ ] Robust error estimation using cross-validation.
-- [ ] Dynamic membrane normal calculation, supporting membrane vesicles.
 - [ ] Dynamic selection of lipids for order parameter calculation based on geometric conditions (i.e., only calculating order parameters from a part of a membrane).
+- [ ] Dynamic membrane normal calculation, supporting membrane vesicles.
 - [ ] Python API: using `gorder` as a Python library.
 - [ ] United-atom order parameters.
 - [ ] Improved multithreading (currently, multithreading is only implemented at the trajectory reading level).
@@ -81,9 +81,9 @@ A Martini 3 simulation of a membrane consisting of 512 POPC lipids was used to v
 Run time of the analyses performed in the Validation section by various programs:
 ![Bar chart showing the run time of various programs.](validation/aaorder_benchmark.png)
 
-*Benchmarks were conducted on Debian 12 with an 8-core Intel Core i7-10700 CPU. Benchmarking of `gmx order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). The `NMR lipids` script and `calc_op.tcl` were dramatically slower, so only approximate values obtained using GNU's `time` are reported.*
+*Benchmarks were conducted on Debian 12 with an 8-core Intel Core i7-10700 CPU and SK Hynix BC511 HFM512GDJTNI SSD. Benchmarking of `gmx order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). The `NMR lipids` script and `calc_op.tcl` were dramatically slower, so only approximate values obtained using GNU's `time` are reported.*
 
-<sup>a</sup> Note that, unlike `calc_op.tcl` and `gmx order`, the NMR lipids script provides information about the order of individual C-H bonds. `gorder` also provides this information.
+<sup>a</sup> Note that, unlike `calc_op.tcl` and `gmx order`, the `OrderParameter.py` script provides information about the order of individual C-H bonds. `gorder` also provides this information.
 
 <sup>b</sup> Note that `gmx order` calculates united atom order parameters, not atomistic order parameters. For saturated tails, this calculation is reasonably accurate; however, for unsaturated tails, it is **very** inaccurate [[1]](https://doi.org/10.1021/acs.jctc.7b00643). Additionally, it is slower and more tedious to use than `gorder`, so there is little justification for using it for atomistic systems.
 
@@ -91,7 +91,7 @@ Run time of the analyses performed in the Validation section by various programs
 Run time of the analyses performed in the Validation section by various programs:
 ![Bar chart showing the run time of various programs.](validation/cgorder_benchmark.png)
 
-*Benchmarks were conducted on Debian 12 with with an 8-core Intel Core i7-10700 CPU. Benchmarking of `order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). `do-order` and `lipyphilic` were dramatically slower, so only an approximate value obtained using GNU's `time` is reported.*
+*Benchmarks were conducted on Debian 12 with with an 8-core Intel Core i7-10700 CPU and SK Hynix BC511 HFM512GDJTNI SSD. Benchmarking of `order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). `do-order` and `lipyphilic` were dramatically slower, so only an approximate value obtained using GNU's `time` is reported.*
 
 <sup>a</sup> Note that the `do-order` script is not able to calculate order parameters for individual leaflets in the same run. In contrast, both `order` and `gorder` were run with this capability enabled.
 
@@ -105,4 +105,5 @@ The command line tool and the crate are both released under the MIT License.
 
 ## Limitations
 - `gorder` only works for simulations with orthogonal simulation boxes.
+- `gorder` only supports TPR files generated with Gromacs 5.1 or newer.
 - `gorder` is developed on Linux for Linux. While it should work on other operating systems, it is not guaranteed.
