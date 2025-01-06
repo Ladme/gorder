@@ -34,9 +34,31 @@ pub(super) trait GeometrySelection {
     fn inside(&self, point: &Vector3D, simbox: &SimBox) -> bool;
 }
 
-/// No geometry selection requested.
+/// No geometry selection requested. Order parameters will be calculated for all bonds, no matter where they are.
 #[derive(Debug, Clone)]
 pub(super) struct NoSelection {}
+
+impl GeometrySelection for NoSelection {
+    #[inline(always)]
+    fn new(_geometry: &Geometry, _simbox: &SimBox) -> Self {
+        Self {}
+    }
+
+    #[inline(always)]
+    fn prepare_system(&self, _system: &mut System) -> Result<(), TopologyError> {
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn init_reference(&mut self, _system: &System) {
+        ()
+    }
+
+    #[inline(always)]
+    fn inside(&self, _point: &Vector3D, _simbox: &SimBox) -> bool {
+        true
+    }
+}
 
 /// Cuboid geometry selection.
 #[derive(Debug, Clone)]
@@ -99,6 +121,7 @@ impl GeometrySelection for CuboidAnalysis {
         }
     }
 
+    #[inline(always)]
     fn inside(&self, point: &Vector3D, simbox: &SimBox) -> bool {
         self.shape.inside(point, simbox)
     }
@@ -106,6 +129,7 @@ impl GeometrySelection for CuboidAnalysis {
 
 impl CuboidAnalysis {
     /// Convert the input cuboid box into `groan_rs`'s native rectangular shape.
+    // TODO: tests for this method <<<<<<<<<<<<<<<<<<<<<
     fn construct_shape(
         properties: &CuboidSelection,
         mut reference: Vector3D,
