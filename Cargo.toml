@@ -11,7 +11,11 @@ exclude = ["/tests", "/validation"]
 
 [dependencies]
 backitup = "0.1.1"
-groan_rs = { path = "../groan_rs", features = ["parallel", "no-xdrfile"] }
+groan_rs = { path = "../groan_rs", features = [
+    "parallel",
+    "no-xdrfile",
+    "serde",
+] }
 colored = "2.1"
 thiserror = "2.0.3"
 derive_builder = "0.20.2"

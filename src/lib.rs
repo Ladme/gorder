@@ -382,4 +382,6 @@ pub mod prelude {
         AnalysisResults, BondResults, GridMapF32, Order, OrderCollection, OrderMapsCollection,
         PublicMoleculeResults, PublicOrderResults,
     };
+
+    pub use groan_rs::prelude::Vector3D;
 }

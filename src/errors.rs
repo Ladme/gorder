@@ -21,6 +21,23 @@ pub enum GridSpanError {
     Invalid(f32, f32),
 }
 
+/// Errors that can occur when constructing a geometry selection.
+#[derive(Error, Debug)]
+pub enum GeometryConfigError {
+    #[error("{} the first coordinate for dimension ('{}' nm) is higher than the second coordinate for dimension ('{}' nm)", "error".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
+    InvalidDimension(f32, f32),
+
+    #[error(
+        "{} the specified radius for the geometry selection is '{}' but it must be non-negative", "error".red().bold(), .0.to_string().yellow()
+    )]
+    InvalidRadius(f32),
+
+    #[error(
+        "{} the specified height for the geometry selection is '{}' but it must be non-negative", "error".red().bold(), .0.to_string().yellow()
+    )]
+    InvalidHeight(f32),
+}
+
 /// Errors that can occur when creating a `Frequency` structure.
 #[derive(Error, Debug)]
 pub enum FrequencyError {
@@ -196,6 +213,9 @@ pub enum ConfigError {
 
     #[error("{}", .0)]
     InvalidErrorEstimation(ErrorEstimationError),
+
+    #[error("{}", .0)]
+    InvalidGeometry(GeometryConfigError),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.
