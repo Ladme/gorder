@@ -41,17 +41,17 @@ impl Geometry {
     }
 
     /// Construct a cylinder.
-    /// Returns an error in case the radius or the height is negative.
+    /// Returns an error in case the radius is negative or the span is invalid.
     pub fn cylinder(
         reference: impl Into<GeomReference>,
         radius: f32,
-        height: f32,
+        span: [f32; 2],
         orientation: Axis,
     ) -> Result<Self, GeometryConfigError> {
         let geometry = Self::Cylinder(CylinderSelection {
             reference: reference.into(),
             radius,
-            height,
+            span,
             orientation,
         });
 
@@ -89,8 +89,8 @@ impl Geometry {
                     return Err(GeometryConfigError::InvalidRadius(x.radius));
                 }
 
-                if x.height < 0.0 {
-                    return Err(GeometryConfigError::InvalidHeight(x.height));
+                if x.span[0] > x.span[1] {
+                    return Err(GeometryConfigError::InvalidSpan(x.span[0], x.span[1]));
                 }
             }
             Self::Sphere(x) => {
@@ -138,7 +138,7 @@ pub struct CuboidSelection {
 #[derive(Debug, Clone, Deserialize, Serialize, Getters, CopyGetters)]
 #[serde(deny_unknown_fields)]
 pub struct CylinderSelection {
-    /// The center of the cylinder's base, serving as its reference point.
+    /// The center of the cylinder, serving as its reference point.
     /// This can be an absolute position or a selection of atoms
     /// whose center of geometry defines the reference point.
     /// Defaults to [0, 0, 0] (the origin of the coordinate system) if not specified.
@@ -148,18 +148,14 @@ pub struct CylinderSelection {
     /// The radius of the cylinder [in nm], defining its circular cross-section.
     #[getset(get_copy = "pub")]
     radius: f32,
-    /// The height of the cylinder [in nm], specifying its extent along the orientation axis.
-    /// If not specified, the height is infinite.
+    /// Defines the cylinder's extent along its specified axis (`orientation`), from a minimum to a maximum value.
+    /// If not specified, the cylinder is considered to have infinite height
     #[getset(get_copy = "pub")]
-    #[serde(default = "infinite_height")]
-    height: f32,
+    #[serde(default = "infinite_dim")]
+    span: [f32; 2],
     /// The spatial orientation of the cylinder, determining its alignment in 3D space.
     #[getset(get_copy = "pub")]
     orientation: Axis,
-}
-
-fn infinite_height() -> f32 {
-    f32::INFINITY
 }
 
 fn infinite_dim() -> [f32; 2] {
@@ -291,7 +287,7 @@ mod pass_tests {
 
     #[test]
     fn test_cylinder() {
-        let geom = Geometry::cylinder([1.4, 3.2, 1.7], 2.5, 0.8, Axis::X).unwrap();
+        let geom = Geometry::cylinder([1.4, 3.2, 1.7], 2.5, [0.3, 1.6], Axis::X).unwrap();
 
         match geom {
             Geometry::Cylinder(cylinder) => {
@@ -305,7 +301,8 @@ mod pass_tests {
                 }
 
                 assert_relative_eq!(cylinder.radius, 2.5);
-                assert_relative_eq!(cylinder.height, 0.8);
+                assert_relative_eq!(cylinder.span[0], 0.3);
+                assert_relative_eq!(cylinder.span[1], 1.6);
 
                 assert_eq!(cylinder.orientation, Axis::X);
             }
@@ -428,7 +425,8 @@ mod pass_tests {
                     _ => panic!("Unexpected geometry reference."),
                 }
 
-                assert_relative_eq!(cylinder.height, f32::INFINITY);
+                assert_relative_eq!(cylinder.span[0], f32::NEG_INFINITY);
+                assert_relative_eq!(cylinder.span[1], f32::INFINITY);
                 assert_relative_eq!(cylinder.radius, 4.0);
                 assert_eq!(cylinder.orientation, Axis::Z);
             }
@@ -441,7 +439,7 @@ mod pass_tests {
         let string = "!Cylinder
   orientation: z
   radius: 4.0
-  height: 12.0";
+  span: [-5.4, 7]";
         match serde_yaml::from_str(string).unwrap() {
             Geometry::Cylinder(cylinder) => {
                 match cylinder.reference {
@@ -453,7 +451,8 @@ mod pass_tests {
                     _ => panic!("Unexpected geometry reference."),
                 }
 
-                assert_relative_eq!(cylinder.height, 12.0);
+                assert_relative_eq!(cylinder.span[0], -5.4);
+                assert_relative_eq!(cylinder.span[1], 7.0);
                 assert_relative_eq!(cylinder.radius, 4.0);
                 assert_eq!(cylinder.orientation, Axis::Z);
             }
@@ -466,7 +465,7 @@ mod pass_tests {
         let string = "!Cylinder
   orientation: z
   radius: 4.0
-  height: 12.0
+  span: [-5.4, 7]
   reference: \"@protein and name CA\"";
         match serde_yaml::from_str(string).unwrap() {
             Geometry::Cylinder(cylinder) => {
@@ -477,7 +476,8 @@ mod pass_tests {
                     _ => panic!("Unexpected geometry reference."),
                 }
 
-                assert_relative_eq!(cylinder.height, 12.0);
+                assert_relative_eq!(cylinder.span[0], -5.4);
+                assert_relative_eq!(cylinder.span[1], 7.0);
                 assert_relative_eq!(cylinder.radius, 4.0);
                 assert_eq!(cylinder.orientation, Axis::Z);
             }
@@ -588,7 +588,12 @@ mod fail_tests {
 
     #[test]
     fn test_cylinder_fail_radius() {
-        match Geometry::cylinder(GeomReference::origin(), -1.0, f32::INFINITY, Axis::Y) {
+        match Geometry::cylinder(
+            GeomReference::origin(),
+            -1.0,
+            [f32::NEG_INFINITY, f32::INFINITY],
+            Axis::Y,
+        ) {
             Ok(_) => panic!("Function should have failed."),
             Err(GeometryConfigError::InvalidRadius(x)) => {
                 assert_relative_eq!(x, -1.0);
@@ -599,10 +604,11 @@ mod fail_tests {
 
     #[test]
     fn test_cylinder_fail_height() {
-        match Geometry::cylinder(GeomReference::origin(), 1.0, -0.3, Axis::Y) {
+        match Geometry::cylinder(GeomReference::origin(), 1.0, [0.4, 0.0], Axis::Y) {
             Ok(_) => panic!("Function should have failed."),
-            Err(GeometryConfigError::InvalidHeight(x)) => {
-                assert_relative_eq!(x, -0.3);
+            Err(GeometryConfigError::InvalidSpan(x, y)) => {
+                assert_relative_eq!(x, 0.4);
+                assert_relative_eq!(y, 0.0);
             }
             Err(e) => panic!("Unexpected error type: {}", e),
         }

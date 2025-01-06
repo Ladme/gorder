@@ -31,5 +31,5 @@ estimate_error:
 geometry: !Cylinder
   reference: "@protein and name BB"
   radius: 3.5
-  height: 5.1
+  span: [2.3, 5.1]
   orientation: z

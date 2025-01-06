@@ -11,6 +11,7 @@ use crate::presentation::AnalysisResults;
 mod aaorder;
 mod cgorder;
 mod common;
+mod geometry;
 mod leaflets;
 pub(crate) mod molecule;
 pub(crate) mod order;

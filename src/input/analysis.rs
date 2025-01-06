@@ -569,7 +569,8 @@ mod tests_yaml {
                     _ => panic!("Invalid geometric reference."),
                 }
                 assert_relative_eq!(c.radius(), 3.5);
-                assert_relative_eq!(c.height(), 5.1);
+                assert_relative_eq!(c.span()[0], 2.3);
+                assert_relative_eq!(c.span()[1], 5.1);
                 assert_eq!(c.orientation(), Axis::Z);
             }
             _ => panic!("Incorrect geometry type returned."),
@@ -789,10 +790,11 @@ mod tests_yaml {
 
     #[test]
     fn analysis_yaml_fail_geometry_cylinder_height() {
-        match Analysis::from_file("tests/files/inputs/cylinder_negative_height.yaml") {
+        match Analysis::from_file("tests/files/inputs/cylinder_invalid_span.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
-            Err(ConfigError::InvalidGeometry(GeometryConfigError::InvalidHeight(x))) => {
+            Err(ConfigError::InvalidGeometry(GeometryConfigError::InvalidSpan(x, y))) => {
                 assert_relative_eq!(x, -1.7);
+                assert_relative_eq!(y, -1.9)
             }
             Err(e) => panic!("Unexpected error type returned: {}", e),
         }
@@ -901,7 +903,7 @@ mod tests_builder {
                     .unwrap(),
             )
             .estimate_error(EstimateError::new(Some(10), Some("convergence.xvg")).unwrap())
-            .geometry(Geometry::cylinder("@protein and name BB", 3.5, 5.1, Axis::Z).unwrap())
+            .geometry(Geometry::cylinder("@protein and name BB", 3.5, [2.3, 5.1], Axis::Z).unwrap())
             .build()
             .unwrap();
 
@@ -960,7 +962,8 @@ mod tests_builder {
                     _ => panic!("Invalid geometric reference."),
                 }
                 assert_relative_eq!(c.radius(), 3.5);
-                assert_relative_eq!(c.height(), 5.1);
+                assert_relative_eq!(c.span()[0], 2.3);
+                assert_relative_eq!(c.span()[1], 5.1);
                 assert_eq!(c.orientation(), Axis::Z);
             }
             _ => panic!("Incorrect geometry type returned."),
