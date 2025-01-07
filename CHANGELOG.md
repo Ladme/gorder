@@ -1,3 +1,6 @@
+## Version 0.4.0
+- **Geometry selection:** Implemented geometry selection. A cuboidal, spherical, or cylindrical region can be now specified. Order parameters will be then calculated only using bonds located in this region.
+
 ## Version 0.3.0
 - **Error estimation and convergence analysis**: Implemented error estimation and convergence analysis. Refer to the corresponding section of the manual for more details.
 - **Leaflet classification**: Leaflet classification can now also be performed either every N analyzed trajectory frames or only once at the start of the analysis.
