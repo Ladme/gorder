@@ -19,8 +19,67 @@ use crate::{
 
 use super::common::macros::group_name;
 
+/// Enum encompassing all possible geometry selections.
+#[derive(Debug, Clone)]
+pub(crate) enum GeometrySelectionType {
+    None(NoSelection),
+    Cuboid(CuboidAnalysis),
+}
+
+impl Default for GeometrySelectionType {
+    fn default() -> Self {
+        GeometrySelectionType::None(NoSelection::default())
+    }
+}
+
+impl GeometrySelectionType {
+    /// Construct a geometry selection type from the input geometry.
+    pub(super) fn from_geometry(geometry: Option<&Geometry>, simbox: &SimBox) -> Self {
+        match geometry {
+            None => GeometrySelectionType::None(NoSelection::default()),
+            Some(Geometry::Cuboid(_)) => GeometrySelectionType::Cuboid(CuboidAnalysis::new(
+                geometry.expect(PANIC_MESSAGE),
+                simbox,
+            )),
+            Some(Geometry::Cylinder(_)) => todo!(),
+            Some(Geometry::Sphere(_)) => todo!(),
+        }
+    }
+
+    /// Log basic information about the performed geometry selection.
+    pub(super) fn info(&self) {
+        match self {
+            GeometrySelectionType::None(_) => (),
+            GeometrySelectionType::Cuboid(cuboid) => {
+                log::info!(
+                    "Will only consider bonds located inside a cuboid:
+  x-dimension: from {} nm to {} nm
+  y-dimension: from {} nm to {} nm
+  z-dimension: from {} nm to {} nm
+  relative to {}",
+                    cuboid.properties.xdim()[0],
+                    cuboid.properties.xdim()[1],
+                    cuboid.properties.ydim()[0],
+                    cuboid.properties.ydim()[1],
+                    cuboid.properties.zdim()[0],
+                    cuboid.properties.zdim()[1],
+                    cuboid.properties.reference(),
+                );
+            }
+        }
+    }
+
+    /// Initialize the reading of a new frame (calculate and set new reference position if needed).
+    pub(super) fn init_new_frame(&mut self, system: &System) {
+        match self {
+            GeometrySelectionType::None(_) => (),
+            GeometrySelectionType::Cuboid(x) => x.init_reference(system),
+        }
+    }
+}
+
 /// Trait implemented by all structures that can be used for geometry selection.
-pub(super) trait GeometrySelection {
+pub(crate) trait GeometrySelection: Send + Sync {
     /// Create the structure from the provided `Geometry` properties.
     fn new(geometry: &Geometry, simbox: &SimBox) -> Self;
 
@@ -35,8 +94,8 @@ pub(super) trait GeometrySelection {
 }
 
 /// No geometry selection requested. Order parameters will be calculated for all bonds, no matter where they are.
-#[derive(Debug, Clone)]
-pub(super) struct NoSelection {}
+#[derive(Debug, Clone, Default)]
+pub(crate) struct NoSelection {}
 
 impl GeometrySelection for NoSelection {
     #[inline(always)]
@@ -62,7 +121,7 @@ impl GeometrySelection for NoSelection {
 
 /// Cuboid geometry selection.
 #[derive(Debug, Clone)]
-pub(super) struct CuboidAnalysis {
+pub(crate) struct CuboidAnalysis {
     properties: CuboidSelection,
     shape: Rectangular,
 }

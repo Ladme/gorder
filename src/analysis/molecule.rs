@@ -15,6 +15,7 @@ use groan_rs::{
 use hashbrown::HashSet;
 
 use super::{
+    geometry::GeometrySelection,
     leaflets::MoleculeLeafletClassification,
     ordermap::{merge_option_maps, Map},
 };
@@ -99,12 +100,13 @@ impl MoleculeType {
 
     /// Calculate order parameters for bonds of a single molecule type from a single simulation frame.
     #[inline]
-    pub(super) fn analyze_frame(
+    pub(super) fn analyze_frame<Geom: GeometrySelection>(
         &mut self,
         frame: &System,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
         frame_index: usize,
+        geometry: &Geom,
     ) -> Result<(), AnalysisError> {
         self.order_bonds
             .bond_types
@@ -116,6 +118,7 @@ impl MoleculeType {
                     simbox,
                     membrane_normal,
                     frame_index,
+                    geometry,
                 )
             })?;
 
@@ -503,13 +506,14 @@ impl BondType {
     }
 
     /// Calculate the current order parameter for this bond type.
-    fn analyze_frame(
+    fn analyze_frame<Geom: GeometrySelection>(
         &mut self,
         frame: &System,
         leaflet_classification: &mut Option<MoleculeLeafletClassification>,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
         frame_index: usize,
+        geometry: &Geom,
     ) -> Result<(), AnalysisError> {
         for (molecule_index, (index1, index2)) in self.bonds.iter().enumerate() {
             let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
@@ -524,11 +528,16 @@ impl BondType {
                 .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_index()))?;
 
             let vec = pos1.vector_to(pos2, simbox);
-            let sch = super::calc_sch(&vec, membrane_normal);
-            self.total += sch;
 
             // get the coordinates of the bond
-            let bond_pos = pos1 + (vec / 2.0);
+            let bond_pos = pos1 + (&vec / 2.0);
+            // check whether the bond is inside the geometric shape
+            if !geometry.inside(&bond_pos, simbox) {
+                continue;
+            }
+
+            let sch = super::calc_sch(&vec, membrane_normal);
+            self.total += sch;
 
             if let Some(map) = self.total_map.as_mut() {
                 map.add_order(sch, &bond_pos);

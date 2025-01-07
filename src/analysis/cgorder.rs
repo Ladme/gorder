@@ -10,7 +10,7 @@ use groan_rs::{
 };
 
 use crate::{
-    analysis::common::prepare_master_group,
+    analysis::common::{prepare_geometry_selection, prepare_master_group},
     presentation::{AnalysisResults, OrderResults},
 };
 use crate::{
@@ -60,6 +60,9 @@ pub(super) fn analyze_coarse_grained<'a>(
         leaflet.prepare_system(&mut system)?;
     }
 
+    let geom = prepare_geometry_selection(analysis.geometry().as_ref(), &mut system)?;
+    geom.info();
+
     log::info!("Detecting molecule types...");
     log::logger().flush();
 
@@ -86,6 +89,7 @@ pub(super) fn analyze_coarse_grained<'a>(
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
+        geom,
     );
     data.info();
 
@@ -144,7 +148,10 @@ mod tests {
 
     use super::*;
     use crate::{
-        analysis::molecule::{BondType, MoleculeType},
+        analysis::{
+            geometry::GeometrySelectionType,
+            molecule::{BondType, MoleculeType},
+        },
         input::LeafletClassification,
     };
 
@@ -175,7 +182,14 @@ mod tests {
         .unwrap();
         (
             system,
-            SystemTopology::new(molecules, Dimension::Z, None, 1, 1),
+            SystemTopology::new(
+                molecules,
+                Dimension::Z,
+                None,
+                1,
+                1,
+                GeometrySelectionType::default(),
+            ),
         )
     }
 

@@ -3,6 +3,8 @@
 
 //! Contains the implementation of the `Geometry` structure and its methods.
 
+use std::fmt::Display;
+
 use getset::{CopyGetters, Getters};
 use groan_rs::prelude::Vector3D;
 use serde::{Deserialize, Serialize};
@@ -213,6 +215,15 @@ impl From<String> for GeomReference {
 impl Default for GeomReference {
     fn default() -> Self {
         Self::Point(Vector3D::default())
+    }
+}
+
+impl Display for GeomReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Point(x) => write!(f, "static point at {}", x),
+            Self::Selection(x) => write!(f, "dynamic center of geometry of '{}'", x),
+        }
     }
 }
 

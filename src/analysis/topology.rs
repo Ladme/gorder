@@ -6,12 +6,13 @@
 use crate::input::{Analysis, EstimateError};
 use crate::PANIC_MESSAGE;
 
+use super::geometry::GeometrySelectionType;
 use super::molecule::MoleculeType;
 use crate::errors::ErrorEstimationError;
 use crate::presentation::converter::{MolConvert, ResultsConverter};
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::prelude::Dimension;
-use groan_rs::system::ParallelTrajData;
+use groan_rs::system::{ParallelTrajData, System};
 use indexmap::IndexMap;
 use std::ops::Add;
 
@@ -40,6 +41,9 @@ pub(crate) struct SystemTopology {
     /// Parameters of error estimation.
     #[getset(get = "pub(super)")]
     estimate_error: Option<EstimateError>,
+    /// Structure for geometry selection.
+    #[getset(get = "pub(super)")]
+    geometry: GeometrySelectionType,
 }
 
 impl SystemTopology {
@@ -50,6 +54,7 @@ impl SystemTopology {
         estimate_error: Option<EstimateError>,
         step_size: usize,
         n_threads: usize,
+        geometry: GeometrySelectionType,
     ) -> SystemTopology {
         SystemTopology {
             thread_id: 0,
@@ -60,6 +65,7 @@ impl SystemTopology {
             molecule_types,
             membrane_normal,
             estimate_error,
+            geometry,
         }
     }
 
@@ -70,7 +76,9 @@ impl SystemTopology {
     }
 
     /// Initialize reading of a new frame.
-    pub(super) fn init_new_frame(&mut self) {
+    pub(super) fn init_new_frame(&mut self, frame: &System) {
+        self.geometry.init_new_frame(frame);
+
         self.molecule_types
             .iter_mut()
             .for_each(|mol| mol.init_new_frame());
@@ -205,6 +213,7 @@ impl Add<SystemTopology> for SystemTopology {
                 .collect::<Vec<MoleculeType>>(),
             membrane_normal: self.membrane_normal,
             estimate_error: self.estimate_error,
+            geometry: self.geometry,
         }
     }
 }
@@ -253,8 +262,14 @@ mod tests {
 
                     let mut threads = (0..n_threads)
                         .map(|i| {
-                            let mut top =
-                                SystemTopology::new(vec![], Dimension::Z, None, step, n_threads);
+                            let mut top = SystemTopology::new(
+                                vec![],
+                                Dimension::Z,
+                                None,
+                                step,
+                                n_threads,
+                                GeometrySelectionType::default(),
+                            );
                             top.initialize(i);
                             top
                         })

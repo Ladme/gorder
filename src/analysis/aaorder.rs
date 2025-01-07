@@ -4,7 +4,9 @@
 //! Contains the implementation of the calculation of the atomistic order parameters.
 
 use super::{common::macros::group_name, topology::SystemTopology};
-use crate::analysis::common::{analyze_frame, prepare_master_group, sanity_check_molecules};
+use crate::analysis::common::{
+    analyze_frame, prepare_geometry_selection, prepare_master_group, sanity_check_molecules,
+};
 use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::{AnalysisResults, OrderResults};
@@ -83,6 +85,9 @@ pub(super) fn analyze_atomistic<'a>(
         leaflet.prepare_system(&mut system)?;
     }
 
+    let geom = prepare_geometry_selection(analysis.geometry().as_ref(), &mut system)?;
+    geom.info();
+
     log::info!("Detecting molecule types...");
     log::logger().flush();
 
@@ -109,6 +114,7 @@ pub(super) fn analyze_atomistic<'a>(
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
+        geom,
     );
     data.info();
 
@@ -167,7 +173,10 @@ mod tests {
 
     use super::*;
     use crate::{
-        analysis::molecule::{BondType, MoleculeType},
+        analysis::{
+            geometry::GeometrySelectionType,
+            molecule::{BondType, MoleculeType},
+        },
         input::leaflets::LeafletClassification,
     };
 
@@ -209,7 +218,14 @@ mod tests {
 
         (
             system,
-            SystemTopology::new(molecules, Dimension::Z, None, 1, 1),
+            SystemTopology::new(
+                molecules,
+                Dimension::Z,
+                None,
+                1,
+                1,
+                GeometrySelectionType::default(),
+            ),
         )
     }
 
