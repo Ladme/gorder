@@ -53,10 +53,10 @@ impl GeometrySelectionType {
             GeometrySelectionType::Cuboid(cuboid) => {
                 log::info!(
                     "Will only consider bonds located inside a cuboid:
-  x-dimension: from {} nm to {} nm
-  y-dimension: from {} nm to {} nm
-  z-dimension: from {} nm to {} nm
-  relative to {}",
+x-dimension: from {} nm to {} nm
+y-dimension: from {} nm to {} nm
+z-dimension: from {} nm to {} nm
+relative to {}",
                     cuboid.properties.xdim()[0],
                     cuboid.properties.xdim()[1],
                     cuboid.properties.ydim()[0],

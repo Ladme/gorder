@@ -40,6 +40,7 @@ fn get_hint(group: &str) -> String {
         "Membrane" => ("membrane".bright_blue(), "leaflets".bright_blue()),
         "Heads" => ("heads".bright_blue(), "leaflets".bright_blue()),
         "Methyls" => ("methyls".bright_blue(), "leaflets".bright_blue()),
+        "GeomReference" => ("reference".bright_blue(), "geometry".bright_blue()),
         // unknown group name; this should not happen, but it's not important so we will pretend it's okay
         _ => return String::from("a query specifying the group selects no atoms"),
     };
@@ -433,6 +434,10 @@ pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
             groups.push(group_name!("Heads"));
             groups.push(group_name!("Methyls"));
         }
+    }
+
+    if analysis.geometry().is_some() {
+        groups.push(group_name!("GeomReference"));
     }
 
     create_group(system, "Master", &groups.join(" ")).unwrap_or_else(|_| {
