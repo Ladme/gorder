@@ -2410,6 +2410,7 @@ fn test_aa_order_geometry_cuboid_full() {
         GeomReference::default(),
         Vector3D::new(2.0, 2.0, 3.0).into(),
         "@membrane".into(),
+        GeomReference::center(),
     ] {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();

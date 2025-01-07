@@ -131,8 +131,10 @@ impl GeometrySelection for CuboidAnalysis {
         match geometry {
             Geometry::Cuboid(cuboid) => {
                 let reference_point = match cuboid.reference() {
-                    GeomReference::Point(x) => x.clone(), // fixed value
-                    GeomReference::Selection(_) => Vector3D::default(), // we set any value; reference will be set for each frame inside `init_reference`
+                    // fixed value
+                    GeomReference::Point(x) => x.clone(),
+                    // we set any value; reference will be set for each frame inside `init_reference`
+                    GeomReference::Selection(_) | GeomReference::Center => Vector3D::default(),
                 };
 
                 let shape = CuboidAnalysis::construct_shape(&cuboid, reference_point, simbox);
@@ -151,7 +153,7 @@ impl GeometrySelection for CuboidAnalysis {
 
     fn prepare_system(&self, system: &mut System) -> Result<(), TopologyError> {
         match self.properties.reference() {
-            GeomReference::Point(_) => Ok(()), // nothing to do
+            GeomReference::Point(_) | GeomReference::Center => Ok(()), // nothing to do
             GeomReference::Selection(query) => {
                 // construct a group for geometry reference
                 super::common::create_group(system, "GeomReference", query)
@@ -160,24 +162,29 @@ impl GeometrySelection for CuboidAnalysis {
     }
 
     fn init_reference(&mut self, system: &System) {
-        match self.properties.reference() {
-            GeomReference::Point(_) => (), // nothing to do, reference position is fixed
+        let reference_point = match self.properties.reference() {
+            GeomReference::Point(_) => return, // nothing to do, reference position is fixed
             GeomReference::Selection(_) => {
-                // calculate the new position and update the shape
-                let reference_point = system
+                // calculate the center of geometry
+                system
                     .group_get_center(group_name!("GeomReference"))
-                    .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | CuboidAnalysis::init_reference | Group specifying geometry reference should exist. {}", PANIC_MESSAGE));
-
-                let shape = CuboidAnalysis::construct_shape(
-                    &self.properties,
-                    reference_point,
-                    // validity of the simulation box is checked at the start of every frame analysis (inside `common::analyze_frame`)
-                    system.get_box().unwrap_or_else(|| panic!("FATAL GORDER ERROR | CuboidAnalysis::init_reference | Simulation box is undefined but this should have been handled before. {}", PANIC_MESSAGE)),
-                );
-
-                self.shape = shape;
+                    .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | CuboidAnalysis::init_reference | Group specifying geometry reference should exist. {}", PANIC_MESSAGE))
             }
-        }
+            GeomReference::Center => {
+                // get the box center
+                system
+                    .get_box_center()
+                    .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | CuboidAnalysis::init_reference | Simulation box should be valid. {}", PANIC_MESSAGE))
+            }
+        };
+
+        // update the shape
+        self.shape = CuboidAnalysis::construct_shape(
+            &self.properties,
+            reference_point,
+            // validity of the simulation box is checked at the start of every frame analysis (inside `common::analyze_frame`)
+            system.get_box().unwrap_or_else(|| panic!("FATAL GORDER ERROR | CuboidAnalysis::init_reference | Simulation box is undefined but this should have been handled before. {}", PANIC_MESSAGE)),
+        );
     }
 
     #[inline(always)]

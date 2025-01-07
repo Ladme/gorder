@@ -437,7 +437,7 @@ pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
     }
 
     if let Some(geometry) = analysis.geometry() {
-        if !geometry.has_static_reference() {
+        if geometry.needs_group() {
             groups.push(group_name!("GeomReference"));
         }
     }

@@ -7,7 +7,8 @@ use std::fmt::Display;
 
 use getset::{CopyGetters, Getters};
 use groan_rs::prelude::Vector3D;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_yaml::Value;
 
 use crate::errors::GeometryConfigError;
 
@@ -105,12 +106,12 @@ impl Geometry {
         Ok(())
     }
 
-    /// Returns `true` if the reference is a static point in space. Else returns `false`.
-    pub(crate) fn has_static_reference(&self) -> bool {
+    /// Returns `true` if the geometry requires a constructed group to use as a reference.
+    pub(crate) fn needs_group(&self) -> bool {
         match self {
-            Self::Cuboid(cuboid) => cuboid.reference.is_point(),
-            Self::Cylinder(cylinder) => cylinder.reference.is_point(),
-            Self::Sphere(sphere) => sphere.reference.is_point(),
+            Self::Cuboid(cuboid) => cuboid.reference.needs_group(),
+            Self::Cylinder(cylinder) => cylinder.reference.needs_group(),
+            Self::Sphere(sphere) => sphere.reference.needs_group(),
         }
     }
 }
@@ -189,12 +190,52 @@ pub struct SphereSelection {
     radius: f32,
 }
 
-/// Coordinates of a point or a GSL selection query.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(untagged)]
+/// Coordinates of a point, a GSL selection query, or request to use box center.
+#[derive(Debug, Clone)]
 pub enum GeomReference {
     Point(Vector3D),
     Selection(String),
+    Center,
+}
+
+impl Serialize for GeomReference {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            GeomReference::Point(point) => point.serialize(serializer),
+            GeomReference::Selection(selection) => selection.serialize(serializer),
+            GeomReference::Center => serializer.serialize_str("!Center"),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for GeomReference {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value: Value = Deserialize::deserialize(deserializer)?;
+
+        if let Value::Tagged(tagged) = &value {
+            if tagged.tag == "!Center" {
+                return Ok(GeomReference::Center);
+            }
+        }
+
+        if let Ok(point) = serde_yaml::from_value::<Vector3D>(value.clone()) {
+            return Ok(GeomReference::Point(point));
+        }
+
+        if let Ok(selection) = serde_yaml::from_value::<String>(value) {
+            return Ok(GeomReference::Selection(selection));
+        }
+
+        Err(serde::de::Error::custom(
+            "Could not match any variant of GeomReference",
+        ))
+    }
 }
 
 impl From<Vector3D> for GeomReference {
@@ -232,21 +273,31 @@ impl Display for GeomReference {
         match self {
             Self::Point(x) => write!(f, "static point at {}", x),
             Self::Selection(x) => write!(f, "dynamic center of geometry of '{}'", x),
+            Self::Center => write!(f, "dynamic center of the simulation box"),
         }
     }
 }
 
 impl GeomReference {
     /// Use the origin of the box [0, 0, 0] as a geometric reference.
+    #[inline(always)]
     pub fn origin() -> Self {
         GeomReference::Point(Vector3D::default())
     }
 
-    /// Returns `true` if the reference is a static point. Else returns `false`.
-    pub(crate) fn is_point(&self) -> bool {
+    /// Use the box center as a geometric reference. The box center is updated
+    /// every analyzed frame.
+    #[inline(always)]
+    pub fn center() -> Self {
+        GeomReference::Center
+    }
+
+    /// Returns `true` if a group should be constructed for a the reference.
+    #[inline(always)]
+    pub(crate) fn needs_group(&self) -> bool {
         match self {
-            GeomReference::Point(_) => true,
-            GeomReference::Selection(_) => false,
+            GeomReference::Point(_) | GeomReference::Center => false,
+            GeomReference::Selection(_) => true,
         }
     }
 }
