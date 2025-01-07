@@ -129,22 +129,171 @@ impl GeometrySelection for CuboidAnalysis {
 
 impl CuboidAnalysis {
     /// Convert the input cuboid box into `groan_rs`'s native rectangular shape.
-    // TODO: tests for this method <<<<<<<<<<<<<<<<<<<<<
     fn construct_shape(
         properties: &CuboidSelection,
         mut reference: Vector3D,
         simbox: &SimBox,
     ) -> Rectangular {
-        let x = properties.xdim()[1] - properties.xdim()[0];
-        let y = properties.ydim()[1] - properties.ydim()[0];
-        let z = properties.zdim()[1] - properties.zdim()[0];
+        #[inline(always)]
+        fn compute_dimension(dim: [f32; 2], reference_component: &mut f32) -> f32 {
+            match dim {
+                [f32::NEG_INFINITY, f32::INFINITY] => {
+                    *reference_component = 0.0;
+                    f32::INFINITY
+                }
+                [min, max] => {
+                    *reference_component += min;
+                    max - min
+                }
+            }
+        }
 
-        reference.x += properties.xdim()[0];
-        reference.y += properties.ydim()[0];
-        reference.z += properties.zdim()[0];
+        let x = compute_dimension(properties.xdim(), &mut reference.x);
+        let y = compute_dimension(properties.ydim(), &mut reference.y);
+        let z = compute_dimension(properties.zdim(), &mut reference.z);
 
         reference.wrap(simbox);
 
         Rectangular::new(reference, x, y, z)
+    }
+}
+
+#[cfg(test)]
+mod tests_cuboid {
+    use approx::assert_relative_eq;
+    use rand::prelude::*;
+
+    use super::*;
+
+    #[test]
+    fn test_construct_shape_origin() {
+        let cuboid =
+            match Geometry::cuboid("@protein", [2.5, 3.1], [-1.5, 3.5], [-1.0, 1.0]).unwrap() {
+                Geometry::Cuboid(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(0.0, 0.0, 0.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 2.5);
+        assert_relative_eq!(position.y, 4.5);
+        assert_relative_eq!(position.z, 7.0);
+
+        assert_relative_eq!(shape.get_x(), 0.6);
+        assert_relative_eq!(shape.get_y(), 5.0);
+        assert_relative_eq!(shape.get_z(), 2.0);
+    }
+
+    #[test]
+    fn test_construct_shape_simple() {
+        let cuboid =
+            match Geometry::cuboid("@protein", [2.5, 3.1], [-1.5, 3.5], [-1.0, 1.0]).unwrap() {
+                Geometry::Cuboid(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(8.0, 5.5, 2.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 0.5);
+        assert_relative_eq!(position.y, 4.0);
+        assert_relative_eq!(position.z, 1.0);
+
+        assert_relative_eq!(shape.get_x(), 0.6);
+        assert_relative_eq!(shape.get_y(), 5.0);
+        assert_relative_eq!(shape.get_z(), 2.0);
+    }
+
+    #[test]
+    fn test_construct_shape_infinity() {
+        let cuboid = match Geometry::cuboid(
+            "@protein",
+            [2.5, 3.1],
+            [f32::NEG_INFINITY, f32::INFINITY],
+            [-1.0, 1.0],
+        )
+        .unwrap()
+        {
+            Geometry::Cuboid(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape =
+            CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(15.0, 5.5, 1.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 7.5);
+        assert_relative_eq!(position.y, 0.0);
+        assert_relative_eq!(position.z, 0.0);
+
+        assert_relative_eq!(shape.get_x(), 0.6);
+        assert_relative_eq!(shape.get_y(), f32::INFINITY);
+        assert_relative_eq!(shape.get_z(), 2.0);
+    }
+
+    #[test]
+    fn test_inside_random() {
+        let mut rng = StdRng::seed_from_u64(1288746347198273);
+        let simbox = SimBox::from([10.0, 10.0, 10.0]);
+
+        for i in 0..100 {
+            let xmin: f32 = rng.gen_range(0.0..10.0);
+            let xmax = rng.gen_range(0.0..10.0);
+
+            let ymin: f32 = rng.gen_range(0.0..10.0);
+            let ymax = rng.gen_range(0.0..10.0);
+
+            let zmin: f32 = rng.gen_range(0.0..10.0);
+            let zmax = rng.gen_range(0.0..10.0);
+
+            let mut xrange = [xmin, xmax];
+            xrange.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            if i % 8 == 0 {
+                xrange = [f32::NEG_INFINITY, f32::INFINITY];
+            }
+
+            let mut yrange = [ymin, ymax];
+            yrange.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            if i % 10 == 0 {
+                yrange = [f32::NEG_INFINITY, f32::INFINITY];
+            }
+
+            let mut zrange = [zmin, zmax];
+            zrange.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            if i % 6 == 0 {
+                zrange = [f32::NEG_INFINITY, f32::INFINITY];
+            }
+
+            let cuboid = match Geometry::cuboid("@protein", xrange, yrange, zrange).unwrap() {
+                Geometry::Cuboid(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+            let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::default(), &simbox);
+
+            for _ in 0..1000 {
+                let pos_x = rng.gen_range(0.0..10.0);
+                let pos_y = rng.gen_range(0.0..10.0);
+                let pos_z = rng.gen_range(0.0..10.0);
+
+                let point = Vector3D::new(pos_x, pos_y, pos_z);
+
+                let is_inside = point.x > cuboid.xdim()[0]
+                    && point.x < cuboid.xdim()[1]
+                    && point.y > cuboid.ydim()[0]
+                    && point.y < cuboid.ydim()[1]
+                    && point.z > cuboid.zdim()[0]
+                    && point.z < cuboid.zdim()[1];
+
+                assert_eq!(is_inside, shape.inside(&point, &simbox));
+            }
+        }
     }
 }
