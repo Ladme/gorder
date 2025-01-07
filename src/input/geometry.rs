@@ -175,7 +175,7 @@ fn infinite_dim() -> [f32; 2] {
 }
 
 /// Represents a sphere used to select bonds located within its bounds.
-#[derive(Debug, Clone, Deserialize, Serialize, Getters)]
+#[derive(Debug, Clone, Deserialize, Serialize, Getters, CopyGetters)]
 #[serde(deny_unknown_fields)]
 pub struct SphereSelection {
     /// The reference point corresponding to the center of the sphere.

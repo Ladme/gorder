@@ -98,6 +98,7 @@ pub(super) fn prepare_geometry_selection(
         GeometrySelectionType::None(_) => (),
         GeometrySelectionType::Cuboid(x) => x.prepare_system(system)?,
         GeometrySelectionType::Cylinder(x) => x.prepare_system(system)?,
+        GeometrySelectionType::Sphere(x) => x.prepare_system(system)?,
     }
 
     Ok(geom)
@@ -234,6 +235,9 @@ pub(super) fn analyze_frame(
                 molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
             }
             GeometrySelectionType::Cylinder(x) => {
+                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
+            }
+            GeometrySelectionType::Sphere(x) => {
                 molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
             }
         }

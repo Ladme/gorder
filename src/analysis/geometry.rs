@@ -11,7 +11,7 @@ use groan_rs::{
 use crate::{
     errors::TopologyError,
     input::{
-        geometry::{CuboidSelection, CylinderSelection, GeomReference}, Axis, Geometry
+        geometry::{CuboidSelection, CylinderSelection, GeomReference, SphereSelection}, Axis, Geometry
     },
     PANIC_MESSAGE,
 };
@@ -24,6 +24,7 @@ pub(crate) enum GeometrySelectionType {
     None(NoSelection),
     Cuboid(CuboidAnalysis),
     Cylinder(CylinderAnalysis),
+    Sphere(SphereAnalysis),
 }
 
 impl Default for GeometrySelectionType {
@@ -42,7 +43,7 @@ impl GeometrySelectionType {
                 simbox,
             )),
             Some(Geometry::Cylinder(cylinder)) => GeometrySelectionType::Cylinder(CylinderAnalysis::new(cylinder, simbox)),
-            Some(Geometry::Sphere(_)) => todo!(),
+            Some(Geometry::Sphere(sphere)) => GeometrySelectionType::Sphere(SphereAnalysis::new(sphere, simbox)),
         }
     }
 
@@ -76,15 +77,23 @@ cylinder.properties.radius(), cylinder.properties.orientation(),
 cylinder.properties.span()[0], cylinder.properties.span()[1], 
 cylinder.properties.orientation(), cylinder.properties.reference())
             }
+            GeometrySelectionType::Sphere(sphere) => {
+                log::info!("Will only consider bonds located inside a sphere:
+radius: {} nm
+center: {}", sphere.properties.radius(), sphere.properties.reference())
+            }
+
         }
     }
 
     /// Initialize the reading of a new frame (calculate and set new reference position if needed).
+    #[inline]
     pub(super) fn init_new_frame(&mut self, system: &System) {
         match self {
             GeometrySelectionType::None(_) => (),
             GeometrySelectionType::Cuboid(x) => x.init_reference(system),
             GeometrySelectionType::Cylinder(x) => x.init_reference(system),
+            GeometrySelectionType::Sphere(x) => x.init_reference(system),
         }
     }
 }
@@ -95,7 +104,7 @@ pub(crate) trait GeometrySelection: Send + Sync {
     type Properties;
 
     /// Create the structure from the provided properties.
-    fn new(geometry: &Self::Properties, simbox: &SimBox) -> Self;
+    fn new(properties: &Self::Properties, simbox: &SimBox) -> Self;
 
     /// Get the reference point of the geometry selection.
     fn reference(&self) -> &GeomReference;
@@ -374,6 +383,64 @@ impl GeometrySelection for CylinderAnalysis {
         point.wrap(simbox);
 
         Cylinder::new(point, properties.radius(), height, properties.orientation().into())
+    }
+}
+
+/// Spherical geometry selection.
+#[derive(Debug, Clone)]
+pub(crate) struct SphereAnalysis {
+    properties: SphereSelection,
+    shape: Sphere,
+}
+
+impl GeometrySelection for SphereAnalysis {
+    type Shape = Sphere;
+    type Properties = SphereSelection;
+
+    fn new(properties: &Self::Properties, simbox: &SimBox) -> Self {
+        let reference_point = match properties.reference() {
+            // fixed value
+            GeomReference::Point(x) => x.clone(),
+            // we set any value; reference will be set for each frame inside `init_reference`
+            GeomReference::Selection(_) | GeomReference::Center => Vector3D::default(),
+        };
+
+        let shape = SphereAnalysis::construct_shape(properties, reference_point, simbox);
+
+        SphereAnalysis {
+            properties: properties.clone(),
+            shape,
+        }
+    }
+
+    #[inline(always)]
+    fn properties(&self) -> &Self::Properties {
+        &self.properties
+    }
+
+    #[inline(always)]
+    fn shape(&self) -> &Self::Shape {
+        &self.shape
+    }
+
+    #[inline(always)]
+    fn set_shape(&mut self, shape: Self::Shape) {
+        self.shape = shape;
+    }
+
+    #[inline(always)]
+    fn reference(&self) -> &GeomReference {
+        self.properties.reference()
+    }
+
+    #[inline(always)]
+    fn construct_shape(
+            properties: &Self::Properties,
+            mut point: Vector3D,
+            simbox: &SimBox,
+        ) -> Self::Shape {
+        point.wrap(simbox);
+        Sphere::new(point, properties.radius())
     }
 }
 
