@@ -4,15 +4,14 @@
 //! Handles dynamic geometry selection during the analysis run.
 
 use groan_rs::{
-    prelude::{Rectangular, Shape, SimBox, Vector3D},
+    prelude::{Cylinder, Rectangular, Shape, SimBox, Sphere, Vector3D},
     system::System,
 };
 
 use crate::{
     errors::TopologyError,
     input::{
-        geometry::{CuboidSelection, GeomReference},
-        Geometry,
+        geometry::{CuboidSelection, CylinderSelection, GeomReference}, Axis, Geometry
     },
     PANIC_MESSAGE,
 };
@@ -24,6 +23,7 @@ use super::common::macros::group_name;
 pub(crate) enum GeometrySelectionType {
     None(NoSelection),
     Cuboid(CuboidAnalysis),
+    Cylinder(CylinderAnalysis),
 }
 
 impl Default for GeometrySelectionType {
@@ -37,11 +37,11 @@ impl GeometrySelectionType {
     pub(super) fn from_geometry(geometry: Option<&Geometry>, simbox: &SimBox) -> Self {
         match geometry {
             None => GeometrySelectionType::None(NoSelection::default()),
-            Some(Geometry::Cuboid(_)) => GeometrySelectionType::Cuboid(CuboidAnalysis::new(
-                geometry.expect(PANIC_MESSAGE),
+            Some(Geometry::Cuboid(cuboid)) => GeometrySelectionType::Cuboid(CuboidAnalysis::new(
+                cuboid,
                 simbox,
             )),
-            Some(Geometry::Cylinder(_)) => todo!(),
+            Some(Geometry::Cylinder(cylinder)) => GeometrySelectionType::Cylinder(CylinderAnalysis::new(cylinder, simbox)),
             Some(Geometry::Sphere(_)) => todo!(),
         }
     }
@@ -66,6 +66,16 @@ relative to {}",
                     cuboid.properties.reference(),
                 );
             }
+            GeometrySelectionType::Cylinder(cylinder) => {
+                log::info!("Will only consider bonds located inside a cylinder:
+radius: {} nm
+oriented along the {} axis 
+going from {} nm to {} nm along the {} axis
+relative to {}",
+cylinder.properties.radius(), cylinder.properties.orientation(), 
+cylinder.properties.span()[0], cylinder.properties.span()[1], 
+cylinder.properties.orientation(), cylinder.properties.reference())
+            }
         }
     }
 
@@ -74,23 +84,83 @@ relative to {}",
         match self {
             GeometrySelectionType::None(_) => (),
             GeometrySelectionType::Cuboid(x) => x.init_reference(system),
+            GeometrySelectionType::Cylinder(x) => x.init_reference(system),
         }
     }
 }
 
 /// Trait implemented by all structures that can be used for geometry selection.
 pub(crate) trait GeometrySelection: Send + Sync {
-    /// Create the structure from the provided `Geometry` properties.
-    fn new(geometry: &Geometry, simbox: &SimBox) -> Self;
+    type Shape: Shape;
+    type Properties;
+
+    /// Create the structure from the provided properties.
+    fn new(geometry: &Self::Properties, simbox: &SimBox) -> Self;
+
+    /// Get the reference point of the geometry selection.
+    fn reference(&self) -> &GeomReference;
+
+    /// Get the properties of the geometry selection.
+    fn properties(&self) -> &Self::Properties;
+
+    /// Get the inner shape of the geometry selection.
+    fn shape(&self) -> &Self::Shape;
+
+    /// Set the inner shape of the geometry selection.
+    fn set_shape(&mut self, shape: Self::Shape);
+
+    /// Construct the inner shape of the geometry selection with the given point being used as reference.
+    fn construct_shape(
+        properties: &Self::Properties,
+        point: Vector3D,
+        simbox: &SimBox,
+    ) -> Self::Shape;
 
     /// Prepare the system for geometry selection, i.e. construct the required groups.
-    fn prepare_system(&self, system: &mut System) -> Result<(), TopologyError>;
-
-    /// Calculate and set the reference position for this frame.
-    fn init_reference(&mut self, system: &System);
+    fn prepare_system(&self, system: &mut System) -> Result<(), TopologyError> {
+        match self.reference() {
+            GeomReference::Point(_) | GeomReference::Center => Ok(()), // nothing to do
+            GeomReference::Selection(query) => {
+                // construct a group for geometry reference
+                super::common::create_group(system, "GeomReference", query)
+            }
+        }
+    }
 
     /// Is the point inside the geometry?
-    fn inside(&self, point: &Vector3D, simbox: &SimBox) -> bool;
+    fn inside(&self, point: &Vector3D, simbox: &SimBox) -> bool {
+        self.shape().inside(point, simbox)
+    }
+
+    /// Calculate and set the reference position for this frame.
+    fn init_reference(&mut self, system: &System) {
+        let reference_point = match self.reference() {
+            GeomReference::Point(_) => return, // nothing to do, reference position is fixed
+            GeomReference::Selection(_) => {
+                // calculate the center of geometry
+                system
+                    .group_get_center(group_name!("GeomReference"))
+                    .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | GeometrySelection::init_reference | Group specifying geometry reference should exist. {}", PANIC_MESSAGE))
+            }
+            GeomReference::Center => {
+                // get the box center
+                system
+                    .get_box_center()
+                    .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | GeometrySelection::init_reference | Simulation box should be valid. {}", PANIC_MESSAGE))
+            }
+        };
+
+        let shape = Self::construct_shape(
+            self.properties(), 
+            reference_point, 
+            system
+                .get_box()
+                .unwrap_or_else(||
+                    panic!("FATAL GORDER ERROR | GeometrySelection::init_reference | Simulation box is undefined but this should have been handled before. {}", PANIC_MESSAGE))
+            );
+
+        self.set_shape(shape);
+    }
 }
 
 /// No geometry selection requested. Order parameters will be calculated for all bonds, no matter where they are.
@@ -98,14 +168,43 @@ pub(crate) trait GeometrySelection: Send + Sync {
 pub(crate) struct NoSelection {}
 
 impl GeometrySelection for NoSelection {
+    type Shape = Sphere; // arbitrary shape
+    type Properties = (); // arbitrary properties
+
     #[inline(always)]
-    fn new(_geometry: &Geometry, _simbox: &SimBox) -> Self {
+    fn new(_geometry: &Self::Properties, _simbox: &SimBox) -> Self {
         Self {}
     }
 
     #[inline(always)]
-    fn prepare_system(&self, _system: &mut System) -> Result<(), TopologyError> {
-        Ok(())
+    fn reference(&self) -> &GeomReference {
+        panic!(
+            "FATAL GORDER ERROR | NoSelection::reference | This method should never be called. {}",
+            PANIC_MESSAGE
+        );
+    }
+
+    #[inline(always)]
+    fn properties(&self) -> &Self::Properties {
+        panic!("FATAL GORDER ERROR | NoSelection::properties | This method should never be called. {}", PANIC_MESSAGE);
+    }
+
+    #[inline(always)]
+    fn shape(&self) -> &Self::Shape {
+        panic!(
+            "FATAL GORDER ERROR | NoSelection::shape | This method should never be called. {}",
+            PANIC_MESSAGE
+        );
+    }
+
+    #[inline(always)]
+    fn set_shape(&mut self, _shape: Self::Shape) {
+        ()
+    }
+
+    #[inline(always)]
+    fn construct_shape(_properties: &Self::Properties, _point: Vector3D, _simbox: &SimBox) -> Self::Shape {
+        panic!("FATAL GORDER ERROR | NoSelection::construct_shape | This method should never be called. {}", PANIC_MESSAGE);
     }
 
     #[inline(always)]
@@ -117,6 +216,11 @@ impl GeometrySelection for NoSelection {
     fn inside(&self, _point: &Vector3D, _simbox: &SimBox) -> bool {
         true
     }
+
+    #[inline(always)]
+    fn prepare_system(&self, _system: &mut System) -> Result<(), TopologyError> {
+        Ok(())
+    }
 }
 
 /// Cuboid geometry selection.
@@ -127,100 +231,149 @@ pub(crate) struct CuboidAnalysis {
 }
 
 impl GeometrySelection for CuboidAnalysis {
-    fn new(geometry: &Geometry, simbox: &SimBox) -> Self {
-        match geometry {
-            Geometry::Cuboid(cuboid) => {
-                let reference_point = match cuboid.reference() {
-                    // fixed value
-                    GeomReference::Point(x) => x.clone(),
-                    // we set any value; reference will be set for each frame inside `init_reference`
-                    GeomReference::Selection(_) | GeomReference::Center => Vector3D::default(),
-                };
+    type Shape = Rectangular;
+    type Properties = CuboidSelection;
 
-                let shape = CuboidAnalysis::construct_shape(&cuboid, reference_point, simbox);
-
-                CuboidAnalysis {
-                    properties: cuboid.clone(),
-                    shape,
-                }
-            }
-            _ => panic!(
-                "FATAL GORDER ERROR | CuboidAnalysis::new | Unexpected geometry type `{:?}`. {}",
-                geometry, PANIC_MESSAGE
-            ),
-        }
-    }
-
-    fn prepare_system(&self, system: &mut System) -> Result<(), TopologyError> {
-        match self.properties.reference() {
-            GeomReference::Point(_) | GeomReference::Center => Ok(()), // nothing to do
-            GeomReference::Selection(query) => {
-                // construct a group for geometry reference
-                super::common::create_group(system, "GeomReference", query)
-            }
-        }
-    }
-
-    fn init_reference(&mut self, system: &System) {
-        let reference_point = match self.properties.reference() {
-            GeomReference::Point(_) => return, // nothing to do, reference position is fixed
-            GeomReference::Selection(_) => {
-                // calculate the center of geometry
-                system
-                    .group_get_center(group_name!("GeomReference"))
-                    .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | CuboidAnalysis::init_reference | Group specifying geometry reference should exist. {}", PANIC_MESSAGE))
-            }
-            GeomReference::Center => {
-                // get the box center
-                system
-                    .get_box_center()
-                    .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | CuboidAnalysis::init_reference | Simulation box should be valid. {}", PANIC_MESSAGE))
-            }
+    fn new(properties: &CuboidSelection, simbox: &SimBox) -> Self {
+        let reference_point = match properties.reference() {
+            // fixed value
+            GeomReference::Point(x) => x.clone(),
+            // we set any value; reference will be set for each frame inside `init_reference`
+            GeomReference::Selection(_) | GeomReference::Center => Vector3D::default(),
         };
 
-        // update the shape
-        self.shape = CuboidAnalysis::construct_shape(
-            &self.properties,
-            reference_point,
-            // validity of the simulation box is checked at the start of every frame analysis (inside `common::analyze_frame`)
-            system.get_box().unwrap_or_else(|| panic!("FATAL GORDER ERROR | CuboidAnalysis::init_reference | Simulation box is undefined but this should have been handled before. {}", PANIC_MESSAGE)),
-        );
+        let shape = CuboidAnalysis::construct_shape(properties, reference_point, simbox);
+
+        CuboidAnalysis {
+            properties: properties.clone(),
+            shape,
+        }
     }
 
     #[inline(always)]
-    fn inside(&self, point: &Vector3D, simbox: &SimBox) -> bool {
-        self.shape.inside(point, simbox)
+    fn reference(&self) -> &GeomReference {
+        self.properties.reference()
+    }
+
+    #[inline(always)]
+    fn shape(&self) -> &Self::Shape {
+        &self.shape
+    }
+
+    #[inline(always)]
+    fn properties(&self) -> &Self::Properties {
+        &self.properties
+    }
+
+    fn construct_shape(
+            properties: &Self::Properties,
+            mut point: Vector3D,
+            simbox: &SimBox,
+        ) -> Self::Shape {
+            #[inline(always)]
+            fn compute_dimension(dim: [f32; 2], reference_component: &mut f32) -> f32 {
+                match dim {
+                    [f32::NEG_INFINITY, f32::INFINITY] => {
+                        *reference_component = 0.0;
+                        f32::INFINITY
+                    }
+                    [min, max] => {
+                        *reference_component += min;
+                        max - min
+                    }
+                }
+            }
+    
+            let x = compute_dimension(properties.xdim(), &mut point.x);
+            let y = compute_dimension(properties.ydim(), &mut point.y);
+            let z = compute_dimension(properties.zdim(), &mut point.z);
+    
+            point.wrap(simbox);
+            
+            Rectangular::new(point, x, y, z)
+    }
+
+    #[inline(always)]
+    fn set_shape(&mut self, shape: Self::Shape) {
+        self.shape = shape;
     }
 }
 
-impl CuboidAnalysis {
-    /// Convert the input cuboid box into `groan_rs`'s native rectangular shape.
-    fn construct_shape(
-        properties: &CuboidSelection,
-        mut reference: Vector3D,
-        simbox: &SimBox,
-    ) -> Rectangular {
-        #[inline(always)]
-        fn compute_dimension(dim: [f32; 2], reference_component: &mut f32) -> f32 {
-            match dim {
-                [f32::NEG_INFINITY, f32::INFINITY] => {
-                    *reference_component = 0.0;
-                    f32::INFINITY
-                }
-                [min, max] => {
-                    *reference_component += min;
-                    max - min
-                }
-            }
+/// Cylindrical geometry selection.
+#[derive(Debug, Clone)]
+pub(crate) struct CylinderAnalysis {
+    properties: CylinderSelection,
+    shape: Cylinder,
+}
+
+impl GeometrySelection for CylinderAnalysis {
+    type Shape = Cylinder;
+    type Properties = CylinderSelection;
+
+    fn new(properties: &CylinderSelection, simbox: &SimBox) -> Self {
+        let reference_point = match properties.reference() {
+            // fixed value
+            GeomReference::Point(x) => x.clone(),
+            // we set any value; reference will be set for each frame inside `init_reference`
+            GeomReference::Selection(_) | GeomReference::Center => Vector3D::default(),
+        };
+
+        let shape = CylinderAnalysis::construct_shape(properties, reference_point, simbox);
+
+        CylinderAnalysis {
+            properties: properties.clone(),
+            shape,
         }
+    }
 
-        let x = compute_dimension(properties.xdim(), &mut reference.x);
-        let y = compute_dimension(properties.ydim(), &mut reference.y);
-        let z = compute_dimension(properties.zdim(), &mut reference.z);
+    #[inline(always)]
+    fn properties(&self) -> &Self::Properties {
+        &self.properties
+    }
 
-        reference.wrap(simbox);
+    #[inline(always)]
+    fn shape(&self) -> &Self::Shape {
+        &self.shape
+    }
 
-        Rectangular::new(reference, x, y, z)
+    #[inline(always)]
+    fn set_shape(&mut self, shape: Self::Shape) {
+        self.shape = shape;
+    }
+
+    #[inline(always)]
+    fn reference(&self) -> &GeomReference {
+        self.properties.reference()
+    }
+
+    fn construct_shape(
+            properties: &Self::Properties,
+            mut point: Vector3D,
+            simbox: &SimBox,
+        ) -> Self::Shape {
+
+        let height = match properties.span() {
+            [f32::NEG_INFINITY, f32::INFINITY] => {
+                match properties.orientation() {
+                    Axis::X => point.x = 0.0,
+                    Axis::Y => point.y = 0.0,
+                    Axis::Z => point.z = 0.0,
+                }
+                f32::INFINITY
+            }
+            _ => {
+                match properties.orientation() {
+                    Axis::X => point.x += properties.span()[0],
+                    Axis::Y => point.y += properties.span()[0],
+                    Axis::Z => point.z += properties.span()[0],
+                }
+                properties.span()[1] - properties.span()[0]
+            }
+        };
+
+        point.wrap(simbox);
+
+        Cylinder::new(point, properties.radius(), height, properties.orientation().into())
     }
 }
 
