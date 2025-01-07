@@ -15,6 +15,6 @@ pub use analysis::{Analysis, AnalysisType};
 pub use axis::Axis;
 pub use estimate_error::EstimateError;
 pub use frequency::Frequency;
-pub use geometry::Geometry;
+pub use geometry::{GeomReference, Geometry};
 pub use leaflets::LeafletClassification;
 pub use ordermap::{GridSpan, OrderMap, Plane};

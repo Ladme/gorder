@@ -436,8 +436,10 @@ pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
         }
     }
 
-    if analysis.geometry().is_some() {
-        groups.push(group_name!("GeomReference"));
+    if let Some(geometry) = analysis.geometry() {
+        if !geometry.has_static_reference() {
+            groups.push(group_name!("GeomReference"));
+        }
     }
 
     create_group(system, "Master", &groups.join(" ")).unwrap_or_else(|_| {

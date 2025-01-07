@@ -104,6 +104,15 @@ impl Geometry {
 
         Ok(())
     }
+
+    /// Returns `true` if the reference is a static point in space. Else returns `false`.
+    pub(crate) fn has_static_reference(&self) -> bool {
+        match self {
+            Self::Cuboid(cuboid) => cuboid.reference.is_point(),
+            Self::Cylinder(cylinder) => cylinder.reference.is_point(),
+            Self::Sphere(sphere) => sphere.reference.is_point(),
+        }
+    }
 }
 
 /// Represents a cuboid used to select bonds located within its bounds.
@@ -231,6 +240,14 @@ impl GeomReference {
     /// Use the origin of the box [0, 0, 0] as a geometric reference.
     pub fn origin() -> Self {
         GeomReference::Point(Vector3D::default())
+    }
+
+    /// Returns `true` if the reference is a static point. Else returns `false`.
+    pub(crate) fn is_point(&self) -> bool {
+        match self {
+            GeomReference::Point(_) => true,
+            GeomReference::Selection(_) => false,
+        }
     }
 }
 
