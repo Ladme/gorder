@@ -1,0 +1,28 @@
+# Order parameters calculated with 'gorder v0.4.0-dev.1' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+POPC:
+  average order:
+    total: 0.1108
+  order parameters:
+    POPC C22 (32):
+      total: 0.1019
+      bonds:
+        POPC H2R (33):
+          total: 0.1007
+        POPC H2S (34):
+          total: 0.103
+    POPC C24 (47):
+      total: 0.2433
+      bonds:
+        POPC H4R (48):
+          total: 0.2428
+        POPC H4S (49):
+          total: 0.2438
+    POPC C218 (87):
+      total: 0.0335
+      bonds:
+        POPC H18R (88):
+          total: 0.0387
+        POPC H18S (89):
+          total: 0.0294
+        POPC H18T (90):
+          total: 0.0323

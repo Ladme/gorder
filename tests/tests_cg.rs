@@ -1769,8 +1769,50 @@ fn test_cg_order_geometry_cuboid_full() {
 }
 
 #[test]
+fn test_cg_order_geometry_cylinder_full() {
+    for reference in [
+        GeomReference::default(),
+        Vector3D::new(2.0, 2.0, 3.0).into(),
+        "@membrane".into(),
+        GeomReference::center(),
+    ] {
+        for axis in [Axis::X, Axis::Y, Axis::Z] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/cg.tpr")
+                .trajectory("tests/files/cg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .geometry(
+                    Geometry::cylinder(
+                        reference.clone(),
+                        f32::INFINITY,
+                        [f32::NEG_INFINITY, f32::INFINITY],
+                        axis,
+                    )
+                    .unwrap(),
+                )
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/cg_order_basic.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_geometry_cuboid_box_center_square_multiple_threads() {
-    for n_threads in [2, 3, 5, 8, 12, 16, 64] {
+    for n_threads in [1, 2, 3, 5, 8, 12, 16, 64] {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
@@ -1805,6 +1847,42 @@ fn test_cg_order_geometry_cuboid_box_center_square_multiple_threads() {
 }
 
 #[test]
+fn test_cg_order_geometry_cylinder_static_multiple_threads() {
+    for n_threads in [1, 2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(
+                Geometry::cylinder(
+                    Vector3D::new(2.0, 1.0, 0.0),
+                    3.25,
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    Axis::Z,
+                )
+                .unwrap(),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_cylinder.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_cg_order_geometry_cuboid_z() {
     let analysis_geometry = Analysis::builder()
         .structure("tests/files/cg.tpr")
@@ -1821,6 +1899,65 @@ fn test_cg_order_geometry_cuboid_z() {
             )
             .unwrap(),
         )
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let analysis_leaflets = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "@membrane and name PO4 NC3 NH3 GL0 GL1 GL2 C1A C1B",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results_geometry = analysis_geometry.run().unwrap();
+    let results_leaflets = analysis_leaflets.run().unwrap();
+
+    let results_geometry = match results_geometry {
+        AnalysisResults::CG(x) => x,
+        AnalysisResults::AA(_) => panic!("Invalid results."),
+    };
+
+    let results_leaflets = match results_leaflets {
+        AnalysisResults::CG(x) => x,
+        AnalysisResults::AA(_) => panic!("Invalid results."),
+    };
+
+    for (mol, mol2) in results_geometry
+        .molecules()
+        .zip(results_leaflets.molecules())
+    {
+        for (bond, bond2) in mol.bonds().zip(mol2.bonds()) {
+            assert_relative_eq!(
+                bond.order().total().unwrap().value(),
+                bond.order().upper().unwrap().value()
+            );
+            assert!(bond.order().lower().unwrap().value().is_nan());
+
+            assert_relative_eq!(
+                bond.order().total().unwrap().value(),
+                bond2.order().upper().unwrap().value()
+            );
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cylinder_z() {
+    let analysis_geometry = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "@membrane and name PO4 NC3 NH3 GL0 GL1 GL2 C1A C1B",
+        ))
+        .geometry(Geometry::cylinder("@membrane", f32::INFINITY, [0.0, 3.5], Axis::Z).unwrap())
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
         .silent()
         .overwrite()
