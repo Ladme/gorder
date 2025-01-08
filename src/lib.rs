@@ -201,8 +201,8 @@
 //! # ;
 //! ```
 //! > *When using the `gorder` application, specifying the output YAML file is mandatory.
-//! However, when you are using `gorder` as a crate, specifying the output file is optional,
-//! as you might not require any output to be generated.*
+//! > However, when you are using `gorder` as a crate, specifying the output file is optional,
+//! > as you might not require any output to be generated.*
 //!
 //! Finally, assemble the `Analysis`:
 //!

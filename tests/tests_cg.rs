@@ -2195,7 +2195,7 @@ fn test_cg_order_error_rust_api() {
     let expected_bond_orders = [0.3682, 0.3759, 0.3789];
     let expected_bond_errors = [0.0125, 0.0164, 0.0159];
 
-    let expected_convergence_frames = (1..=101).into_iter().collect::<Vec<usize>>();
+    let expected_convergence_frames = (1..=101).collect::<Vec<usize>>();
     let expected_convergence_values = [
         [0.2756, 0.2902, 0.2943],
         [0.2830, 0.2995, 0.2972],

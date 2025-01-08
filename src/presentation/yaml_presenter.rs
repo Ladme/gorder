@@ -95,7 +95,7 @@ impl YamlWrite for AAOrderResults {
             &properties.trajectory,
         )?;
 
-        serde_yaml::to_writer(writer, self).map_err(|e| WriteError::CouldNotWriteYaml(e))
+        serde_yaml::to_writer(writer, self).map_err(WriteError::CouldNotWriteYaml)
     }
 }
 
@@ -112,6 +112,6 @@ impl YamlWrite for CGOrderResults {
             &properties.trajectory,
         )?;
 
-        serde_yaml::to_writer(writer, self).map_err(|e| WriteError::CouldNotWriteYaml(e))
+        serde_yaml::to_writer(writer, self).map_err(WriteError::CouldNotWriteYaml)
     }
 }

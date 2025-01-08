@@ -58,8 +58,8 @@ impl PresenterProperties for TabProperties {
 
 impl TabProperties {
     /// Create new structure capturing properties of the table format.
-    pub(super) fn new<'a>(
-        results: &'a impl OrderResults,
+    pub(super) fn new(
+        results: &impl OrderResults,
         structure: &str,
         trajectory: &str,
         errors: bool,

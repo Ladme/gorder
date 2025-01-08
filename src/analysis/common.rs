@@ -106,6 +106,7 @@ pub(super) fn prepare_geometry_selection(
 
 /// Classifies molecules in the system based on their topology and returns a list of molecule types,
 /// along with information about the atoms that form each molecule.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn classify_molecules(
     system: &System,
     group1: &str,

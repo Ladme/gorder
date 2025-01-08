@@ -98,7 +98,7 @@ impl SystemTopology {
         let n_blocks = estimate_error.n_blocks();
 
         for mol in &self.molecule_types {
-            let Some(bond) = mol.order_bonds().bond_types().get(0) else {
+            let Some(bond) = mol.order_bonds().bond_types().first() else {
                 continue;
             };
             let Some(order) = bond.total().timewise() else {
@@ -143,7 +143,7 @@ impl SystemTopology {
         let mut lower = IndexMap::new();
 
         for mol in self.molecule_types() {
-            mol.leaflet_classification().as_ref().map(|x| {
+            if let Some(x) = mol.leaflet_classification().as_ref() {
                 let stats = x.statistics();
                 // we do not want `LIPID: 0` in the output
                 if stats.0 > 0 {
@@ -153,7 +153,7 @@ impl SystemTopology {
                 if stats.1 > 0 {
                     lower.insert(mol.name(), stats.1);
                 }
-            });
+            }
         }
 
         fn indexmap2string(map: &IndexMap<&String, usize>) -> String {
@@ -252,10 +252,7 @@ mod tests {
     fn test_simulated_iteration() {
         for n_frames in 0..301 {
             for step in [1, 2, 3, 4, 5, 7, 10, 15, 20, 100] {
-                let expected_visited_frames = (0..n_frames)
-                    .step_by(step)
-                    .map(|i| i)
-                    .collect::<Vec<usize>>();
+                let expected_visited_frames = (0..n_frames).step_by(step).collect::<Vec<usize>>();
 
                 for n_threads in [1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 32, 64, 128] {
                     let mut visited_frames = Vec::new();

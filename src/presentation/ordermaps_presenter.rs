@@ -87,11 +87,11 @@ impl<'a, R: OrderResults> Presenter<'a, R> for OrderMapPresenter<'a, R> {
     /// Write all ordermaps. Handles backing of the directory.
     fn write(&self, directory: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
         prepare_ordermaps_directory(&directory, overwrite)
-            .map_err(|e| WriteError::CouldNotWriteOrderMap(e))?;
+            .map_err(WriteError::CouldNotWriteOrderMap)?;
         for molecule in self.results.molecules() {
             molecule
                 .write_map::<R::OrderType>(&directory, &self.properties)
-                .map_err(|e| WriteError::CouldNotWriteOrderMap(e))?;
+                .map_err(WriteError::CouldNotWriteOrderMap)?;
         }
 
         Ok(())
@@ -156,7 +156,7 @@ impl MapWrite for AAMoleculeResults {
                               self.molecule(), GORDER_VERSION);
         let name = "ordermap_average";
         self.average_ordermaps()
-            .write_maps::<O>(&directory, &name, properties.plane, &comment)?;
+            .write_maps::<O>(&directory, name, properties.plane, &comment)?;
 
         // write ordermaps for atoms
         self.order()
@@ -202,7 +202,7 @@ impl MapWrite for CGMoleculeResults {
                               self.molecule(), GORDER_VERSION);
         let name = "ordermap_average";
         self.average_ordermaps()
-            .write_maps::<O>(&directory, &name, properties.plane, &comment)?;
+            .write_maps::<O>(&directory, name, properties.plane, &comment)?;
 
         // write ordermaps for individual bonds
         self.order()

@@ -187,7 +187,7 @@ pub(crate) trait OrderResults:
             if let Some(output_dir) = map.output_directory() {
                 OrderMapPresenter::new(
                     self,
-                    OrderMapProperties::new(map.plane().unwrap_or(Plane::XY).into()),
+                    OrderMapProperties::new(map.plane().unwrap_or(Plane::XY)),
                 )
                 .write(output_dir, overwrite)?;
             }
@@ -220,6 +220,7 @@ pub trait PublicMoleculeResults {
 
 /// All supported output file formats.
 #[derive(Debug, Clone, Display)]
+#[allow(clippy::upper_case_acronyms)]
 pub(crate) enum OutputFormat {
     #[strum(serialize = "yaml")]
     YAML,

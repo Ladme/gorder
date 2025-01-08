@@ -70,8 +70,7 @@ impl<O: MolConvert> ResultsConverter<O> {
             .estimate_error()
             .as_ref()
             .map(|e| e.n_blocks())
-            .map(|blocks| analysis_order.estimate_error(blocks, min_samples))
-            .flatten();
+            .and_then(|blocks| analysis_order.estimate_error(blocks, min_samples));
         O::OrderType::convert(order, error)
     }
 

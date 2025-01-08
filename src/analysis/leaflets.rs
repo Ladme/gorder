@@ -650,7 +650,7 @@ impl AssignedLeaflets {
     /// Get the leaflet that was assigned to molecule of target index from the local assignment storage.
     #[inline]
     fn get_leaflet_from_local(&self, molecule_index: usize) -> Leaflet {
-        self.local
+        *self.local
             .as_ref()
             .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | AssignedLeaflets::get_leaflet_from_local | Molecule not assigned. Local assignment should exist. {}", 
@@ -659,7 +659,6 @@ impl AssignedLeaflets {
             .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | AssignedLeaflets::get_leaflet_from_local | Molecule not found. Molecule with internal `gorder` index `{}` should exist. {}",
                 molecule_index, PANIC_MESSAGE))
-            .clone()
     }
 
     /// Copy the leaflet assignment for the specified frame into storage local for the thread.

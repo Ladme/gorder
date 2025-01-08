@@ -3217,7 +3217,7 @@ fn test_aa_order_error_rust_api() {
     let expected_atom2_order = [0.2040, 0.2317, 0.2020];
     let expected_atom2_errors = [0.0125, 0.0091, 0.0656];
 
-    let expected_convergence_frames = (1..=51).into_iter().collect::<Vec<usize>>();
+    let expected_convergence_frames = (1..=51).collect::<Vec<usize>>();
     let expected_convergence_values = [
         [0.1494, 0.1460, 0.1455],
         [0.1422, 0.1353, 0.1378],

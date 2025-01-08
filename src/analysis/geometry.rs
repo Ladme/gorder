@@ -207,9 +207,7 @@ impl GeometrySelection for NoSelection {
     }
 
     #[inline(always)]
-    fn set_shape(&mut self, _shape: Self::Shape) {
-        ()
-    }
+    fn set_shape(&mut self, _shape: Self::Shape) {}
 
     #[inline(always)]
     fn construct_shape(_properties: &Self::Properties, _point: Vector3D, _simbox: &SimBox) -> Self::Shape {
@@ -217,9 +215,7 @@ impl GeometrySelection for NoSelection {
     }
 
     #[inline(always)]
-    fn init_reference(&mut self, _system: &System) {
-        ()
-    }
+    fn init_reference(&mut self, _system: &System) {}
 
     #[inline(always)]
     fn inside(&self, _point: &Vector3D, _simbox: &SimBox) -> bool {

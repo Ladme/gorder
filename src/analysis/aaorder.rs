@@ -16,7 +16,7 @@ use groan_rs::prelude::{GroupXtcReader, OrderedAtomIterator};
 use groan_rs::{files::FileType, prelude::ProgressPrinter, system::System};
 
 /// Calculate the atomistic order parameters.
-pub(super) fn analyze_atomistic<'a>(
+pub(super) fn analyze_atomistic(
     analysis: Analysis,
 ) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;

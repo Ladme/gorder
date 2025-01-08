@@ -109,7 +109,9 @@ impl<T: TimeWiseAddTreatment> AnalysisOrder<T> {
     /// Initialize analysis of a new frame. This only does something if `timewise` calculation is requested.
     #[inline(always)]
     pub(crate) fn init_new_frame(&mut self) {
-        self.timewise.as_mut().map(|x| x.next_frame());
+        if let Some(x) = self.timewise.as_mut() {
+            x.next_frame();
+        }
     }
 
     /// Data for time-wise analysis.
@@ -124,8 +126,7 @@ impl<T: TimeWiseAddTreatment> AnalysisOrder<T> {
         let error = self
             .timewise
             .as_ref()
-            .map(|data| data.estimate_error(n_blocks))
-            .flatten();
+            .and_then(|data| data.estimate_error(n_blocks));
 
         if error.is_some() && self.n_samples < min_samples.into() {
             Some(f32::NAN)
@@ -180,7 +181,9 @@ impl<T: TimeWiseAddTreatment> AddAssign<f32> for AnalysisOrder<T> {
         self.order += rhs;
         self.n_samples += 1;
 
-        self.timewise.as_mut().map(|x| *x += rhs);
+        if let Some(x) = self.timewise.as_mut() {
+            *x += rhs;
+        }
     }
 }
 

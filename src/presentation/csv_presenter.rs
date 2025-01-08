@@ -147,7 +147,7 @@ impl CsvWrite for BondResults {
     }
 }
 
-impl<'a> CsvWrite for AAOrderResults {
+impl CsvWrite for AAOrderResults {
     /// Write csv data for atomistic order parameters.
     fn write_csv(
         &self,
@@ -255,7 +255,7 @@ impl CsvWrite for AAAtomResults {
     }
 }
 
-impl<'a> CsvWrite for CGOrderResults {
+impl CsvWrite for CGOrderResults {
     /// Write csv data for coarse-grained order parameters.
     fn write_csv(
         &self,

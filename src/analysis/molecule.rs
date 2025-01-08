@@ -501,8 +501,12 @@ impl BondType {
     #[inline(always)]
     fn init_new_frame(&mut self) {
         self.total.init_new_frame();
-        self.upper.as_mut().map(|x| x.init_new_frame());
-        self.lower.as_mut().map(|x| x.init_new_frame());
+        if let Some(x) = self.upper.as_mut() {
+            x.init_new_frame()
+        }
+        if let Some(x) = self.lower.as_mut() {
+            x.init_new_frame()
+        }
     }
 
     /// Calculate the current order parameter for this bond type.

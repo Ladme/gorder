@@ -25,7 +25,7 @@ use crate::{
 };
 
 /// Analyze the coarse-grained order parameters.
-pub(super) fn analyze_coarse_grained<'a>(
+pub(super) fn analyze_coarse_grained(
     analysis: Analysis,
 ) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
     let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
