@@ -185,6 +185,28 @@ fn test_bin_cg_order_maps_export_config() {
 }
 
 #[test]
+fn test_bin_cg_geometry_selection() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/cylinder.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_order_cylinder.yaml",
+        "tests/files/cg_order_cylinder.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_order_cylinder.yaml").unwrap();
+}
+
+#[test]
 fn test_bin_aa_order_writing_fail() {
     Command::cargo_bin("gorder")
         .unwrap()
