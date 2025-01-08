@@ -2493,6 +2493,41 @@ fn test_aa_order_geometry_cylinder_full() {
 }
 
 #[test]
+fn test_aa_order_geometry_sphere_full() {
+    for reference in [
+        GeomReference::default(),
+        Vector3D::new(2.0, 2.0, 3.0).into(),
+        "@membrane".into(),
+        GeomReference::center(),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .geometry(Geometry::sphere(reference, f32::INFINITY).unwrap())
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_basic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_aa_order_geometry_cuboid_static_square_multiple_threads() {
     for n_threads in [1, 2, 3, 5, 8, 64] {
         let output = NamedTempFile::new().unwrap();
@@ -2633,6 +2668,37 @@ fn test_aa_order_geometry_cylinder_static_multiple_threads() {
 }
 
 #[test]
+fn test_aa_order_geometry_sphere_static_multiple_threads() {
+    for n_threads in [1, 2, 3, 5, 8, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .geometry(Geometry::sphere(Vector3D::new(8.0, 2.0, 4.5), 2.5).unwrap())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_sphere_static.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_aa_order_geometry_cuboid_box_center_patch() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -2697,6 +2763,34 @@ fn test_aa_order_geometry_cylinder_box_center_x() {
 }
 
 #[test]
+fn test_aa_order_geometry_sphere_box_center() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .geometry(Geometry::sphere(GeomReference::center(), 2.5).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_sphere_center.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_aa_order_geometry_cuboid_dynamic() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -2751,6 +2845,34 @@ fn test_aa_order_geometry_cylinder_dynamic() {
     assert!(diff_files_ignore_first(
         path_to_output,
         "tests/files/aa_order_cylinder_dynamic.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_geometry_sphere_dynamic() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .geometry(Geometry::sphere("resid 1", 2.5).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_sphere_dynamic.yaml",
         1
     ));
 }

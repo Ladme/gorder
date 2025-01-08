@@ -1811,6 +1811,38 @@ fn test_cg_order_geometry_cylinder_full() {
 }
 
 #[test]
+fn test_cg_order_geometry_sphere_full() {
+    for reference in [
+        GeomReference::default(),
+        Vector3D::new(2.0, 2.0, 3.0).into(),
+        "@membrane".into(),
+        GeomReference::center(),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(Geometry::sphere(reference, f32::INFINITY).unwrap())
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_basic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_cg_order_geometry_cuboid_box_center_square_multiple_threads() {
     for n_threads in [1, 2, 3, 5, 8, 12, 16, 64] {
         let output = NamedTempFile::new().unwrap();
@@ -1877,6 +1909,34 @@ fn test_cg_order_geometry_cylinder_static_multiple_threads() {
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/cg_order_cylinder.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_sphere_dynamic_multiple_threads() {
+    for n_threads in [1, 2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(Geometry::sphere("resid 1", 2.5).unwrap())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_sphere.yaml",
             1
         ));
     }

@@ -183,7 +183,7 @@ pub struct SphereSelection {
     /// whose center of geometry defines the reference point.
     /// Defaults to [0, 0, 0] (the origin of the coordinate system) if not specified.
     #[getset(get = "pub")]
-    #[serde(default)]
+    #[serde(default, alias = "center")]
     reference: GeomReference,
     /// Radius of the sphere [in nm].
     #[getset(get_copy = "pub")]
