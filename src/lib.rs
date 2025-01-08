@@ -137,6 +137,12 @@
 //!         .estimate_error(EstimateError::new(        // Estimate error for calculations
 //!             Some(10),                              // Number of blocks for averaging
 //!             Some("convergence.xvg")                // Output file for convergence
+//!         )?)
+//!         .geometry(Geometry::cylinder(              // Only consider bonds inside a cylinder
+//!             "@protein",                            // Reference position for the cylinder
+//!             3.0,                                   // Radius of the cylinder
+//!             [-2.0, 2.0],                           // Span of the cylinder relative to reference
+//!             Axis::Z                                // Orientation of the main cylinder axis
 //!         )?)               
 //!         .build()?;                                 // Build the analysis
 //!
@@ -235,6 +241,7 @@
 //! 3. [`OrderMapBuilder`](crate::prelude::OrderMapBuilder) and [`OrderMap`](crate::prelude::OrderMap) for specifying parameter maps.
 //! 4. [`LeafletClassification`](crate::prelude::LeafletClassification) for leaflet classification.
 //! 5. [`EstimateError`](crate::prelude::EstimateError) for error estimation.
+//! 6. [`Geometry`](crate::prelude::Geometry) for geometry selection.
 //!
 //! ### Step 2: Running the analysis
 //!
