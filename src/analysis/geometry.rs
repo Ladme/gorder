@@ -522,6 +522,11 @@ mod tests_cuboid {
         assert_relative_eq!(shape.get_x(), 0.6);
         assert_relative_eq!(shape.get_y(), f32::INFINITY);
         assert_relative_eq!(shape.get_z(), 2.0);
+
+        let point = Vector3D::new(7.8, -124.4, 1.5);
+        assert!(shape.inside(&point, &simbox));
+        let point = Vector3D::new(7.8, 124.4, 1.5);
+        assert!(shape.inside(&point, &simbox));
     }
 
     #[test]
@@ -581,5 +586,314 @@ mod tests_cuboid {
                 assert_eq!(is_inside, shape.inside(&point, &simbox));
             }
         }
+    }
+
+    #[test]
+    fn test_prepare_system_init_reference() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        
+        // fixed point
+        let cuboid = match Geometry::cuboid(Vector3D::new(3.0, 1.0, 2.0), [-1.0, 2.0], [1.5, 2.5], [f32::NEG_INFINITY, f32::INFINITY]).unwrap() {
+            Geometry::Cuboid(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = CuboidAnalysis::new(&cuboid, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, 2.0);
+        assert_relative_eq!(point.y, 2.5);
+        assert_relative_eq!(point.z, 0.0);
+
+        // center of geometry
+        let cuboid = match Geometry::cuboid("@membrane", [-1.0, 2.0], [1.5, 2.5], [f32::NEG_INFINITY, f32::INFINITY]).unwrap() {
+            Geometry::Cuboid(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = CuboidAnalysis::new(&cuboid, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+
+        let mut membrane_center = system.group_get_center(group_name!("GeomReference")).unwrap();
+        membrane_center.x -= 1.0;
+        membrane_center.y += 1.5;
+        membrane_center.wrap(system.get_box().unwrap());
+
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, membrane_center.x);
+        assert_relative_eq!(point.y, membrane_center.y);
+        assert_relative_eq!(point.z, 0.0);
+
+        // box center
+        let cuboid = match Geometry::cuboid(GeomReference::center(), [-1.0, 2.0], [1.5, 2.5], [f32::NEG_INFINITY, f32::INFINITY]).unwrap() {
+            Geometry::Cuboid(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = CuboidAnalysis::new(&cuboid, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+
+        let box_center = system.get_box_center().unwrap();
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, box_center.x - 1.0);
+        assert_relative_eq!(point.y, box_center.y + 1.5);
+        assert_relative_eq!(point.z, 0.0);
+    }
+}
+
+#[cfg(test)]
+mod tests_cylinder {
+    use approx::assert_relative_eq;
+    use groan_rs::prelude::Dimension;
+
+    use super::*;
+
+    #[test]
+    fn test_construct_shape_origin() {
+        let cylinder =
+            match Geometry::cylinder("@protein", 2.5, [-1.5, 3.5], Axis::Y).unwrap() {
+                Geometry::Cylinder(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape = CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(0.0, 0.0, 0.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 0.0);
+        assert_relative_eq!(position.y, 4.5);
+        assert_relative_eq!(position.z, 0.0);
+
+        assert_relative_eq!(shape.get_radius(), 2.5);
+        assert_relative_eq!(shape.get_height(), 5.0);
+        assert_eq!(shape.get_orientation(), Dimension::Y);
+    }
+
+    #[test]
+    fn test_construct_shape_simple() {
+        let cylinder =
+            match Geometry::cylinder("@protein", 2.5, [-1.5, 3.5], Axis::X).unwrap() {
+                Geometry::Cylinder(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape = CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(8.0, 5.5, 2.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 6.5);
+        assert_relative_eq!(position.y, 5.5);
+        assert_relative_eq!(position.z, 2.0);
+
+        assert_relative_eq!(shape.get_radius(), 2.5);
+        assert_relative_eq!(shape.get_height(), 5.0);
+        assert_eq!(shape.get_orientation(), Dimension::X);
+    }
+
+    #[test]
+    fn test_construct_shape_infinity() {
+        let cylinder =
+            match Geometry::cylinder("@protein", 2.5, [f32::NEG_INFINITY, f32::INFINITY], Axis::Z).unwrap() {
+                Geometry::Cylinder(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape = CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(8.0, 5.5, 2.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 8.0);
+        assert_relative_eq!(position.y, 5.5);
+        assert_relative_eq!(position.z, 0.0);
+
+        assert_relative_eq!(shape.get_radius(), 2.5);
+        assert_relative_eq!(shape.get_height(), f32::INFINITY);
+        assert_eq!(shape.get_orientation(), Dimension::Z);
+
+        let point = Vector3D::new(7.8, 1.1, -932.2);
+        assert!(shape.inside(&point, &simbox));
+        let point = Vector3D::new(7.8, 1.1, 923.1);
+        assert!(shape.inside(&point, &simbox));
+    }
+
+    #[test]
+    fn test_prepare_system_init_reference() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        
+        // fixed point
+        let cylinder = match Geometry::cylinder(Vector3D::new(3.0, 1.0, 2.0), 3.5, [1.5, 2.5], Axis::Y).unwrap() {
+            Geometry::Cylinder(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = CylinderAnalysis::new(&cylinder, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, 3.0);
+        assert_relative_eq!(point.y, 2.5);
+        assert_relative_eq!(point.z, 2.0);
+
+        // center of geometry
+        let cylinder = match Geometry::cylinder("@membrane", 3.5, [1.5, 2.5], Axis::Z).unwrap() {
+            Geometry::Cylinder(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = CylinderAnalysis::new(&cylinder, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+
+        let mut membrane_center = system.group_get_center(group_name!("GeomReference")).unwrap();
+        membrane_center.z += 1.5;
+        membrane_center.wrap(system.get_box().unwrap());
+
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, membrane_center.x);
+        assert_relative_eq!(point.y, membrane_center.y);
+        assert_relative_eq!(point.z, membrane_center.z);
+
+        // box center
+        let cylinder = match Geometry::cylinder(GeomReference::center(), 3.5, [f32::NEG_INFINITY, f32::INFINITY], Axis::X).unwrap() {
+            Geometry::Cylinder(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = CylinderAnalysis::new(&cylinder, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+
+        let box_center = system.get_box_center().unwrap();
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, 0.0);
+        assert_relative_eq!(point.y, box_center.y);
+        assert_relative_eq!(point.z, box_center.z);
+    }
+}
+
+#[cfg(test)]
+mod tests_sphere {
+    use approx::assert_relative_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_construct_shape_origin() {
+        let sphere =
+            match Geometry::sphere("@protein", 1.8).unwrap() {
+                Geometry::Sphere(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(0.0, 0.0, 0.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 0.0);
+        assert_relative_eq!(position.y, 0.0);
+        assert_relative_eq!(position.z, 0.0);
+
+        assert_relative_eq!(shape.get_radius(), 1.8);
+    }
+
+    #[test]
+    fn test_construct_shape_simple() {
+        let sphere =
+            match Geometry::sphere("@protein", 2.3).unwrap() {
+                Geometry::Sphere(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(2.0, 7.0, 5.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 2.0);
+        assert_relative_eq!(position.y, 1.0);
+        assert_relative_eq!(position.z, 5.0);
+
+        assert_relative_eq!(shape.get_radius(), 2.3);
+    }
+
+    #[test]
+    fn test_construct_shape_infinity() {
+        let sphere =
+            match Geometry::sphere("@protein", f32::INFINITY).unwrap() {
+                Geometry::Sphere(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+
+        let simbox = SimBox::from([10.0, 6.0, 8.0]);
+
+        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(2.0, 7.0, 5.0), &simbox);
+
+        let position = shape.get_position();
+        assert_relative_eq!(position.x, 2.0);
+        assert_relative_eq!(position.y, 1.0);
+        assert_relative_eq!(position.z, 5.0);
+
+        assert_relative_eq!(shape.get_radius(), f32::INFINITY);
+
+        let point = Vector3D::new(-19347.2, 9784.1, 9372.0);
+        assert!(shape.inside(&point, &simbox));
+    }
+
+    #[test]
+    fn test_prepare_system_init_reference() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        
+        // fixed point
+        let sphere = match Geometry::sphere(Vector3D::new(3.0, 1.0, 2.0), 1.5).unwrap() {
+            Geometry::Sphere(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = SphereAnalysis::new(&sphere, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, 3.0);
+        assert_relative_eq!(point.y, 1.0);
+        assert_relative_eq!(point.z, 2.0);
+
+        // center of geometry
+        let sphere = match Geometry::sphere("@membrane", 1.5).unwrap() {
+            Geometry::Sphere(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = SphereAnalysis::new(&sphere, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+
+        let membrane_center = system.group_get_center(group_name!("GeomReference")).unwrap();
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, membrane_center.x);
+        assert_relative_eq!(point.y, membrane_center.y);
+        assert_relative_eq!(point.z, membrane_center.z);
+
+        // box center
+        let sphere = match Geometry::sphere(GeomReference::center(), 1.5).unwrap() {
+            Geometry::Sphere(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
+        let mut geometry = SphereAnalysis::new(&sphere, system.get_box().unwrap());
+        geometry.prepare_system(&mut system).unwrap();
+        geometry.init_reference(&system);
+
+        let box_center = system.get_box_center().unwrap();
+        let shape = geometry.shape();
+        let point = shape.get_position();
+        assert_relative_eq!(point.x, box_center.x);
+        assert_relative_eq!(point.y, box_center.y);
+        assert_relative_eq!(point.z, box_center.z);
     }
 }
