@@ -213,6 +213,83 @@ fn test_cg_order_leaflets_yaml() {
 }
 
 #[test]
+fn test_cg_order_leaflets_yaml_from_gro() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.gro")
+        .bonds("tests/files/cg.bnd")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_from_pdb() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.pdb")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_from_pqr() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.pqr")
+        .bonds("tests/files/cg.bnd")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_cg_order_leaflets_yaml_multiple_threads() {
     for n_threads in [2, 3, 5, 8, 12, 16, 64, 128] {
         for method in [

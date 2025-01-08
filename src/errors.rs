@@ -216,6 +216,13 @@ pub enum ConfigError {
 
     #[error("{}", .0)]
     InvalidGeometry(GeometryConfigError),
+
+    #[error("{} the input structure file '{}' does not contain topology information ({} provide a `bonds` file)", "error:".red().bold(), .0.yellow(), "hint:".blue().bold())]
+    NoTopology(String),
+
+    #[error("{} cannot parse topology from the provided PDB file '{}' - non-unique atom numbers make the CONECT information ambiguous (see: https://www.wwpdb.org/documentation/file-format-content/format33/sect10.html)",
+    "error:".red().bold(), .0.yellow())]
+    InvalidPdbTopology(String),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.
@@ -260,4 +267,23 @@ pub enum ErrorEstimationError {
     #[error("{} read '{}' trajectory frame(s) which is fewer than the number of blocks ('{}')",
     "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
     NotEnoughData(usize, usize),
+}
+
+/// Errors that can occur when reading bonds from an external topology file.
+#[derive(Error, Debug)]
+pub enum BondsError {
+    #[error("{} could not open the bonds file '{}'", "error:".red().bold(), .0.yellow())]
+    FileNotFound(String),
+
+    #[error("{} could not read line in the bonds file '{}'", "error:".red().bold(), .0.yellow())]
+    CouldNotReadLine(String),
+
+    #[error("{} could read '{}' as an atom serial number", "error:".red().bold(), .0.yellow())]
+    CouldNotParse(String),
+
+    #[error("{} atom with serial number '{}' claims to be bonded to itself which does not make sense", "error:".red().bold(), .0.to_string().yellow())]
+    SelfBonding(usize),
+
+    #[error("{} atom with serial number '{}' does not exist (the system only contains '{}' atoms)", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
+    AtomNotFound(usize, usize),
 }

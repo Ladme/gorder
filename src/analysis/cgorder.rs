@@ -3,16 +3,8 @@
 
 //! Contains the implementation of the calculation of the coarse-grained order parameters.
 
-use groan_rs::{
-    files::FileType,
-    prelude::{GroupXtcReader, ProgressPrinter},
-    system::System,
-};
+use groan_rs::prelude::{GroupXtcReader, ProgressPrinter};
 
-use crate::{
-    analysis::common::{prepare_geometry_selection, prepare_master_group},
-    presentation::{AnalysisResults, OrderResults},
-};
 use crate::{
     analysis::{
         common::{analyze_frame, macros::group_name, sanity_check_molecules},
@@ -23,13 +15,19 @@ use crate::{
     presentation::cgresults::CGOrderResults,
     PANIC_MESSAGE,
 };
+use crate::{
+    analysis::{
+        common::{prepare_geometry_selection, prepare_master_group},
+        structure,
+    },
+    presentation::{AnalysisResults, OrderResults},
+};
 
 /// Analyze the coarse-grained order parameters.
 pub(super) fn analyze_coarse_grained(
     analysis: Analysis,
 ) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
-    let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
-    log::info!("Read molecular topology from '{}'.", analysis.structure());
+    let mut system = structure::read_structure_and_topology(&analysis)?;
 
     if let Some(ndx) = analysis.index() {
         system.read_ndx(ndx)?;
@@ -144,7 +142,7 @@ pub(super) fn analyze_coarse_grained(
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use groan_rs::prelude::Dimension;
+    use groan_rs::{prelude::Dimension, system::System};
 
     use super::*;
     use crate::{

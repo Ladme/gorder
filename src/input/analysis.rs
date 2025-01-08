@@ -82,10 +82,16 @@ impl AnalysisType {
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
-    /// Path to a TPR file containing the structure and topology of the system.
+    /// Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure (and topology) of the system.
     #[builder(setter(into))]
     #[getset(get = "pub")]
     structure: String,
+
+    /// Optional path to a file containing information about bonds.
+    /// If specified, overrides any bonds in the structure file.
+    #[builder(setter(into, strip_option), default)]
+    #[getset(get = "pub")]
+    bonds: Option<String>,
 
     /// Path to a XTC trajectory file containing the trajectory to be analyzed.
     #[builder(setter(into))]

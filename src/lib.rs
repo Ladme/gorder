@@ -97,6 +97,7 @@
 //!     // Construct the analysis
 //!     let analysis = Analysis::builder()
 //!         .structure("system.tpr")                   // Structure file
+//!         .bonds("bonds.bnd")                        // Topology file containing bonds (not needed with TPR structure file)
 //!         .trajectory("md.xtc")                      // Trajectory file to analyze
 //!         .index("index.ndx")                        // Input NDX file
 //!         .output_yaml("order.yaml")                 // Output YAML file

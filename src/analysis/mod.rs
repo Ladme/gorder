@@ -16,6 +16,7 @@ mod leaflets;
 pub(crate) mod molecule;
 pub(crate) mod order;
 pub(crate) mod ordermap;
+mod structure;
 pub(crate) mod timewise;
 pub(crate) mod topology;
 

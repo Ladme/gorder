@@ -7,20 +7,20 @@ use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{
     analyze_frame, prepare_geometry_selection, prepare_master_group, sanity_check_molecules,
 };
+use crate::analysis::structure;
 use crate::errors::{AnalysisError, TopologyError};
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
 
+use groan_rs::prelude::ProgressPrinter;
 use groan_rs::prelude::{GroupXtcReader, OrderedAtomIterator};
-use groan_rs::{files::FileType, prelude::ProgressPrinter, system::System};
 
 /// Calculate the atomistic order parameters.
 pub(super) fn analyze_atomistic(
     analysis: Analysis,
 ) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
-    let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
-    log::info!("Read molecular topology from '{}'.", analysis.structure());
+    let mut system = structure::read_structure_and_topology(&analysis)?;
 
     if let Some(ndx) = analysis.index() {
         system.read_ndx(ndx)?;
@@ -169,7 +169,7 @@ pub(super) fn analyze_atomistic(
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use groan_rs::prelude::Dimension;
+    use groan_rs::{prelude::Dimension, system::System};
 
     use super::*;
     use crate::{
