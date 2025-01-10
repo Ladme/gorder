@@ -20,8 +20,8 @@ $ cargo install gorder
 structure: system.tpr
 trajectory: md.xtc     # use your MD trajectory directly - no PBC handling or molecule fixing needed
 analysis_type: !AAOrder
-    heavy_atoms: "@membrane and element name carbon"
-    hydrogens: "@membrane and element name hydrogen"
+    heavy_atoms: "element name carbon"
+    hydrogens: "element name hydrogen"
 output: order.yaml
 ```
 
@@ -38,7 +38,7 @@ $ gorder YOUR_INPUT_YAML_FILE
 ## Features
 - **Atomistic and coarse-grained systems.** `gorder` is able to calculate atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
 - **Powerful selection language.** `gorder` allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files. (Read more about the language [here](https://ladme.github.io/gsl-guide/).)
-- **Automatic identification of molecule types.** `gorder` automatically recognizes bonds and classifies molecule types based on their topology.
+- **Automatic identification of molecule types.** `gorder` automatically recognizes bonds and classifies molecule types based on their topology. Order parameters are calculated and reported separately for each molecule type.
 - **Various output formats.** `gorder` can output results in YAML, XVG, CSV, and custom "table" format.
 - **Supports any force-field.** `gorder` is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force-field? As long as your lipids have bonds, it will work.
 - **Leaflet-wise analysis.** `gorder` can perform scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculate lipid order parameters for individual leaflets.
