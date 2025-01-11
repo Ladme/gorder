@@ -133,6 +133,9 @@ pub(crate) trait OrderResults:
         0
     }
 
+    /// Get reference to average ordermaps calculated for the entire membrane.
+    fn average_ordermaps(&self) -> &OrderMapsCollection;
+
     /// Write results of the analysis into the output files.
     fn write_all_results(&self) -> Result<(), WriteError> {
         if self.molecules().count() == 0 {

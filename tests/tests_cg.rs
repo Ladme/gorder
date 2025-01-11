@@ -896,6 +896,11 @@ fn test_cg_order_maps_basic() {
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 
+    // full map for the entire system is the same as for POPC
+    let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
+    let test_file = format!("tests/files/ordermaps_cg/ordermap_average_full.dat");
+    assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+
     assert!(diff_files_ignore_first(
         path_to_output,
         "tests/files/cg_order_small.yaml",
@@ -960,11 +965,59 @@ fn test_cg_order_maps_leaflets() {
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
+        // full maps for the entire system are the same as for POPC
+        for file in [
+            "ordermap_average_full.dat",
+            "ordermap_average_upper.dat",
+            "ordermap_average_lower.dat",
+        ] {
+            let real_file = format!("{}/{}", path_to_dir, file);
+            let test_file = format!("tests/files/ordermaps_cg/{}", file);
+            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        }
+
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/cg_order_leaflets_small.yaml",
             1
         ));
+    }
+}
+
+#[test]
+fn test_cg_order_maps_leaflets_full() {
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .output_directory(path_to_dir)
+                .min_samples(10)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    // only testing the maps for the entire system
+    for file in [
+        "ordermap_average_full.dat",
+        "ordermap_average_upper.dat",
+        "ordermap_average_lower.dat",
+    ] {
+        let real_file = format!("{}/{}", path_to_dir, file);
+        let test_file = format!("tests/files/ordermaps_cg/full/{}", file);
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 }
 
@@ -1012,6 +1065,11 @@ fn test_cg_order_maps_basic_multiple_threads() {
             let test_file = format!("tests/files/ordermaps_cg/{}", file);
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
+
+        // full map for the entire system is the same as for POPC
+        let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
+        let test_file = format!("tests/files/ordermaps_cg/ordermap_average_full.dat");
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
 
         assert!(diff_files_ignore_first(
             path_to_output,

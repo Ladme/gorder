@@ -110,6 +110,10 @@ impl OrderResults for AAOrderResults {
             .max()
             .unwrap_or(0)
     }
+
+    fn average_ordermaps(&self) -> &OrderMapsCollection {
+        &self.average_ordermaps
+    }
 }
 
 /// Atomistic order parameters calculated for a single molecule type.

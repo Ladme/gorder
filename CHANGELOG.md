@@ -1,6 +1,7 @@
 ## Version 0.4.0
 - **Geometry selection:** Implemented geometry selection. A cuboidal, spherical, or cylindrical region can be now specified. Order parameters will be then calculated only using bonds located in this region.
 - **Support for reading GRO, PDB, and PQR files:** These file formats are now supported as input structure files. In some cases, an additional "bonds" file specifying the connectivity in the system must be supported. See the manual for more information.
+- **Calculating average results for the entire system:** YAML and TAB files now contain information about the average order parameters calculated for all bonds of all molecule types. Ordermaps are also written for the entire system as well.
 
 ## Version 0.3.0
 - **Error estimation and convergence analysis**: Implemented error estimation and convergence analysis. Refer to the corresponding section of the manual for more details.

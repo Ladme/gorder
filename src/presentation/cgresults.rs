@@ -101,6 +101,10 @@ impl OrderResults for CGOrderResults {
             n_analyzed_frames,
         }
     }
+
+    fn average_ordermaps(&self) -> &OrderMapsCollection {
+        &self.average_ordermaps
+    }
 }
 
 /// Coarse-grained order parameters calculated for a single molecule type.

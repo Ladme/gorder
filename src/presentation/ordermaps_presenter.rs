@@ -60,6 +60,7 @@ impl OrderMapProperties {
 impl<'a, R: OrderResults> Presenter<'a, R> for OrderMapPresenter<'a, R> {
     type Properties = OrderMapProperties;
 
+    #[inline(always)]
     fn new(results: &'a R, properties: OrderMapProperties) -> Self {
         Self {
             results,
@@ -67,16 +68,19 @@ impl<'a, R: OrderResults> Presenter<'a, R> for OrderMapPresenter<'a, R> {
         }
     }
 
+    #[inline(always)]
     fn file_format(&self) -> OutputFormat {
         OutputFormat::MAP
     }
 
     #[allow(unused)]
+    #[inline(always)]
     fn write_results(&self, writer: &mut impl Write) -> Result<(), WriteError> {
         panic!("FATAL GORDER ERROR | OrderMapPresenter::write_results | This method should never be called. {}", PANIC_MESSAGE);
     }
 
     /// Does nothing, empty map is just not written.
+    #[inline(always)]
     fn write_empty_order(
         _writer: &mut impl Write,
         _properties: &OrderMapProperties,
@@ -88,6 +92,18 @@ impl<'a, R: OrderResults> Presenter<'a, R> for OrderMapPresenter<'a, R> {
     fn write(&self, directory: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
         prepare_ordermaps_directory(&directory, overwrite)
             .map_err(WriteError::CouldNotWriteOrderMap)?;
+
+        let comment = format!("# Map of average order parameters calculated for all bonds of all molecule types.\n# Calculated with 'gorder v{}'.", GORDER_VERSION);
+        self.results
+            .average_ordermaps()
+            .write_maps::<R::OrderType>(
+                &directory,
+                "ordermap_average",
+                self.properties.plane,
+                &comment,
+            )
+            .map_err(WriteError::CouldNotWriteOrderMap)?;
+
         for molecule in self.results.molecules() {
             molecule
                 .write_map::<R::OrderType>(&directory, &self.properties)

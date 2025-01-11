@@ -1247,6 +1247,11 @@ fn test_aa_order_maps_basic() {
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 
+    // full map for the entire system is the same as for POPC
+    let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
+    let test_file = format!("tests/files/ordermaps/ordermap_average_full.dat");
+    assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+
     assert!(diff_files_ignore_first(
         path_to_output,
         "tests/files/aa_order_small.yaml",
@@ -1333,11 +1338,62 @@ fn test_aa_order_maps_leaflets() {
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
+        // full maps for the entire system are the same as for POPC
+        for file in [
+            "ordermap_average_full.dat",
+            "ordermap_average_upper.dat",
+            "ordermap_average_lower.dat",
+        ] {
+            let real_file = format!("{}/{}", path_to_dir, file);
+            let test_file = format!("tests/files/ordermaps/{}", file);
+            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        }
+
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/aa_order_leaflets_small.yaml",
             1
         ));
+    }
+}
+
+#[test]
+fn test_aa_order_maps_leaflets_full() {
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .map(
+            OrderMap::builder()
+                .bin_size([0.1, 4.0])
+                .output_directory(path_to_dir)
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    // only testing the maps for the entire system
+    for file in [
+        "ordermap_average_full.dat",
+        "ordermap_average_upper.dat",
+        "ordermap_average_lower.dat",
+    ] {
+        let real_file = format!("{}/{}", path_to_dir, file);
+        let test_file = format!("tests/files/ordermaps/full/{}", file);
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 }
 
@@ -1496,6 +1552,11 @@ fn test_aa_order_maps_basic_multiple_threads() {
             let test_file = format!("tests/files/ordermaps/{}", file);
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
+
+        // full map for the entire system is the same as for POPC
+        let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
+        let test_file = format!("tests/files/ordermaps/ordermap_average_full.dat");
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -3844,6 +3905,11 @@ fn test_aa_order_ordermaps_rust_api() {
     assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.molecules().count(), 1);
 
+    // average ordermaps for the entire system
+    assert!(results.average_ordermaps().total().is_some());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
+
     // average ordermaps for the entire molecule
     let molecule = results.get_molecule("POPC").unwrap();
     let map = molecule.average_ordermaps().total().as_ref().unwrap();
@@ -3947,6 +4013,11 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
 
     assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.molecules().count(), 1);
+
+    // average ordermaps for the entire system
+    assert!(results.average_ordermaps().total().is_some());
+    assert!(results.average_ordermaps().upper().is_some());
+    assert!(results.average_ordermaps().lower().is_some());
 
     // average ordermaps for the entire molecule
     let molecule = results.get_molecule("POPC").unwrap();
