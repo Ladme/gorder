@@ -207,6 +207,7 @@ fn should_guess_elements(analysis: &Analysis) -> bool {
         Some(LeafletClassification::Local(x)) => {
             has_element(x.heads()) || has_element(x.membrane())
         }
+        Some(LeafletClassification::Manual(_)) => false,
     } || match analysis.geometry() {
         Some(Geometry::Cuboid(x)) => reference_has_element(x.reference()),
         Some(Geometry::Cylinder(x)) => reference_has_element(x.reference()),

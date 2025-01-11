@@ -133,6 +133,15 @@ impl MoleculeType {
             .iter_mut()
             .for_each(|bond| bond.init_new_frame());
     }
+
+    /// Get the number of molecules of this molecule type.
+    pub(super) fn n_molecules(&self) -> usize {
+        self.order_bonds()
+            .bond_types()
+            .first()
+            .map(|bond_type| bond_type.bonds.len())
+            .unwrap_or(0)
+    }
 }
 
 impl Add<MoleculeType> for MoleculeType {
@@ -703,7 +712,12 @@ impl fmt::Display for AtomType {
 
 #[cfg(test)]
 mod tests {
-    use crate::input::{ordermap::Plane, GridSpan};
+    use groan_rs::prelude::Dimension;
+
+    use crate::{
+        analysis::{geometry::NoSelection, topology::SystemTopology},
+        input::{ordermap::Plane, GridSpan},
+    };
 
     use super::*;
 
@@ -987,6 +1001,83 @@ mod tests {
             if !expected_bonds.iter().any(|expected| bond == expected) {
                 panic!("Expected bond not found.")
             }
+        }
+    }
+
+    #[test]
+    fn n_molecules_aa() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        crate::analysis::common::create_group(
+            &mut system,
+            "HeavyAtoms",
+            "@membrane and element name carbon",
+        )
+        .unwrap();
+        crate::analysis::common::create_group(
+            &mut system,
+            "Hydrogens",
+            "@membrane and element name hydrogen",
+        )
+        .unwrap();
+
+        let molecules = crate::analysis::common::classify_molecules(
+            &system,
+            "HeavyAtoms",
+            "Hydrogens",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
+
+        let topology = SystemTopology::new(
+            molecules,
+            Dimension::Z,
+            None,
+            1,
+            1,
+            crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+        );
+
+        let expected = [131, 128, 15];
+        for (i, molecule) in topology.molecule_types().iter().enumerate() {
+            assert_eq!(molecule.n_molecules(), expected[i]);
+        }
+    }
+
+    #[test]
+    fn n_molecules_cg() {
+        let mut system = System::from_file("tests/files/cg.tpr").unwrap();
+        crate::analysis::common::create_group(&mut system, "Beads", "@membrane").unwrap();
+
+        let molecules = crate::analysis::common::classify_molecules(
+            &system,
+            "Beads",
+            "Beads",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
+
+        let topology = SystemTopology::new(
+            molecules,
+            Dimension::Z,
+            None,
+            1,
+            1,
+            crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+        );
+
+        let expected = [242, 242, 24];
+        for (i, molecule) in topology.molecule_types().iter().enumerate() {
+            assert_eq!(molecule.n_molecules(), expected[i]);
         }
     }
 }

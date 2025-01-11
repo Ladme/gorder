@@ -353,9 +353,11 @@ pub(crate) const PANIC_MESSAGE: &str =
 (open an issue at 'github.com/Ladme/gorder/issues' or write an e-mail to 'ladmeb@gmail.com')\n\n";
 
 /// Specifies leaflet a lipid is part of.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Leaflet {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Leaflet {
+    #[serde(alias = "1")]
     Upper,
+    #[serde(alias = "0")]
     Lower,
 }
 
@@ -374,6 +376,8 @@ pub mod input;
 pub mod presentation;
 
 use std::fmt::Display;
+
+use serde::{Deserialize, Serialize};
 
 /// This module contains re-exported public structures of the `gorder` crate.
 pub mod prelude {

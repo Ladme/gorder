@@ -443,6 +443,7 @@ pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
             groups.push(group_name!("Heads"));
             groups.push(group_name!("Methyls"));
         }
+        Some(LeafletClassification::Manual(_)) => (),
     }
 
     if let Some(geometry) = analysis.geometry() {

@@ -11,7 +11,7 @@ use crate::{
         topology::SystemTopology,
     },
     errors::AnalysisError,
-    input::Analysis,
+    input::{Analysis, LeafletClassification},
     presentation::cgresults::CGOrderResults,
     PANIC_MESSAGE,
 };
@@ -81,7 +81,7 @@ pub(super) fn analyze_coarse_grained(
         return Ok(AnalysisResults::CG(CGOrderResults::empty(analysis)));
     }
 
-    let data = SystemTopology::new(
+    let mut data = SystemTopology::new(
         molecules,
         analysis.membrane_normal().into(),
         analysis.estimate_error().clone(),
@@ -89,6 +89,12 @@ pub(super) fn analyze_coarse_grained(
         analysis.n_threads(),
         geom,
     );
+
+    // finalize the manual leaflet classification
+    if let Some(LeafletClassification::Manual(params)) = analysis.leaflets() {
+        data.finalize_manual_leaflet_classification(params)?;
+    }
+
     data.info();
 
     let progress_printer = if analysis.silent() {
@@ -129,6 +135,9 @@ pub(super) fn analyze_coarse_grained(
         progress_printer,
     )?;
 
+    if let Some(LeafletClassification::Manual(_)) = analysis.leaflets() {
+        result.validate_manual_leaflet_classification(&analysis)?;
+    }
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation

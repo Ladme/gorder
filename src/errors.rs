@@ -9,6 +9,8 @@ use colored::{ColoredString, Colorize};
 use groan_rs::errors::SelectError;
 use thiserror::Error;
 
+use crate::input::Frequency;
+
 fn path_to_yellow(path: &Path) -> ColoredString {
     path.to_str().unwrap().yellow()
 }
@@ -121,6 +123,10 @@ pub enum AnalysisError {
     #[error("{} could not calculate local membrane center for molecule with a head identifier index '{}'", "error:".red().bold(), .0.to_string().yellow()
     )]
     InvalidLocalMembraneCenter(usize),
+
+    /// Used when there is an error in the manual leaflet classification.
+    #[error("{}", .0)]
+    ManualLeafletError(ManualLeafletClassificationError),
 }
 
 /// Errors that can occur while writing the results.
@@ -286,4 +292,45 @@ pub enum BondsError {
 
     #[error("{} atom with serial number '{}' does not exist (the system only contains '{}' atoms)", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
     AtomNotFound(usize, usize),
+}
+
+/// Errors that can occur when working with manual leaflet assignment.
+#[derive(Error, Debug)]
+pub enum ManualLeafletClassificationError {
+    #[error("{} could not open the leaflet assignment file '{}'", "error:".red().bold(), .0.yellow())]
+    FileNotFound(String),
+
+    #[error("{} could not understand the contents of the leaflet assignment file '{}' ({})", "error:".red().bold(), .0.yellow(), .1)]
+    CouldNotParse(String, serde_yaml::Error),
+
+    #[error("{} molecule type '{}' not found in the leaflet assignment structure", "error:".red().bold(), .0.yellow())]
+    MoleculeTypeNotFound(String),
+
+    #[error("{} could not get leaflet assignment for frame index '{}' (expected index in the leaflet assignment structure: '{}')
+(total number of frames in the leaflet assignment structure is '{}'; maybe the assignment frequency is incorrect?)", 
+"error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+    FrameNotFound(usize, usize, usize),
+
+    #[error("{} inconsistent number of molecules specified in the leaflet assignment: expected '{}' molecules of type '{}', got '{}' molecules in assignment frame '{}'", 
+    "error:".red().bold(), .expected.to_string().yellow(), .molecule.yellow(), .got.to_string().yellow(), .frame.to_string().yellow())]
+    InconsistentNumberOfMolecules {
+        expected: usize,
+        molecule: String,
+        got: usize,
+        frame: usize,
+    },
+
+    #[error("{} no leaflet assignment data provided for molecule type '{}'", "error:".red().bold(), .0.yellow())]
+    EmptyAssignment(String),
+
+    #[error("{} number of frames specified in the leaflet assignment structure ('{}') is not consistent with the number of analyzed frames ('{}')
+(leaflet assignment was supposed to be performed {}, therefore there should be exactly '{}' frame(s) specified in the leaflet assignment structure)",
+"error:".red().bold(), .assignment_frames.to_string().yellow(), .analyzed_frames.to_string().yellow(), 
+.frequency.to_string().yellow(), .expected_assignment_frames.to_string().yellow())]
+    UnexpectedNumberOfFrames {
+        assignment_frames: usize,
+        analyzed_frames: usize,
+        frequency: Frequency,
+        expected_assignment_frames: usize,
+    },
 }

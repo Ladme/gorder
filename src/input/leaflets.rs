@@ -6,7 +6,13 @@
 use std::fmt;
 
 use getset::{CopyGetters, Getters};
-use serde::{Deserialize, Serialize};
+use hashbrown::HashMap;
+use serde::{
+    de::{self, MapAccess, Visitor},
+    Deserialize, Deserializer, Serialize,
+};
+
+use crate::Leaflet;
 
 use super::frequency::Frequency;
 
@@ -16,6 +22,7 @@ pub enum LeafletClassification {
     Global(GlobalParams),
     Local(LocalParams),
     Individual(IndividualParams),
+    Manual(ManualParams),
 }
 
 impl fmt::Display for LeafletClassification {
@@ -24,6 +31,7 @@ impl fmt::Display for LeafletClassification {
             LeafletClassification::Global(_) => write!(f, "global"),
             LeafletClassification::Local(_) => write!(f, "local"),
             LeafletClassification::Individual(_) => write!(f, "individual"),
+            LeafletClassification::Manual(_) => write!(f, "manual"),
         }
     }
 }
@@ -78,6 +86,26 @@ impl LeafletClassification {
         })
     }
 
+    /// Read leaflet assignment from an external yaml file.
+    ///
+    /// ## Parameters
+    /// - `file`: path to the input yaml file containing the leaflet assignment.
+    #[inline(always)]
+    pub fn from_file(file: &str) -> LeafletClassification {
+        Self::Manual(ManualParams::FromFile {
+            file: file.to_owned(),
+            frequency: Frequency::default(),
+        })
+    }
+
+    /// Provide leaflet assignment as a map.
+    pub fn manual(assignment: HashMap<String, Vec<Vec<Leaflet>>>) -> LeafletClassification {
+        Self::Manual(ManualParams::FromMap {
+            assignment,
+            frequency: Frequency::default(),
+        })
+    }
+
     /// Assign lipids to leaflets every N analyzed trajectory frames or only once (using the first trajectory frame).
     /// (Note that this is 'analyzed trajectory frames' - if you skip some frames using `step`,
     /// they will not be counted here.)
@@ -87,6 +115,16 @@ impl LeafletClassification {
             LeafletClassification::Global(x) => x.frequency = frequency,
             LeafletClassification::Local(x) => x.frequency = frequency,
             LeafletClassification::Individual(x) => x.frequency = frequency,
+            LeafletClassification::Manual(x) => match x {
+                ManualParams::FromFile {
+                    file: _,
+                    frequency: x,
+                } => *x = frequency,
+                ManualParams::FromMap {
+                    assignment: _,
+                    frequency: x,
+                } => *x = frequency,
+            },
         }
 
         self
@@ -99,6 +137,7 @@ impl LeafletClassification {
             LeafletClassification::Global(x) => x.frequency(),
             LeafletClassification::Local(x) => x.frequency(),
             LeafletClassification::Individual(x) => x.frequency(),
+            LeafletClassification::Manual(x) => x.frequency(),
         }
     }
 
@@ -168,4 +207,143 @@ pub struct IndividualParams {
     #[getset(get_copy = "pub")]
     #[serde(default)]
     frequency: Frequency,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ManualParams {
+    FromFile {
+        file: String,
+        frequency: Frequency,
+    },
+    FromMap {
+        assignment: HashMap<String, Vec<Vec<Leaflet>>>,
+        frequency: Frequency,
+    },
+}
+
+impl<'de> Deserialize<'de> for ManualParams {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        enum Field {
+            File,
+            Frequency,
+            Assignment,
+        }
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                        formatter.write_str("`file`, `frequency`, or `assignment`")
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                    where
+                        E: de::Error,
+                    {
+                        match value {
+                            "file" => Ok(Field::File),
+                            "frequency" => Ok(Field::Frequency),
+                            "assignment" => Ok(Field::Assignment),
+                            _ => Err(de::Error::unknown_field(
+                                value,
+                                &["file", "frequency", "assignment"],
+                            )),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct ManualParamsVisitor;
+
+        impl<'de> Visitor<'de> for ManualParamsVisitor {
+            type Value = ManualParams;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid ManualParams structure")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(ManualParams::FromFile {
+                    file: value.to_string(),
+                    frequency: Frequency::default(),
+                })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut file = None;
+                let mut frequency = None;
+                let mut assignment = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::File => {
+                            if file.is_some() {
+                                return Err(de::Error::duplicate_field("file"));
+                            }
+                            file = Some(map.next_value()?);
+                        }
+                        Field::Frequency => {
+                            if frequency.is_some() {
+                                return Err(de::Error::duplicate_field("frequency"));
+                            }
+                            frequency = Some(map.next_value()?);
+                        }
+                        Field::Assignment => {
+                            if assignment.is_some() {
+                                return Err(de::Error::duplicate_field("assignment"));
+                            }
+                            assignment = Some(map.next_value()?);
+                        }
+                    }
+                }
+
+                match (file, assignment) {
+                    (Some(file), None) => Ok(ManualParams::FromFile {
+                        file,
+                        frequency: frequency.unwrap_or(Frequency::default()),
+                    }),
+                    (None, Some(assignment)) => Ok(ManualParams::FromMap {
+                        assignment,
+                        frequency: frequency.unwrap_or(Frequency::default()),
+                    }),
+                    _ => Err(de::Error::custom(
+                        "invalid structure: must contain either `file` or `assignment`",
+                    )),
+                }
+            }
+        }
+
+        deserializer.deserialize_any(ManualParamsVisitor)
+    }
+}
+
+impl ManualParams {
+    pub(crate) fn frequency(&self) -> Frequency {
+        match self {
+            Self::FromFile { file: _, frequency } => *frequency,
+            Self::FromMap {
+                assignment: _,
+                frequency,
+            } => *frequency,
+        }
+    }
 }
