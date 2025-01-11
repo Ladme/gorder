@@ -227,8 +227,8 @@ fn maybe_guess_elements(analysis: &Analysis, system: &mut System) -> Result<(), 
             }
             Err(ElementError::ElementGuessWarning(e)) => {
                 log::warn!(
-                    "{}\n{}",
-                    ElementError::ElementGuessWarning(e),
+                    "When guessing elements, following concerns have been raised:\n{}\n{}",
+                    e,
                     format!(
                         "({} if this is an issue, provide a TPR file instead or use atom selection queries without 'element')",
                         "hint:".blue().bold()
