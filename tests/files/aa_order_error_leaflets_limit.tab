@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
 
 Molecule type POPE
                                    TOTAL                          |                       HYDROGEN #1                       |                       HYDROGEN #2                       |                       HYDROGEN #3                       |
@@ -129,3 +129,7 @@ C314       0.1524 ± 0.0475    0.1620 ± 0.0428    0.1415 ± 0.0626  |  0.1545 �
 C315       0.0946 ± 0.0338    0.0917 ± 0.0342    0.0979 ± 0.0519  |  0.0912 ± 0.0398          NaN                NaN        |  0.0980 ± 0.0330          NaN                NaN        |                                                         |
 C316       0.0336 ± 0.0193    0.0310 ± 0.0306    0.0365 ± 0.0191  |  0.0429 ± 0.0551          NaN                NaN        |  0.0123 ± 0.0265          NaN                NaN        |  0.0456 ± 0.0280          NaN                NaN        |
 AVERAGE    0.1561 ± 0.0112    0.1522 ± 0.0104    0.1606 ± 0.0126  |
+
+All molecule types
+                 FULL              UPPER              LOWER       |
+AVERAGE    0.1423 ± 0.0026    0.1411 ± 0.0024    0.1434 ± 0.0031  |

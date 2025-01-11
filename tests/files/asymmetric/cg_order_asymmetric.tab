@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'cg_asym.tpr' and trajectory file 'cg_asym.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/asymmetric/cg_asym.tpr' and trajectory file 'tests/files/asymmetric/cg_asym.xtc'.
 
 Molecule type POPE
                    FULL     UPPER     LOWER   |
@@ -29,3 +29,7 @@ C1B - C2B         0.4850     NaN      0.4850  |
 C2B - C3B         0.3803     NaN      0.3803  |
 C3B - C4B         0.2345     NaN      0.2345  |
 AVERAGE           0.2926     NaN      0.2926  |
+
+All molecule types
+                   FULL     UPPER     LOWER   |
+AVERAGE           0.3055    0.3175    0.2926  |

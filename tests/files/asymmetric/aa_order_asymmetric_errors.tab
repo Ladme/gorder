@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'aa_asym.tpr' and trajectory file 'aa_asym.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/asymmetric/aa_asym.tpr' and trajectory file 'tests/files/asymmetric/aa_asym.xtc'.
 
 Molecule type POPC
                                    TOTAL                          |                       HYDROGEN #1                       |                       HYDROGEN #2                       |                       HYDROGEN #3                       |
@@ -86,3 +86,7 @@ C314       0.1688 ± 0.0053          NaN          0.1688 ± 0.0053  |  0.1695 ±
 C315       0.1247 ± 0.0068          NaN          0.1247 ± 0.0068  |  0.1284 ± 0.0053          NaN          0.1284 ± 0.0053  |  0.1211 ± 0.0130          NaN          0.1211 ± 0.0130  |                                                         |
 C316       0.0398 ± 0.0041          NaN          0.0398 ± 0.0041  |  0.0420 ± 0.0112          NaN          0.0420 ± 0.0112  |  0.0432 ± 0.0212          NaN          0.0432 ± 0.0212  |  0.0342 ± 0.0116          NaN          0.0342 ± 0.0116  |
 AVERAGE    0.1750 ± 0.0015          NaN          0.1750 ± 0.0015  |
+
+All molecule types
+                 FULL              UPPER              LOWER       |
+AVERAGE    0.1438 ± 0.0014    0.1123 ± 0.0016    0.1750 ± 0.0015  |

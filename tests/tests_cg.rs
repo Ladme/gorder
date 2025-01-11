@@ -2171,6 +2171,18 @@ fn test_cg_order_basic_rust_api() {
     assert!(results.get_molecule("POPG").is_some());
     assert!(results.get_molecule("POPA").is_none());
 
+    assert_relative_eq!(
+        results.average_order().total().unwrap().value(),
+        0.2962,
+        epsilon = 1e-4
+    );
+    assert!(results.average_order().upper().is_none());
+    assert!(results.average_order().lower().is_none());
+
+    assert!(results.average_ordermaps().total().is_none());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
+
     let expected_molecule_names = ["POPC", "POPE", "POPG"];
     let expected_average_orders = [0.2943, 0.2972, 0.3059];
     let expected_bond_orders = [0.3682, 0.3759, 0.3789];
@@ -2264,6 +2276,23 @@ fn test_cg_order_error_rust_api() {
     assert!(results.get_molecule("POPE").is_some());
     assert!(results.get_molecule("POPG").is_some());
     assert!(results.get_molecule("POPA").is_none());
+
+    assert_relative_eq!(
+        results.average_order().total().unwrap().value(),
+        0.2962,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().total().unwrap().error().unwrap(),
+        0.0050,
+        epsilon = 1e-4
+    );
+    assert!(results.average_order().upper().is_none());
+    assert!(results.average_order().lower().is_none());
+
+    assert!(results.average_ordermaps().total().is_none());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
 
     let expected_molecule_names = ["POPC", "POPE", "POPG"];
     let expected_average_orders = [0.2943, 0.2972, 0.3059];
@@ -2394,6 +2423,26 @@ fn test_cg_order_leaflets_rust_api() {
     assert!(results.get_molecule("POPG").is_some());
     assert!(results.get_molecule("POPA").is_none());
 
+    assert_relative_eq!(
+        results.average_order().total().unwrap().value(),
+        0.2962,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().upper().unwrap().value(),
+        0.2971,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().lower().unwrap().value(),
+        0.2954,
+        epsilon = 1e-4
+    );
+
+    assert!(results.average_ordermaps().total().is_none());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
+
     let expected_molecule_names = ["POPC", "POPE", "POPG"];
     let expected_average_orders = [0.2943, 0.2972, 0.3059];
     let expected_average_upper = [0.2965, 0.2965, 0.3085];
@@ -2517,6 +2566,41 @@ fn test_cg_order_error_leaflets_rust_api() {
     assert!(results.get_molecule("POPE").is_some());
     assert!(results.get_molecule("POPG").is_some());
     assert!(results.get_molecule("POPA").is_none());
+
+    assert_relative_eq!(
+        results.average_order().total().unwrap().value(),
+        0.2962,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().total().unwrap().error().unwrap(),
+        0.0050,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().upper().unwrap().value(),
+        0.2971,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().upper().unwrap().error().unwrap(),
+        0.0049,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().lower().unwrap().value(),
+        0.2954,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().lower().unwrap().error().unwrap(),
+        0.0056,
+        epsilon = 1e-4
+    );
+
+    assert!(results.average_ordermaps().total().is_none());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
 
     let expected_molecule_names = ["POPC", "POPE", "POPG"];
 

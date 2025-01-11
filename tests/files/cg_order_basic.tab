@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
 
 Molecule type POPC
                    FULL   |
@@ -44,3 +44,7 @@ C1B - C2B         0.4936  |
 C2B - C3B         0.4083  |
 C3B - C4B         0.2669  |
 AVERAGE           0.3059  |
+
+All molecule types
+                   FULL   |
+AVERAGE           0.2962  |
