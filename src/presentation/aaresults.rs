@@ -13,20 +13,43 @@ use crate::input::Analysis;
 use crate::presentation::OrderMapsCollection;
 use getset::Getters;
 use indexmap::IndexMap;
-use serde::Serialize;
+use serde::ser::SerializeMap;
+use serde::{Serialize, Serializer};
 
 /// Results of the atomistic order parameters calculation.
-#[derive(Debug, Clone, Serialize)]
-#[serde(transparent)]
+#[derive(Debug, Clone, Getters)]
 pub struct AAOrderResults {
     /// Results for individual molecules of the system.
     molecules: IndexMap<String, AAMoleculeResults>,
+    /// Average order parameter calculated from all bond types of all molecule types.
+    #[getset(get = "pub")]
+    average_order: OrderCollection,
+    /// Average order parameter maps calculated from all bond types of all molecule type.
+    #[getset(get = "pub")]
+    average_ordermaps: OrderMapsCollection,
     /// Parameters of the analysis.
-    #[serde(skip)]
     analysis: Analysis,
     /// Total number of analyzed frames.
-    #[serde(skip)]
     n_analyzed_frames: usize,
+}
+
+impl Serialize for AAOrderResults {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(self.molecules.len() + 1))?;
+
+        // Serialize "average order" field
+        map.serialize_entry("average order", &self.average_order)?;
+
+        // Serialize individual molecules
+        for (key, value) in &self.molecules {
+            map.serialize_entry(key, value)?;
+        }
+
+        map.end()
+    }
 }
 
 impl PublicOrderResults for AAOrderResults {
@@ -54,6 +77,8 @@ impl OrderResults for AAOrderResults {
 
     fn empty(analysis: Analysis) -> Self {
         Self {
+            average_order: OrderCollection::default(),
+            average_ordermaps: OrderMapsCollection::default(),
             molecules: IndexMap::new(),
             analysis,
             n_analyzed_frames: 0,
@@ -62,11 +87,15 @@ impl OrderResults for AAOrderResults {
 
     fn new(
         molecules: IndexMap<String, AAMoleculeResults>,
+        average_order: OrderCollection,
+        average_ordermaps: OrderMapsCollection,
         analysis: Analysis,
         n_analyzed_frames: usize,
     ) -> Self {
         Self {
             molecules,
+            average_order,
+            average_ordermaps,
             analysis,
             n_analyzed_frames,
         }

@@ -120,6 +120,8 @@ pub(crate) trait OrderResults:
     /// Create a new `OrderResults` structure.
     fn new(
         molecules: IndexMap<String, Self::MoleculeResults>,
+        average_order: OrderCollection,
+        average_ordermaps: OrderMapsCollection,
         analysis: Analysis,
         n_analyzed_frames: usize,
     ) -> Self;

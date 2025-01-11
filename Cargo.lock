@@ -491,7 +491,7 @@ checksum = "151665d9be52f9bb40fc7966565d39666f2d1e69233571b71b87791c7e0528b3"
 
 [[package]]
 name = "gorder"
-version = "0.4.0-dev.1"
+version = "0.4.0-dev.2"
 dependencies = [
  "approx",
  "assert_cmd",
