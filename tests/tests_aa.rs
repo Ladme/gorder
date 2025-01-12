@@ -10,7 +10,8 @@ use std::{
 };
 
 use approx::assert_relative_eq;
-use gorder::prelude::*;
+use gorder::{prelude::*, Leaflet};
+use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
@@ -25,7 +26,7 @@ fn read_file_without_first_lines(file: &str, skip: usize) -> Vec<String> {
     let reader = BufReader::new(File::open(file).unwrap());
     reader
         .lines()
-        .skip(skip) // Skip the first line
+        .skip(skip) // skip the first line
         .map(|line| line.unwrap())
         .collect()
 }
@@ -3179,6 +3180,706 @@ fn test_aa_order_geometry_cylinder_z() {
                 );
             }
         }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_once_multiple_threads() {
+    for n_threads in [1, 2, 5, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(
+                LeafletClassification::from_file(
+                    "tests/files/inputs/leaflets_files/pcpepg_once.yaml",
+                )
+                .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_once() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/pcpepg_once.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::from_map(assignment).with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_once_asymmetric() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/asymmetric/aa_asym.tpr")
+        .trajectory("tests/files/asymmetric/aa_asym.xtc")
+        .output_yaml(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file("tests/files/inputs/leaflets_files/asym_once.yaml")
+                .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/asymmetric/aa_order_asymmetric.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_every10_multiple_threads() {
+    for n_threads in [1, 2, 5, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(
+                LeafletClassification::from_file(
+                    "tests/files/inputs/leaflets_files/pcpepg_every10.yaml",
+                )
+                .with_frequency(Frequency::every(10).unwrap()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_every10() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/pcpepg_every10.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_map(assignment)
+                .with_frequency(Frequency::every(10).unwrap()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_every10_stepping() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_every10.yaml",
+            )
+            .with_frequency(Frequency::every(2).unwrap()),
+        )
+        .step(5)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_step.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_every_multiple_threads() {
+    for n_threads in [1, 2, 5, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_every.yaml",
+            ))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_every() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/pcpepg_every.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output_yaml(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::from_map(assignment))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_every_begin_end_step_multiple_threads() {
+    for n_threads in [1, 2, 5, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output_yaml(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_every_begin_end_step.yaml",
+            ))
+            .n_threads(n_threads)
+            .begin(450_000.0)
+            .end(450_200.0)
+            .step(3)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_begin_end_step.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_fail_missing_molecule_type() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_missing_moltype.yaml",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("not found in the leaflet assignment")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_fail_missing_molecule_type() {
+    let mut file =
+        File::open("tests/files/inputs/leaflets_files/pcpepg_missing_moltype.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::from_map(assignment).with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("not found in the leaflet assignment")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_fail_unexpected_molecule_type() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_unexpected_moltype.yaml",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("specified in the leaflet assignment structure not found in the system")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_fail_unexpected_molecule_type() {
+    let mut file =
+        File::open("tests/files/inputs/leaflets_files/pcpepg_unexpected_moltype.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::from_map(assignment).with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("specified in the leaflet assignment structure not found in the system")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_fail_nonexistent() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_nonexistent.yaml",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("could not open the leaflet assignment file")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_fail_invalid() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_invalid.yaml",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("could not understand the contents of the leaflet assignment file")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_fail_invalid_number_of_molecules() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_invalid_number.yaml",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("inconsistent number of molecules specified in the leaflet assignment")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_fail_invalid_number_of_molecules() {
+    let mut file =
+        File::open("tests/files/inputs/leaflets_files/pcpepg_invalid_number.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::from_map(assignment).with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("inconsistent number of molecules specified in the leaflet assignment")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_fail_empty_assignment() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file("tests/files/inputs/leaflets_files/pcpepg_empty.yaml")
+                .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("no leaflet assignment data provided for molecule type")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_fail_empty_assignment() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/pcpepg_empty.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::from_map(assignment).with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("no leaflet assignment data provided for molecule type")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_too_many_frames() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_every10.yaml",
+            )
+            .with_frequency(Frequency::every(2).unwrap()),
+        )
+        .step(10)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("number of frames specified in the leaflet assignment structure")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_too_many_frames() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/pcpepg_every10.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_map(assignment)
+                .with_frequency(Frequency::every(2).unwrap()),
+        )
+        .step(10)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("number of frames specified in the leaflet assignment structure")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_file_not_enough_frames() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_every10.yaml",
+            )
+            .with_frequency(Frequency::every(8).unwrap()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("could not get leaflet assignment for frame index")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_map_not_enough_frames() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/pcpepg_every10.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_map(assignment)
+                .with_frequency(Frequency::every(8).unwrap()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("could not get leaflet assignment for frame index")),
     }
 }
 

@@ -99,7 +99,8 @@ impl LeafletClassification {
     }
 
     /// Provide leaflet assignment as a map.
-    pub fn manual(assignment: HashMap<String, Vec<Vec<Leaflet>>>) -> LeafletClassification {
+    #[inline(always)]
+    pub fn from_map(assignment: HashMap<String, Vec<Vec<Leaflet>>>) -> LeafletClassification {
         Self::Manual(ManualParams::FromMap {
             assignment,
             frequency: Frequency::default(),
@@ -272,13 +273,14 @@ impl<'de> Deserialize<'de> for ManualParams {
             type Value = ManualParams;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a valid ManualParams structure")
+                formatter.write_str("a string, a map with `file` or `assignment`, or a plain HashMap<String, Vec<Vec<Leaflet>>>")
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
             where
-                E: de::Error,
+                E: serde::de::Error,
             {
+                // a simple string is interpreted as a file
                 Ok(ManualParams::FromFile {
                     file: value.to_string(),
                     frequency: Frequency::default(),
@@ -292,43 +294,65 @@ impl<'de> Deserialize<'de> for ManualParams {
                 let mut file = None;
                 let mut frequency = None;
                 let mut assignment = None;
+                let mut fallback_map: Option<HashMap<String, Vec<Vec<Leaflet>>>> = None;
 
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::File => {
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "file" => {
                             if file.is_some() {
                                 return Err(de::Error::duplicate_field("file"));
                             }
                             file = Some(map.next_value()?);
                         }
-                        Field::Frequency => {
+                        "frequency" => {
                             if frequency.is_some() {
                                 return Err(de::Error::duplicate_field("frequency"));
                             }
                             frequency = Some(map.next_value()?);
                         }
-                        Field::Assignment => {
+                        "assignment" => {
                             if assignment.is_some() {
                                 return Err(de::Error::duplicate_field("assignment"));
                             }
                             assignment = Some(map.next_value()?);
                         }
+                        _ => {
+                            // collect entries for fallback as HashMap
+                            if fallback_map.is_none() {
+                                fallback_map = Some(HashMap::new());
+                            }
+                            if let Some(ref mut fallback) = fallback_map {
+                                let value: Vec<Vec<Leaflet>> = map.next_value()?;
+                                fallback.insert(key, value);
+                            }
+                        }
                     }
                 }
 
-                match (file, assignment) {
-                    (Some(file), None) => Ok(ManualParams::FromFile {
+                // handle explicit cases first
+                if let Some(file) = file {
+                    return Ok(ManualParams::FromFile {
                         file,
                         frequency: frequency.unwrap_or(Frequency::default()),
-                    }),
-                    (None, Some(assignment)) => Ok(ManualParams::FromMap {
+                    });
+                }
+
+                if let Some(assignment) = assignment {
+                    return Ok(ManualParams::FromMap {
                         assignment,
                         frequency: frequency.unwrap_or(Frequency::default()),
-                    }),
-                    _ => Err(de::Error::custom(
-                        "invalid structure: must contain either `file` or `assignment`",
-                    )),
+                    });
                 }
+
+                // fallback to parsing as a plain HashMap
+                if let Some(fallback_map) = fallback_map {
+                    return Ok(ManualParams::FromMap {
+                        assignment: fallback_map,
+                        frequency: frequency.unwrap_or(Frequency::default()),
+                    });
+                }
+
+                Err(de::Error::custom("Invalid structure for ManualParams"))
             }
         }
 
@@ -345,5 +369,232 @@ impl ManualParams {
                 frequency,
             } => *frequency,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_manual_file_only() {
+        let string = "!Manual \"leaflets.yaml\"";
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Manual(ManualParams::FromFile { file, frequency }) => {
+                assert_eq!(file, "leaflets.yaml");
+                assert_eq!(frequency, Frequency::every(1).unwrap());
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+
+        let string = "!Manual leaflets.yaml";
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Manual(ManualParams::FromFile { file, frequency }) => {
+                assert_eq!(file, "leaflets.yaml");
+                assert_eq!(frequency, Frequency::every(1).unwrap());
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+    }
+
+    #[test]
+    fn test_parse_manual_file_explicit() {
+        let string = "!Manual { file: leaflets.yaml }";
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Manual(ManualParams::FromFile { file, frequency }) => {
+                assert_eq!(file, "leaflets.yaml");
+                assert_eq!(frequency, Frequency::every(1).unwrap());
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+    }
+
+    #[test]
+    fn test_parse_manual_file_full() {
+        let string = "!Manual { file: leaflets.yaml, frequency: !Once }";
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Manual(ManualParams::FromFile { file, frequency }) => {
+                assert_eq!(file, "leaflets.yaml");
+                assert_eq!(frequency, Frequency::once());
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+    }
+
+    fn compare_assignment(assignment: &HashMap<String, Vec<Vec<Leaflet>>>) {
+        let expected_popc = [
+            [
+                Leaflet::Upper,
+                Leaflet::Upper,
+                Leaflet::Upper,
+                Leaflet::Lower,
+                Leaflet::Lower,
+                Leaflet::Lower,
+            ],
+            [
+                Leaflet::Upper,
+                Leaflet::Lower,
+                Leaflet::Upper,
+                Leaflet::Upper,
+                Leaflet::Lower,
+                Leaflet::Upper,
+            ],
+        ];
+
+        let expected_pope = [
+            [
+                Leaflet::Lower,
+                Leaflet::Lower,
+                Leaflet::Upper,
+                Leaflet::Lower,
+                Leaflet::Lower,
+                Leaflet::Upper,
+            ],
+            [
+                Leaflet::Upper,
+                Leaflet::Lower,
+                Leaflet::Lower,
+                Leaflet::Upper,
+                Leaflet::Lower,
+                Leaflet::Lower,
+            ],
+        ];
+
+        for (mol_type, expected) in ["POPC", "POPE"]
+            .into_iter()
+            .zip([expected_popc, expected_pope].into_iter())
+        {
+            let data = assignment.get(mol_type).unwrap();
+            assert_eq!(data.len(), expected.len());
+            for (frame, frame_expected) in data.iter().zip(expected.iter()) {
+                assert_eq!(frame.len(), frame_expected.len());
+                for (mol, mol_expected) in frame.iter().zip(frame_expected.iter()) {
+                    assert_eq!(mol, mol_expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_manual_map_only() {
+        let string = "!Manual
+POPC: [[1, 1, 1, 0, 0, 0], [1, 0, 1, 1, 0, 1]]
+POPE:
+  - [Lower, Lower, Upper, Lower, Lower, Upper]
+  - [1, 0, 0, 1, 0, 0]";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Manual(ManualParams::FromMap {
+                assignment,
+                frequency,
+            }) => {
+                compare_assignment(&assignment);
+                assert_eq!(frequency, Frequency::every(1).unwrap());
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+    }
+
+    #[test]
+    fn test_parse_manual_map_explicit() {
+        let string = "!Manual
+assignment:
+  POPC: [[1, 1, 1, 0, 0, 0], [1, 0, 1, 1, 0, 1]]
+  POPE:
+    - [Lower, Lower, Upper, Lower, Lower, Upper]
+    - [1, 0, 0, 1, 0, 0]";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Manual(ManualParams::FromMap {
+                assignment,
+                frequency,
+            }) => {
+                compare_assignment(&assignment);
+                assert_eq!(frequency, Frequency::every(1).unwrap());
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+    }
+
+    #[test]
+    fn test_parse_manual_map_full() {
+        let string = "!Manual
+assignment:
+  POPC: [[1, 1, 1, 0, 0, 0], [1, 0, 1, 1, 0, 1]]
+  POPE:
+    - [Lower, Lower, Upper, Lower, Lower, Upper]
+    - [1, 0, 0, 1, 0, 0]
+frequency: !Once";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Manual(ManualParams::FromMap {
+                assignment,
+                frequency,
+            }) => {
+                compare_assignment(&assignment);
+                assert_eq!(frequency, Frequency::once());
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+    }
+
+    #[test]
+    fn test_parse_manual_fail_1() {
+        let string = "!Manual 7";
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
+    }
+
+    #[test]
+    fn test_parse_manual_fail_2() {
+        let string = "!Manual
+POPC: [[1, 1, 1, 0, 0, 0], [1, 0, 1, 1, 0, 1]]
+POPE:
+  - [Lower, Lower, Upp3r, Lower, Lower, Upper]
+  - [1, 0, 0, 1, 0, 0]";
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
+    }
+
+    #[test]
+    fn test_parse_manual_fail_3() {
+        let string = "!Manual
+POPC: [[1, 1, -1, 0, 0, 0], [1, 0, 1, 1, 0, 1]]
+POPE:
+  - [Lower, Lower, Upper, Lower, Lower, Upper]
+  - [1, 0, 0, 1, 0, 0]";
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
+    }
+
+    #[test]
+    fn test_parse_manual_fail_4() {
+        let string = "!Manual
+POPC: leaflets.yaml
+POPE:
+  - [Lower, Lower, Upper, Lower, Lower, Upper]
+  - [1, 0, 0, 1, 0, 0]";
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
+    }
+
+    #[test]
+    fn test_parse_manual_fail_5() {
+        let string = "!Manual
+assignment: leaflets.yaml
+frequency: !Once";
+
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
+    }
+
+    #[test]
+    fn test_parse_manual_fail_6() {
+        let string = "!Manual
+file: leaflets.yaml
+frequency: some";
+
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
     }
 }

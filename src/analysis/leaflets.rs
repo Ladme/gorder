@@ -178,8 +178,7 @@ impl MoleculeLeafletClassification {
                     assignment: None,
                     frequency: params.get_frequency() * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
-                // manual classification never needs shared storage
-                AssignedLeaflets::new(false),
+                AssignedLeaflets::new(needs_shared_storage),
             ),
         }
     }

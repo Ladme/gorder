@@ -306,7 +306,7 @@ pub enum ManualLeafletClassificationError {
     #[error("{} molecule type '{}' not found in the leaflet assignment structure", "error:".red().bold(), .0.yellow())]
     MoleculeTypeNotFound(String),
 
-    #[error("{} could not get leaflet assignment for frame index '{}' (expected index in the leaflet assignment structure: '{}')
+    #[error("{} could not get leaflet assignment for frame index '{}' [expected index in the leaflet assignment structure: '{}']
 (total number of frames in the leaflet assignment structure is '{}'; maybe the assignment frequency is incorrect?)", 
 "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
     FrameNotFound(usize, usize, usize),
