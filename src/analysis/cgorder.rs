@@ -90,12 +90,12 @@ pub(super) fn analyze_coarse_grained(
         geom,
     );
 
+    data.info();
+
     // finalize the manual leaflet classification
     if let Some(LeafletClassification::Manual(params)) = analysis.leaflets() {
         data.finalize_manual_leaflet_classification(params)?;
     }
-
-    data.info();
 
     let progress_printer = if analysis.silent() {
         None
