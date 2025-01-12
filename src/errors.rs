@@ -334,6 +334,7 @@ pub enum ManualLeafletClassificationError {
         expected_assignment_frames: usize,
     },
 
-    #[error("{} molecule type '{}' specified in the leaflet assignment structure not found in the system", "error:".red().bold(), .0.yellow())]
-    UnknownMoleculeType(String),
+    #[error("{} molecule type '{}' specified in the leaflet assignment structure not found in the system (detected molecule types are: '{}')", 
+    "error:".red().bold(), .0.yellow(), .1.join(" ").yellow())]
+    UnknownMoleculeType(String, Vec<String>),
 }

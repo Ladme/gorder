@@ -670,13 +670,13 @@ impl SystemTopology {
                 _ => panic!("FATAL GORDER ERROR | SystemTopology::finalize_manual_leaflet_classification | Unexpected MoleculeLeafletClassification. Expected Manual."),
             }
 
-            molecule_names.push(molecule.name());
+            molecule_names.push(molecule.name().to_owned());
         }
 
         // check that there is no additional molecule in the leaflet classification structure
         for molecule_name in classification.keys() {
             if !molecule_names.contains(&molecule_name) {
-                return Err(ManualLeafletClassificationError::UnknownMoleculeType(molecule_name.clone()));
+                return Err(ManualLeafletClassificationError::UnknownMoleculeType(molecule_name.clone(), molecule_names));
             }
         }
 
