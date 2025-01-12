@@ -333,4 +333,7 @@ pub enum ManualLeafletClassificationError {
         frequency: Frequency,
         expected_assignment_frames: usize,
     },
+
+    #[error("{} molecule type '{}' specified in the leaflet assignment structure not found in the system", "error:".red().bold(), .0.yellow())]
+    UnknownMoleculeType(String),
 }

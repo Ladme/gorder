@@ -640,6 +640,8 @@ impl SystemTopology {
             ManualParams::FromMap { assignment, frequency: _ } => assignment,
         };
 
+        let mut molecule_names = Vec::new();
+
         for molecule in self.molecule_types_mut() {
             let assignment = classification
                 .get(molecule.name())
@@ -666,6 +668,15 @@ impl SystemTopology {
             match molecule.leaflet_classification_mut() {
                 Some(MoleculeLeafletClassification::Manual(x, _)) => x.assignment = Some(assignment.clone()),
                 _ => panic!("FATAL GORDER ERROR | SystemTopology::finalize_manual_leaflet_classification | Unexpected MoleculeLeafletClassification. Expected Manual."),
+            }
+
+            molecule_names.push(molecule.name());
+        }
+
+        // check that there is no additional molecule in the leaflet classification structure
+        for molecule_name in classification.keys() {
+            if !molecule_names.contains(&molecule_name) {
+                return Err(ManualLeafletClassificationError::UnknownMoleculeType(molecule_name.clone()));
             }
         }
 
