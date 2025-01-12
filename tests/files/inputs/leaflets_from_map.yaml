@@ -1,0 +1,15 @@
+# Test file for binary application.
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
+type: !CGOrder
+  beads: "@membrane"
+leaflets: !Manual
+  frequency: !Once
+  assignment:
+    POPE:
+      - [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    POPC:
+      - [Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower]
+    POPG:
+      - [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+output_yaml: temp_cg_order_leaflets_from_map.yaml
