@@ -1,4 +1,8 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+average order:
+  total: 0.1405
+  upper: 0.1406
+  lower: 0.1405
 POPE:
   average order:
     total: 0.1466

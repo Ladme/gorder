@@ -1,0 +1,10 @@
+# Test file for binary application.
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
+analysis_type: !CGOrder
+  beads: "@membrane"
+output: "temp_cg_order_cylinder.yaml"
+geometry: !Cylinder
+  reference: [2.0, 1.0, 0.0]
+  radius: 3.25
+  orientation: z

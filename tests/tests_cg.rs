@@ -10,7 +10,8 @@ use std::{
 };
 
 use approx::assert_relative_eq;
-use gorder::prelude::*;
+use gorder::{prelude::*, Leaflet};
+use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
@@ -210,6 +211,160 @@ fn test_cg_order_leaflets_yaml() {
             1
         ));
     }
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_from_gro() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.gro")
+        .bonds("tests/files/cg.bnd")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_from_gro_min_bonds() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.gro")
+        .bonds("tests/files/cg_min.bnd")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_from_pdb() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.pdb")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_from_pqr() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.pqr")
+        .bonds("tests/files/cg.bnd")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+// this test not only checks that a TPR file is redefined by a bond file but also checks the behavior of gorder when molecules with duplicate residue names are present
+#[test]
+fn test_cg_order_leaflets_yaml_from_tpr_redefined_bonds() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .bonds("tests/files/cg_redefined.bnd")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_redefined_bonds.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_from_pdb_redefined_bonds() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.pdb")
+        .bonds("tests/files/cg_redefined.bnd")
+        .trajectory("tests/files/cg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_redefined_bonds.yaml",
+        1
+    ));
 }
 
 #[test]
@@ -819,6 +974,11 @@ fn test_cg_order_maps_basic() {
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 
+    // full map for the entire system is the same as for POPC
+    let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
+    let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
+    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
     assert!(diff_files_ignore_first(
         path_to_output,
         "tests/files/cg_order_small.yaml",
@@ -883,11 +1043,59 @@ fn test_cg_order_maps_leaflets() {
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
+        // full maps for the entire system are the same as for POPC
+        for file in [
+            "ordermap_average_full.dat",
+            "ordermap_average_upper.dat",
+            "ordermap_average_lower.dat",
+        ] {
+            let real_file = format!("{}/{}", path_to_dir, file);
+            let test_file = format!("tests/files/ordermaps_cg/{}", file);
+            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        }
+
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/cg_order_leaflets_small.yaml",
             1
         ));
+    }
+}
+
+#[test]
+fn test_cg_order_maps_leaflets_full() {
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .output_directory(path_to_dir)
+                .min_samples(10)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    // only testing the maps for the entire system
+    for file in [
+        "ordermap_average_full.dat",
+        "ordermap_average_upper.dat",
+        "ordermap_average_lower.dat",
+    ] {
+        let real_file = format!("{}/{}", path_to_dir, file);
+        let test_file = format!("tests/files/ordermaps_cg/full/{}", file);
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 }
 
@@ -935,6 +1143,11 @@ fn test_cg_order_maps_basic_multiple_threads() {
             let test_file = format!("tests/files/ordermaps_cg/{}", file);
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
+
+        // full map for the entire system is the same as for POPC
+        let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
+        let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -1546,6 +1759,105 @@ fn test_cg_order_leaflets_scrambling_various_methods_and_frequencies() {
 }
 
 #[test]
+fn test_cg_order_leaflets_scrambling_from_file() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for n_threads in [1, 2, 3, 5, 8, 128] {
+        for (leaflets_file, freq) in ["every.yaml", "every10.yaml", "once.yaml"].into_iter().zip(
+            [
+                Frequency::every(1).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ]
+            .into_iter(),
+        ) {
+            let analysis = Analysis::builder()
+                .structure("tests/files/scrambling/cg_scrambling.tpr")
+                .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .output_yaml(path_to_output)
+                .leaflets(
+                    LeafletClassification::from_file(&format!(
+                        "tests/files/scrambling/leaflets_{}",
+                        leaflets_file
+                    ))
+                    .with_frequency(freq),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let test_file = match leaflets_file {
+                "every.yaml" => "order_global.yaml",
+                "every10.yaml" => "order_global_every_10.yaml",
+                "once.yaml" => "order_once.yaml",
+                _ => panic!("Unexpected leaflets file provided."),
+            };
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                &format!("tests/files/scrambling/{}", test_file),
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_scrambling_from_map() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for n_threads in [1, 2, 3, 5, 8, 128] {
+        for (leaflets_file, freq) in ["every.yaml", "every10.yaml", "once.yaml"].into_iter().zip(
+            [
+                Frequency::every(1).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ]
+            .into_iter(),
+        ) {
+            let filename = format!("tests/files/scrambling/leaflets_{}", leaflets_file);
+            let mut file = File::open(&filename).unwrap();
+            let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+                serde_yaml::from_reader(&mut file).unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/scrambling/cg_scrambling.tpr")
+                .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .output_yaml(path_to_output)
+                .leaflets(LeafletClassification::from_map(assignment).with_frequency(freq))
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let test_file = match leaflets_file {
+                "every.yaml" => "order_global.yaml",
+                "every10.yaml" => "order_global_every_10.yaml",
+                "once.yaml" => "order_once.yaml",
+                _ => panic!("Unexpected leaflets file provided."),
+            };
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                &format!("tests/files/scrambling/{}", test_file),
+                1
+            ));
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_leaflets_asymmetric_multiple_threads() {
     for n_threads in [1, 2, 5, 8] {
         let output_yaml = NamedTempFile::new().unwrap();
@@ -1729,6 +2041,728 @@ fn test_cg_order_leaflets_asymmetric_ordermaps_multiple_threads() {
 }
 
 #[test]
+fn test_cg_order_geometry_cuboid_full() {
+    for reference in [
+        GeomReference::default(),
+        Vector3D::new(2.0, 2.0, 3.0).into(),
+        "@membrane".into(),
+        GeomReference::center(),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(
+                Geometry::cuboid(
+                    reference,
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                )
+                .unwrap(),
+            )
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_basic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cylinder_full() {
+    for reference in [
+        GeomReference::default(),
+        Vector3D::new(2.0, 2.0, 3.0).into(),
+        "@membrane".into(),
+        GeomReference::center(),
+    ] {
+        for axis in [Axis::X, Axis::Y, Axis::Z] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/cg.tpr")
+                .trajectory("tests/files/cg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .geometry(
+                    Geometry::cylinder(
+                        reference.clone(),
+                        f32::INFINITY,
+                        [f32::NEG_INFINITY, f32::INFINITY],
+                        axis,
+                    )
+                    .unwrap(),
+                )
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/cg_order_basic.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_sphere_full() {
+    for reference in [
+        GeomReference::default(),
+        Vector3D::new(2.0, 2.0, 3.0).into(),
+        "@membrane".into(),
+        GeomReference::center(),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(Geometry::sphere(reference, f32::INFINITY).unwrap())
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_basic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cuboid_box_center_square_multiple_threads() {
+    for n_threads in [1, 2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(
+                Geometry::cuboid(
+                    GeomReference::center(),
+                    [-8.0, -2.0],
+                    [2.0, 8.0],
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                )
+                .unwrap(),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_cuboid_square.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cylinder_static_multiple_threads() {
+    for n_threads in [1, 2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(
+                Geometry::cylinder(
+                    Vector3D::new(2.0, 1.0, 0.0),
+                    3.25,
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    Axis::Z,
+                )
+                .unwrap(),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_cylinder.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_sphere_dynamic_multiple_threads() {
+    for n_threads in [1, 2, 3, 5, 8, 12, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(Geometry::sphere("resid 1", 2.5).unwrap())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_sphere.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cuboid_z() {
+    let analysis_geometry = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "@membrane and name PO4 NC3 NH3 GL0 GL1 GL2 C1A C1B",
+        ))
+        .geometry(
+            Geometry::cuboid(
+                "@membrane",
+                [f32::NEG_INFINITY, f32::INFINITY],
+                [f32::NEG_INFINITY, f32::INFINITY],
+                [0.0, 3.5],
+            )
+            .unwrap(),
+        )
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let analysis_leaflets = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "@membrane and name PO4 NC3 NH3 GL0 GL1 GL2 C1A C1B",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results_geometry = analysis_geometry.run().unwrap();
+    let results_leaflets = analysis_leaflets.run().unwrap();
+
+    let results_geometry = match results_geometry {
+        AnalysisResults::CG(x) => x,
+        AnalysisResults::AA(_) => panic!("Invalid results."),
+    };
+
+    let results_leaflets = match results_leaflets {
+        AnalysisResults::CG(x) => x,
+        AnalysisResults::AA(_) => panic!("Invalid results."),
+    };
+
+    for (mol, mol2) in results_geometry
+        .molecules()
+        .zip(results_leaflets.molecules())
+    {
+        for (bond, bond2) in mol.bonds().zip(mol2.bonds()) {
+            assert_relative_eq!(
+                bond.order().total().unwrap().value(),
+                bond.order().upper().unwrap().value()
+            );
+            assert!(bond.order().lower().unwrap().value().is_nan());
+
+            assert_relative_eq!(
+                bond.order().total().unwrap().value(),
+                bond2.order().upper().unwrap().value()
+            );
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cylinder_z() {
+    let analysis_geometry = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "@membrane and name PO4 NC3 NH3 GL0 GL1 GL2 C1A C1B",
+        ))
+        .geometry(Geometry::cylinder("@membrane", f32::INFINITY, [0.0, 3.5], Axis::Z).unwrap())
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let analysis_leaflets = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "@membrane and name PO4 NC3 NH3 GL0 GL1 GL2 C1A C1B",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results_geometry = analysis_geometry.run().unwrap();
+    let results_leaflets = analysis_leaflets.run().unwrap();
+
+    let results_geometry = match results_geometry {
+        AnalysisResults::CG(x) => x,
+        AnalysisResults::AA(_) => panic!("Invalid results."),
+    };
+
+    let results_leaflets = match results_leaflets {
+        AnalysisResults::CG(x) => x,
+        AnalysisResults::AA(_) => panic!("Invalid results."),
+    };
+
+    for (mol, mol2) in results_geometry
+        .molecules()
+        .zip(results_leaflets.molecules())
+    {
+        for (bond, bond2) in mol.bonds().zip(mol2.bonds()) {
+            assert_relative_eq!(
+                bond.order().total().unwrap().value(),
+                bond.order().upper().unwrap().value()
+            );
+            assert!(bond.order().lower().unwrap().value().is_nan());
+
+            assert_relative_eq!(
+                bond.order().total().unwrap().value(),
+                bond2.order().upper().unwrap().value()
+            );
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_file_once_multiple_threads() {
+    for n_threads in [1, 2, 5, 8, 16, 32] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output_yaml(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::from_file("tests/files/inputs/leaflets_files/cg_once.yaml")
+                    .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_map_once() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/cg_once.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output_yaml(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::from_map(assignment).with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_from_file_every20_multiple_threads() {
+    for n_threads in [1, 2, 5, 8, 16, 32] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output_yaml(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::from_file(
+                    "tests/files/inputs/leaflets_files/cg_every20.yaml",
+                )
+                .with_frequency(Frequency::every(20).unwrap()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_map_every20() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/cg_every20.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output_yaml(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(
+            LeafletClassification::from_map(assignment)
+                .with_frequency(Frequency::every(20).unwrap()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_from_file_every_multiple_threads() {
+    for n_threads in [1, 2, 5, 8, 16, 32] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output_yaml(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/cg_every.yaml",
+            ))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_map_every() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/cg_every.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .output_yaml(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::from_map(assignment))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_leaflets_from_file_fail_missing_molecule_type() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/cg_missing_moltype.yaml",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("not found in the leaflet assignment")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_map_fail_unexpected_molecule_type() {
+    let mut file =
+        File::open("tests/files/inputs/leaflets_files/cg_unexpected_moltype.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::from_map(assignment).with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("specified in the leaflet assignment structure not found in the system")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_file_fail_nonexistent() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/cg_nonexistent.yaml",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("could not open the leaflet assignment file")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_file_fail_invalid() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(
+            LeafletClassification::from_file(
+                "tests/files/inputs/leaflets_files/pcpepg_invalid.yaml", // intentionally reading file for AA
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("could not understand the contents of the leaflet assignment file")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_map_fail_invalid_number_of_molecules() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/cg_invalid_number.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::from_map(assignment).with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("inconsistent number of molecules specified in the leaflet assignment")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_file_fail_empty_assignment() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(
+            LeafletClassification::from_file("tests/files/inputs/leaflets_files/cg_empty.yaml")
+                .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("no leaflet assignment data provided for molecule type")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_map_fail_too_many_frames() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/cg_every20.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(
+            LeafletClassification::from_map(assignment)
+                .with_frequency(Frequency::every(5).unwrap()),
+        )
+        .step(5)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("number of frames specified in the leaflet assignment structure")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_file_not_enough_frames() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(
+            LeafletClassification::from_file("tests/files/inputs/leaflets_files/cg_every20.yaml")
+                .with_frequency(Frequency::every(16).unwrap()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Run should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("could not get leaflet assignment for frame index")),
+    }
+}
+
+#[test]
 fn test_cg_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/cg.tpr")
@@ -1753,6 +2787,18 @@ fn test_cg_order_basic_rust_api() {
     assert!(results.get_molecule("POPE").is_some());
     assert!(results.get_molecule("POPG").is_some());
     assert!(results.get_molecule("POPA").is_none());
+
+    assert_relative_eq!(
+        results.average_order().total().unwrap().value(),
+        0.2962,
+        epsilon = 1e-4
+    );
+    assert!(results.average_order().upper().is_none());
+    assert!(results.average_order().lower().is_none());
+
+    assert!(results.average_ordermaps().total().is_none());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
 
     let expected_molecule_names = ["POPC", "POPE", "POPG"];
     let expected_average_orders = [0.2943, 0.2972, 0.3059];
@@ -1848,6 +2894,23 @@ fn test_cg_order_error_rust_api() {
     assert!(results.get_molecule("POPG").is_some());
     assert!(results.get_molecule("POPA").is_none());
 
+    assert_relative_eq!(
+        results.average_order().total().unwrap().value(),
+        0.2962,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().total().unwrap().error().unwrap(),
+        0.0050,
+        epsilon = 1e-4
+    );
+    assert!(results.average_order().upper().is_none());
+    assert!(results.average_order().lower().is_none());
+
+    assert!(results.average_ordermaps().total().is_none());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
+
     let expected_molecule_names = ["POPC", "POPE", "POPG"];
     let expected_average_orders = [0.2943, 0.2972, 0.3059];
     let expected_average_errors = [0.0067, 0.0052, 0.0089];
@@ -1855,7 +2918,7 @@ fn test_cg_order_error_rust_api() {
     let expected_bond_orders = [0.3682, 0.3759, 0.3789];
     let expected_bond_errors = [0.0125, 0.0164, 0.0159];
 
-    let expected_convergence_frames = (1..=101).into_iter().collect::<Vec<usize>>();
+    let expected_convergence_frames = (1..=101).collect::<Vec<usize>>();
     let expected_convergence_values = [
         [0.2756, 0.2902, 0.2943],
         [0.2830, 0.2995, 0.2972],
@@ -1976,6 +3039,26 @@ fn test_cg_order_leaflets_rust_api() {
     assert!(results.get_molecule("POPE").is_some());
     assert!(results.get_molecule("POPG").is_some());
     assert!(results.get_molecule("POPA").is_none());
+
+    assert_relative_eq!(
+        results.average_order().total().unwrap().value(),
+        0.2962,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().upper().unwrap().value(),
+        0.2971,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().lower().unwrap().value(),
+        0.2954,
+        epsilon = 1e-4
+    );
+
+    assert!(results.average_ordermaps().total().is_none());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
 
     let expected_molecule_names = ["POPC", "POPE", "POPG"];
     let expected_average_orders = [0.2943, 0.2972, 0.3059];
@@ -2100,6 +3183,41 @@ fn test_cg_order_error_leaflets_rust_api() {
     assert!(results.get_molecule("POPE").is_some());
     assert!(results.get_molecule("POPG").is_some());
     assert!(results.get_molecule("POPA").is_none());
+
+    assert_relative_eq!(
+        results.average_order().total().unwrap().value(),
+        0.2962,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().total().unwrap().error().unwrap(),
+        0.0050,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().upper().unwrap().value(),
+        0.2971,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().upper().unwrap().error().unwrap(),
+        0.0049,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().lower().unwrap().value(),
+        0.2954,
+        epsilon = 1e-4
+    );
+    assert_relative_eq!(
+        results.average_order().lower().unwrap().error().unwrap(),
+        0.0056,
+        epsilon = 1e-4
+    );
+
+    assert!(results.average_ordermaps().total().is_none());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
 
     let expected_molecule_names = ["POPC", "POPE", "POPG"];
 

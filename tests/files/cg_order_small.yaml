@@ -1,4 +1,6 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+average order:
+  total: 0.3959
 POPC:
   average order:
     total: 0.3959

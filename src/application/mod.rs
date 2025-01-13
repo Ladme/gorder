@@ -206,5 +206,5 @@ fn export_analysis_options(
     )
     .map_err(|_| WriteError::CouldNotWriteLine(Box::from(filename.as_ref())))?;
 
-    serde_yaml::to_writer(&mut writer, analysis).map_err(|e| WriteError::CouldNotExportAnalysis(e))
+    serde_yaml::to_writer(&mut writer, analysis).map_err(WriteError::CouldNotExportAnalysis)
 }

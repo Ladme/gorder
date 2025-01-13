@@ -91,13 +91,13 @@ impl TimeWiseAddTreatment for AddSum {
         let order = lhs
             .order
             .into_iter()
-            .zip(rhs.order.into_iter())
+            .zip(rhs.order)
             .map(|(x, y)| x + y)
             .collect::<Vec<OrderValue>>();
         let n_samples = lhs
             .n_samples
             .into_iter()
-            .zip(rhs.n_samples.into_iter())
+            .zip(rhs.n_samples)
             .map(|(x, y)| x + y)
             .collect::<Vec<usize>>();
 
@@ -308,6 +308,7 @@ fn interleave_vectors<T: Clone>(vec1: &[T], vec2: &[T], n: usize, m: usize) -> V
     result
 }
 
+#[allow(clippy::excessive_precision)]
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
@@ -667,7 +668,7 @@ mod tests {
         assert_eq!(prefix_average.len(), expected.len());
 
         for (val, exp) in prefix_average.into_iter().zip(expected.into_iter()) {
-            assert_relative_eq!(f32::from(val), exp, epsilon = 1e-5);
+            assert_relative_eq!(val, exp, epsilon = 1e-5);
         }
     }
 }

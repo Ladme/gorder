@@ -41,20 +41,29 @@ impl<O: MolConvert> ResultsConverter<O> {
     }
 
     /// Convert topology with raw calculated order parameters into a presentable structure.
-
     pub(crate) fn convert_topology(self, topology: SystemTopology) -> O {
+        let molnames = topology.molecule_types().iter().map(|x| x.name().clone());
+        let (molecule_results, order_summers): (Vec<_>, Vec<_>) = topology
+            .molecule_types()
+            .iter()
+            .map(|mol| O::convert_molecule(mol, &self))
+            .unzip();
+
+        let (full_average_order, full_average_ordermap) = self.convert_order_summer(
+            &order_summers
+                .into_iter()
+                .fold(OrderSummer::default(), |mut acc, x| {
+                    acc += x;
+                    acc
+                }),
+        );
+
         O::new(
-            topology
-                .molecule_types()
-                .iter()
-                .map(|x| x.name().clone())
-                .zip(
-                    topology
-                        .molecule_types()
-                        .iter()
-                        .map(|mol| O::convert_molecule(mol, &self)),
-                )
+            molnames
+                .zip(molecule_results)
                 .collect::<IndexMap<String, O::MoleculeResults>>(),
+            full_average_order,
+            full_average_ordermap,
             self.analysis,
             topology.total_frames(),
         )
@@ -70,8 +79,7 @@ impl<O: MolConvert> ResultsConverter<O> {
             .estimate_error()
             .as_ref()
             .map(|e| e.n_blocks())
-            .map(|blocks| analysis_order.estimate_error(blocks, min_samples))
-            .flatten();
+            .and_then(|blocks| analysis_order.estimate_error(blocks, min_samples));
         O::OrderType::convert(order, error)
     }
 
@@ -196,14 +204,14 @@ pub(crate) trait MolConvert: OrderResults {
     fn convert_molecule(
         molecule_type: &MoleculeType,
         converter: &ResultsConverter<Self>,
-    ) -> Self::MoleculeResults;
+    ) -> (Self::MoleculeResults, OrderSummer);
 }
 
 impl MolConvert for AAOrderResults {
     fn convert_molecule(
         molecule_type: &MoleculeType,
         converter: &ResultsConverter<Self>,
-    ) -> Self::MoleculeResults {
+    ) -> (Self::MoleculeResults, OrderSummer) {
         let mut order = IndexMap::new();
         let mut summer = OrderSummer::default();
 
@@ -233,7 +241,10 @@ impl MolConvert for AAOrderResults {
             None
         };
 
-        AAMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence)
+        (
+            AAMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence),
+            summer,
+        )
     }
 }
 
@@ -249,7 +260,7 @@ impl AAOrderResults {
         let mut summer = OrderSummer::default();
 
         for bond in bonds {
-            summer += bond;
+            summer += *bond;
 
             let bond_results = converter.convert_bond(bond, molecule);
             let hydrogen = bond.get_other_atom(heavy_atom).unwrap_or_else(|| {
@@ -281,7 +292,7 @@ impl MolConvert for CGOrderResults {
     fn convert_molecule(
         molecule_type: &MoleculeType,
         converter: &ResultsConverter<Self>,
-    ) -> Self::MoleculeResults {
+    ) -> (Self::MoleculeResults, OrderSummer) {
         let mut order = IndexMap::new();
         let mut summer = OrderSummer::default();
 
@@ -299,13 +310,16 @@ impl MolConvert for CGOrderResults {
             None
         };
 
-        CGMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence)
+        (
+            CGMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence),
+            summer,
+        )
     }
 }
 
 /// Helper struct for summing order parameters and ordermaps.
 #[derive(Debug, Clone, Default)]
-struct OrderSummer {
+pub(crate) struct OrderSummer {
     total: Option<AnalysisOrder<AddSum>>,
     upper: Option<AnalysisOrder<AddSum>>,
     lower: Option<AnalysisOrder<AddSum>>,
@@ -324,6 +338,19 @@ impl AddAssign<&BondType> for OrderSummer {
         add_option_map(&mut self.ordermap_total, rhs.total_map().clone());
         add_option_map(&mut self.ordermap_upper, rhs.upper_map().clone());
         add_option_map(&mut self.ordermap_lower, rhs.lower_map().clone());
+    }
+}
+
+impl AddAssign<OrderSummer> for OrderSummer {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: OrderSummer) {
+        add_option_order(&mut self.total, rhs.total);
+        add_option_order(&mut self.upper, rhs.upper);
+        add_option_order(&mut self.lower, rhs.lower);
+
+        add_option_map(&mut self.ordermap_total, rhs.ordermap_total);
+        add_option_map(&mut self.ordermap_upper, rhs.ordermap_upper);
+        add_option_map(&mut self.ordermap_lower, rhs.ordermap_lower);
     }
 }
 

@@ -1,4 +1,8 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'cg_scrambling.tpr' and trajectory file 'cg_scrambling.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/scrambling/cg_scrambling.tpr' and trajectory file 'tests/files/scrambling/cg_scrambling.xtc'.
+average order:
+  total: 0.272
+  upper: 0.2776
+  lower: 0.2663
 POPC:
   average order:
     total: 0.272

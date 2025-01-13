@@ -1,8 +1,9 @@
 [package]
 name = "gorder"
-version = "0.3.0"
+version = "0.4.0"
 description = "Calculating lipid order parameters from Gromacs simulations"
 edition = "2021"
+rust-version = "1.82"
 license = "MIT"
 repository = "https://github.com/Ladme/gorder"
 keywords = ["gromacs", "molecular-dynamics", "order", "nmr", "lipids"]
@@ -11,7 +12,11 @@ exclude = ["/tests", "/validation"]
 
 [dependencies]
 backitup = "0.1.1"
-groan_rs = { version = "0.10.0-dev.1", features = ["parallel", "no-xdrfile"] }
+groan_rs = { version = "0.10.0-dev.2", features = [
+    "parallel",
+    "no-xdrfile",
+    "serde",
+] }
 colored = "2.1"
 thiserror = "2.0.3"
 derive_builder = "0.20.2"
@@ -32,3 +37,4 @@ parking_lot = "0.12.3"
 approx = "0.5.1"
 tempfile = "3.14.0"
 assert_cmd = "2.0.16"
+rand = "0.8.5"

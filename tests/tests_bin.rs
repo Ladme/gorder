@@ -185,6 +185,72 @@ fn test_bin_cg_order_maps_export_config() {
 }
 
 #[test]
+fn test_bin_cg_geometry_selection() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/cylinder.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_order_cylinder.yaml",
+        "tests/files/cg_order_cylinder.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_order_cylinder.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_aa_leaflets_from_file() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/leaflets_from_file.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_aa_order_leaflets_from_file.yaml",
+        "tests/files/aa_order_leaflets.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_aa_order_leaflets_from_file.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_cg_leaflets_from_map() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/leaflets_from_map.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_order_leaflets_from_map.yaml",
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_order_leaflets_from_map.yaml").unwrap();
+}
+
+#[test]
 fn test_bin_aa_order_writing_fail() {
     Command::cargo_bin("gorder")
         .unwrap()

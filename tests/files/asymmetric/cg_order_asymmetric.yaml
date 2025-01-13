@@ -1,4 +1,8 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'cg_asym.tpr' and trajectory file 'cg_asym.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/asymmetric/cg_asym.tpr' and trajectory file 'tests/files/asymmetric/cg_asym.xtc'.
+average order:
+  total: 0.3055
+  upper: 0.3175
+  lower: 0.2926
 POPE:
   average order:
     total: 0.3175

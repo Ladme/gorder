@@ -9,6 +9,8 @@ use colored::{ColoredString, Colorize};
 use groan_rs::errors::SelectError;
 use thiserror::Error;
 
+use crate::input::Frequency;
+
 fn path_to_yellow(path: &Path) -> ColoredString {
     path.to_str().unwrap().yellow()
 }
@@ -19,6 +21,23 @@ pub enum GridSpanError {
     #[error("{} the first coordinate for the grid span ('{}' nm) is higher than the second coordinate for the grid span ('{}' nm)", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow()
     )]
     Invalid(f32, f32),
+}
+
+/// Errors that can occur when constructing a geometry selection.
+#[derive(Error, Debug)]
+pub enum GeometryConfigError {
+    #[error("{} the first value for dimension ('{}' nm) is higher than the second value for dimension ('{}' nm)", "error".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
+    InvalidDimension(f32, f32),
+
+    #[error(
+        "{} the specified radius for the geometry selection is '{}' but it must be non-negative", "error".red().bold(), .0.to_string().yellow()
+    )]
+    InvalidRadius(f32),
+
+    #[error(
+        "{} the first value for span ('{}' nm) is higher than the second value for span ('{}' nm)", "error".red().bold(), .0.to_string().yellow(), .1.to_string().yellow()
+    )]
+    InvalidSpan(f32, f32),
 }
 
 /// Errors that can occur when creating a `Frequency` structure.
@@ -104,6 +123,10 @@ pub enum AnalysisError {
     #[error("{} could not calculate local membrane center for molecule with a head identifier index '{}'", "error:".red().bold(), .0.to_string().yellow()
     )]
     InvalidLocalMembraneCenter(usize),
+
+    /// Used when there is an error in the manual leaflet classification.
+    #[error("{}", .0)]
+    ManualLeafletError(ManualLeafletClassificationError),
 }
 
 /// Errors that can occur while writing the results.
@@ -196,6 +219,16 @@ pub enum ConfigError {
 
     #[error("{}", .0)]
     InvalidErrorEstimation(ErrorEstimationError),
+
+    #[error("{}", .0)]
+    InvalidGeometry(GeometryConfigError),
+
+    #[error("{} the input structure file '{}' does not contain topology information ({} provide a `bonds` file)", "error:".red().bold(), .0.yellow(), "hint:".blue().bold())]
+    NoTopology(String),
+
+    #[error("{} cannot parse topology from the provided PDB file '{}' - non-unique atom numbers make the CONECT information ambiguous (see: https://www.wwpdb.org/documentation/file-format-content/format33/sect10.html)",
+    "error:".red().bold(), .0.yellow())]
+    InvalidPdbTopology(String),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.
@@ -240,4 +273,68 @@ pub enum ErrorEstimationError {
     #[error("{} read '{}' trajectory frame(s) which is fewer than the number of blocks ('{}')",
     "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
     NotEnoughData(usize, usize),
+}
+
+/// Errors that can occur when reading bonds from an external topology file.
+#[derive(Error, Debug)]
+pub enum BondsError {
+    #[error("{} could not open the bonds file '{}'", "error:".red().bold(), .0.yellow())]
+    FileNotFound(String),
+
+    #[error("{} could not read line in the bonds file '{}'", "error:".red().bold(), .0.yellow())]
+    CouldNotReadLine(String),
+
+    #[error("{} could read '{}' as an atom serial number", "error:".red().bold(), .0.yellow())]
+    CouldNotParse(String),
+
+    #[error("{} atom with serial number '{}' claims to be bonded to itself which does not make sense", "error:".red().bold(), .0.to_string().yellow())]
+    SelfBonding(usize),
+
+    #[error("{} atom with serial number '{}' does not exist (the system only contains '{}' atoms)", "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
+    AtomNotFound(usize, usize),
+}
+
+/// Errors that can occur when working with manual leaflet assignment.
+#[derive(Error, Debug)]
+pub enum ManualLeafletClassificationError {
+    #[error("{} could not open the leaflet assignment file '{}'", "error:".red().bold(), .0.yellow())]
+    FileNotFound(String),
+
+    #[error("{} could not understand the contents of the leaflet assignment file '{}' ({})", "error:".red().bold(), .0.yellow(), .1)]
+    CouldNotParse(String, serde_yaml::Error),
+
+    #[error("{} molecule type '{}' not found in the leaflet assignment structure", "error:".red().bold(), .0.yellow())]
+    MoleculeTypeNotFound(String),
+
+    #[error("{} could not get leaflet assignment for frame index '{}' [expected index in the leaflet assignment structure: '{}']
+(total number of frames in the leaflet assignment structure is '{}'; maybe the assignment frequency is incorrect?)", 
+"error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+    FrameNotFound(usize, usize, usize),
+
+    #[error("{} inconsistent number of molecules specified in the leaflet assignment: expected '{}' molecules of type '{}', got '{}' molecules in assignment frame '{}'", 
+    "error:".red().bold(), .expected.to_string().yellow(), .molecule.yellow(), .got.to_string().yellow(), .frame.to_string().yellow())]
+    InconsistentNumberOfMolecules {
+        expected: usize,
+        molecule: String,
+        got: usize,
+        frame: usize,
+    },
+
+    #[error("{} no leaflet assignment data provided for molecule type '{}'", "error:".red().bold(), .0.yellow())]
+    EmptyAssignment(String),
+
+    #[error("{} number of frames specified in the leaflet assignment structure ('{}') is not consistent with the number of analyzed frames ('{}')
+(leaflet assignment was supposed to be performed {}, therefore there should be exactly '{}' frame(s) specified in the leaflet assignment structure)",
+"error:".red().bold(), .assignment_frames.to_string().yellow(), .analyzed_frames.to_string().yellow(), 
+.frequency.to_string().yellow(), .expected_assignment_frames.to_string().yellow())]
+    UnexpectedNumberOfFrames {
+        assignment_frames: usize,
+        analyzed_frames: usize,
+        frequency: Frequency,
+        expected_assignment_frames: usize,
+    },
+
+    #[error("{} molecule type '{}' specified in the leaflet assignment structure not found in the system (detected molecule types are: '{}')", 
+    "error:".red().bold(), .0.yellow(), .1.join(" ").yellow())]
+    UnknownMoleculeType(String, Vec<String>),
 }

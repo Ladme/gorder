@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.1' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
 
 Molecule type POPE
            TOTAL   |   H #1   |   H #2   |   H #3   |
@@ -126,3 +126,7 @@ C314       0.1524  |  0.1545  |  0.1504  |          |
 C315       0.0946  |  0.0912  |  0.0980  |          |
 C316       0.0336  |  0.0429  |  0.0123  |  0.0456  |
 AVERAGE    0.1561  |
+
+All molecule types
+           TOTAL   |
+AVERAGE    0.1423  |

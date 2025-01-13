@@ -15,6 +15,7 @@ use groan_rs::{
 use hashbrown::HashSet;
 
 use super::{
+    geometry::GeometrySelection,
     leaflets::MoleculeLeafletClassification,
     ordermap::{merge_option_maps, Map},
 };
@@ -99,12 +100,13 @@ impl MoleculeType {
 
     /// Calculate order parameters for bonds of a single molecule type from a single simulation frame.
     #[inline]
-    pub(super) fn analyze_frame(
+    pub(super) fn analyze_frame<Geom: GeometrySelection>(
         &mut self,
         frame: &System,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
         frame_index: usize,
+        geometry: &Geom,
     ) -> Result<(), AnalysisError> {
         self.order_bonds
             .bond_types
@@ -116,6 +118,7 @@ impl MoleculeType {
                     simbox,
                     membrane_normal,
                     frame_index,
+                    geometry,
                 )
             })?;
 
@@ -129,6 +132,15 @@ impl MoleculeType {
             .bond_types
             .iter_mut()
             .for_each(|bond| bond.init_new_frame());
+    }
+
+    /// Get the number of molecules of this molecule type.
+    pub(super) fn n_molecules(&self) -> usize {
+        self.order_bonds()
+            .bond_types()
+            .first()
+            .map(|bond_type| bond_type.bonds.len())
+            .unwrap_or(0)
     }
 }
 
@@ -498,18 +510,23 @@ impl BondType {
     #[inline(always)]
     fn init_new_frame(&mut self) {
         self.total.init_new_frame();
-        self.upper.as_mut().map(|x| x.init_new_frame());
-        self.lower.as_mut().map(|x| x.init_new_frame());
+        if let Some(x) = self.upper.as_mut() {
+            x.init_new_frame()
+        }
+        if let Some(x) = self.lower.as_mut() {
+            x.init_new_frame()
+        }
     }
 
     /// Calculate the current order parameter for this bond type.
-    fn analyze_frame(
+    fn analyze_frame<Geom: GeometrySelection>(
         &mut self,
         frame: &System,
         leaflet_classification: &mut Option<MoleculeLeafletClassification>,
         simbox: &SimBox,
         membrane_normal: &Vector3D,
         frame_index: usize,
+        geometry: &Geom,
     ) -> Result<(), AnalysisError> {
         for (molecule_index, (index1, index2)) in self.bonds.iter().enumerate() {
             let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
@@ -524,11 +541,16 @@ impl BondType {
                 .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_index()))?;
 
             let vec = pos1.vector_to(pos2, simbox);
-            let sch = super::calc_sch(&vec, membrane_normal);
-            self.total += sch;
 
             // get the coordinates of the bond
-            let bond_pos = pos1 + (vec / 2.0);
+            let bond_pos = pos1 + (&vec / 2.0);
+            // check whether the bond is inside the geometric shape
+            if !geometry.inside(&bond_pos, simbox) {
+                continue;
+            }
+
+            let sch = super::calc_sch(&vec, membrane_normal);
+            self.total += sch;
 
             if let Some(map) = self.total_map.as_mut() {
                 map.add_order(sch, &bond_pos);
@@ -690,7 +712,12 @@ impl fmt::Display for AtomType {
 
 #[cfg(test)]
 mod tests {
-    use crate::input::{ordermap::Plane, GridSpan};
+    use groan_rs::prelude::Dimension;
+
+    use crate::{
+        analysis::{geometry::NoSelection, topology::SystemTopology},
+        input::{ordermap::Plane, GridSpan},
+    };
 
     use super::*;
 
@@ -974,6 +1001,83 @@ mod tests {
             if !expected_bonds.iter().any(|expected| bond == expected) {
                 panic!("Expected bond not found.")
             }
+        }
+    }
+
+    #[test]
+    fn n_molecules_aa() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        crate::analysis::common::create_group(
+            &mut system,
+            "HeavyAtoms",
+            "@membrane and element name carbon",
+        )
+        .unwrap();
+        crate::analysis::common::create_group(
+            &mut system,
+            "Hydrogens",
+            "@membrane and element name hydrogen",
+        )
+        .unwrap();
+
+        let molecules = crate::analysis::common::classify_molecules(
+            &system,
+            "HeavyAtoms",
+            "Hydrogens",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
+
+        let topology = SystemTopology::new(
+            molecules,
+            Dimension::Z,
+            None,
+            1,
+            1,
+            crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+        );
+
+        let expected = [131, 128, 15];
+        for (i, molecule) in topology.molecule_types().iter().enumerate() {
+            assert_eq!(molecule.n_molecules(), expected[i]);
+        }
+    }
+
+    #[test]
+    fn n_molecules_cg() {
+        let mut system = System::from_file("tests/files/cg.tpr").unwrap();
+        crate::analysis::common::create_group(&mut system, "Beads", "@membrane").unwrap();
+
+        let molecules = crate::analysis::common::classify_molecules(
+            &system,
+            "Beads",
+            "Beads",
+            None,
+            Dimension::Z,
+            None,
+            None,
+            1,
+            1,
+        )
+        .unwrap();
+
+        let topology = SystemTopology::new(
+            molecules,
+            Dimension::Z,
+            None,
+            1,
+            1,
+            crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+        );
+
+        let expected = [242, 242, 24];
+        for (i, molecule) in topology.molecule_types().iter().enumerate() {
+            assert_eq!(molecule.n_molecules(), expected[i]);
         }
     }
 }

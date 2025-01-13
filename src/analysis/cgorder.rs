@@ -3,33 +3,31 @@
 
 //! Contains the implementation of the calculation of the coarse-grained order parameters.
 
-use groan_rs::{
-    files::FileType,
-    prelude::{GroupXtcReader, ProgressPrinter},
-    system::System,
-};
+use groan_rs::prelude::{GroupXtcReader, ProgressPrinter};
 
-use crate::{
-    analysis::common::prepare_master_group,
-    presentation::{AnalysisResults, OrderResults},
-};
 use crate::{
     analysis::{
         common::{analyze_frame, macros::group_name, sanity_check_molecules},
         topology::SystemTopology,
     },
     errors::AnalysisError,
-    input::Analysis,
+    input::{Analysis, LeafletClassification},
     presentation::cgresults::CGOrderResults,
     PANIC_MESSAGE,
 };
+use crate::{
+    analysis::{
+        common::{prepare_geometry_selection, prepare_master_group},
+        structure,
+    },
+    presentation::{AnalysisResults, OrderResults},
+};
 
 /// Analyze the coarse-grained order parameters.
-pub(super) fn analyze_coarse_grained<'a>(
+pub(super) fn analyze_coarse_grained(
     analysis: Analysis,
 ) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
-    let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
-    log::info!("Read molecular topology from '{}'.", analysis.structure());
+    let mut system = structure::read_structure_and_topology(&analysis)?;
 
     if let Some(ndx) = analysis.index() {
         system.read_ndx(ndx)?;
@@ -60,6 +58,9 @@ pub(super) fn analyze_coarse_grained<'a>(
         leaflet.prepare_system(&mut system)?;
     }
 
+    let geom = prepare_geometry_selection(analysis.geometry().as_ref(), &mut system)?;
+    geom.info();
+
     log::info!("Detecting molecule types...");
     log::logger().flush();
 
@@ -80,14 +81,21 @@ pub(super) fn analyze_coarse_grained<'a>(
         return Ok(AnalysisResults::CG(CGOrderResults::empty(analysis)));
     }
 
-    let data = SystemTopology::new(
+    let mut data = SystemTopology::new(
         molecules,
         analysis.membrane_normal().into(),
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
+        geom,
     );
+
     data.info();
+
+    // finalize the manual leaflet classification
+    if let Some(LeafletClassification::Manual(params)) = analysis.leaflets() {
+        data.finalize_manual_leaflet_classification(params)?;
+    }
 
     let progress_printer = if analysis.silent() {
         None
@@ -127,6 +135,9 @@ pub(super) fn analyze_coarse_grained<'a>(
         progress_printer,
     )?;
 
+    if let Some(LeafletClassification::Manual(_)) = analysis.leaflets() {
+        result.validate_manual_leaflet_classification(&analysis)?;
+    }
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation
@@ -140,11 +151,14 @@ pub(super) fn analyze_coarse_grained<'a>(
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use groan_rs::prelude::Dimension;
+    use groan_rs::{prelude::Dimension, system::System};
 
     use super::*;
     use crate::{
-        analysis::molecule::{BondType, MoleculeType},
+        analysis::{
+            geometry::GeometrySelectionType,
+            molecule::{BondType, MoleculeType},
+        },
         input::LeafletClassification,
     };
 
@@ -175,7 +189,14 @@ mod tests {
         .unwrap();
         (
             system,
-            SystemTopology::new(molecules, Dimension::Z, None, 1, 1),
+            SystemTopology::new(
+                molecules,
+                Dimension::Z,
+                None,
+                1,
+                1,
+                GeometrySelectionType::default(),
+            ),
         )
     }
 

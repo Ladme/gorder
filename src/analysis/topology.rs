@@ -6,12 +6,13 @@
 use crate::input::{Analysis, EstimateError};
 use crate::PANIC_MESSAGE;
 
+use super::geometry::GeometrySelectionType;
 use super::molecule::MoleculeType;
 use crate::errors::ErrorEstimationError;
 use crate::presentation::converter::{MolConvert, ResultsConverter};
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::prelude::Dimension;
-use groan_rs::system::ParallelTrajData;
+use groan_rs::system::{ParallelTrajData, System};
 use indexmap::IndexMap;
 use std::ops::Add;
 
@@ -40,6 +41,9 @@ pub(crate) struct SystemTopology {
     /// Parameters of error estimation.
     #[getset(get = "pub(super)")]
     estimate_error: Option<EstimateError>,
+    /// Structure for geometry selection.
+    #[getset(get = "pub(super)")]
+    geometry: GeometrySelectionType,
 }
 
 impl SystemTopology {
@@ -50,6 +54,7 @@ impl SystemTopology {
         estimate_error: Option<EstimateError>,
         step_size: usize,
         n_threads: usize,
+        geometry: GeometrySelectionType,
     ) -> SystemTopology {
         SystemTopology {
             thread_id: 0,
@@ -60,6 +65,7 @@ impl SystemTopology {
             molecule_types,
             membrane_normal,
             estimate_error,
+            geometry,
         }
     }
 
@@ -70,7 +76,9 @@ impl SystemTopology {
     }
 
     /// Initialize reading of a new frame.
-    pub(super) fn init_new_frame(&mut self) {
+    pub(super) fn init_new_frame(&mut self, frame: &System) {
+        self.geometry.init_new_frame(frame);
+
         self.molecule_types
             .iter_mut()
             .for_each(|mol| mol.init_new_frame());
@@ -90,7 +98,7 @@ impl SystemTopology {
         let n_blocks = estimate_error.n_blocks();
 
         for mol in &self.molecule_types {
-            let Some(bond) = mol.order_bonds().bond_types().get(0) else {
+            let Some(bond) = mol.order_bonds().bond_types().first() else {
                 continue;
             };
             let Some(order) = bond.total().timewise() else {
@@ -135,7 +143,7 @@ impl SystemTopology {
         let mut lower = IndexMap::new();
 
         for mol in self.molecule_types() {
-            mol.leaflet_classification().as_ref().map(|x| {
+            if let Some(x) = mol.leaflet_classification().as_ref() {
                 let stats = x.statistics();
                 // we do not want `LIPID: 0` in the output
                 if stats.0 > 0 {
@@ -145,7 +153,7 @@ impl SystemTopology {
                 if stats.1 > 0 {
                     lower.insert(mol.name(), stats.1);
                 }
-            });
+            }
         }
 
         fn indexmap2string(map: &IndexMap<&String, usize>) -> String {
@@ -205,6 +213,7 @@ impl Add<SystemTopology> for SystemTopology {
                 .collect::<Vec<MoleculeType>>(),
             membrane_normal: self.membrane_normal,
             estimate_error: self.estimate_error,
+            geometry: self.geometry,
         }
     }
 }
@@ -243,18 +252,21 @@ mod tests {
     fn test_simulated_iteration() {
         for n_frames in 0..301 {
             for step in [1, 2, 3, 4, 5, 7, 10, 15, 20, 100] {
-                let expected_visited_frames = (0..n_frames)
-                    .step_by(step)
-                    .map(|i| i)
-                    .collect::<Vec<usize>>();
+                let expected_visited_frames = (0..n_frames).step_by(step).collect::<Vec<usize>>();
 
                 for n_threads in [1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 32, 64, 128] {
                     let mut visited_frames = Vec::new();
 
                     let mut threads = (0..n_threads)
                         .map(|i| {
-                            let mut top =
-                                SystemTopology::new(vec![], Dimension::Z, None, step, n_threads);
+                            let mut top = SystemTopology::new(
+                                vec![],
+                                Dimension::Z,
+                                None,
+                                step,
+                                n_threads,
+                                GeometrySelectionType::default(),
+                            );
                             top.initialize(i);
                             top
                         })

@@ -3,15 +3,16 @@
 
 //! Implementations of common function used by both AAOrder and CGOrder calculations.
 
+use super::geometry::{GeometrySelection, GeometrySelectionType};
 use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
 use super::topology::SystemTopology;
 use crate::errors::AnalysisError;
-use crate::input::{Analysis, AnalysisType, EstimateError};
+use crate::input::{Analysis, AnalysisType, EstimateError, Geometry};
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::OrderMap, PANIC_MESSAGE};
 use colored::Colorize;
-use groan_rs::prelude::Dimension;
+use groan_rs::prelude::{Dimension, SimBox};
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
 use once_cell::unsync::OnceCell;
@@ -39,6 +40,7 @@ fn get_hint(group: &str) -> String {
         "Membrane" => ("membrane".bright_blue(), "leaflets".bright_blue()),
         "Heads" => ("heads".bright_blue(), "leaflets".bright_blue()),
         "Methyls" => ("methyls".bright_blue(), "leaflets".bright_blue()),
+        "GeomReference" => ("reference".bright_blue(), "geometry".bright_blue()),
         // unknown group name; this should not happen, but it's not important so we will pretend it's okay
         _ => return String::from("a query specifying the group selects no atoms"),
     };
@@ -84,8 +86,27 @@ pub(super) fn create_group(
     }
 }
 
+/// Construct a geometry selection structure and prepare the system for geometry selection.
+pub(super) fn prepare_geometry_selection(
+    geometry: Option<&Geometry>,
+    system: &mut System,
+) -> Result<GeometrySelectionType, Box<dyn std::error::Error + Send + Sync>> {
+    let simbox = check_box(system)?;
+    let geom = GeometrySelectionType::from_geometry(geometry, simbox);
+
+    match &geom {
+        GeometrySelectionType::None(_) => (),
+        GeometrySelectionType::Cuboid(x) => x.prepare_system(system)?,
+        GeometrySelectionType::Cylinder(x) => x.prepare_system(system)?,
+        GeometrySelectionType::Sphere(x) => x.prepare_system(system)?,
+    }
+
+    Ok(geom)
+}
+
 /// Classifies molecules in the system based on their topology and returns a list of molecule types,
 /// along with information about the atoms that form each molecule.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn classify_molecules(
     system: &System,
     group1: &str,
@@ -171,11 +192,8 @@ pub(super) fn sanity_check_molecules(molecules: &[MoleculeType]) -> bool {
     true
 }
 
-/// Calculate order parameters in a single simulation frame.
-pub(super) fn analyze_frame(
-    frame: &System,
-    data: &mut SystemTopology,
-) -> Result<(), AnalysisError> {
+/// Check that the simulation box is valid. Return the box, if it is.
+pub(super) fn check_box(frame: &System) -> Result<&SimBox, AnalysisError> {
     let simbox = frame.get_box().ok_or(AnalysisError::UndefinedBox)?;
 
     if !simbox.is_orthogonal() {
@@ -186,19 +204,44 @@ pub(super) fn analyze_frame(
         return Err(AnalysisError::ZeroBox);
     }
 
+    Ok(simbox)
+}
+
+/// Calculate order parameters in a single simulation frame.
+pub(super) fn analyze_frame(
+    frame: &System,
+    data: &mut SystemTopology,
+) -> Result<(), AnalysisError> {
+    // check the validity of the simulation box
+    let simbox = check_box(frame)?;
+
     // initialize the reading of the next frame
-    data.init_new_frame();
+    data.init_new_frame(frame);
     let frame_index = data.frame();
 
     let membrane_center = OnceCell::new(); // used with global classification method
     let membrane_normal = data.membrane_normal().into();
+    let geometry = data.geometry() as *const GeometrySelectionType;
     for molecule in data.molecule_types_mut().iter_mut() {
         // assign molecules to leaflets
         if let Some(classifier) = molecule.leaflet_classification_mut() {
             classifier.assign_lipids(frame, frame_index, &membrane_center)?;
         }
         // calculate order parameters
-        molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index)?;
+        match unsafe { &*geometry } {
+            GeometrySelectionType::None(x) => {
+                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
+            }
+            GeometrySelectionType::Cuboid(x) => {
+                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
+            }
+            GeometrySelectionType::Cylinder(x) => {
+                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
+            }
+            GeometrySelectionType::Sphere(x) => {
+                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
+            }
+        }
     }
 
     // print information about leaflet assignment for quick sanity check by the user
@@ -399,6 +442,13 @@ pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
         Some(LeafletClassification::Individual(_)) => {
             groups.push(group_name!("Heads"));
             groups.push(group_name!("Methyls"));
+        }
+        Some(LeafletClassification::Manual(_)) => (),
+    }
+
+    if let Some(geometry) = analysis.geometry() {
+        if geometry.needs_group() {
+            groups.push(group_name!("GeomReference"));
         }
     }
 

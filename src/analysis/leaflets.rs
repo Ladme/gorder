@@ -5,15 +5,16 @@
 
 use core::f32;
 use std::{
+    fs::read_to_string,
     num::NonZeroUsize,
     sync::Arc,
     time::{Duration, Instant},
 };
 
-use super::common::{create_group, macros::group_name};
+use super::{common::{create_group, macros::group_name}, topology::SystemTopology};
 use crate::{
-    errors::{AnalysisError, TopologyError},
-    input::{Frequency, LeafletClassification},
+    errors::{AnalysisError, ManualLeafletClassificationError, TopologyError},
+    input::{leaflets::ManualParams, Analysis, Frequency, LeafletClassification},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
@@ -56,6 +57,7 @@ impl LeafletClassification {
                 create_group(system, "Heads", params.heads())?;
                 create_group(system, "Methyls", params.methyls())?;
             }
+            Self::Manual(_) => (),
         }
 
         Ok(())
@@ -117,6 +119,7 @@ pub(super) enum MoleculeLeafletClassification {
     Global(GlobalClassification, AssignedLeaflets),
     Local(LocalClassification, AssignedLeaflets),
     Individual(IndividualClassification, AssignedLeaflets),
+    Manual(ManualClassification, AssignedLeaflets),
 }
 
 impl MoleculeLeafletClassification {
@@ -131,7 +134,7 @@ impl MoleculeLeafletClassification {
             // shared storage is not needed if only one thread is used
             // (there is no other thread to share data with, duh)
             (Frequency::Every(_) | Frequency::Once, 1) => false,
-            // shared storage is not needed if the frequency is performed for every analyzed frame
+            // shared storage is not needed if the assignment is performed for every analyzed frame
             // (each thread handles lipid assignment locally and no data need to be shared)
             (Frequency::Every(x), _) if x.get() == 1 => false,
             // shared storage is needed in all other cases
@@ -170,6 +173,13 @@ impl MoleculeLeafletClassification {
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
+            LeafletClassification::Manual(_) => Self::Manual(
+                ManualClassification {
+                    assignment: None,
+                    frequency: params.get_frequency() * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                },
+                AssignedLeaflets::new(needs_shared_storage),
+            ),
         }
     }
 
@@ -190,6 +200,8 @@ impl MoleculeLeafletClassification {
             Self::Individual(x, _) => {
                 x.insert(molecule, system)?;
             }
+            // do nothing; manual classifier is not set-up like this
+            Self::Manual(_, _) => (),
         }
 
         Ok(())
@@ -198,7 +210,7 @@ impl MoleculeLeafletClassification {
     /// Calculate the number of molecules assigned to the upper and to the lower leaflet.
     pub(super) fn statistics(&self) -> (usize, usize) {
         match self {
-            Self::Global(_, y) | Self::Local(_, y) | Self::Individual(_, y) => {
+            Self::Global(_, y) | Self::Local(_, y) | Self::Individual(_, y) | Self::Manual(_, y) => {
                 y.calc_assignment_statistics()
             }
         }
@@ -211,6 +223,7 @@ impl MoleculeLeafletClassification {
             Self::Global(x, _) => x.frequency,
             Self::Local(x, _) => x.frequency,
             Self::Individual(x, _) => x.frequency,
+            Self::Manual(x, _) => x.frequency,
         }
     }
 
@@ -221,16 +234,20 @@ impl MoleculeLeafletClassification {
         &self,
         system: &System,
         molecule_index: usize,
+        current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
         match self {
             MoleculeLeafletClassification::Global(x, _) => {
-                x.identify_leaflet(system, molecule_index)
+                x.identify_leaflet(system, molecule_index, current_frame)
             }
             MoleculeLeafletClassification::Local(x, _) => {
-                x.identify_leaflet(system, molecule_index)
+                x.identify_leaflet(system, molecule_index,current_frame)
             }
             MoleculeLeafletClassification::Individual(x, _) => {
-                x.identify_leaflet(system, molecule_index)
+                x.identify_leaflet(system, molecule_index, current_frame)
+            }
+            MoleculeLeafletClassification::Manual(x, _) => {
+                x.identify_leaflet(system, molecule_index, current_frame)
             }
         }
     }
@@ -246,7 +263,6 @@ impl MoleculeLeafletClassification {
     }
 
     /// Assign all lipids into their respective leaflets.
-    #[inline]
     pub(super) fn assign_lipids(
         &mut self,
         system: &System,
@@ -255,12 +271,6 @@ impl MoleculeLeafletClassification {
     ) -> Result<(), AnalysisError> {
         if !self.should_assign(current_frame) {
             return Ok(());
-        }
-
-        match self.get_frequency() {
-            Frequency::Once if current_frame == 0 => (), // continue
-            Frequency::Every(n) if current_frame % n == 0 => (), // continue
-            _ => return Ok(()),                          // perform no assignment
         }
 
         match self {
@@ -280,6 +290,9 @@ impl MoleculeLeafletClassification {
                 y.assign_lipids(system, x, current_frame)
             }
             MoleculeLeafletClassification::Individual(x, y) => {
+                y.assign_lipids(system, x, current_frame)
+            }
+            MoleculeLeafletClassification::Manual(x, y) => {
                 y.assign_lipids(system, x, current_frame)
             }
         }
@@ -303,6 +316,9 @@ impl MoleculeLeafletClassification {
             MoleculeLeafletClassification::Individual(x, y) => {
                 y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
             }
+            MoleculeLeafletClassification::Manual(x, y) => {
+                y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
+            }
         }
     }
 }
@@ -314,6 +330,7 @@ trait LeafletClassifier {
         &self,
         system: &System,
         molecule_index: usize,
+        current_frame: usize,
     ) -> Result<Leaflet, AnalysisError>;
 
     /// Get the number of molecules in the system.
@@ -352,6 +369,7 @@ impl LeafletClassifier for GlobalClassification {
         &self,
         system: &System,
         molecule_index: usize,
+        _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
         common_identify_leaflet(
             &self.heads,
@@ -433,6 +451,7 @@ impl LeafletClassifier for LocalClassification {
         &self,
         system: &System,
         molecule_index: usize,
+        _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
         common_identify_leaflet(
             &self.heads,
@@ -521,6 +540,7 @@ impl LeafletClassifier for IndividualClassification {
         &self,
         system: &System,
         molecule_index: usize,
+        _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
         let head_index = self.heads.get(molecule_index).expect(PANIC_MESSAGE);
 
@@ -546,6 +566,169 @@ impl LeafletClassifier for IndividualClassification {
     #[inline(always)]
     fn n_molecules(&self) -> usize {
         self.heads.len()
+    }
+}
+
+/// Leaflet classification method where lipids are assigned manually.
+#[derive(Debug, Clone, Getters, MutGetters)]
+pub(crate) struct ManualClassification {
+    /// Lipid assignment. Each inner vector corresponds to one frame.
+    /// This is only set up later, since when the molecules are being constructed, we don't know their final names.
+    assignment: Option<Vec<Vec<Leaflet>>>,
+    /// Frequency of the classification.
+    frequency: Frequency,
+}
+
+impl LeafletClassifier for ManualClassification {
+    fn identify_leaflet(
+        &self,
+        _system: &System,
+        molecule_index: usize,
+        current_frame: usize,
+    ) -> Result<Leaflet, AnalysisError> {
+        // get the index of the frame in the assignment
+        let assignment_frame = match self.frequency {
+            // frame must be zero no matter the thread this is
+            Frequency::Once => 0,
+            Frequency::Every(n) => current_frame / n.get(),
+        };
+
+        Ok(self.assignment
+            .as_ref()
+            .unwrap_or_else(|| 
+                panic!("FATAL GORDER ERROR | ManualClassification::identify_leaflet | Assignment has not been set up. {}", PANIC_MESSAGE))
+            .get(assignment_frame)
+            .ok_or_else(|| 
+                AnalysisError::ManualLeafletError(ManualLeafletClassificationError::FrameNotFound(
+                    current_frame, assignment_frame, 
+                    self.assignment.as_ref().unwrap().len())
+                )
+            )?
+            .get(molecule_index)
+            .cloned()
+            .unwrap_or_else(||
+                panic!("FATAL GORDER ERROR | ManualClassification::identify_leaflet | Molecule index `{}` not found but this should have been checked before. {}", 
+                molecule_index, PANIC_MESSAGE))
+            )
+    }
+
+    fn n_molecules(&self) -> usize {
+        self.assignment
+            .as_ref()
+            .unwrap_or_else(|| 
+                panic!("FATAL GORDER ERROR | ManualClassification::n_molecules | Assignment has not been set up. {}", PANIC_MESSAGE)).first()
+            .unwrap_or_else(||
+                panic!("FATAL GORDER ERROR | ManualClassification::n_molecules | Assignment is empty. {}", PANIC_MESSAGE))
+            .len()
+    }
+}
+
+impl SystemTopology {
+    /// Finalize the set up of the manual leaflet classifier.
+    pub(super) fn finalize_manual_leaflet_classification(&mut self, params: &ManualParams) -> Result<(), ManualLeafletClassificationError> {
+        let classification = match params {
+            ManualParams::FromFile {file, frequency: _} => &ManualClassification::map_from_file(file)?,
+            ManualParams::FromMap { assignment, frequency: _ } => assignment,
+        };
+
+        let mut molecule_names = Vec::new();
+
+        for molecule in self.molecule_types_mut() {
+            let assignment = classification
+                .get(molecule.name())
+                .ok_or_else(||ManualLeafletClassificationError::MoleculeTypeNotFound(molecule.name().to_owned()))?;
+
+            // perform sanity checks
+            // at least one frame must be provided
+            if assignment.is_empty() {
+                return Err(ManualLeafletClassificationError::EmptyAssignment(molecule.name().to_owned()));
+            }
+
+            // number of molecules must be consistent and match the system
+            for (i, frame) in assignment.iter().enumerate() {
+                let n_molecules = molecule.n_molecules();
+                if frame.len() != n_molecules {
+                    return Err(ManualLeafletClassificationError::InconsistentNumberOfMolecules { 
+                        expected: n_molecules, 
+                        molecule: molecule.name().to_owned(), 
+                        got: frame.len(), 
+                        frame: i });
+                }
+            }
+
+            match molecule.leaflet_classification_mut() {
+                Some(MoleculeLeafletClassification::Manual(x, _)) => x.assignment = Some(assignment.clone()),
+                _ => panic!("FATAL GORDER ERROR | SystemTopology::finalize_manual_leaflet_classification | Unexpected MoleculeLeafletClassification. Expected Manual."),
+            }
+
+            molecule_names.push(molecule.name().to_owned());
+        }
+
+        // check that there is no additional molecule in the leaflet classification structure
+        for molecule_name in classification.keys() {
+            if !molecule_names.contains(molecule_name) {
+                return Err(ManualLeafletClassificationError::UnknownMoleculeType(molecule_name.clone(), molecule_names));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Check that all frames in 
+    pub(super) fn validate_manual_leaflet_classification(
+        &self,
+        analysis: &Analysis,
+    ) -> Result<(), ManualLeafletClassificationError> {
+        for molecule in self.molecule_types() {
+            let manual = molecule
+                .leaflet_classification()
+                .as_ref()
+                .and_then(|classification| match classification {
+                    MoleculeLeafletClassification::Manual(x, _) => Some(x),
+                    _ => None,
+                })
+                .unwrap_or_else(||
+                    panic!("FATAL GORDER ERROR | SystemTopology::validate_manual_leaflet_classification | Unexpected MoleculeLeafletClassification. Expected Manual. {}", PANIC_MESSAGE));
+    
+            let frequency = match manual.frequency {
+                Frequency::Once => Frequency::Once,
+                Frequency::Every(n) => Frequency::Every(
+                    NonZeroUsize::new(n.get() / analysis.step()).expect(PANIC_MESSAGE),
+                ),
+            };
+    
+            let expected_assignment_frames = match frequency {
+                Frequency::Once => 1,
+                Frequency::Every(n) => (self.total_frames() - 1) / n + 1,
+            };
+    
+            let assignment_frames = manual
+                .assignment
+                .as_ref()
+                .expect(PANIC_MESSAGE)
+                .len();
+    
+            if expected_assignment_frames != assignment_frames {
+                return Err(ManualLeafletClassificationError::UnexpectedNumberOfFrames {
+                    assignment_frames,
+                    analyzed_frames: self.total_frames(),
+                    frequency,
+                    expected_assignment_frames,
+                });
+            }
+        }
+    
+        Ok(())
+    }
+}
+
+impl ManualClassification {
+    /// Read the leaflet classification structure from an input file.
+    fn map_from_file(file: &str) -> Result<HashMap<String, Vec<Vec<Leaflet>>>, ManualLeafletClassificationError> {
+        let string = read_to_string(file)
+            .map_err(|_| ManualLeafletClassificationError::FileNotFound(file.to_owned()))?;
+        serde_yaml::from_str(&string)
+            .map_err(|e| ManualLeafletClassificationError::CouldNotParse(file.to_owned(), e))
     }
 }
 
@@ -592,7 +775,7 @@ impl AssignedLeaflets {
     ) -> Result<(), AnalysisError> {
         self.local = Some(
             (0..classifier.n_molecules())
-                .map(|index| classifier.identify_leaflet(system, index))
+                .map(|index| classifier.identify_leaflet(system, index, current_frame))
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -650,7 +833,7 @@ impl AssignedLeaflets {
     /// Get the leaflet that was assigned to molecule of target index from the local assignment storage.
     #[inline]
     fn get_leaflet_from_local(&self, molecule_index: usize) -> Leaflet {
-        self.local
+        *self.local
             .as_ref()
             .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | AssignedLeaflets::get_leaflet_from_local | Molecule not assigned. Local assignment should exist. {}", 
@@ -659,7 +842,6 @@ impl AssignedLeaflets {
             .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | AssignedLeaflets::get_leaflet_from_local | Molecule not found. Molecule with internal `gorder` index `{}` should exist. {}",
                 molecule_index, PANIC_MESSAGE))
-            .clone()
     }
 
     /// Copy the leaflet assignment for the specified frame into storage local for the thread.
@@ -1036,11 +1218,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0).unwrap(),
+            classifier.identify_leaflet(&system, 0, 1).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1).unwrap(),
+            classifier.identify_leaflet(&system, 1, 1).unwrap(),
             Leaflet::Lower
         );
     }
@@ -1071,11 +1253,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0).unwrap(),
+            classifier.identify_leaflet(&system, 0, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1).unwrap(),
+            classifier.identify_leaflet(&system, 1, 2).unwrap(),
             Leaflet::Lower
         );
     }
@@ -1101,11 +1283,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0).unwrap(),
+            classifier.identify_leaflet(&system, 0, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1).unwrap(),
+            classifier.identify_leaflet(&system, 1, 4).unwrap(),
             Leaflet::Lower
         );
     }

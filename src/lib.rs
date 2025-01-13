@@ -97,6 +97,7 @@
 //!     // Construct the analysis
 //!     let analysis = Analysis::builder()
 //!         .structure("system.tpr")                   // Structure file
+//!         .bonds("bonds.bnd")                        // Topology file containing bonds (not needed with TPR structure file)
 //!         .trajectory("md.xtc")                      // Trajectory file to analyze
 //!         .index("index.ndx")                        // Input NDX file
 //!         .output_yaml("order.yaml")                 // Output YAML file
@@ -137,6 +138,12 @@
 //!         .estimate_error(EstimateError::new(        // Estimate error for calculations
 //!             Some(10),                              // Number of blocks for averaging
 //!             Some("convergence.xvg")                // Output file for convergence
+//!         )?)
+//!         .geometry(Geometry::cylinder(              // Only consider bonds inside a cylinder
+//!             "@protein",                            // Reference position for the cylinder
+//!             3.0,                                   // Radius of the cylinder
+//!             [-2.0, 2.0],                           // Span of the cylinder relative to reference
+//!             Axis::Z                                // Orientation of the main cylinder axis
 //!         )?)               
 //!         .build()?;                                 // Build the analysis
 //!
@@ -195,8 +202,8 @@
 //! # ;
 //! ```
 //! > *When using the `gorder` application, specifying the output YAML file is mandatory.
-//! However, when you are using `gorder` as a crate, specifying the output file is optional,
-//! as you might not require any output to be generated.*
+//! > However, when you are using `gorder` as a crate, specifying the output file is optional,
+//! > as you might not require any output to be generated.*
 //!
 //! Finally, assemble the `Analysis`:
 //!
@@ -235,6 +242,7 @@
 //! 3. [`OrderMapBuilder`](crate::prelude::OrderMapBuilder) and [`OrderMap`](crate::prelude::OrderMap) for specifying parameter maps.
 //! 4. [`LeafletClassification`](crate::prelude::LeafletClassification) for leaflet classification.
 //! 5. [`EstimateError`](crate::prelude::EstimateError) for error estimation.
+//! 6. [`Geometry`](crate::prelude::Geometry) for geometry selection.
 //!
 //! ### Step 2: Running the analysis
 //!
@@ -345,9 +353,11 @@ pub(crate) const PANIC_MESSAGE: &str =
 (open an issue at 'github.com/Ladme/gorder/issues' or write an e-mail to 'ladmeb@gmail.com')\n\n";
 
 /// Specifies leaflet a lipid is part of.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Leaflet {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Leaflet {
+    #[serde(alias = "1")]
     Upper,
+    #[serde(alias = "0")]
     Lower,
 }
 
@@ -367,11 +377,14 @@ pub mod presentation;
 
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
+
 /// This module contains re-exported public structures of the `gorder` crate.
 pub mod prelude {
     pub use super::input::{
         analysis::AnalysisBuilder, ordermap::OrderMapBuilder, Analysis, AnalysisType, Axis,
-        EstimateError, Frequency, GridSpan, LeafletClassification, OrderMap, Plane,
+        EstimateError, Frequency, GeomReference, Geometry, GridSpan, LeafletClassification,
+        OrderMap, Plane,
     };
 
     pub use super::analysis::molecule::AtomType;
@@ -382,4 +395,6 @@ pub mod prelude {
         AnalysisResults, BondResults, GridMapF32, Order, OrderCollection, OrderMapsCollection,
         PublicMoleculeResults, PublicOrderResults,
     };
+
+    pub use groan_rs::prelude::Vector3D;
 }

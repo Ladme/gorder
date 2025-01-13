@@ -13,9 +13,9 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::errors::ConfigError;
 
-use super::LeafletClassification;
 use super::OrderMap;
 use super::{Axis, EstimateError};
+use super::{Geometry, LeafletClassification};
 
 /// Type of analysis to perform.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -82,10 +82,16 @@ impl AnalysisType {
 #[serde(deny_unknown_fields)]
 #[builder(build_fn(validate = "Self::validate"))]
 pub struct Analysis {
-    /// Path to a TPR file containing the structure and topology of the system.
+    /// Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure (and topology) of the system.
     #[builder(setter(into))]
     #[getset(get = "pub")]
     structure: String,
+
+    /// Optional path to a file containing information about bonds.
+    /// If specified, overrides any bonds in the structure file.
+    #[builder(setter(into, strip_option), default)]
+    #[getset(get = "pub")]
+    bonds: Option<String>,
 
     /// Path to a XTC trajectory file containing the trajectory to be analyzed.
     #[builder(setter(into))]
@@ -190,6 +196,14 @@ pub struct Analysis {
     #[serde(deserialize_with = "deserialize_estimate_error", default)]
     #[getset(get = "pub")]
     estimate_error: Option<EstimateError>,
+
+    /// Specifies an optional region within the simulation box for calculating order parameters.
+    /// If not provided, the calculations include the entire system.
+    /// When specified, only bonds within the defined geometry are considered.
+    #[builder(setter(strip_option), default)]
+    #[serde(default)]
+    #[getset(get = "pub")]
+    geometry: Option<Geometry>,
 
     /// If true, suppress all output to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
@@ -338,6 +352,11 @@ impl Analysis {
                 .map_err(ConfigError::InvalidErrorEstimation)?;
         }
 
+        // check the validity of the geometry selection
+        if let Some(ref geometry) = self.geometry {
+            geometry.validate().map_err(ConfigError::InvalidGeometry)?;
+        }
+
         Ok(())
     }
 
@@ -458,8 +477,9 @@ mod tests_yaml {
     use approx::assert_relative_eq;
 
     use super::*;
-    use crate::errors::ErrorEstimationError;
+    use crate::errors::{ErrorEstimationError, GeometryConfigError};
     use crate::input::frequency::Frequency;
+    use crate::input::geometry::GeomReference;
     use crate::{
         errors::OrderMapConfigError,
         input::{ordermap::Plane, GridSpan},
@@ -493,6 +513,7 @@ mod tests_yaml {
         assert_eq!(analysis.n_threads(), 1);
         assert!(analysis.leaflets().is_none());
         assert!(analysis.map().is_none());
+        assert!(analysis.geometry().is_none());
         assert!(!analysis.silent());
         assert!(!analysis.overwrite());
     }
@@ -546,6 +567,20 @@ mod tests_yaml {
         let ee = analysis.estimate_error().as_ref().unwrap();
         assert_eq!(ee.n_blocks(), 10);
         assert_eq!(ee.output_convergence().unwrap(), "convergence.xvg");
+
+        match analysis.geometry().as_ref().unwrap() {
+            Geometry::Cylinder(c) => {
+                match c.reference() {
+                    GeomReference::Selection(x) => assert_eq!(x, "@protein and name BB"),
+                    _ => panic!("Invalid geometric reference."),
+                }
+                assert_relative_eq!(c.radius(), 3.5);
+                assert_relative_eq!(c.span()[0], 2.3);
+                assert_relative_eq!(c.span()[1], 5.1);
+                assert_eq!(c.orientation(), Axis::Z);
+            }
+            _ => panic!("Incorrect geometry type returned."),
+        }
     }
 
     #[test]
@@ -735,6 +770,52 @@ mod tests_yaml {
                 .contains("invalid value: integer `0`, expected a nonzero usize")),
         }
     }
+
+    #[test]
+    fn analysis_yaml_fail_geometry_cuboid_invalid_dimension() {
+        match Analysis::from_file("tests/files/inputs/cuboid_invalid_dimension.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidGeometry(GeometryConfigError::InvalidDimension(x, y))) => {
+                assert_relative_eq!(x, 6.4);
+                assert_relative_eq!(y, 4.2);
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_geometry_cylinder_radius() {
+        match Analysis::from_file("tests/files/inputs/cylinder_negative_radius.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidGeometry(GeometryConfigError::InvalidRadius(x))) => {
+                assert_relative_eq!(x, -1.7);
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_geometry_cylinder_height() {
+        match Analysis::from_file("tests/files/inputs/cylinder_invalid_span.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidGeometry(GeometryConfigError::InvalidSpan(x, y))) => {
+                assert_relative_eq!(x, -1.7);
+                assert_relative_eq!(y, -1.9)
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_geometry_sphere_radius() {
+        match Analysis::from_file("tests/files/inputs/sphere_negative_radius.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidGeometry(GeometryConfigError::InvalidRadius(x))) => {
+                assert_relative_eq!(x, -1.7);
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -742,6 +823,7 @@ mod tests_builder {
 
     use approx::assert_relative_eq;
 
+    use crate::input::geometry::GeomReference;
     use crate::input::ordermap::Plane;
     use crate::input::Frequency;
 
@@ -784,6 +866,7 @@ mod tests_builder {
         assert_eq!(analysis.n_threads(), 1);
         assert!(analysis.leaflets().is_none());
         assert!(analysis.map().is_none());
+        assert!(analysis.geometry().is_none());
         assert!(!analysis.silent());
         assert!(!analysis.overwrite());
     }
@@ -826,6 +909,7 @@ mod tests_builder {
                     .unwrap(),
             )
             .estimate_error(EstimateError::new(Some(10), Some("convergence.xvg")).unwrap())
+            .geometry(Geometry::cylinder("@protein and name BB", 3.5, [2.3, 5.1], Axis::Z).unwrap())
             .build()
             .unwrap();
 
@@ -876,6 +960,20 @@ mod tests_builder {
 
         assert_eq!(ee.n_blocks(), 10);
         assert_eq!(ee.output_convergence().unwrap(), "convergence.xvg");
+
+        match analysis.geometry().as_ref().unwrap() {
+            Geometry::Cylinder(c) => {
+                match c.reference() {
+                    GeomReference::Selection(x) => assert_eq!(x, "@protein and name BB"),
+                    _ => panic!("Invalid geometric reference."),
+                }
+                assert_relative_eq!(c.radius(), 3.5);
+                assert_relative_eq!(c.span()[0], 2.3);
+                assert_relative_eq!(c.span()[1], 5.1);
+                assert_eq!(c.orientation(), Axis::Z);
+            }
+            _ => panic!("Incorrect geometry type returned."),
+        }
     }
 
     #[test]

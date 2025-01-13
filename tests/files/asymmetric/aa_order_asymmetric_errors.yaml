@@ -1,4 +1,14 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'aa_asym.tpr' and trajectory file 'aa_asym.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/asymmetric/aa_asym.tpr' and trajectory file 'tests/files/asymmetric/aa_asym.xtc'.
+average order:
+  total:
+    mean: 0.1438
+    error: 0.0014
+  upper:
+    mean: 0.1123
+    error: 0.0016
+  lower:
+    mean: 0.175
+    error: 0.0015
 POPC:
   average order:
     total:

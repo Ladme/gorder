@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
 
 Molecule type POPC
                         FULL              UPPER              LOWER       |
@@ -44,3 +44,7 @@ C1B - C2B         0.4936 ± 0.0357    0.4884 ± 0.0640    0.4988 ± 0.0373  |
 C2B - C3B         0.4083 ± 0.0252    0.4183 ± 0.0432    0.3982 ± 0.0253  |
 C3B - C4B         0.2669 ± 0.0364    0.2663 ± 0.0482    0.2674 ± 0.0325  |
 AVERAGE           0.3059 ± 0.0089    0.3085 ± 0.0149    0.3033 ± 0.0156  |
+
+All molecule types
+                        FULL              UPPER              LOWER       |
+AVERAGE           0.2962 ± 0.0050    0.2971 ± 0.0049    0.2954 ± 0.0056  |

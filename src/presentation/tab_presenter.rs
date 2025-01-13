@@ -58,8 +58,8 @@ impl PresenterProperties for TabProperties {
 
 impl TabProperties {
     /// Create new structure capturing properties of the table format.
-    pub(super) fn new<'a>(
-        results: &'a impl OrderResults,
+    pub(super) fn new(
+        results: &impl OrderResults,
         structure: &str,
         trajectory: &str,
         errors: bool,
@@ -195,6 +195,26 @@ impl TabWrite for AAOrderResults {
 
         self.molecules()
             .try_for_each(|mol| mol.write_tab(writer, properties))?;
+
+        write_result!(writer, "\nAll molecule types\n");
+        write_result!(writer, "         ");
+        if properties.leaflets {
+            if properties.errors {
+                write_result!(
+                    writer,
+                    "        FULL              UPPER              LOWER       |\n"
+                );
+            } else {
+                write_result!(writer, "   FULL     UPPER     LOWER   |\n");
+            }
+        } else if properties.errors {
+            write_result!(writer, " {: ^17} |\n", "TOTAL");
+        } else {
+            write_result!(writer, " {: ^8} |\n", "TOTAL");
+        }
+        write_result!(writer, "AVERAGE  ");
+        self.average_order().write_tab(writer, properties)?;
+        write_result!(writer, "|\n");
         Ok(())
     }
 }
@@ -299,6 +319,12 @@ impl TabWrite for CGOrderResults {
 
         self.molecules()
             .try_for_each(|mol| mol.write_tab(writer, properties))?;
+
+        write_result!(writer, "\nAll molecule types\n");
+        write_cg_molecule_header(writer, properties)?;
+        write_result!(writer, "AVERAGE         ");
+        self.average_order().write_tab(writer, properties)?;
+        write_result!(writer, "|\n");
         Ok(())
     }
 }
@@ -312,19 +338,7 @@ impl TabWrite for CGMoleculeResults {
     ) -> Result<(), WriteError> {
         write_result!(writer, "\nMolecule type {}\n", self.molecule());
 
-        match (properties.leaflets, properties.errors) {
-            (true, true) => {
-                write_result!(
-                    writer,
-                    "                        FULL              UPPER              LOWER       |\n"
-                )
-            }
-            (true, false) => {
-                write_result!(writer, "                   FULL     UPPER     LOWER   |\n")
-            }
-            (false, true) => write_result!(writer, "                        FULL       |\n"),
-            (false, false) => write_result!(writer, "                   FULL   |\n"),
-        }
+        write_cg_molecule_header(writer, properties)?;
 
         for bond in self.order().values() {
             let name = format!(
@@ -343,4 +357,25 @@ impl TabWrite for CGMoleculeResults {
 
         Ok(())
     }
+}
+
+fn write_cg_molecule_header(
+    writer: &mut impl Write,
+    properties: &TabProperties,
+) -> Result<(), WriteError> {
+    match (properties.leaflets, properties.errors) {
+        (true, true) => {
+            write_result!(
+                writer,
+                "                        FULL              UPPER              LOWER       |\n"
+            )
+        }
+        (true, false) => {
+            write_result!(writer, "                   FULL     UPPER     LOWER   |\n")
+        }
+        (false, true) => write_result!(writer, "                        FULL       |\n"),
+        (false, false) => write_result!(writer, "                   FULL   |\n"),
+    }
+
+    Ok(())
 }

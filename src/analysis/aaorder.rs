@@ -4,21 +4,24 @@
 //! Contains the implementation of the calculation of the atomistic order parameters.
 
 use super::{common::macros::group_name, topology::SystemTopology};
-use crate::analysis::common::{analyze_frame, prepare_master_group, sanity_check_molecules};
+use crate::analysis::common::{
+    analyze_frame, prepare_geometry_selection, prepare_master_group, sanity_check_molecules,
+};
+use crate::analysis::structure;
 use crate::errors::{AnalysisError, TopologyError};
+use crate::input::LeafletClassification;
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
 
+use groan_rs::prelude::ProgressPrinter;
 use groan_rs::prelude::{GroupXtcReader, OrderedAtomIterator};
-use groan_rs::{files::FileType, prelude::ProgressPrinter, system::System};
 
 /// Calculate the atomistic order parameters.
-pub(super) fn analyze_atomistic<'a>(
+pub(super) fn analyze_atomistic(
     analysis: Analysis,
 ) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
-    let mut system = System::from_file_with_format(analysis.structure(), FileType::TPR)?;
-    log::info!("Read molecular topology from '{}'.", analysis.structure());
+    let mut system = structure::read_structure_and_topology(&analysis)?;
 
     if let Some(ndx) = analysis.index() {
         system.read_ndx(ndx)?;
@@ -83,6 +86,9 @@ pub(super) fn analyze_atomistic<'a>(
         leaflet.prepare_system(&mut system)?;
     }
 
+    let geom = prepare_geometry_selection(analysis.geometry().as_ref(), &mut system)?;
+    geom.info();
+
     log::info!("Detecting molecule types...");
     log::logger().flush();
 
@@ -103,14 +109,21 @@ pub(super) fn analyze_atomistic<'a>(
         return Ok(AnalysisResults::AA(AAOrderResults::empty(analysis)));
     }
 
-    let data = SystemTopology::new(
+    let mut data = SystemTopology::new(
         molecules,
         analysis.membrane_normal().into(),
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
+        geom,
     );
+
     data.info();
+
+    // finalize the manual leaflet classification
+    if let Some(LeafletClassification::Manual(params)) = analysis.leaflets() {
+        data.finalize_manual_leaflet_classification(params)?;
+    }
 
     let progress_printer = if analysis.silent() {
         None
@@ -150,6 +163,9 @@ pub(super) fn analyze_atomistic<'a>(
         progress_printer,
     )?;
 
+    if let Some(LeafletClassification::Manual(_)) = analysis.leaflets() {
+        result.validate_manual_leaflet_classification(&analysis)?;
+    }
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation
@@ -163,11 +179,14 @@ pub(super) fn analyze_atomistic<'a>(
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use groan_rs::prelude::Dimension;
+    use groan_rs::{prelude::Dimension, system::System};
 
     use super::*;
     use crate::{
-        analysis::molecule::{BondType, MoleculeType},
+        analysis::{
+            geometry::GeometrySelectionType,
+            molecule::{BondType, MoleculeType},
+        },
         input::leaflets::LeafletClassification,
     };
 
@@ -209,7 +228,14 @@ mod tests {
 
         (
             system,
-            SystemTopology::new(molecules, Dimension::Z, None, 1, 1),
+            SystemTopology::new(
+                molecules,
+                Dimension::Z,
+                None,
+                1,
+                1,
+                GeometrySelectionType::default(),
+            ),
         )
     }
 

@@ -20,8 +20,8 @@ $ cargo install gorder
 structure: system.tpr
 trajectory: md.xtc     # use your MD trajectory directly - no PBC handling or molecule fixing needed
 analysis_type: !AAOrder
-    heavy_atoms: "@membrane and element name carbon"
-    hydrogens: "@membrane and element name hydrogen"
+    heavy_atoms: "element name carbon"
+    hydrogens: "element name hydrogen"
 output: order.yaml
 ```
 
@@ -38,19 +38,19 @@ $ gorder YOUR_INPUT_YAML_FILE
 ## Features
 - **Atomistic and coarse-grained systems.** `gorder` is able to calculate atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
 - **Powerful selection language.** `gorder` allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files. (Read more about the language [here](https://ladme.github.io/gsl-guide/).)
-- **Automatic identification of molecule types.** `gorder` automatically recognizes bonds and classifies molecule types based on their topology.
+- **Automatic identification of molecule types.** `gorder` automatically recognizes bonds and classifies molecule types based on their topology. Order parameters are calculated and reported separately for each molecule type.
 - **Various output formats.** `gorder` can output results in YAML, XVG, CSV, and custom "table" format.
+- **Supports any force-field.** `gorder` is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force-field? As long as your lipids have bonds, it will work.
 - **Leaflet-wise analysis.** `gorder` can perform scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculate lipid order parameters for individual leaflets.
 - **Order parameter maps.** `gorder` can construct 2D maps of order parameters, so you know what parts of the membrane are ordered and disordered.
 - **Error estimation.** `gorder` can automatically estimate the error of the analysis and indicate how well your analysis has converged.
-- **Supports any force-field.** `gorder` is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force-field? As long as your lipids have bonds, it will work.
+- **Analysis of specific membrane regions.** `gorder` can dynamically select lipids in a specified part of the membrane and calculate order parameters only for them.
 - **Extremely fast.** `gorder` is extremely fast (see [below](#benchmarking)) due to its ability to read only the necessary atoms from XTC files and its support for multithreading.
 
 ## Planned
-- [ ] Dynamic selection of lipids for order parameter calculation based on geometric conditions (i.e., only calculating order parameters from a part of a membrane).
-- [ ] Dynamic membrane normal calculation, supporting membrane vesicles.
-- [ ] Python API: using `gorder` as a Python library.
 - [ ] United-atom order parameters.
+- [ ] Python API: using `gorder` as a Python library.
+- [ ] Dynamic membrane normal calculation, supporting membrane vesicles.
 - [ ] Improved multithreading (currently, multithreading is only implemented at the trajectory reading level).
 
 ## Validation

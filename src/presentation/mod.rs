@@ -120,6 +120,8 @@ pub(crate) trait OrderResults:
     /// Create a new `OrderResults` structure.
     fn new(
         molecules: IndexMap<String, Self::MoleculeResults>,
+        average_order: OrderCollection,
+        average_ordermaps: OrderMapsCollection,
         analysis: Analysis,
         n_analyzed_frames: usize,
     ) -> Self;
@@ -130,6 +132,9 @@ pub(crate) trait OrderResults:
     fn max_bonds(&self) -> usize {
         0
     }
+
+    /// Get reference to average ordermaps calculated for the entire membrane.
+    fn average_ordermaps(&self) -> &OrderMapsCollection;
 
     /// Write results of the analysis into the output files.
     fn write_all_results(&self) -> Result<(), WriteError> {
@@ -187,7 +192,7 @@ pub(crate) trait OrderResults:
             if let Some(output_dir) = map.output_directory() {
                 OrderMapPresenter::new(
                     self,
-                    OrderMapProperties::new(map.plane().unwrap_or(Plane::XY).into()),
+                    OrderMapProperties::new(map.plane().unwrap_or(Plane::XY)),
                 )
                 .write(output_dir, overwrite)?;
             }
@@ -220,6 +225,7 @@ pub trait PublicMoleculeResults {
 
 /// All supported output file formats.
 #[derive(Debug, Clone, Display)]
+#[allow(clippy::upper_case_acronyms)]
 pub(crate) enum OutputFormat {
     #[strum(serialize = "yaml")]
     YAML,

@@ -1,3 +1,9 @@
+## Version 0.4.0
+- **Geometry selection:** Added the ability to select a geometric region for analysis. Users can now specify cuboidal, spherical, or cylindrical regions, and order parameters will be calculated only for bonds located within the selected region.
+- **Support for reading GRO, PDB, and PQR files:** These file formats are now supported as input structure files. In some cases, an additional "bonds" file specifying the system's connectivity may be required. Refer to the manual for more details.
+- **Manual assignment of lipids to leaflets:** Lipids can now be manually assigned to leaflets using a provided leaflet assignment file. Refer to the manual for detailed instructions.
+- **Calculating average results for the entire system:** YAML and TAB files now include information about the average order parameters calculated across all bonds and molecule types in the system. Additionally, ordermaps are generated for the entire system.
+
 ## Version 0.3.0
 - **Error estimation and convergence analysis**: Implemented error estimation and convergence analysis. Refer to the corresponding section of the manual for more details.
 - **Leaflet classification**: Leaflet classification can now also be performed either every N analyzed trajectory frames or only once at the start of the analysis.
