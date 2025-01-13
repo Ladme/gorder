@@ -976,8 +976,8 @@ fn test_cg_order_maps_basic() {
 
     // full map for the entire system is the same as for POPC
     let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
-    let test_file = format!("tests/files/ordermaps_cg/ordermap_average_full.dat");
-    assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+    let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
+    assert!(diff_files_ignore_first(&real_file, test_file, 2));
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -1146,8 +1146,8 @@ fn test_cg_order_maps_basic_multiple_threads() {
 
         // full map for the entire system is the same as for POPC
         let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
-        let test_file = format!("tests/files/ordermaps_cg/ordermap_average_full.dat");
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
 
         assert!(diff_files_ignore_first(
             path_to_output,

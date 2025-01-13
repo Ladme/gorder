@@ -60,7 +60,7 @@ impl<O: MolConvert> ResultsConverter<O> {
 
         O::new(
             molnames
-                .zip(molecule_results.into_iter())
+                .zip(molecule_results)
                 .collect::<IndexMap<String, O::MoleculeResults>>(),
             full_average_order,
             full_average_ordermap,

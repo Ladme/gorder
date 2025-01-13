@@ -616,8 +616,7 @@ impl LeafletClassifier for ManualClassification {
         self.assignment
             .as_ref()
             .unwrap_or_else(|| 
-                panic!("FATAL GORDER ERROR | ManualClassification::n_molecules | Assignment has not been set up. {}", PANIC_MESSAGE))
-            .get(0)
+                panic!("FATAL GORDER ERROR | ManualClassification::n_molecules | Assignment has not been set up. {}", PANIC_MESSAGE)).first()
             .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | ManualClassification::n_molecules | Assignment is empty. {}", PANIC_MESSAGE))
             .len()
@@ -641,7 +640,7 @@ impl SystemTopology {
 
             // perform sanity checks
             // at least one frame must be provided
-            if assignment.len() == 0 {
+            if assignment.is_empty() {
                 return Err(ManualLeafletClassificationError::EmptyAssignment(molecule.name().to_owned()));
             }
 
@@ -667,7 +666,7 @@ impl SystemTopology {
 
         // check that there is no additional molecule in the leaflet classification structure
         for molecule_name in classification.keys() {
-            if !molecule_names.contains(&molecule_name) {
+            if !molecule_names.contains(molecule_name) {
                 return Err(ManualLeafletClassificationError::UnknownMoleculeType(molecule_name.clone(), molecule_names));
             }
         }

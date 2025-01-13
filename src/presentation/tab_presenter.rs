@@ -207,12 +207,10 @@ impl TabWrite for AAOrderResults {
             } else {
                 write_result!(writer, "   FULL     UPPER     LOWER   |\n");
             }
+        } else if properties.errors {
+            write_result!(writer, " {: ^17} |\n", "TOTAL");
         } else {
-            if properties.errors {
-                write_result!(writer, " {: ^17} |\n", "TOTAL");
-            } else {
-                write_result!(writer, " {: ^8} |\n", "TOTAL");
-            }
+            write_result!(writer, " {: ^8} |\n", "TOTAL");
         }
         write_result!(writer, "AVERAGE  ");
         self.average_order().write_tab(writer, properties)?;

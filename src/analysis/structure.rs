@@ -123,7 +123,7 @@ fn parse_bonds_file(n_atoms: usize, bonds_file: &str) -> Result<Vec<HashSet<usiz
             continue;
         }
 
-        let target_atom: usize = parse_string_to_atom_number(split.get(0).expect(PANIC_MESSAGE))?;
+        let target_atom: usize = parse_string_to_atom_number(split.first().expect(PANIC_MESSAGE))?;
         if target_atom > n_atoms {
             return Err(BondsError::AtomNotFound(target_atom, n_atoms));
         }
@@ -237,7 +237,7 @@ fn maybe_guess_elements(analysis: &Analysis, system: &mut System) -> Result<(), 
                 );
                 Ok(())
             }
-            Err(e) => return Err(e),
+            Err(e) => Err(e),
         }
     } else {
         Ok(())
