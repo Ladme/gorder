@@ -1,6 +1,6 @@
 [package]
 name = "gorder"
-version = "0.4.0-dev.2"
+version = "0.4.0"
 description = "Calculating lipid order parameters from Gromacs simulations"
 edition = "2021"
 rust-version = "1.82"
@@ -12,7 +12,7 @@ exclude = ["/tests", "/validation"]
 
 [dependencies]
 backitup = "0.1.1"
-groan_rs = { path = "../groan_rs", features = [
+groan_rs = { version = "0.10.0-dev.2", features = [
     "parallel",
     "no-xdrfile",
     "serde",
