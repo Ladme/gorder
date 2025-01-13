@@ -134,7 +134,7 @@ impl MoleculeLeafletClassification {
             // shared storage is not needed if only one thread is used
             // (there is no other thread to share data with, duh)
             (Frequency::Every(_) | Frequency::Once, 1) => false,
-            // shared storage is not needed if the frequency is performed for every analyzed frame
+            // shared storage is not needed if the assignment is performed for every analyzed frame
             // (each thread handles lipid assignment locally and no data need to be shared)
             (Frequency::Every(x), _) if x.get() == 1 => false,
             // shared storage is needed in all other cases
@@ -263,7 +263,6 @@ impl MoleculeLeafletClassification {
     }
 
     /// Assign all lipids into their respective leaflets.
-    #[inline]
     pub(super) fn assign_lipids(
         &mut self,
         system: &System,
@@ -272,12 +271,6 @@ impl MoleculeLeafletClassification {
     ) -> Result<(), AnalysisError> {
         if !self.should_assign(current_frame) {
             return Ok(());
-        }
-
-        match self.get_frequency() {
-            Frequency::Once if current_frame == 0 => (), // continue
-            Frequency::Every(n) if current_frame % n == 0 => (), // continue
-            _ => return Ok(()),                          // perform no assignment
         }
 
         match self {
