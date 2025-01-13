@@ -351,6 +351,35 @@ fn test_aa_order_leaflets_yaml_from_gro() {
 }
 
 #[test]
+fn test_aa_order_leaflets_yaml_from_gro_min_bonds() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.gro")
+        .bonds("tests/files/pcpepg_min.bnd")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_aa_order_leaflets_yaml_from_pdb() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
