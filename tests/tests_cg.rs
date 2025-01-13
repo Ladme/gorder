@@ -1682,6 +1682,105 @@ fn test_cg_order_leaflets_scrambling_various_methods_and_frequencies() {
 }
 
 #[test]
+fn test_cg_order_leaflets_scrambling_from_file() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for n_threads in [1, 2, 3, 5, 8, 128] {
+        for (leaflets_file, freq) in ["every.yaml", "every10.yaml", "once.yaml"].into_iter().zip(
+            [
+                Frequency::every(1).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ]
+            .into_iter(),
+        ) {
+            let analysis = Analysis::builder()
+                .structure("tests/files/scrambling/cg_scrambling.tpr")
+                .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .output_yaml(path_to_output)
+                .leaflets(
+                    LeafletClassification::from_file(&format!(
+                        "tests/files/scrambling/leaflets_{}",
+                        leaflets_file
+                    ))
+                    .with_frequency(freq),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let test_file = match leaflets_file {
+                "every.yaml" => "order_global.yaml",
+                "every10.yaml" => "order_global_every_10.yaml",
+                "once.yaml" => "order_once.yaml",
+                _ => panic!("Unexpected leaflets file provided."),
+            };
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                &format!("tests/files/scrambling/{}", test_file),
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_scrambling_from_map() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for n_threads in [1, 2, 3, 5, 8, 128] {
+        for (leaflets_file, freq) in ["every.yaml", "every10.yaml", "once.yaml"].into_iter().zip(
+            [
+                Frequency::every(1).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ]
+            .into_iter(),
+        ) {
+            let filename = format!("tests/files/scrambling/leaflets_{}", leaflets_file);
+            let mut file = File::open(&filename).unwrap();
+            let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+                serde_yaml::from_reader(&mut file).unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/scrambling/cg_scrambling.tpr")
+                .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .output_yaml(path_to_output)
+                .leaflets(LeafletClassification::from_map(assignment).with_frequency(freq))
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let test_file = match leaflets_file {
+                "every.yaml" => "order_global.yaml",
+                "every10.yaml" => "order_global_every_10.yaml",
+                "once.yaml" => "order_once.yaml",
+                _ => panic!("Unexpected leaflets file provided."),
+            };
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                &format!("tests/files/scrambling/{}", test_file),
+                1
+            ));
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_leaflets_asymmetric_multiple_threads() {
     for n_threads in [1, 2, 5, 8] {
         let output_yaml = NamedTempFile::new().unwrap();
