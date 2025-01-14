@@ -155,6 +155,9 @@ pub enum WriteError {
 
     #[error("{} could not write a line to the output file '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotWriteLine(Box<Path>),
+
+    #[error("{} could not create plotting script at '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotCreatePlotScript(Box<Path>),
 }
 
 /// Errors that can occur while writing the order maps.
