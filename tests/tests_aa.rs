@@ -1282,6 +1282,10 @@ fn test_aa_order_maps_basic() {
     let test_file = "tests/files/ordermaps/ordermap_average_full.dat";
     assert!(diff_files_ignore_first(&real_file, test_file, 2));
 
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
     assert!(diff_files_ignore_first(
         path_to_output,
         "tests/files/aa_order_small.yaml",
@@ -1379,6 +1383,10 @@ fn test_aa_order_maps_leaflets() {
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
+        // check the script
+        let real_script = format!("{}/plot.py", path_to_dir);
+        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/aa_order_leaflets_small.yaml",
@@ -1425,6 +1433,10 @@ fn test_aa_order_maps_leaflets_full() {
         let test_file = format!("tests/files/ordermaps/full/{}", file);
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 }
 
 #[test]
@@ -1521,6 +1533,10 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
                 assert!(diff_files_ignore_first(&real_file, &test_file, 4));
             }
 
+            // check the script
+            let real_script = format!("{}/plot.py", path_to_dir);
+            assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
             assert!(diff_files_ignore_first(
                 path_to_output,
                 "tests/files/aa_order_leaflets_small.yaml",
@@ -1587,6 +1603,10 @@ fn test_aa_order_maps_basic_multiple_threads() {
         let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
         let test_file = "tests/files/ordermaps/ordermap_average_full.dat";
         assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+        // check the script
+        let real_script = format!("{}/plot.py", path_to_dir);
+        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -1661,6 +1681,10 @@ fn test_aa_order_maps_basic_weird_molecules() {
         let real_file = format!("{}/{}", path_to_dir, file);
         assert!(Path::new(&real_file).exists());
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 }
 
 #[test]
@@ -1718,6 +1742,10 @@ fn test_aa_order_maps_basic_backup() {
         let test_file = format!("tests/files/ordermaps/{}", file);
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -1780,6 +1808,10 @@ fn test_aa_order_maps_basic_different_plane() {
     let real_file = format!("{}/POPC/ordermap_POPC-C218-87_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps/ordermap_xz.dat";
     assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
     assert!(diff_files_ignore_first(
         path_to_output,

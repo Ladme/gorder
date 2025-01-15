@@ -1,3 +1,6 @@
+## Version 0.5.0
+- **Ordermaps visualization:** A python script is now generated inside any created `ordermaps` directory which can be used to easily plot the ordermaps. Changed the default range of the colorbar in ordermaps to more reasonable values.
+
 ## Version 0.4.0
 - **Geometry selection:** Added the ability to select a geometric region for analysis. Users can now specify cuboidal, spherical, or cylindrical regions, and order parameters will be calculated only for bonds located within the selected region.
 - **Support for reading GRO, PDB, and PQR files:** These file formats are now supported as input structure files. In some cases, an additional "bonds" file specifying the system's connectivity may be required. Refer to the manual for more details.

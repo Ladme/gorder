@@ -974,6 +974,10 @@ fn test_cg_order_maps_basic() {
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
     // full map for the entire system is the same as for POPC
     let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
@@ -1054,6 +1058,10 @@ fn test_cg_order_maps_leaflets() {
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
+        // check the script
+        let real_script = format!("{}/plot.py", path_to_dir);
+        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/cg_order_leaflets_small.yaml",
@@ -1097,6 +1105,10 @@ fn test_cg_order_maps_leaflets_full() {
         let test_file = format!("tests/files/ordermaps_cg/full/{}", file);
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 }
 
 #[test]
@@ -1148,6 +1160,10 @@ fn test_cg_order_maps_basic_multiple_threads() {
         let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
         let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
         assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+        // check the script
+        let real_script = format!("{}/plot.py", path_to_dir);
+        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -1204,6 +1220,10 @@ fn test_cg_order_maps_basic_backup() {
         let test_file = format!("tests/files/ordermaps_cg/{}", file);
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
     assert!(diff_files_ignore_first(
         path_to_output,

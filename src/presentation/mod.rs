@@ -503,6 +503,9 @@ pub(crate) trait OrderType: Debug + Clone {
 
     /// String to use as a label for y-axis in xvg files.
     fn xvg_ylabel() -> &'static str;
+
+    /// Colorbar range for ordermaps.
+    fn zrange() -> (f32, f32);
 }
 
 impl OrderType for AAOrder {
@@ -523,6 +526,11 @@ impl OrderType for AAOrder {
     fn xvg_ylabel() -> &'static str {
         "-Sch"
     }
+
+    #[inline(always)]
+    fn zrange() -> (f32, f32) {
+        (-1.0, 0.5)
+    }
 }
 
 impl OrderType for CGOrder {
@@ -542,6 +550,11 @@ impl OrderType for CGOrder {
     #[inline(always)]
     fn xvg_ylabel() -> &'static str {
         "S"
+    }
+
+    #[inline(always)]
+    fn zrange() -> (f32, f32) {
+        (-0.5, 1.0)
     }
 }
 

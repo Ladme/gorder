@@ -298,10 +298,11 @@ fn write_ordermap<O: OrderType>(
 
     let (label_x, label_y) = plane.get_labels();
     let label_z = O::zlabel();
+    let (zmin, zmax) = O::zrange();
 
     writeln!(
         output,
-        "@ xlabel {label_x}-dimension [nm]\n@ ylabel {label_y}-dimension [nm]\n@ zlabel {label_z}\n@ zrange -1 1 0.2"
+        "@ xlabel {label_x}-dimension [nm]\n@ ylabel {label_y}-dimension [nm]\n@ zlabel {label_z}\n@ zrange {zmin:.1} {zmax:.1} 0.25"
     )
         .map_err(|_| OrderMapWriteError::CouldNotWriteLine(Box::from(full_path.as_ref())))?;
 

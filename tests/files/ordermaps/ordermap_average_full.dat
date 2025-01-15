@@ -3,7 +3,7 @@
 @ xlabel x-dimension [nm]
 @ ylabel y-dimension [nm]
 @ zlabel order parameter ($-S_{CH}$)
-@ zrange -1 1 0.2
+@ zrange -1.0 0.5 0.25
 $ type colorbar
 $ colormap seismic_r
 0.0000 0.0000 0.2209
