@@ -4,7 +4,7 @@
 //! Handles dynamic geometry selection during the analysis run.
 
 use groan_rs::{
-    prelude::{Cylinder, Rectangular, Shape, SimBox, Sphere, Vector3D},
+    prelude::{Cylinder, NaiveShape, Rectangular, Shape, SimBox, Sphere, Vector3D},
     system::System,
 };
 
@@ -100,7 +100,7 @@ center: {}", sphere.properties.radius(), sphere.properties.reference())
 
 /// Trait implemented by all structures that can be used for geometry selection.
 pub(crate) trait GeometrySelection: Send + Sync {
-    type Shape: Shape;
+    type Shape: Shape + NaiveShape;
     type Properties;
 
     /// Create the structure from the provided properties.
@@ -136,9 +136,16 @@ pub(crate) trait GeometrySelection: Send + Sync {
         }
     }
 
-    /// Is the point inside the geometry?
+    /// Is the point inside the geometry? Take PBC into consideration.
+    #[inline(always)]
     fn inside(&self, point: &Vector3D, simbox: &SimBox) -> bool {
         self.shape().inside(point, simbox)
+    }
+
+    /// Is the point inside the geometry? Ignore PBC.
+    #[inline(always)]
+    fn inside_naive(&self, point: &Vector3D) -> bool {
+        self.shape().inside_naive(point)
     }
 
     /// Calculate and set the reference position for this frame.
@@ -219,6 +226,11 @@ impl GeometrySelection for NoSelection {
 
     #[inline(always)]
     fn inside(&self, _point: &Vector3D, _simbox: &SimBox) -> bool {
+        true
+    }
+
+    #[inline(always)]
+    fn inside_naive(&self, _point: &Vector3D) -> bool {
         true
     }
 

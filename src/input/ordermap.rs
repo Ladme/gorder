@@ -26,6 +26,7 @@ pub enum Plane {
 
 impl Plane {
     /// Get the dimensions of the map from the simulation box dimensions.
+    #[inline(always)]
     pub(crate) fn dimensions_from_simbox(&self, simbox: &SimBox) -> (f32, f32) {
         match self {
             Plane::XY => (simbox.x, simbox.y),
@@ -35,6 +36,7 @@ impl Plane {
     }
 
     /// Get projection of the position to the plane.
+    #[inline(always)]
     pub(crate) fn projection2plane(&self, position: &Vector3D) -> (f32, f32) {
         match self {
             Plane::XY => (position.x, position.y),
@@ -44,6 +46,7 @@ impl Plane {
     }
 
     /// Get labels for the axes of the ordermap.
+    #[inline(always)]
     pub(crate) fn get_labels(&self) -> (char, char) {
         match self {
             Plane::XY => ('x', 'y'),

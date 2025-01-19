@@ -86,7 +86,11 @@ pub(super) fn analyze_atomistic(
         leaflet.prepare_system(&mut system)?;
     }
 
-    let geom = prepare_geometry_selection(analysis.geometry().as_ref(), &mut system)?;
+    let geom = prepare_geometry_selection(
+        analysis.geometry().as_ref(),
+        &mut system,
+        analysis.handle_pbc(),
+    )?;
     geom.info();
 
     log::info!("Detecting molecule types...");
@@ -116,6 +120,7 @@ pub(super) fn analyze_atomistic(
         analysis.step(),
         analysis.n_threads(),
         geom,
+        analysis.handle_pbc(),
     );
 
     data.info();
@@ -235,6 +240,7 @@ mod tests {
                 1,
                 1,
                 GeometrySelectionType::default(),
+                true,
             ),
         )
     }

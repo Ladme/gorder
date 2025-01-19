@@ -1,0 +1,163 @@
+// Released under MIT License.
+// Copyright (c) 2024-2025 Ladislav Bartos
+
+//! Contains methods for working with and without periodic boundary conditions.
+
+use groan_rs::{
+    errors::{AtomError, GroupError},
+    prelude::{
+        AtomIterable, AtomIteratorWithBox, Dimension, ImmutableAtomIterable, NaiveShape, Shape,
+        SimBox, Vector3D,
+    },
+    system::System,
+};
+
+use crate::PANIC_MESSAGE;
+
+use super::geometry::GeometrySelection;
+
+/// Trait implemented by structures that should handle PBC.
+pub(super) trait PBCHandler {
+    /// Get the geometric center of a group.
+    fn group_get_center(&self, system: &System, group: &str) -> Result<Vector3D, GroupError>;
+
+    /// Take atoms of a group in a specified geometry and calculate their center of geometry.
+    fn group_filter_geometry_get_center<S: Shape + NaiveShape>(
+        &self,
+        system: &System,
+        group: &str,
+        shape: S,
+    ) -> Result<Vector3D, AtomError>;
+
+    /// Calculate distance between two points in the specified dimensions.
+    fn distance(&self, point1: &Vector3D, point2: &Vector3D, dim: Dimension) -> f32;
+
+    /// Calculate distance between two atoms of target indices.
+    fn atoms_distance(
+        &self,
+        system: &System,
+        index1: usize,
+        index2: usize,
+        dim: Dimension,
+    ) -> Result<f32, AtomError>;
+
+    /// Check if a point is inside a geometric shape.
+    fn inside<Geom: GeometrySelection>(&self, point: &Vector3D, shape: &Geom) -> bool;
+
+    /// Calculate shortest vector connecting point1 with point2.
+    fn vector_to(&self, point1: &Vector3D, point2: &Vector3D) -> Vector3D;
+}
+
+/// PBCHandler that ignores all periodic boundary conditions.
+#[derive(Debug, Clone)]
+pub(super) struct NoPBC;
+
+impl PBCHandler for NoPBC {
+    #[inline(always)]
+    fn group_get_center(&self, system: &System, group: &str) -> Result<Vector3D, GroupError> {
+        system.group_get_center_naive(group)
+    }
+
+    #[inline(always)]
+    fn group_filter_geometry_get_center<S: Shape + NaiveShape>(
+        &self,
+        system: &System,
+        group: &str,
+        shape: S,
+    ) -> Result<Vector3D, AtomError> {
+        system
+            .group_iter(group)
+            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | NoPBC::group_filter_geometry_get_center | Unknown group `{}`. {}", group, PANIC_MESSAGE))
+            .filter_geometry_naive(shape)
+            .get_center_naive()
+    }
+
+    #[inline(always)]
+    fn distance(&self, point1: &Vector3D, point2: &Vector3D, dim: Dimension) -> f32 {
+        point1.distance_naive(point2, dim)
+    }
+
+    #[inline(always)]
+    fn atoms_distance(
+        &self,
+        system: &System,
+        index1: usize,
+        index2: usize,
+        dim: Dimension,
+    ) -> Result<f32, AtomError> {
+        let atom1 = system.get_atom(index1)?;
+        let atom2 = system.get_atom(index2)?;
+
+        atom1.distance_naive(atom2, dim)
+    }
+
+    #[inline(always)]
+    fn inside<Geom: GeometrySelection>(&self, point: &Vector3D, shape: &Geom) -> bool {
+        shape.inside_naive(point)
+    }
+
+    #[inline(always)]
+    fn vector_to(&self, point1: &Vector3D, point2: &Vector3D) -> Vector3D {
+        point2 - point1
+    }
+}
+
+/// PBCHandler that assumes periodic boundary conditions in all three dimensions.
+#[derive(Debug, Clone)]
+pub(super) struct PBC3D<'a>(&'a SimBox);
+
+impl<'a> PBCHandler for PBC3D<'a> {
+    #[inline(always)]
+    fn group_get_center(&self, system: &System, group: &str) -> Result<Vector3D, GroupError> {
+        system.group_get_center(group)
+    }
+
+    #[inline(always)]
+    fn group_filter_geometry_get_center<S: Shape + NaiveShape>(
+        &self,
+        system: &System,
+        group: &str,
+        shape: S,
+    ) -> Result<Vector3D, AtomError> {
+        system
+            .group_iter(group)
+            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | PBC3D::group_filter_geometry_get_center | Unknown group `{}`. {}", group, PANIC_MESSAGE))
+            .filter_geometry(shape)
+            .get_center()
+    }
+
+    #[inline(always)]
+    fn distance(&self, point1: &Vector3D, point2: &Vector3D, dim: Dimension) -> f32 {
+        point1.distance(point2, dim, &self.0)
+    }
+
+    #[inline(always)]
+    fn atoms_distance(
+        &self,
+        system: &System,
+        index1: usize,
+        index2: usize,
+        dim: Dimension,
+    ) -> Result<f32, AtomError> {
+        let atom1 = system.get_atom(index1)?;
+        let atom2 = system.get_atom(index2)?;
+
+        atom1.distance(atom2, dim, &self.0)
+    }
+
+    #[inline(always)]
+    fn inside<Geom: GeometrySelection>(&self, point: &Vector3D, shape: &Geom) -> bool {
+        shape.inside(point, &self.0)
+    }
+
+    #[inline(always)]
+    fn vector_to(&self, point1: &Vector3D, point2: &Vector3D) -> Vector3D {
+        point1.vector_to(point2, &self.0)
+    }
+}
+
+impl<'a> PBC3D<'a> {
+    pub(super) fn new(simbox: &'a SimBox) -> Self {
+        Self(simbox)
+    }
+}

@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::{common::{create_group, macros::group_name}, topology::SystemTopology};
+use super::{common::{create_group, macros::group_name}, pbc::PBCHandler, topology::SystemTopology};
 use crate::{
     errors::{AnalysisError, ManualLeafletClassificationError, TopologyError},
     input::{leaflets::ManualParams, Analysis, Frequency, LeafletClassification},
@@ -19,8 +19,8 @@ use crate::{
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
-    errors::{AtomError, PositionError, SimBoxError},
-    prelude::{AtomIteratorWithBox, Cylinder, Dimension, Vector3D},
+    errors::{AtomError, PositionError},
+    prelude::{Cylinder, Dimension, Vector3D},
     structures::group::Group,
     system::System,
 };
@@ -233,21 +233,22 @@ impl MoleculeLeafletClassification {
     fn identify_leaflet(
         &self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
         match self {
             MoleculeLeafletClassification::Global(x, _) => {
-                x.identify_leaflet(system, molecule_index, current_frame)
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
             MoleculeLeafletClassification::Local(x, _) => {
-                x.identify_leaflet(system, molecule_index,current_frame)
+                x.identify_leaflet(system, pbc_handler, molecule_index,current_frame)
             }
             MoleculeLeafletClassification::Individual(x, _) => {
-                x.identify_leaflet(system, molecule_index, current_frame)
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
             MoleculeLeafletClassification::Manual(x, _) => {
-                x.identify_leaflet(system, molecule_index, current_frame)
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
         }
     }
@@ -266,6 +267,7 @@ impl MoleculeLeafletClassification {
     pub(super) fn assign_lipids(
         &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         current_frame: usize,
         membrane_center: &OnceCell<Vector3D>, // only used for the `global` classification method
     ) -> Result<(), AnalysisError> {
@@ -277,23 +279,22 @@ impl MoleculeLeafletClassification {
             MoleculeLeafletClassification::Global(x, y) => {
                 // calculate global membrane center of mass
                 let center = membrane_center.get_or_try_init(|| {
-                    system
-                        .group_get_center(group_name!("Membrane"))
+                    pbc_handler.group_get_center(system, group_name!("Membrane"))
                         .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
                 })?;
 
                 x.set_membrane_center(center.clone());
-                y.assign_lipids(system, x, current_frame)
+                y.assign_lipids(system, pbc_handler, x, current_frame)
             }
             MoleculeLeafletClassification::Local(x, y) => {
-                x.set_membrane_center(system, x.membrane_normal)?;
-                y.assign_lipids(system, x, current_frame)
+                x.set_membrane_center(system, pbc_handler, x.membrane_normal)?;
+                y.assign_lipids(system, pbc_handler, x, current_frame)
             }
             MoleculeLeafletClassification::Individual(x, y) => {
-                y.assign_lipids(system, x, current_frame)
+                y.assign_lipids(system, pbc_handler, x, current_frame)
             }
             MoleculeLeafletClassification::Manual(x, y) => {
-                y.assign_lipids(system, x, current_frame)
+                y.assign_lipids(system, pbc_handler, x, current_frame)
             }
         }
     }
@@ -329,6 +330,7 @@ trait LeafletClassifier {
     fn identify_leaflet(
         &self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError>;
@@ -368,6 +370,7 @@ impl LeafletClassifier for GlobalClassification {
     fn identify_leaflet(
         &self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -375,6 +378,7 @@ impl LeafletClassifier for GlobalClassification {
             &self.heads,
             molecule_index,
             system,
+            pbc_handler,
             self.membrane_center(),
             self.membrane_normal(),
         )
@@ -418,6 +422,7 @@ impl LocalClassification {
     pub(super) fn set_membrane_center(
         &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         membrane_normal: Dimension,
     ) -> Result<(), AnalysisError> {
         for (i, &index) in self.heads.iter().enumerate() {
@@ -431,11 +436,7 @@ impl LocalClassification {
                 f32::INFINITY,
                 membrane_normal,
             );
-            let center = system
-                .group_iter(group_name!("Membrane"))
-                .expect(PANIC_MESSAGE)
-                .filter_geometry(cylinder)
-                .get_center()
+            let center = pbc_handler.group_filter_geometry_get_center(system, group_name!("Membrane"), cylinder)
                 .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index))?;
 
             self.membrane_center[i] = center;
@@ -450,6 +451,7 @@ impl LeafletClassifier for LocalClassification {
     fn identify_leaflet(
         &self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -457,6 +459,7 @@ impl LeafletClassifier for LocalClassification {
             &self.heads,
             molecule_index,
             system,
+            pbc_handler,
             self.membrane_center()
                 .get(molecule_index)
                 .expect(PANIC_MESSAGE),
@@ -475,19 +478,15 @@ fn common_identify_leaflet(
     heads: &[usize],
     molecule_index: usize,
     system: &System,
+    pbc_handler: &impl PBCHandler,
     membrane_center: &Vector3D,
     membrane_normal: Dimension,
 ) -> Result<Leaflet, AnalysisError> {
     let head_index = *heads.get(molecule_index).expect(PANIC_MESSAGE);
     let head = unsafe { system.get_atom_unchecked(head_index) };
 
-    let distance = head
-        .distance_from_point(
-            membrane_center,
-            membrane_normal,
-            system.get_box().ok_or(AnalysisError::UndefinedBox)?,
-        )
-        .map_err(|_| AnalysisError::UndefinedPosition(head_index))?;
+    let head_pos = head.get_position().ok_or_else(|| AnalysisError::UndefinedPosition(head_index))?;
+    let distance = pbc_handler.distance(head_pos, membrane_center, membrane_normal);
 
     if distance >= 0.0 {
         Ok(Leaflet::Upper)
@@ -539,6 +538,7 @@ impl LeafletClassifier for IndividualClassification {
     fn identify_leaflet(
         &self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -546,12 +546,10 @@ impl LeafletClassifier for IndividualClassification {
 
         let mut total_distance = 0.0;
         for methyl_index in self.methyls.get(molecule_index).expect(PANIC_MESSAGE) {
-            total_distance += match system.atoms_distance(*head_index, *methyl_index, self.membrane_normal) {
+            total_distance += match pbc_handler.atoms_distance(system, *head_index, *methyl_index, self.membrane_normal) {
                 Ok(x) => x,
-                Err(AtomError::OutOfRange(x)) => panic!("FATAL GORDER ERROR | IndividualClassification::identify_leaflet | Index '{}' out of range. {}", x, PANIC_MESSAGE),
-                Err(AtomError::InvalidSimBox(SimBoxError::DoesNotExist)) => return Err(AnalysisError::UndefinedBox),
-                Err(AtomError::InvalidSimBox(SimBoxError::NotOrthogonal)) => return Err(AnalysisError::NotOrthogonalBox),
                 Err(AtomError::InvalidPosition(PositionError::NoPosition(x))) => return Err(AnalysisError::UndefinedPosition(x)),
+                Err(AtomError::OutOfRange(x)) => panic!("FATAL GORDER ERROR | IndividualClassification::identify_leaflet | Index '{}' out of range. {}", x, PANIC_MESSAGE),
                 Err(e) => panic!("FATAL GORDER ERROR | IndividualClassification::identify_leaflet | Unexpected error type '{}' returned. {}", e, PANIC_MESSAGE),
             };
         }
@@ -583,6 +581,7 @@ impl LeafletClassifier for ManualClassification {
     fn identify_leaflet(
         &self,
         _system: &System,
+        _pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -770,12 +769,13 @@ impl AssignedLeaflets {
     fn assign_lipids(
         &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         classifier: &impl LeafletClassifier,
         current_frame: usize,
     ) -> Result<(), AnalysisError> {
         self.local = Some(
             (0..classifier.n_molecules())
-                .map(|index| classifier.identify_leaflet(system, index, current_frame))
+                .map(|index| classifier.identify_leaflet(system, pbc_handler, index, current_frame))
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -937,6 +937,10 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
 
 #[cfg(test)]
 mod tests {
+    use groan_rs::prelude::AtomIteratorWithBox;
+
+    use crate::analysis::pbc::PBC3D;
+
     use super::super::common::macros::group_name;
     use super::*;
 
@@ -1195,6 +1199,7 @@ mod tests {
     #[test]
     fn test_global_assign_to_leaflet() {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let pbc = PBC3D::new(system.get_box().unwrap());
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
             Dimension::Z,
@@ -1218,11 +1223,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0, 1).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 0, 1).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1, 1).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 1, 1).unwrap(),
             Leaflet::Lower
         );
     }
@@ -1230,6 +1235,11 @@ mod tests {
     #[test]
     fn test_local_assign_to_leaflet() {
         let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        system
+            .group_create(group_name!("Membrane"), "@membrane")
+            .unwrap();
+
+        let pbc = PBC3D::new(system.get_box().unwrap());
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5),
             Dimension::Z,
@@ -1237,27 +1247,23 @@ mod tests {
             1,
         );
 
-        system
-            .group_create(group_name!("Membrane"), "@membrane")
-            .unwrap();
-
         match &mut classifier {
             MoleculeLeafletClassification::Local(x, _) => {
                 x.heads_mut().push(1385);
                 x.heads_mut().push(11885);
                 x.membrane_center_mut().push(Vector3D::new(0.0, 0.0, 0.0));
                 x.membrane_center_mut().push(Vector3D::new(0.0, 0.0, 0.0));
-                x.set_membrane_center(&system, Dimension::Z).unwrap();
+                x.set_membrane_center(&system, &pbc, Dimension::Z).unwrap();
             }
             _ => panic!("Unexpected classification method."),
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0, 0).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 0, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1, 2).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 1, 2).unwrap(),
             Leaflet::Lower
         );
     }
@@ -1265,6 +1271,7 @@ mod tests {
     #[test]
     fn test_individual_assign_to_leaflet() {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let pbc = PBC3D::new(system.get_box().unwrap());
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
             Dimension::Z,
@@ -1283,11 +1290,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0, 0).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 0, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1, 4).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 1, 4).unwrap(),
             Leaflet::Lower
         );
     }
@@ -1541,6 +1548,10 @@ mod tests {
 
 #[cfg(test)]
 mod tests_assigned_leaflets {
+    use groan_rs::prelude::AtomIteratorWithBox;
+
+    use crate::analysis::pbc::PBC3D;
+
     use super::*;
 
     #[test]
@@ -1694,8 +1705,9 @@ mod tests_assigned_leaflets {
     #[test]
     fn test_assign_lipids_no_shared() {
         let (system, classifier, mut leaflets) = prepare_data(false);
+        let pbc = PBC3D::new(system.get_box().unwrap());
 
-        leaflets.assign_lipids(&system, &classifier, 15).unwrap();
+        leaflets.assign_lipids(&system, &pbc, &classifier, 15).unwrap();
 
         assert_eq!(leaflets.local_frame.unwrap(), 15);
         assert_eq!(leaflets.get_leaflet_from_local(0), Leaflet::Upper);
@@ -1706,8 +1718,9 @@ mod tests_assigned_leaflets {
     #[test]
     fn test_assign_lipids_with_shared() {
         let (system, classifier, mut leaflets) = prepare_data(true);
+        let pbc = PBC3D::new(system.get_box().unwrap());
 
-        leaflets.assign_lipids(&system, &classifier, 15).unwrap();
+        leaflets.assign_lipids(&system, &pbc, &classifier, 15).unwrap();
 
         assert_eq!(leaflets.local_frame.unwrap(), 15);
         assert_eq!(leaflets.get_leaflet_from_local(0), Leaflet::Upper);

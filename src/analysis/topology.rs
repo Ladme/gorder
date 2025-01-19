@@ -44,6 +44,9 @@ pub(crate) struct SystemTopology {
     /// Structure for geometry selection.
     #[getset(get = "pub(super)")]
     geometry: GeometrySelectionType,
+    /// Structure handling PBC treatment.
+    #[getset(get_copy = "pub(super)")]
+    handle_pbc: bool,
 }
 
 impl SystemTopology {
@@ -55,6 +58,7 @@ impl SystemTopology {
         step_size: usize,
         n_threads: usize,
         geometry: GeometrySelectionType,
+        handle_pbc: bool,
     ) -> SystemTopology {
         SystemTopology {
             thread_id: 0,
@@ -66,6 +70,7 @@ impl SystemTopology {
             membrane_normal,
             estimate_error,
             geometry,
+            handle_pbc,
         }
     }
 
@@ -214,6 +219,7 @@ impl Add<SystemTopology> for SystemTopology {
             membrane_normal: self.membrane_normal,
             estimate_error: self.estimate_error,
             geometry: self.geometry,
+            handle_pbc: self.handle_pbc,
         }
     }
 }
@@ -266,6 +272,7 @@ mod tests {
                                 step,
                                 n_threads,
                                 GeometrySelectionType::default(),
+                                true,
                             );
                             top.initialize(i);
                             top

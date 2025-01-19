@@ -6,13 +6,14 @@
 use super::geometry::{GeometrySelection, GeometrySelectionType};
 use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
+use super::pbc::{NoPBC, PBCHandler, PBC3D};
 use super::topology::SystemTopology;
 use crate::errors::AnalysisError;
 use crate::input::{Analysis, AnalysisType, EstimateError, Geometry};
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::OrderMap, PANIC_MESSAGE};
 use colored::Colorize;
-use groan_rs::prelude::{Dimension, SimBox};
+use groan_rs::prelude::{Dimension, SimBox, Vector3D};
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
 use once_cell::unsync::OnceCell;
@@ -90,8 +91,14 @@ pub(super) fn create_group(
 pub(super) fn prepare_geometry_selection(
     geometry: Option<&Geometry>,
     system: &mut System,
+    handle_pbc: bool,
 ) -> Result<GeometrySelectionType, Box<dyn std::error::Error + Send + Sync>> {
-    let simbox = check_box(system)?;
+    if !handle_pbc {
+        log::warn!("[DEV] TODO: Add support for geometry selection with an undefined or non-orthogonal box.");
+        return Ok(GeometrySelectionType::default());
+    }
+
+    let simbox = system.get_box().expect(PANIC_MESSAGE);
     let geom = GeometrySelectionType::from_geometry(geometry, simbox);
 
     match &geom {
@@ -212,37 +219,33 @@ pub(super) fn analyze_frame(
     frame: &System,
     data: &mut SystemTopology,
 ) -> Result<(), AnalysisError> {
-    // check the validity of the simulation box
-    let simbox = check_box(frame)?;
-
     // initialize the reading of the next frame
     data.init_new_frame(frame);
-    let frame_index = data.frame();
 
-    let membrane_center = OnceCell::new(); // used with global classification method
-    let membrane_normal = data.membrane_normal().into();
-    let geometry = data.geometry() as *const GeometrySelectionType;
-    for molecule in data.molecule_types_mut().iter_mut() {
-        // assign molecules to leaflets
-        if let Some(classifier) = molecule.leaflet_classification_mut() {
-            classifier.assign_lipids(frame, frame_index, &membrane_center)?;
-        }
-        // calculate order parameters
-        match unsafe { &*geometry } {
-            GeometrySelectionType::None(x) => {
-                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
-            }
-            GeometrySelectionType::Cuboid(x) => {
-                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
-            }
-            GeometrySelectionType::Cylinder(x) => {
-                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
-            }
-            GeometrySelectionType::Sphere(x) => {
-                molecule.analyze_frame(frame, simbox, &membrane_normal, frame_index, x)?
-            }
-        }
-    }
+    let molecules = data.molecule_types_mut() as *mut Vec<MoleculeType>;
+
+    if data.handle_pbc() {
+        // check the validity of the simulation box
+        let simbox = check_box(frame)?;
+
+        analyze_molecules(
+            frame,
+            unsafe { &mut *molecules },
+            &data.membrane_normal().into(),
+            data.frame(),
+            data.geometry(),
+            &PBC3D::new(simbox),
+        )?
+    } else {
+        analyze_molecules(
+            frame,
+            unsafe { &mut *molecules },
+            &data.membrane_normal().into(),
+            data.frame(),
+            data.geometry(),
+            &NoPBC,
+        )?
+    };
 
     // print information about leaflet assignment for quick sanity check by the user
     // only do this for the first frame (this also guarantees that only one thread prints this information)
@@ -252,6 +255,44 @@ pub(super) fn analyze_frame(
 
     // increase the frame counter
     data.increase_frame_counter();
+
+    Ok(())
+}
+
+/// Run the analysis for each molecule.
+#[inline]
+fn analyze_molecules(
+    frame: &System,
+    molecules: &mut [MoleculeType],
+    membrane_normal: &Vector3D,
+    frame_index: usize,
+    geometry: &GeometrySelectionType,
+    pbc_handler: &impl PBCHandler,
+) -> Result<(), AnalysisError> {
+    let membrane_center = OnceCell::new(); // used with global classification method
+
+    for molecule in molecules.iter_mut() {
+        // assign molecules to leaflets
+        if let Some(classifier) = molecule.leaflet_classification_mut() {
+            classifier.assign_lipids(frame, pbc_handler, frame_index, &membrane_center)?;
+        }
+
+        // calculate order parameters
+        match geometry {
+            GeometrySelectionType::None(x) => {
+                molecule.analyze_frame(frame, pbc_handler, &membrane_normal, frame_index, x)?
+            }
+            GeometrySelectionType::Cuboid(x) => {
+                molecule.analyze_frame(frame, pbc_handler, &membrane_normal, frame_index, x)?
+            }
+            GeometrySelectionType::Cylinder(x) => {
+                molecule.analyze_frame(frame, pbc_handler, &membrane_normal, frame_index, x)?
+            }
+            GeometrySelectionType::Sphere(x) => {
+                molecule.analyze_frame(frame, pbc_handler, &membrane_normal, frame_index, x)?
+            }
+        }
+    }
 
     Ok(())
 }

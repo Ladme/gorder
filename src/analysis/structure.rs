@@ -21,12 +21,20 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-/// Read the input structure and topology.
+/// Read the input structure and topology. Handles box validation for the structure file.
 pub(super) fn read_structure_and_topology(
     analysis: &Analysis,
 ) -> Result<System, Box<dyn std::error::Error + Send + Sync>> {
     let file_type = FileType::from_name(analysis.structure());
     let mut system = System::from_file_with_format(analysis.structure(), file_type)?;
+
+    if analysis.handle_pbc() {
+        // check simulation box
+        super::common::check_box(&system)?;
+    } else {
+        // log info in case handle_pbc is false
+        log::warn!("Periodic boundary conditions ignored. Lipid molecules must be whole in the simulation box!")
+    }
 
     if let Some(bonds_file) = analysis.bonds() {
         // if `bonds` file is provided, read it no matter the input file type

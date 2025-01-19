@@ -33,3 +33,6 @@ geometry: !Cylinder
   radius: 3.5
   span: [2.3, 5.1]
   orientation: z
+overwrite: true
+silent: true
+handle_pbc: false

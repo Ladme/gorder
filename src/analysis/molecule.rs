@@ -18,6 +18,7 @@ use super::{
     geometry::GeometrySelection,
     leaflets::MoleculeLeafletClassification,
     ordermap::{merge_option_maps, Map},
+    pbc::PBCHandler,
 };
 use crate::analysis::order::AnalysisOrder;
 use crate::{
@@ -103,7 +104,7 @@ impl MoleculeType {
     pub(super) fn analyze_frame<Geom: GeometrySelection>(
         &mut self,
         frame: &System,
-        simbox: &SimBox,
+        pbc_handler: &impl PBCHandler,
         membrane_normal: &Vector3D,
         frame_index: usize,
         geometry: &Geom,
@@ -115,7 +116,7 @@ impl MoleculeType {
                 bond_type.analyze_frame(
                     frame,
                     &mut self.leaflet_classification,
-                    simbox,
+                    pbc_handler,
                     membrane_normal,
                     frame_index,
                     geometry,
@@ -222,15 +223,9 @@ impl OrderBonds {
     ) -> Result<Self, TopologyError> {
         bonds_sanity_check(bonds, min_index);
 
-        let simbox = system.get_box().ok_or(TopologyError::UndefinedBox)?;
-
-        if !simbox.is_orthogonal() {
-            return Err(TopologyError::NotOrthogonalBox);
-        }
-
-        if simbox.is_zero() {
-            return Err(TopologyError::ZeroBox);
-        }
+        // simbox is used to set up ordermaps (if automatic span detection is used)
+        // simbox is validated later
+        let simbox = system.get_box();
 
         let mut order_bonds = Vec::new();
         for &(index1, index2) in bonds.iter() {
@@ -417,7 +412,7 @@ impl BondType {
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
-        simbox: &SimBox,
+        simbox: Option<&SimBox>,
         errors: bool,
     ) -> Result<Self, TopologyError> {
         let bond_topology = BondTopology::new(
@@ -523,7 +518,7 @@ impl BondType {
         &mut self,
         frame: &System,
         leaflet_classification: &mut Option<MoleculeLeafletClassification>,
-        simbox: &SimBox,
+        pbc_handler: &impl PBCHandler,
         membrane_normal: &Vector3D,
         frame_index: usize,
         geometry: &Geom,
@@ -540,12 +535,12 @@ impl BondType {
                 .get_position()
                 .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_index()))?;
 
-            let vec = pos1.vector_to(pos2, simbox);
+            let vec = pbc_handler.vector_to(pos1, pos2);
 
             // get the coordinates of the bond
             let bond_pos = pos1 + (&vec / 2.0);
             // check whether the bond is inside the geometric shape
-            if !geometry.inside(&bond_pos, simbox) {
+            if !pbc_handler.inside(&bond_pos, geometry) {
                 continue;
             }
 
@@ -745,7 +740,7 @@ mod tests {
             455,
             false,
             None,
-            &SimBox::from([10.0, 10.0, 10.0]),
+            Some(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -757,7 +752,7 @@ mod tests {
             455,
             false,
             None,
-            &SimBox::from([10.0, 10.0, 10.0]),
+            Some(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -781,7 +776,7 @@ mod tests {
             455,
             true,
             None,
-            &SimBox::from([10.0, 10.0, 10.0]),
+            Some(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -809,7 +804,7 @@ mod tests {
             455,
             false,
             Some(&ordermap_params),
-            &SimBox::from([10.0, 10.0, 10.0]),
+            Some(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -840,7 +835,7 @@ mod tests {
             455,
             true,
             Some(&ordermap_params),
-            &SimBox::from([10.0, 10.0, 10.0]),
+            Some(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -865,7 +860,7 @@ mod tests {
             455,
             false,
             None,
-            &SimBox::from([10.0, 10.0, 10.0]),
+            Some(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -1040,6 +1035,7 @@ mod tests {
             1,
             1,
             crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+            true,
         );
 
         let expected = [131, 128, 15];
@@ -1073,6 +1069,7 @@ mod tests {
             1,
             1,
             crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+            true,
         );
 
         let expected = [242, 242, 24];

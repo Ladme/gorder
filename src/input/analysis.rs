@@ -205,6 +205,15 @@ pub struct Analysis {
     #[getset(get = "pub")]
     geometry: Option<Geometry>,
 
+    /// If false, periodic boundary conditions will be ignored. This is useful if you are working
+    /// with PBC that are not supported by `gorder`. Note that `gorder` only supports
+    /// orthogonal simulation boxes with PBC applied in all three dimensions.
+    /// If not specified, defaults to `true`.
+    #[builder(default = "true")]
+    #[serde(default = "default_true")]
+    #[getset(get_copy = "pub")]
+    handle_pbc: bool,
+
     /// If true, suppress all output to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
     #[serde(default = "default_false")]
@@ -236,6 +245,10 @@ fn default_one() -> usize {
 
 fn default_false() -> bool {
     false
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn validate_step(step: usize) -> Result<(), ConfigError> {
@@ -514,6 +527,7 @@ mod tests_yaml {
         assert!(analysis.leaflets().is_none());
         assert!(analysis.map().is_none());
         assert!(analysis.geometry().is_none());
+        assert!(analysis.handle_pbc());
         assert!(!analysis.silent());
         assert!(!analysis.overwrite());
     }
@@ -581,6 +595,10 @@ mod tests_yaml {
             }
             _ => panic!("Incorrect geometry type returned."),
         }
+
+        assert!(!analysis.handle_pbc());
+        assert!(analysis.overwrite());
+        assert!(analysis.silent());
     }
 
     #[test]
@@ -869,6 +887,7 @@ mod tests_builder {
         assert!(analysis.geometry().is_none());
         assert!(!analysis.silent());
         assert!(!analysis.overwrite());
+        assert!(analysis.handle_pbc());
     }
 
     #[test]
@@ -910,6 +929,9 @@ mod tests_builder {
             )
             .estimate_error(EstimateError::new(Some(10), Some("convergence.xvg")).unwrap())
             .geometry(Geometry::cylinder("@protein and name BB", 3.5, [2.3, 5.1], Axis::Z).unwrap())
+            .handle_pbc(false)
+            .overwrite()
+            .silent()
             .build()
             .unwrap();
 
@@ -974,6 +996,10 @@ mod tests_builder {
             }
             _ => panic!("Incorrect geometry type returned."),
         }
+
+        assert!(!analysis.handle_pbc());
+        assert!(analysis.overwrite());
+        assert!(analysis.silent());
     }
 
     #[test]

@@ -104,13 +104,16 @@ pub enum TopologyError {
 /// Errors that can occur while analyzing the trajectory.
 #[derive(Error, Debug)]
 pub enum AnalysisError {
-    #[error("{} system has undefined simulation box", "error:".red().bold())]
+    #[error("{} system has undefined simulation box ({} consider setting '{}' to {} but make sure that your lipid molecules are whole)", 
+    "error:".red().bold(), "hint:".blue().bold(), "handle_pbc".bright_blue(), "false".bright_blue())]
     UndefinedBox,
 
-    #[error("{} the simulation box is not orthogonal", "error:".red().bold())]
+    #[error("{} the simulation box is not orthogonal ({} consider setting '{}' to {} but make sure that your lipid molecules are whole)", 
+    "error:".red().bold(), "hint:".blue().bold(), "handle_pbc".bright_blue(), "false".bright_blue())]
     NotOrthogonalBox,
 
-    #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
+    #[error("{} all dimensions of the simulation box are zero ({} consider setting '{}' to {} but make sure that your lipid molecules are whole)", 
+    "error:".red().bold(), "hint:".blue().bold(), "handle_pbc".bright_blue(), "false".bright_blue())]
     ZeroBox,
 
     #[error("{} atom with atom index '{}' has an undefined position", "error:".red().bold(), .0.to_string().yellow()
@@ -263,6 +266,10 @@ pub enum OrderMapConfigError {
             .1.0.to_string().yellow(),
             .1.1.to_string().yellow())]
     BinTooLarge((f32, f32), (f32, f32)),
+
+    #[error("{} simulation box is undefined or not orthogonal => unable to automatically set ordermap dimensions ({} set ordermap dimensions manually)",
+    "error:".red().bold(), "hint:".blue().bold())]
+    InvalidBoxAuto,
 }
 
 /// Errors that can occur when estimating the error of the calculation.

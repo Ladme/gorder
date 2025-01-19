@@ -37,19 +37,35 @@ fn from_order_value(value: &OrderValue) -> f32 {
 
 impl Map {
     /// Construct a new ordermap.
-    pub(crate) fn new(params: OrderMap, simbox: &SimBox) -> Result<Map, OrderMapConfigError> {
+    pub(crate) fn new(
+        params: OrderMap,
+        simbox: Option<&SimBox>,
+    ) -> Result<Map, OrderMapConfigError> {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();
 
-        let (auto_x, auto_y) = params
-            .plane()
-            .unwrap_or_else(|| {
-                panic!(
-                    "FATAL GORDER ERROR | Map::new | Ordermap plane should already be set. {}",
-                    PANIC_MESSAGE
-                )
-            })
-            .dimensions_from_simbox(simbox);
+        let plane = params.plane().unwrap_or_else(|| {
+            panic!(
+                "FATAL GORDER ERROR | Map::new | Ordermap plane should already be set. {}",
+                PANIC_MESSAGE
+            )
+        });
+
+        let (auto_x, auto_y) = if matches!(params.dim_x(), GridSpan::Auto)
+            || matches!(params.dim_y(), GridSpan::Auto)
+        {
+            match simbox {
+                None => return Err(OrderMapConfigError::InvalidBoxAuto),
+                Some(sbox) => {
+                    if sbox.is_zero() || !sbox.is_orthogonal() {
+                        return Err(OrderMapConfigError::InvalidBoxAuto);
+                    }
+                    plane.dimensions_from_simbox(sbox)
+                }
+            }
+        } else {
+            (0.0, 0.0) // automatic span will not be used, so we set the values to 0
+        };
 
         let (xmin, xmax) = match params.dim_x() {
             GridSpan::Auto => (0.0, auto_x),
@@ -204,7 +220,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let map = Map::new(params, &simbox).unwrap();
+        let map = Map::new(params, Some(&simbox)).unwrap();
 
         assert_eq!(map.samples.span_x(), (0.0, 10.0));
         assert_eq!(map.samples.span_y(), (0.0, 5.0));
@@ -234,7 +250,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let map = Map::new(params, &simbox).unwrap();
+        let map = Map::new(params, Some(&simbox)).unwrap();
 
         assert_eq!(map.samples.span_x(), (-4.0, 8.0));
         assert_eq!(map.samples.span_y(), (1.5, 4.5));
@@ -255,7 +271,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match Map::new(params, &simbox) {
+        match Map::new(params, Some(&simbox)) {
             Ok(_) => panic!("Function should have failed."),
             Err(OrderMapConfigError::BinTooLarge((a, b), (x, y))) => {
                 assert_eq!(a, 1.0);
