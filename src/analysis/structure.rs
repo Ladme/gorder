@@ -33,7 +33,7 @@ pub(super) fn read_structure_and_topology(
         super::common::check_box(&system)?;
     } else {
         // log info in case handle_pbc is false
-        log::warn!("Periodic boundary conditions ignored. Lipid molecules must be whole in the simulation box!")
+        log::warn!("Periodic boundary conditions ignored. Lipid molecules must be made whole!")
     }
 
     if let Some(bonds_file) = analysis.bonds() {
