@@ -17,7 +17,7 @@ use crate::PANIC_MESSAGE;
 use super::geometry::GeometrySelection;
 
 /// Trait implemented by structures that should handle PBC.
-pub(super) trait PBCHandler {
+pub(crate) trait PBCHandler {
     /// Get the geometric center of a group.
     fn group_get_center(&self, system: &System, group: &str) -> Result<Vector3D, GroupError>;
 
@@ -46,6 +46,15 @@ pub(super) trait PBCHandler {
 
     /// Calculate shortest vector connecting point1 with point2.
     fn vector_to(&self, point1: &Vector3D, point2: &Vector3D) -> Vector3D;
+
+    /// Wrap the point into the simulation box. Or not, if PBC are ignored.
+    fn wrap(&self, point: &mut Vector3D);
+
+    /// Get the reference position and length in the corresponding dimension for infinite shape.
+    fn get_infinite_span(&self, pos: &mut f32) -> f32;
+
+    /// Get the simulation box center or PANIC if PBC are ignored.
+    fn get_box_center(&self) -> Vector3D;
 }
 
 /// PBCHandler that ignores all periodic boundary conditions.
@@ -100,6 +109,20 @@ impl PBCHandler for NoPBC {
     fn vector_to(&self, point1: &Vector3D, point2: &Vector3D) -> Vector3D {
         point2 - point1
     }
+
+    #[inline(always)]
+    fn wrap(&self, _point: &mut Vector3D) {} // do nothing; no wrapping is performed if PBC are ignored
+
+    #[inline(always)]
+    fn get_infinite_span(&self, pos: &mut f32) -> f32 {
+        *pos = f32::MIN;
+        f32::INFINITY
+    }
+
+    #[inline(always)]
+    fn get_box_center(&self) -> Vector3D {
+        panic!("FATAL GORDER ERROR | NoPBC::get_box_center | PBC are ignored. Can't get box center. {}", PANIC_MESSAGE);
+    }
 }
 
 /// PBCHandler that assumes periodic boundary conditions in all three dimensions.
@@ -153,6 +176,22 @@ impl<'a> PBCHandler for PBC3D<'a> {
     #[inline(always)]
     fn vector_to(&self, point1: &Vector3D, point2: &Vector3D) -> Vector3D {
         point1.vector_to(point2, &self.0)
+    }
+
+    #[inline(always)]
+    fn wrap(&self, point: &mut Vector3D) {
+        point.wrap(&self.0)
+    }
+
+    #[inline(always)]
+    fn get_infinite_span(&self, pos: &mut f32) -> f32 {
+        *pos = 0.0;
+        f32::INFINITY
+    }
+
+    #[inline(always)]
+    fn get_box_center(&self) -> Vector3D {
+        Vector3D::new(self.0.x / 2.0f32, self.0.y / 2.0f32, self.0.z / 2.0f32)
     }
 }
 

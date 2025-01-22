@@ -114,6 +114,15 @@ impl Geometry {
             Self::Sphere(sphere) => sphere.reference.needs_group(),
         }
     }
+
+    /// Returns `true` if the geometry requires box information.
+    pub(crate) fn uses_box_center(&self) -> bool {
+        match self {
+            Self::Cuboid(cuboid) => cuboid.reference.uses_box_center(),
+            Self::Cylinder(cylinder) => cylinder.reference.uses_box_center(),
+            Self::Sphere(sphere) => sphere.reference.uses_box_center(),
+        }
+    }
 }
 
 /// Represents a cuboid used to select bonds located within its bounds.
@@ -298,6 +307,15 @@ impl GeomReference {
         match self {
             GeomReference::Point(_) | GeomReference::Center => false,
             GeomReference::Selection(_) => true,
+        }
+    }
+
+    /// Returns `true` if the geometric reference should be placed into the center of the simulation box.
+    #[inline(always)]
+    pub(crate) fn uses_box_center(&self) -> bool {
+        match self {
+            GeomReference::Point(_) | GeomReference::Selection(_) => false,
+            GeomReference::Center => true,
         }
     }
 }

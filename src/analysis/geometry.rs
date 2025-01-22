@@ -11,12 +11,13 @@ use groan_rs::{
 use crate::{
     errors::TopologyError,
     input::{
-        geometry::{CuboidSelection, CylinderSelection, GeomReference, SphereSelection}, Axis, Geometry
+        geometry::{CuboidSelection, CylinderSelection, GeomReference, SphereSelection},
+        Axis, Geometry,
     },
     PANIC_MESSAGE,
 };
 
-use super::common::macros::group_name;
+use super::{common::macros::group_name, pbc::PBCHandler};
 
 /// Enum encompassing all possible geometry selections.
 #[derive(Debug, Clone)]
@@ -35,15 +36,21 @@ impl Default for GeometrySelectionType {
 
 impl GeometrySelectionType {
     /// Construct a geometry selection type from the input geometry.
-    pub(super) fn from_geometry(geometry: Option<&Geometry>, simbox: &SimBox) -> Self {
+    pub(super) fn from_geometry(
+        geometry: Option<&Geometry>,
+        pbc_handler: &impl PBCHandler,
+    ) -> Self {
         match geometry {
             None => GeometrySelectionType::None(NoSelection::default()),
-            Some(Geometry::Cuboid(cuboid)) => GeometrySelectionType::Cuboid(CuboidAnalysis::new(
-                cuboid,
-                simbox,
-            )),
-            Some(Geometry::Cylinder(cylinder)) => GeometrySelectionType::Cylinder(CylinderAnalysis::new(cylinder, simbox)),
-            Some(Geometry::Sphere(sphere)) => GeometrySelectionType::Sphere(SphereAnalysis::new(sphere, simbox)),
+            Some(Geometry::Cuboid(cuboid)) => {
+                GeometrySelectionType::Cuboid(CuboidAnalysis::new(cuboid, pbc_handler))
+            }
+            Some(Geometry::Cylinder(cylinder)) => {
+                GeometrySelectionType::Cylinder(CylinderAnalysis::new(cylinder, pbc_handler))
+            }
+            Some(Geometry::Sphere(sphere)) => {
+                GeometrySelectionType::Sphere(SphereAnalysis::new(sphere, pbc_handler))
+            }
         }
     }
 
@@ -68,32 +75,40 @@ relative to {}",
                 );
             }
             GeometrySelectionType::Cylinder(cylinder) => {
-                log::info!("Will only consider bonds located inside a cylinder:
+                log::info!(
+                    "Will only consider bonds located inside a cylinder:
 radius: {} nm
 oriented along the {} axis 
 going from {} nm to {} nm along the {} axis
 relative to {}",
-cylinder.properties.radius(), cylinder.properties.orientation(), 
-cylinder.properties.span()[0], cylinder.properties.span()[1], 
-cylinder.properties.orientation(), cylinder.properties.reference())
+                    cylinder.properties.radius(),
+                    cylinder.properties.orientation(),
+                    cylinder.properties.span()[0],
+                    cylinder.properties.span()[1],
+                    cylinder.properties.orientation(),
+                    cylinder.properties.reference()
+                )
             }
             GeometrySelectionType::Sphere(sphere) => {
-                log::info!("Will only consider bonds located inside a sphere:
+                log::info!(
+                    "Will only consider bonds located inside a sphere:
 radius: {} nm
-center: {}", sphere.properties.radius(), sphere.properties.reference())
+center: {}",
+                    sphere.properties.radius(),
+                    sphere.properties.reference()
+                )
             }
-
         }
     }
 
     /// Initialize the reading of a new frame (calculate and set new reference position if needed).
     #[inline]
-    pub(super) fn init_new_frame(&mut self, system: &System) {
+    pub(super) fn init_new_frame(&mut self, system: &System, pbc_handler: &impl PBCHandler) {
         match self {
             GeometrySelectionType::None(_) => (),
-            GeometrySelectionType::Cuboid(x) => x.init_reference(system),
-            GeometrySelectionType::Cylinder(x) => x.init_reference(system),
-            GeometrySelectionType::Sphere(x) => x.init_reference(system),
+            GeometrySelectionType::Cuboid(x) => x.init_reference(system, pbc_handler),
+            GeometrySelectionType::Cylinder(x) => x.init_reference(system, pbc_handler),
+            GeometrySelectionType::Sphere(x) => x.init_reference(system, pbc_handler),
         }
     }
 }
@@ -104,7 +119,7 @@ pub(crate) trait GeometrySelection: Send + Sync {
     type Properties;
 
     /// Create the structure from the provided properties.
-    fn new(properties: &Self::Properties, simbox: &SimBox) -> Self;
+    fn new(properties: &Self::Properties, pbc_handler: &impl PBCHandler) -> Self;
 
     /// Get the reference point of the geometry selection.
     fn reference(&self) -> &GeomReference;
@@ -122,7 +137,7 @@ pub(crate) trait GeometrySelection: Send + Sync {
     fn construct_shape(
         properties: &Self::Properties,
         point: Vector3D,
-        simbox: &SimBox,
+        pbc_handler: &impl PBCHandler,
     ) -> Self::Shape;
 
     /// Prepare the system for geometry selection, i.e. construct the required groups.
@@ -149,31 +164,22 @@ pub(crate) trait GeometrySelection: Send + Sync {
     }
 
     /// Calculate and set the reference position for this frame.
-    fn init_reference(&mut self, system: &System) {
+    fn init_reference(&mut self, system: &System, pbc_handler: &impl PBCHandler) {
         let reference_point = match self.reference() {
             GeomReference::Point(_) => return, // nothing to do, reference position is fixed
             GeomReference::Selection(_) => {
                 // calculate the center of geometry
-                system
-                    .group_get_center(group_name!("GeomReference"))
+                pbc_handler
+                    .group_get_center(system, group_name!("GeomReference"))
                     .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | GeometrySelection::init_reference | Group specifying geometry reference should exist. {}", PANIC_MESSAGE))
             }
             GeomReference::Center => {
                 // get the box center
-                system
-                    .get_box_center()
-                    .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | GeometrySelection::init_reference | Simulation box should be valid. {}", PANIC_MESSAGE))
+                pbc_handler.get_box_center()
             }
         };
 
-        let shape = Self::construct_shape(
-            self.properties(), 
-            reference_point, 
-            system
-                .get_box()
-                .unwrap_or_else(||
-                    panic!("FATAL GORDER ERROR | GeometrySelection::init_reference | Simulation box is undefined but this should have been handled before. {}", PANIC_MESSAGE))
-            );
+        let shape = Self::construct_shape(self.properties(), reference_point, pbc_handler);
 
         self.set_shape(shape);
     }
@@ -188,7 +194,7 @@ impl GeometrySelection for NoSelection {
     type Properties = (); // arbitrary properties
 
     #[inline(always)]
-    fn new(_geometry: &Self::Properties, _simbox: &SimBox) -> Self {
+    fn new(_geometry: &Self::Properties, _pbc_handler: &impl PBCHandler) -> Self {
         Self {}
     }
 
@@ -202,7 +208,10 @@ impl GeometrySelection for NoSelection {
 
     #[inline(always)]
     fn properties(&self) -> &Self::Properties {
-        panic!("FATAL GORDER ERROR | NoSelection::properties | This method should never be called. {}", PANIC_MESSAGE);
+        panic!(
+            "FATAL GORDER ERROR | NoSelection::properties | This method should never be called. {}",
+            PANIC_MESSAGE
+        );
     }
 
     #[inline(always)]
@@ -217,12 +226,16 @@ impl GeometrySelection for NoSelection {
     fn set_shape(&mut self, _shape: Self::Shape) {}
 
     #[inline(always)]
-    fn construct_shape(_properties: &Self::Properties, _point: Vector3D, _simbox: &SimBox) -> Self::Shape {
+    fn construct_shape(
+        _properties: &Self::Properties,
+        _point: Vector3D,
+        _pbc_handler: &impl PBCHandler,
+    ) -> Self::Shape {
         panic!("FATAL GORDER ERROR | NoSelection::construct_shape | This method should never be called. {}", PANIC_MESSAGE);
     }
 
     #[inline(always)]
-    fn init_reference(&mut self, _system: &System) {}
+    fn init_reference(&mut self, _system: &System, _pbc_handler: &impl PBCHandler) {}
 
     #[inline(always)]
     fn inside(&self, _point: &Vector3D, _simbox: &SimBox) -> bool {
@@ -251,7 +264,7 @@ impl GeometrySelection for CuboidAnalysis {
     type Shape = Rectangular;
     type Properties = CuboidSelection;
 
-    fn new(properties: &CuboidSelection, simbox: &SimBox) -> Self {
+    fn new(properties: &CuboidSelection, pbc_handler: &impl PBCHandler) -> Self {
         let reference_point = match properties.reference() {
             // fixed value
             GeomReference::Point(x) => x.clone(),
@@ -259,7 +272,7 @@ impl GeometrySelection for CuboidAnalysis {
             GeomReference::Selection(_) | GeomReference::Center => Vector3D::default(),
         };
 
-        let shape = CuboidAnalysis::construct_shape(properties, reference_point, simbox);
+        let shape = CuboidAnalysis::construct_shape(properties, reference_point, pbc_handler);
 
         CuboidAnalysis {
             properties: properties.clone(),
@@ -283,31 +296,34 @@ impl GeometrySelection for CuboidAnalysis {
     }
 
     fn construct_shape(
-            properties: &Self::Properties,
-            mut point: Vector3D,
-            simbox: &SimBox,
-        ) -> Self::Shape {
-            #[inline(always)]
-            fn compute_dimension(dim: [f32; 2], reference_component: &mut f32) -> f32 {
-                match dim {
-                    [f32::NEG_INFINITY, f32::INFINITY] => {
-                        *reference_component = 0.0;
-                        f32::INFINITY
-                    }
-                    [min, max] => {
-                        *reference_component += min;
-                        max - min
-                    }
+        properties: &Self::Properties,
+        mut point: Vector3D,
+        pbc_handler: &impl PBCHandler,
+    ) -> Self::Shape {
+        #[inline(always)]
+        fn compute_dimension(
+            dim: [f32; 2],
+            reference_component: &mut f32,
+            pbc_handler: &impl PBCHandler,
+        ) -> f32 {
+            match dim {
+                [f32::NEG_INFINITY, f32::INFINITY] => {
+                    pbc_handler.get_infinite_span(reference_component)
+                }
+                [min, max] => {
+                    *reference_component += min;
+                    max - min
                 }
             }
-    
-            let x = compute_dimension(properties.xdim(), &mut point.x);
-            let y = compute_dimension(properties.ydim(), &mut point.y);
-            let z = compute_dimension(properties.zdim(), &mut point.z);
-    
-            point.wrap(simbox);
-            
-            Rectangular::new(point, x, y, z)
+        }
+
+        let x = compute_dimension(properties.xdim(), &mut point.x, pbc_handler);
+        let y = compute_dimension(properties.ydim(), &mut point.y, pbc_handler);
+        let z = compute_dimension(properties.zdim(), &mut point.z, pbc_handler);
+
+        pbc_handler.wrap(&mut point);
+
+        Rectangular::new(point, x, y, z)
     }
 
     #[inline(always)]
@@ -327,7 +343,7 @@ impl GeometrySelection for CylinderAnalysis {
     type Shape = Cylinder;
     type Properties = CylinderSelection;
 
-    fn new(properties: &CylinderSelection, simbox: &SimBox) -> Self {
+    fn new(properties: &CylinderSelection, pbc_handler: &impl PBCHandler) -> Self {
         let reference_point = match properties.reference() {
             // fixed value
             GeomReference::Point(x) => x.clone(),
@@ -335,7 +351,7 @@ impl GeometrySelection for CylinderAnalysis {
             GeomReference::Selection(_) | GeomReference::Center => Vector3D::default(),
         };
 
-        let shape = CylinderAnalysis::construct_shape(properties, reference_point, simbox);
+        let shape = CylinderAnalysis::construct_shape(properties, reference_point, pbc_handler);
 
         CylinderAnalysis {
             properties: properties.clone(),
@@ -364,20 +380,16 @@ impl GeometrySelection for CylinderAnalysis {
     }
 
     fn construct_shape(
-            properties: &Self::Properties,
-            mut point: Vector3D,
-            simbox: &SimBox,
-        ) -> Self::Shape {
-
+        properties: &Self::Properties,
+        mut point: Vector3D,
+        pbc_handler: &impl PBCHandler,
+    ) -> Self::Shape {
         let height = match properties.span() {
-            [f32::NEG_INFINITY, f32::INFINITY] => {
-                match properties.orientation() {
-                    Axis::X => point.x = 0.0,
-                    Axis::Y => point.y = 0.0,
-                    Axis::Z => point.z = 0.0,
-                }
-                f32::INFINITY
-            }
+            [f32::NEG_INFINITY, f32::INFINITY] => match properties.orientation() {
+                Axis::X => pbc_handler.get_infinite_span(&mut point.x),
+                Axis::Y => pbc_handler.get_infinite_span(&mut point.y),
+                Axis::Z => pbc_handler.get_infinite_span(&mut point.z),
+            },
             _ => {
                 match properties.orientation() {
                     Axis::X => point.x += properties.span()[0],
@@ -388,9 +400,14 @@ impl GeometrySelection for CylinderAnalysis {
             }
         };
 
-        point.wrap(simbox);
+        pbc_handler.wrap(&mut point);
 
-        Cylinder::new(point, properties.radius(), height, properties.orientation().into())
+        Cylinder::new(
+            point,
+            properties.radius(),
+            height,
+            properties.orientation().into(),
+        )
     }
 }
 
@@ -405,7 +422,7 @@ impl GeometrySelection for SphereAnalysis {
     type Shape = Sphere;
     type Properties = SphereSelection;
 
-    fn new(properties: &Self::Properties, simbox: &SimBox) -> Self {
+    fn new(properties: &Self::Properties, pbc_handler: &impl PBCHandler) -> Self {
         let reference_point = match properties.reference() {
             // fixed value
             GeomReference::Point(x) => x.clone(),
@@ -413,7 +430,7 @@ impl GeometrySelection for SphereAnalysis {
             GeomReference::Selection(_) | GeomReference::Center => Vector3D::default(),
         };
 
-        let shape = SphereAnalysis::construct_shape(properties, reference_point, simbox);
+        let shape = SphereAnalysis::construct_shape(properties, reference_point, pbc_handler);
 
         SphereAnalysis {
             properties: properties.clone(),
@@ -443,11 +460,11 @@ impl GeometrySelection for SphereAnalysis {
 
     #[inline(always)]
     fn construct_shape(
-            properties: &Self::Properties,
-            mut point: Vector3D,
-            simbox: &SimBox,
-        ) -> Self::Shape {
-        point.wrap(simbox);
+        properties: &Self::Properties,
+        mut point: Vector3D,
+        pbc_handler: &impl PBCHandler,
+    ) -> Self::Shape {
+        pbc_handler.wrap(&mut point);
         Sphere::new(point, properties.radius())
     }
 }
@@ -456,6 +473,8 @@ impl GeometrySelection for SphereAnalysis {
 mod tests_cuboid {
     use approx::assert_relative_eq;
     use rand::prelude::*;
+
+    use crate::analysis::pbc::PBC3D;
 
     use super::*;
 
@@ -468,8 +487,9 @@ mod tests_cuboid {
             };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(0.0, 0.0, 0.0), &simbox);
+        let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(0.0, 0.0, 0.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 2.5);
@@ -490,8 +510,9 @@ mod tests_cuboid {
             };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(8.0, 5.5, 2.0), &simbox);
+        let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(8.0, 5.5, 2.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 0.5);
@@ -518,9 +539,9 @@ mod tests_cuboid {
         };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape =
-            CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(15.0, 5.5, 1.0), &simbox);
+        let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::new(15.0, 5.5, 1.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 7.5);
@@ -541,6 +562,7 @@ mod tests_cuboid {
     fn test_inside_random() {
         let mut rng = StdRng::seed_from_u64(1288746347198273);
         let simbox = SimBox::from([10.0, 10.0, 10.0]);
+        let pbc = PBC3D::new(&simbox);
 
         for i in 0..100 {
             let xmin: f32 = rng.gen_range(0.0..10.0);
@@ -575,7 +597,7 @@ mod tests_cuboid {
                 _ => panic!("Invalid geometry."),
             };
 
-            let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::default(), &simbox);
+            let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::default(), &pbc);
 
             for _ in 0..1000 {
                 let pos_x = rng.gen_range(0.0..10.0);
@@ -599,15 +621,24 @@ mod tests_cuboid {
     #[test]
     fn test_prepare_system_init_reference() {
         let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
-        
+
         // fixed point
-        let cuboid = match Geometry::cuboid(Vector3D::new(3.0, 1.0, 2.0), [-1.0, 2.0], [1.5, 2.5], [f32::NEG_INFINITY, f32::INFINITY]).unwrap() {
+        let cuboid = match Geometry::cuboid(
+            Vector3D::new(3.0, 1.0, 2.0),
+            [-1.0, 2.0],
+            [1.5, 2.5],
+            [f32::NEG_INFINITY, f32::INFINITY],
+        )
+        .unwrap()
+        {
             Geometry::Cuboid(x) => x,
             _ => panic!("Invalid geometry."),
         };
-        let mut geometry = CuboidAnalysis::new(&cuboid, system.get_box().unwrap());
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = CuboidAnalysis::new(&cuboid, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
         let shape = geometry.shape();
         let point = shape.get_position();
         assert_relative_eq!(point.x, 2.0);
@@ -615,15 +646,26 @@ mod tests_cuboid {
         assert_relative_eq!(point.z, 0.0);
 
         // center of geometry
-        let cuboid = match Geometry::cuboid("@membrane", [-1.0, 2.0], [1.5, 2.5], [f32::NEG_INFINITY, f32::INFINITY]).unwrap() {
+        let cuboid = match Geometry::cuboid(
+            "@membrane",
+            [-1.0, 2.0],
+            [1.5, 2.5],
+            [f32::NEG_INFINITY, f32::INFINITY],
+        )
+        .unwrap()
+        {
             Geometry::Cuboid(x) => x,
             _ => panic!("Invalid geometry."),
         };
-        let mut geometry = CuboidAnalysis::new(&cuboid, system.get_box().unwrap());
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = CuboidAnalysis::new(&cuboid, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
 
-        let mut membrane_center = system.group_get_center(group_name!("GeomReference")).unwrap();
+        let mut membrane_center = system
+            .group_get_center(group_name!("GeomReference"))
+            .unwrap();
         membrane_center.x -= 1.0;
         membrane_center.y += 1.5;
         membrane_center.wrap(system.get_box().unwrap());
@@ -635,13 +677,22 @@ mod tests_cuboid {
         assert_relative_eq!(point.z, 0.0);
 
         // box center
-        let cuboid = match Geometry::cuboid(GeomReference::center(), [-1.0, 2.0], [1.5, 2.5], [f32::NEG_INFINITY, f32::INFINITY]).unwrap() {
+        let cuboid = match Geometry::cuboid(
+            GeomReference::center(),
+            [-1.0, 2.0],
+            [1.5, 2.5],
+            [f32::NEG_INFINITY, f32::INFINITY],
+        )
+        .unwrap()
+        {
             Geometry::Cuboid(x) => x,
             _ => panic!("Invalid geometry."),
         };
-        let mut geometry = CuboidAnalysis::new(&cuboid, system.get_box().unwrap());
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = CuboidAnalysis::new(&cuboid, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
 
         let box_center = system.get_box_center().unwrap();
         let shape = geometry.shape();
@@ -657,19 +708,22 @@ mod tests_cylinder {
     use approx::assert_relative_eq;
     use groan_rs::prelude::Dimension;
 
+    use crate::analysis::pbc::PBC3D;
+
     use super::*;
 
     #[test]
     fn test_construct_shape_origin() {
-        let cylinder =
-            match Geometry::cylinder("@protein", 2.5, [-1.5, 3.5], Axis::Y).unwrap() {
-                Geometry::Cylinder(x) => x,
-                _ => panic!("Invalid geometry."),
-            };
+        let cylinder = match Geometry::cylinder("@protein", 2.5, [-1.5, 3.5], Axis::Y).unwrap() {
+            Geometry::Cylinder(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape = CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(0.0, 0.0, 0.0), &simbox);
+        let shape =
+            CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(0.0, 0.0, 0.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 0.0);
@@ -683,15 +737,16 @@ mod tests_cylinder {
 
     #[test]
     fn test_construct_shape_simple() {
-        let cylinder =
-            match Geometry::cylinder("@protein", 2.5, [-1.5, 3.5], Axis::X).unwrap() {
-                Geometry::Cylinder(x) => x,
-                _ => panic!("Invalid geometry."),
-            };
+        let cylinder = match Geometry::cylinder("@protein", 2.5, [-1.5, 3.5], Axis::X).unwrap() {
+            Geometry::Cylinder(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape = CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(8.0, 5.5, 2.0), &simbox);
+        let shape =
+            CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(8.0, 5.5, 2.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 6.5);
@@ -706,14 +761,18 @@ mod tests_cylinder {
     #[test]
     fn test_construct_shape_infinity() {
         let cylinder =
-            match Geometry::cylinder("@protein", 2.5, [f32::NEG_INFINITY, f32::INFINITY], Axis::Z).unwrap() {
+            match Geometry::cylinder("@protein", 2.5, [f32::NEG_INFINITY, f32::INFINITY], Axis::Z)
+                .unwrap()
+            {
                 Geometry::Cylinder(x) => x,
                 _ => panic!("Invalid geometry."),
             };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape = CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(8.0, 5.5, 2.0), &simbox);
+        let shape =
+            CylinderAnalysis::construct_shape(&cylinder, Vector3D::new(8.0, 5.5, 2.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 8.0);
@@ -733,15 +792,20 @@ mod tests_cylinder {
     #[test]
     fn test_prepare_system_init_reference() {
         let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
-        
+
         // fixed point
-        let cylinder = match Geometry::cylinder(Vector3D::new(3.0, 1.0, 2.0), 3.5, [1.5, 2.5], Axis::Y).unwrap() {
-            Geometry::Cylinder(x) => x,
-            _ => panic!("Invalid geometry."),
-        };
-        let mut geometry = CylinderAnalysis::new(&cylinder, system.get_box().unwrap());
+        let cylinder =
+            match Geometry::cylinder(Vector3D::new(3.0, 1.0, 2.0), 3.5, [1.5, 2.5], Axis::Y)
+                .unwrap()
+            {
+                Geometry::Cylinder(x) => x,
+                _ => panic!("Invalid geometry."),
+            };
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = CylinderAnalysis::new(&cylinder, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
         let shape = geometry.shape();
         let point = shape.get_position();
         assert_relative_eq!(point.x, 3.0);
@@ -753,11 +817,15 @@ mod tests_cylinder {
             Geometry::Cylinder(x) => x,
             _ => panic!("Invalid geometry."),
         };
-        let mut geometry = CylinderAnalysis::new(&cylinder, system.get_box().unwrap());
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = CylinderAnalysis::new(&cylinder, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
 
-        let mut membrane_center = system.group_get_center(group_name!("GeomReference")).unwrap();
+        let mut membrane_center = system
+            .group_get_center(group_name!("GeomReference"))
+            .unwrap();
         membrane_center.z += 1.5;
         membrane_center.wrap(system.get_box().unwrap());
 
@@ -768,13 +836,22 @@ mod tests_cylinder {
         assert_relative_eq!(point.z, membrane_center.z);
 
         // box center
-        let cylinder = match Geometry::cylinder(GeomReference::center(), 3.5, [f32::NEG_INFINITY, f32::INFINITY], Axis::X).unwrap() {
+        let cylinder = match Geometry::cylinder(
+            GeomReference::center(),
+            3.5,
+            [f32::NEG_INFINITY, f32::INFINITY],
+            Axis::X,
+        )
+        .unwrap()
+        {
             Geometry::Cylinder(x) => x,
             _ => panic!("Invalid geometry."),
         };
-        let mut geometry = CylinderAnalysis::new(&cylinder, system.get_box().unwrap());
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = CylinderAnalysis::new(&cylinder, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
 
         let box_center = system.get_box_center().unwrap();
         let shape = geometry.shape();
@@ -789,19 +866,21 @@ mod tests_cylinder {
 mod tests_sphere {
     use approx::assert_relative_eq;
 
+    use crate::analysis::pbc::PBC3D;
+
     use super::*;
 
     #[test]
     fn test_construct_shape_origin() {
-        let sphere =
-            match Geometry::sphere("@protein", 1.8).unwrap() {
-                Geometry::Sphere(x) => x,
-                _ => panic!("Invalid geometry."),
-            };
+        let sphere = match Geometry::sphere("@protein", 1.8).unwrap() {
+            Geometry::Sphere(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(0.0, 0.0, 0.0), &simbox);
+        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(0.0, 0.0, 0.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 0.0);
@@ -813,15 +892,15 @@ mod tests_sphere {
 
     #[test]
     fn test_construct_shape_simple() {
-        let sphere =
-            match Geometry::sphere("@protein", 2.3).unwrap() {
-                Geometry::Sphere(x) => x,
-                _ => panic!("Invalid geometry."),
-            };
+        let sphere = match Geometry::sphere("@protein", 2.3).unwrap() {
+            Geometry::Sphere(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(2.0, 7.0, 5.0), &simbox);
+        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(2.0, 7.0, 5.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 2.0);
@@ -833,15 +912,15 @@ mod tests_sphere {
 
     #[test]
     fn test_construct_shape_infinity() {
-        let sphere =
-            match Geometry::sphere("@protein", f32::INFINITY).unwrap() {
-                Geometry::Sphere(x) => x,
-                _ => panic!("Invalid geometry."),
-            };
+        let sphere = match Geometry::sphere("@protein", f32::INFINITY).unwrap() {
+            Geometry::Sphere(x) => x,
+            _ => panic!("Invalid geometry."),
+        };
 
         let simbox = SimBox::from([10.0, 6.0, 8.0]);
+        let pbc = PBC3D::new(&simbox);
 
-        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(2.0, 7.0, 5.0), &simbox);
+        let shape = SphereAnalysis::construct_shape(&sphere, Vector3D::new(2.0, 7.0, 5.0), &pbc);
 
         let position = shape.get_position();
         assert_relative_eq!(position.x, 2.0);
@@ -857,15 +936,17 @@ mod tests_sphere {
     #[test]
     fn test_prepare_system_init_reference() {
         let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
-        
+
         // fixed point
         let sphere = match Geometry::sphere(Vector3D::new(3.0, 1.0, 2.0), 1.5).unwrap() {
             Geometry::Sphere(x) => x,
             _ => panic!("Invalid geometry."),
         };
-        let mut geometry = SphereAnalysis::new(&sphere, system.get_box().unwrap());
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = SphereAnalysis::new(&sphere, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
         let shape = geometry.shape();
         let point = shape.get_position();
         assert_relative_eq!(point.x, 3.0);
@@ -877,11 +958,15 @@ mod tests_sphere {
             Geometry::Sphere(x) => x,
             _ => panic!("Invalid geometry."),
         };
-        let mut geometry = SphereAnalysis::new(&sphere, system.get_box().unwrap());
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = SphereAnalysis::new(&sphere, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
 
-        let membrane_center = system.group_get_center(group_name!("GeomReference")).unwrap();
+        let membrane_center = system
+            .group_get_center(group_name!("GeomReference"))
+            .unwrap();
         let shape = geometry.shape();
         let point = shape.get_position();
         assert_relative_eq!(point.x, membrane_center.x);
@@ -893,9 +978,11 @@ mod tests_sphere {
             Geometry::Sphere(x) => x,
             _ => panic!("Invalid geometry."),
         };
-        let mut geometry = SphereAnalysis::new(&sphere, system.get_box().unwrap());
+        let simbox = system.get_box().unwrap().clone();
+        let pbc = PBC3D::new(&simbox);
+        let mut geometry = SphereAnalysis::new(&sphere, &pbc);
         geometry.prepare_system(&mut system).unwrap();
-        geometry.init_reference(&system);
+        geometry.init_reference(&system, &pbc);
 
         let box_center = system.get_box_center().unwrap();
         let shape = geometry.shape();

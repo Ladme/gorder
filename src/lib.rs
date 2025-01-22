@@ -145,6 +145,7 @@
 //!             [-2.0, 2.0],                           // Span of the cylinder relative to reference
 //!             Axis::Z                                // Orientation of the main cylinder axis
 //!         )?)               
+//!         .handle_pbc(true)                          // Handle periodic boundary conditions?
 //!         .build()?;                                 // Build the analysis
 //!
 //!     // Activate colog for logging (requires the `colog` crate)
@@ -352,7 +353,7 @@ pub(crate) const PANIC_MESSAGE: &str =
     "\n\n\n            >>> THIS SHOULD NOT HAVE HAPPENED! PLEASE REPORT THIS ERROR <<<
 (open an issue at 'github.com/Ladme/gorder/issues' or write an e-mail to 'ladmeb@gmail.com')\n\n";
 
-/// Specifies leaflet a lipid is part of.
+/// Specifies the leaflet a lipid is in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Leaflet {
     #[serde(alias = "1")]

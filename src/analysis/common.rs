@@ -8,7 +8,7 @@ use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
 use super::pbc::{NoPBC, PBCHandler, PBC3D};
 use super::topology::SystemTopology;
-use crate::errors::AnalysisError;
+use crate::errors::{AnalysisError, GeometryConfigError};
 use crate::input::{Analysis, AnalysisType, EstimateError, Geometry};
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::OrderMap, PANIC_MESSAGE};
@@ -93,13 +93,23 @@ pub(super) fn prepare_geometry_selection(
     system: &mut System,
     handle_pbc: bool,
 ) -> Result<GeometrySelectionType, Box<dyn std::error::Error + Send + Sync>> {
-    if !handle_pbc {
-        log::warn!("[DEV] TODO: Add support for geometry selection with an undefined or non-orthogonal box.");
-        return Ok(GeometrySelectionType::default());
-    }
-
-    let simbox = system.get_box().expect(PANIC_MESSAGE);
-    let geom = GeometrySelectionType::from_geometry(geometry, simbox);
+    let geom = match handle_pbc {
+        true => {
+            let simbox = system.get_box().expect(PANIC_MESSAGE);
+            let pbc = PBC3D::new(simbox);
+            GeometrySelectionType::from_geometry(geometry, &pbc)
+        }
+        false => {
+            // sanity check that the geometry selection does not use box center as a reference
+            match geometry {
+                Some(x) if x.uses_box_center() => {
+                    return Err(Box::from(GeometryConfigError::InvalidBoxCenter))
+                }
+                Some(_) | None => (),
+            }
+            GeometrySelectionType::from_geometry(geometry, &NoPBC)
+        }
+    };
 
     match &geom {
         GeometrySelectionType::None(_) => (),
@@ -219,14 +229,14 @@ pub(super) fn analyze_frame(
     frame: &System,
     data: &mut SystemTopology,
 ) -> Result<(), AnalysisError> {
-    // initialize the reading of the next frame
-    data.init_new_frame(frame);
-
     let molecules = data.molecule_types_mut() as *mut Vec<MoleculeType>;
 
     if data.handle_pbc() {
         // check the validity of the simulation box
         let simbox = check_box(frame)?;
+        let pbc = PBC3D::new(simbox);
+        // initialize the reading of the next frame
+        data.init_new_frame(frame, &pbc);
 
         analyze_molecules(
             frame,
@@ -234,16 +244,20 @@ pub(super) fn analyze_frame(
             &data.membrane_normal().into(),
             data.frame(),
             data.geometry(),
-            &PBC3D::new(simbox),
+            &pbc,
         )?
     } else {
+        let pbc = NoPBC;
+        // initialize the reading of the next frame
+        data.init_new_frame(frame, &pbc);
+
         analyze_molecules(
             frame,
             unsafe { &mut *molecules },
             &data.membrane_normal().into(),
             data.frame(),
             data.geometry(),
-            &NoPBC,
+            &pbc,
         )?
     };
 

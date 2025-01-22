@@ -3945,6 +3945,76 @@ fn test_aa_order_leaflets_from_map_not_enough_frames() {
 }
 
 #[test]
+fn test_aa_order_leaflets_no_pbc_multiple_threads() {
+    for n_threads in [1, 3, 8, 16] {
+        for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(LeafletClassification::global("@membrane", "name P"))
+                .handle_pbc(false)
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_leaflets_nopbc.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_geometry_no_pbc_fail_box_center() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .geometry(
+            Geometry::cylinder(
+                GeomReference::center(),
+                2.5,
+                [f32::NEG_INFINITY, f32::INFINITY],
+                Axis::Z,
+            )
+            .unwrap(),
+        )
+        .handle_pbc(false)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("cannot use dynamic center of simulation box as the reference position")),
+    }
+}
+
+#[test]
 fn test_aa_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")

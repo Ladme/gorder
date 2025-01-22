@@ -38,6 +38,9 @@ pub enum GeometryConfigError {
         "{} the first value for span ('{}' nm) is higher than the second value for span ('{}' nm)", "error".red().bold(), .0.to_string().yellow(), .1.to_string().yellow()
     )]
     InvalidSpan(f32, f32),
+
+    #[error("{} cannot use dynamic center of simulation box as the reference position since periodic boundary conditions are ignored", "error:".red().bold())]
+    InvalidBoxCenter,
 }
 
 /// Errors that can occur when creating a `Frequency` structure.

@@ -8,6 +8,7 @@ use crate::PANIC_MESSAGE;
 
 use super::geometry::GeometrySelectionType;
 use super::molecule::MoleculeType;
+use super::pbc::PBCHandler;
 use crate::errors::ErrorEstimationError;
 use crate::presentation::converter::{MolConvert, ResultsConverter};
 use getset::{CopyGetters, Getters, MutGetters};
@@ -81,8 +82,8 @@ impl SystemTopology {
     }
 
     /// Initialize reading of a new frame.
-    pub(super) fn init_new_frame(&mut self, frame: &System) {
-        self.geometry.init_new_frame(frame);
+    pub(super) fn init_new_frame(&mut self, frame: &System, pbc_handler: &impl PBCHandler) {
+        self.geometry.init_new_frame(frame, pbc_handler);
 
         self.molecule_types
             .iter_mut()
