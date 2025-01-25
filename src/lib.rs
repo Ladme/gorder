@@ -240,7 +240,7 @@
 //! To learn more about the various input parameters for `Analysis`, refer to:
 //! 1. [`AnalysisBuilder`](crate::prelude::AnalysisBuilder) for an overview of the builder.
 //! 2. [`AnalysisType`](crate::prelude::AnalysisType) for the types of analysis.
-//! 3. [`OrderMapBuilder`](crate::prelude::OrderMapBuilder) and [`OrderMap`](crate::prelude::OrderMap) for specifying parameter maps.
+//! 3. [`OrderMapBuilder`](crate::prelude::OrderMapBuilder) and [`OrderMap`](crate::prelude::OrderMap) for specifying order parameter maps.
 //! 4. [`LeafletClassification`](crate::prelude::LeafletClassification) for leaflet classification.
 //! 5. [`EstimateError`](crate::prelude::EstimateError) for error estimation.
 //! 6. [`Geometry`](crate::prelude::Geometry) for geometry selection.
