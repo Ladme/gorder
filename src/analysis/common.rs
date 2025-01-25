@@ -296,16 +296,16 @@ fn analyze_molecules(
         // calculate order parameters
         match geometry {
             GeometrySelectionType::None(x) => {
-                molecule.analyze_frame(frame, pbc_handler, &membrane_normal, frame_index, x)?
+                molecule.analyze_frame(frame, pbc_handler, membrane_normal, frame_index, x)?
             }
             GeometrySelectionType::Cuboid(x) => {
-                molecule.analyze_frame(frame, pbc_handler, &membrane_normal, frame_index, x)?
+                molecule.analyze_frame(frame, pbc_handler, membrane_normal, frame_index, x)?
             }
             GeometrySelectionType::Cylinder(x) => {
-                molecule.analyze_frame(frame, pbc_handler, &membrane_normal, frame_index, x)?
+                molecule.analyze_frame(frame, pbc_handler, membrane_normal, frame_index, x)?
             }
             GeometrySelectionType::Sphere(x) => {
-                molecule.analyze_frame(frame, pbc_handler, &membrane_normal, frame_index, x)?
+                molecule.analyze_frame(frame, pbc_handler, membrane_normal, frame_index, x)?
             }
         }
     }

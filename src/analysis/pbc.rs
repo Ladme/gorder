@@ -171,7 +171,7 @@ impl<'a> PBCHandler for PBC3D<'a> {
 
     #[inline(always)]
     fn distance(&self, point1: &Vector3D, point2: &Vector3D, dim: Dimension) -> f32 {
-        point1.distance(point2, dim, &self.0)
+        point1.distance(point2, dim, self.0)
     }
 
     #[inline(always)]
@@ -185,12 +185,12 @@ impl<'a> PBCHandler for PBC3D<'a> {
         let atom1 = system.get_atom(index1)?;
         let atom2 = system.get_atom(index2)?;
 
-        atom1.distance(atom2, dim, &self.0)
+        atom1.distance(atom2, dim, self.0)
     }
 
     #[inline(always)]
     fn inside<Geom: GeometrySelection>(&self, point: &Vector3D, shape: &Geom) -> bool {
-        shape.inside(point, &self.0)
+        shape.inside(point, self.0)
     }
 
     #[inline(always)]
@@ -200,12 +200,12 @@ impl<'a> PBCHandler for PBC3D<'a> {
         // even when calculating order parameters for lipids near the box center
         // which are not affected by numerical errors introduced by making the molecules whole
         // these discrepancies become more noticeable with shorter trajectories
-        point1.vector_to(point2, &self.0)
+        point1.vector_to(point2, self.0)
     }
 
     #[inline(always)]
     fn wrap(&self, point: &mut Vector3D) {
-        point.wrap(&self.0)
+        point.wrap(self.0)
     }
 
     #[inline(always)]

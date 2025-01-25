@@ -2963,7 +2963,7 @@ fn test_cg_order_geometry_cuboid_ordermaps_no_pbc() {
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_cg_nopbc/cuboid.dat";
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
     }
 }
 
@@ -3017,7 +3017,7 @@ fn test_cg_order_geometry_cylinder_ordermaps_no_pbc() {
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_cg_nopbc/cylinder.dat";
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
     }
 }
 
@@ -3063,7 +3063,7 @@ fn test_cg_order_geometry_sphere_ordermaps_no_pbc() {
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_cg_nopbc/sphere.dat";
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
     }
 }
 
