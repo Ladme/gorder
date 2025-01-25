@@ -183,6 +183,11 @@ impl<'a> PBCHandler for PBC3D<'a> {
 
     #[inline(always)]
     fn vector_to(&self, point1: &Vector3D, point2: &Vector3D) -> Vector3D {
+        // this calculation introduces minor numerical errors compared to the NoPBC version
+        // as a result, the results when using PBC3D and NoPBC handlers will differ,
+        // even when calculating order parameters for lipids near the box center
+        // which are not affected by numerical errors introduced by making the molecules whole
+        // these discrepancies become more noticeable with shorter trajectories
         point1.vector_to(point2, &self.0)
     }
 
