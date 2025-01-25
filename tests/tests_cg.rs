@@ -2846,6 +2846,228 @@ fn test_cg_order_error_leaflets_no_pbc_multiple_threads() {
 }
 
 #[test]
+fn test_cg_order_maps_leaflets_no_pbc() {
+    for method in [
+        LeafletClassification::global("@membrane", "name PO4"),
+        LeafletClassification::local("@membrane", "name PO4", 2.5),
+        LeafletClassification::individual("name PO4", "name C4A C4B"),
+    ] {
+        for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+            let directory = TempDir::new().unwrap();
+            let path_to_dir = directory.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/cg_whole_nobox.xtc")
+                .analysis_type(AnalysisType::cgorder(
+                    "resname POPC and name C1B C2B C3B C4B",
+                ))
+                .leaflets(method.clone())
+                .map(
+                    OrderMap::builder()
+                        .bin_size([1.0, 1.0])
+                        .output_directory(path_to_dir)
+                        .min_samples(10)
+                        .dim([
+                            GridSpan::manual(0.0, 13.0).unwrap(),
+                            GridSpan::manual(0.0, 13.0).unwrap(),
+                        ])
+                        .build()
+                        .unwrap(),
+                )
+                .handle_pbc(false)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let expected_file_names = [
+                "ordermap_average_full.dat",
+                "ordermap_average_upper.dat",
+                "ordermap_average_lower.dat",
+            ];
+
+            for file in expected_file_names {
+                let real_file = format!("{}/POPC/{}", path_to_dir, file);
+                let test_file = format!("tests/files/ordermaps_cg_nopbc/{}", file);
+                assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            }
+
+            // full maps for the entire system are the same as for POPC
+            for file in [
+                "ordermap_average_full.dat",
+                "ordermap_average_upper.dat",
+                "ordermap_average_lower.dat",
+            ] {
+                let real_file = format!("{}/{}", path_to_dir, file);
+                let test_file = format!("tests/files/ordermaps_cg_nopbc/{}", file);
+                assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            }
+
+            // check the script
+            let real_script = format!("{}/plot.py", path_to_dir);
+            assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cuboid_ordermaps_no_pbc() {
+    for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/cg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(
+                Geometry::cuboid(
+                    [-2.0, 11.0, 0.0],
+                    [-2.0, 8.0],
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                )
+                .unwrap(),
+            )
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                        GridSpan::manual(0.0, 14.0).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_cuboid_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_cg_nopbc/cuboid.dat";
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cylinder_ordermaps_no_pbc() {
+    for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/cg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(
+                Geometry::cylinder(
+                    [10.0, 12.0, 0.0],
+                    4.0,
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    Axis::Z,
+                )
+                .unwrap(),
+            )
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_cylinder_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_cg_nopbc/cylinder.dat";
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_sphere_ordermaps_no_pbc() {
+    for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/cg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(Geometry::sphere([10.0, 12.0, 5.5], 4.0).unwrap())
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_sphere_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_cg_nopbc/sphere.dat";
+        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+    }
+}
+
+#[test]
 fn test_cg_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/cg.tpr")

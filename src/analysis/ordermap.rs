@@ -58,12 +58,7 @@ impl Map {
         {
             match simbox {
                 None => return Err(OrderMapConfigError::InvalidBoxAuto),
-                Some(sbox) => {
-                    if sbox.is_zero() || !sbox.is_orthogonal() {
-                        return Err(OrderMapConfigError::InvalidBoxAuto);
-                    }
-                    plane.dimensions_from_simbox(sbox)
-                }
+                Some(sbox) => plane.dimensions_from_simbox(sbox),
             }
         } else {
             (0.0, 0.0) // automatic span will not be used, so we set the values to 0
@@ -210,7 +205,10 @@ mod tests {
     use groan_rs::prelude::SimBox;
 
     use crate::{
-        analysis::{order::AnalysisOrder, pbc::PBC3D},
+        analysis::{
+            order::AnalysisOrder,
+            pbc::{NoPBC, PBC3D},
+        },
         input::ordermap::Plane,
     };
 
@@ -289,6 +287,69 @@ mod tests {
                 assert_eq!(y, 3.0);
             }
             Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn new_map_manual_nopbc() {
+        let params = OrderMap::builder()
+            .output_directory(".")
+            .dim([
+                GridSpan::Manual {
+                    start: -4.0,
+                    end: 8.0,
+                },
+                GridSpan::Manual {
+                    start: 1.5,
+                    end: 4.5,
+                },
+            ])
+            .plane(Plane::XY)
+            .build()
+            .unwrap();
+
+        let map = Map::new(params, &NoPBC).unwrap();
+
+        assert_eq!(map.samples.span_x(), (-4.0, 8.0));
+        assert_eq!(map.samples.span_y(), (1.5, 4.5));
+        assert_eq!(map.samples.tile_dim(), (0.1, 0.1));
+
+        assert_eq!(map.values.span_x(), (-4.0, 8.0));
+        assert_eq!(map.values.span_y(), (1.5, 4.5));
+        assert_eq!(map.values.tile_dim(), (0.1, 0.1));
+    }
+
+    #[test]
+    fn new_map_auto_nopbc_fail() {
+        for dim in [
+            [
+                GridSpan::Manual {
+                    start: 1.5,
+                    end: 4.5,
+                },
+                GridSpan::Auto,
+            ],
+            [
+                GridSpan::Auto,
+                GridSpan::Manual {
+                    start: 1.5,
+                    end: 4.5,
+                },
+            ],
+            [GridSpan::Auto, GridSpan::Auto],
+        ] {
+            let params = OrderMap::builder()
+                .output_directory(".")
+                .dim(dim)
+                .plane(Plane::XY)
+                .build()
+                .unwrap();
+
+            match Map::new(params, &NoPBC) {
+                Ok(_) => panic!("Function should have failed."),
+                Err(OrderMapConfigError::InvalidBoxAuto) => (),
+                Err(e) => panic!("Unexpected error `{}` returned.", e),
+            }
         }
     }
 

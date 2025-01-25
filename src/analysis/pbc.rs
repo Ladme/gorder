@@ -6,8 +6,7 @@
 use groan_rs::{
     errors::{AtomError, GroupError},
     prelude::{
-        AtomIterable, AtomIteratorWithBox, Dimension, ImmutableAtomIterable, NaiveShape, Shape,
-        SimBox, Vector3D,
+        AtomIterable, AtomIteratorWithBox, Cylinder, Dimension, ImmutableAtomIterable, NaiveShape, Shape, SimBox, Vector3D
     },
     system::System,
 };
@@ -58,6 +57,9 @@ pub(crate) trait PBCHandler {
 
     /// Get refrence to the simulation box. Returns None, if PBC are ignored.
     fn get_simbox(&self) -> Option<&SimBox>;
+
+    /// Construct a cylinder for local center of geometry calculation.
+    fn cylinder_for_local_center(&self, x: f32, y: f32, radius: f32, orientation: Dimension) -> Cylinder;
 }
 
 /// PBCHandler that ignores all periodic boundary conditions.
@@ -130,6 +132,16 @@ impl PBCHandler for NoPBC {
     #[inline(always)]
     fn get_simbox(&self) -> Option<&SimBox> {
         None
+    }
+
+    #[inline(always)]
+    fn cylinder_for_local_center(&self, x: f32, y: f32, radius: f32, orientation: Dimension) -> Cylinder {
+        Cylinder::new(
+            Vector3D::new(x, y, f32::MIN),
+            radius,
+            f32::INFINITY,
+            orientation,
+        )
     }
 }
 
@@ -210,6 +222,16 @@ impl<'a> PBCHandler for PBC3D<'a> {
     #[inline(always)]
     fn get_simbox(&self) -> Option<&SimBox> {
         Some(self.0)
+    }
+
+    #[inline(always)]
+    fn cylinder_for_local_center(&self, x: f32, y: f32, radius: f32, orientation: Dimension) -> Cylinder {
+        Cylinder::new(
+            Vector3D::new(x, y, 0.0),
+            radius,
+            f32::INFINITY,
+            orientation,
+        )
     }
 }
 

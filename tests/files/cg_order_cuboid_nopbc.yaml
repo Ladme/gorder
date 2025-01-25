@@ -1,0 +1,81 @@
+# Order parameters calculated with 'gorder v0.5.0-dev.1' using structure file 'cg.tpr' and trajectory file 'cg_whole_nobox.xtc'.
+average order:
+  total: 0.2969
+POPC:
+  average order:
+    total: 0.2971
+  order parameters:
+    POPC NC3 (0) - POPC PO4 (1):
+      total: -0.1296
+    POPC PO4 (1) - POPC GL1 (2):
+      total: 0.5908
+    POPC GL1 (2) - POPC GL2 (3):
+      total: -0.188
+    POPC GL1 (2) - POPC C1A (4):
+      total: 0.3965
+    POPC GL2 (3) - POPC C1B (8):
+      total: 0.4958
+    POPC C1A (4) - POPC D2A (5):
+      total: 0.376
+    POPC D2A (5) - POPC C3A (6):
+      total: 0.2941
+    POPC C3A (6) - POPC C4A (7):
+      total: 0.2346
+    POPC C1B (8) - POPC C2B (9):
+      total: 0.5113
+    POPC C2B (9) - POPC C3B (10):
+      total: 0.4218
+    POPC C3B (10) - POPC C4B (11):
+      total: 0.2661
+POPE:
+  average order:
+    total: 0.2961
+  order parameters:
+    POPE NH3 (0) - POPE PO4 (1):
+      total: -0.133
+    POPE PO4 (1) - POPE GL1 (2):
+      total: 0.6092
+    POPE GL1 (2) - POPE GL2 (3):
+      total: -0.1936
+    POPE GL1 (2) - POPE C1A (4):
+      total: 0.4076
+    POPE GL2 (3) - POPE C1B (8):
+      total: 0.4883
+    POPE C1A (4) - POPE D2A (5):
+      total: 0.3737
+    POPE D2A (5) - POPE C3A (6):
+      total: 0.3057
+    POPE C3A (6) - POPE C4A (7):
+      total: 0.2505
+    POPE C1B (8) - POPE C2B (9):
+      total: 0.4898
+    POPE C2B (9) - POPE C3B (10):
+      total: 0.403
+    POPE C3B (10) - POPE C4B (11):
+      total: 0.257
+POPG:
+  average order:
+    total: 0.3035
+  order parameters:
+    POPG GL0 (0) - POPG PO4 (1):
+      total: -0.0039
+    POPG PO4 (1) - POPG GL1 (2):
+      total: 0.617
+    POPG GL1 (2) - POPG GL2 (3):
+      total: -0.2159
+    POPG GL1 (2) - POPG C1A (4):
+      total: 0.436
+    POPG GL2 (3) - POPG C1B (8):
+      total: 0.4569
+    POPG C1A (4) - POPG D2A (5):
+      total: 0.386
+    POPG D2A (5) - POPG C3A (6):
+      total: 0.2953
+    POPG C3A (6) - POPG C4A (7):
+      total: 0.2444
+    POPG C1B (8) - POPG C2B (9):
+      total: 0.4881
+    POPG C2B (9) - POPG C3B (10):
+      total: 0.3804
+    POPG C3B (10) - POPG C4B (11):
+      total: 0.263

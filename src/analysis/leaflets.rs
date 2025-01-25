@@ -20,7 +20,7 @@ use crate::{
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
     errors::{AtomError, PositionError},
-    prelude::{Cylinder, Dimension, Vector3D},
+    prelude::{Dimension, Vector3D},
     structures::group::Group,
     system::System,
 };
@@ -434,15 +434,10 @@ impl LocalClassification {
                 .get_position()
                 .ok_or(AnalysisError::UndefinedPosition(index))?;
 
-            let cylinder = Cylinder::new(
-                position.clone(),
-                self.radius,
-                f32::INFINITY,
-                membrane_normal,
-            );
+            let cylinder = pbc_handler.cylinder_for_local_center(position.x, position.y, self.radius, membrane_normal);
             let center = pbc_handler.group_filter_geometry_get_center(system, group_name!("Membrane"), cylinder)
                 .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index))?;
-            
+
             if center.x.is_nan() || center.y.is_nan() || center.z.is_nan() {
                 return Err(AnalysisError::InvalidLocalMembraneCenter(index));
             }
