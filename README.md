@@ -104,6 +104,6 @@ Run time of the analyses performed in the Validation section by various programs
 The command line tool and the crate are both released under the MIT License.
 
 ## Limitations
-- `gorder` only works for simulations with orthogonal simulation boxes.
-- `gorder` only supports TPR files generated with Gromacs 5.1 or newer.
-- `gorder` is developed on Linux for Linux. While it should work on other operating systems, it is not guaranteed.
+- `gorder` does not fully support simulation boxes that are **not** orthogonal. [You can still use them but it requires some additional effort.](https://ladme.github.io/gorder-manual/no_pbc.html)
+- `gorder` does not support TPR files generated with Gromacs older than version 5.1. [But you can use PDB, GRO, or PQR file instead.](https://ladme.github.io/gorder-manual/other_input.html)
+- `gorder` is developed for Linux. While it should work on other operating systems, it is not guaranteed.
