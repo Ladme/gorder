@@ -4363,6 +4363,45 @@ fn test_aa_order_basic_yaml_nobox_pdb_fail() {
 }
 
 #[test]
+fn test_aa_order_leaflets_yaml_shifted_trajectory() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/pcpepg_once.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    for method in [
+        LeafletClassification::global("@membrane", "name P"),
+        LeafletClassification::local("@membrane", "name P", 2.5),
+        LeafletClassification::individual("name P", "name C218 C316"),
+        LeafletClassification::from_map(assignment).with_frequency(Frequency::once()),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg_shifted.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(method)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets_shifted.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_aa_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
