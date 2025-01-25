@@ -8,7 +8,7 @@ use std::ops::Add;
 
 use getset::{CopyGetters, Getters, MutGetters};
 use groan_rs::{
-    prelude::{Atom, SimBox, Vector3D},
+    prelude::{Atom, Vector3D},
     structures::group::Group,
     system::System,
 };
@@ -61,6 +61,7 @@ impl MoleculeType {
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
         errors: bool,
+        pbc_handler: &impl PBCHandler,
     ) -> Result<Self, TopologyError> {
         Ok(Self {
             name,
@@ -72,6 +73,7 @@ impl MoleculeType {
                 leaflet_classification.is_some(),
                 ordermap_params,
                 errors,
+                pbc_handler,
             )?,
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
@@ -220,12 +222,9 @@ impl OrderBonds {
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
         errors: bool,
+        pbc_handler: &impl PBCHandler,
     ) -> Result<Self, TopologyError> {
         bonds_sanity_check(bonds, min_index);
-
-        // simbox is used to set up ordermaps (if automatic span detection is used)
-        // simbox is validated later
-        let simbox = system.get_box();
 
         let mut order_bonds = Vec::new();
         for &(index1, index2) in bonds.iter() {
@@ -238,7 +237,7 @@ impl OrderBonds {
                 min_index,
                 classify_leaflets,
                 ordermap,
-                simbox,
+                pbc_handler,
                 errors,
             )?;
             order_bonds.push(bond)
@@ -412,7 +411,7 @@ impl BondType {
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
-        simbox: Option<&SimBox>,
+        pbc_handler: &impl PBCHandler,
         errors: bool,
     ) -> Result<Self, TopologyError> {
         let bond_topology = BondTopology::new(
@@ -428,7 +427,10 @@ impl BondType {
         };
 
         let optional_map = if let Some(map_params) = ordermap {
-            Some(Map::new(map_params.to_owned(), simbox).map_err(TopologyError::OrderMapError)?)
+            Some(
+                Map::new(map_params.to_owned(), pbc_handler)
+                    .map_err(TopologyError::OrderMapError)?,
+            )
         } else {
             None
         };
@@ -707,10 +709,10 @@ impl fmt::Display for AtomType {
 
 #[cfg(test)]
 mod tests {
-    use groan_rs::prelude::Dimension;
+    use groan_rs::prelude::{Dimension, SimBox};
 
     use crate::{
-        analysis::{geometry::NoSelection, topology::SystemTopology},
+        analysis::{geometry::NoSelection, pbc::PBC3D, topology::SystemTopology},
         input::{ordermap::Plane, GridSpan},
     };
 
@@ -740,7 +742,7 @@ mod tests {
             455,
             false,
             None,
-            Some(&SimBox::from([10.0, 10.0, 10.0])),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -752,7 +754,7 @@ mod tests {
             455,
             false,
             None,
-            Some(&SimBox::from([10.0, 10.0, 10.0])),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -776,7 +778,7 @@ mod tests {
             455,
             true,
             None,
-            Some(&SimBox::from([10.0, 10.0, 10.0])),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -804,7 +806,7 @@ mod tests {
             455,
             false,
             Some(&ordermap_params),
-            Some(&SimBox::from([10.0, 10.0, 10.0])),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -835,7 +837,7 @@ mod tests {
             455,
             true,
             Some(&ordermap_params),
-            Some(&SimBox::from([10.0, 10.0, 10.0])),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -860,7 +862,7 @@ mod tests {
             455,
             false,
             None,
-            Some(&SimBox::from([10.0, 10.0, 10.0])),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -933,7 +935,16 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds);
-        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, false).unwrap();
+        let order_bonds = OrderBonds::new(
+            &system,
+            &bonds_set,
+            125,
+            false,
+            None,
+            false,
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
+        )
+        .unwrap();
 
         let expected_bonds = expected_bonds(&system);
 
@@ -958,8 +969,16 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds);
-        let mut order_bonds =
-            OrderBonds::new(&system, &bonds_set, 125, false, None, false).unwrap();
+        let mut order_bonds = OrderBonds::new(
+            &system,
+            &bonds_set,
+            125,
+            false,
+            None,
+            false,
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
+        )
+        .unwrap();
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
         let new_bonds_set = HashSet::from(new_bonds);
@@ -1025,6 +1044,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 
@@ -1059,6 +1079,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 

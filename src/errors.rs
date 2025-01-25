@@ -270,7 +270,7 @@ pub enum OrderMapConfigError {
             .1.1.to_string().yellow())]
     BinTooLarge((f32, f32), (f32, f32)),
 
-    #[error("{} simulation box is undefined or not orthogonal => unable to automatically set ordermap dimensions ({} set ordermap dimensions manually)",
+    #[error("{} simulation box and periodic boundary conditions are ignored => unable to automatically set ordermap dimensions ({} set ordermap dimensions manually)",
     "error:".red().bold(), "hint:".blue().bold())]
     InvalidBoxAuto,
 }

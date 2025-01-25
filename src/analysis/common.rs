@@ -134,6 +134,7 @@ pub(super) fn classify_molecules(
     estimate_error: Option<&EstimateError>,
     n_threads: usize,
     step_size: usize,
+    pbc_handler: &impl PBCHandler,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -180,6 +181,7 @@ pub(super) fn classify_molecules(
                 estimate_error.is_some(),
                 n_threads,
                 step_size,
+                pbc_handler,
             )?);
         }
     }
@@ -408,6 +410,7 @@ fn create_new_molecule_type(
     errors: bool,
     n_threads: usize,
     step_size: usize,
+    pbc_handler: &impl PBCHandler,
 ) -> Result<MoleculeType, TopologyError> {
     // create a name of the molecule
     let name = residues.join("-");
@@ -439,6 +442,7 @@ fn create_new_molecule_type(
         classifier,
         ordermap_params,
         errors,
+        pbc_handler,
     )
 }
 
@@ -1374,6 +1378,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
@@ -1826,6 +1831,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
         let expected_names = ["POPE", "POPG"];
@@ -2511,6 +2517,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 
@@ -2546,6 +2553,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 
@@ -2581,6 +2589,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 
@@ -2616,6 +2625,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 

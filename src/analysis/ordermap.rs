@@ -8,11 +8,11 @@ use std::ops::{Add, AddAssign};
 use getset::{Getters, MutGetters};
 use groan_rs::{
     errors::GridMapError,
-    prelude::{GridMap, SimBox, Vector3D},
+    prelude::{GridMap, Vector3D},
     structures::gridmap::DataOrder,
 };
 
-use super::order::OrderValue;
+use super::{order::OrderValue, pbc::PBCHandler};
 use crate::{errors::OrderMapConfigError, input::GridSpan, input::OrderMap, PANIC_MESSAGE};
 
 /// Order parameter map. Stores order parameters calculated for a specific bond/atom
@@ -39,7 +39,7 @@ impl Map {
     /// Construct a new ordermap.
     pub(crate) fn new(
         params: OrderMap,
-        simbox: Option<&SimBox>,
+        pbc_handler: &impl PBCHandler,
     ) -> Result<Map, OrderMapConfigError> {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();
@@ -50,6 +50,8 @@ impl Map {
                 PANIC_MESSAGE
             )
         });
+
+        let simbox = pbc_handler.get_simbox();
 
         let (auto_x, auto_y) = if matches!(params.dim_x(), GridSpan::Auto)
             || matches!(params.dim_y(), GridSpan::Auto)
@@ -205,14 +207,19 @@ where
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
+    use groan_rs::prelude::SimBox;
 
-    use crate::{analysis::order::AnalysisOrder, input::ordermap::Plane};
+    use crate::{
+        analysis::{order::AnalysisOrder, pbc::PBC3D},
+        input::ordermap::Plane,
+    };
 
     use super::*;
 
     #[test]
     fn new_map_auto() {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
+        let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
             .output_directory(".")
             .bin_size([0.05, 0.2])
@@ -220,7 +227,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let map = Map::new(params, Some(&simbox)).unwrap();
+        let map = Map::new(params, &pbc).unwrap();
 
         assert_eq!(map.samples.span_x(), (0.0, 10.0));
         assert_eq!(map.samples.span_y(), (0.0, 5.0));
@@ -234,6 +241,7 @@ mod tests {
     #[test]
     fn new_map_manual() {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
+        let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
             .output_directory(".")
             .dim([
@@ -250,7 +258,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let map = Map::new(params, Some(&simbox)).unwrap();
+        let map = Map::new(params, &pbc).unwrap();
 
         assert_eq!(map.samples.span_x(), (-4.0, 8.0));
         assert_eq!(map.samples.span_y(), (1.5, 4.5));
@@ -264,6 +272,7 @@ mod tests {
     #[test]
     fn new_map_fail_bin_size() {
         let simbox = SimBox::from([10.0, 3.0, 6.0]);
+        let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
             .output_directory(".")
             .bin_size([1.0, 5.0])
@@ -271,7 +280,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match Map::new(params, Some(&simbox)) {
+        match Map::new(params, &pbc) {
             Ok(_) => panic!("Function should have failed."),
             Err(OrderMapConfigError::BinTooLarge((a, b), (x, y))) => {
                 assert_eq!(a, 1.0);

@@ -360,7 +360,7 @@ mod tests {
     use groan_rs::prelude::{SimBox, Vector3D};
 
     use crate::{
-        analysis::timewise::AddExtend,
+        analysis::{pbc::PBC3D, timewise::AddExtend},
         input::{AnalysisType, EstimateError, OrderMap, Plane},
     };
 
@@ -566,7 +566,7 @@ mod tests {
     fn convert_ordermap() {
         let mut ordermap = Map::new(
             prepare_ordermap_params(),
-            Some(&SimBox::from([5.0, 5.0, 5.0])),
+            &PBC3D::new(&SimBox::from([5.0, 5.0, 5.0])),
         )
         .unwrap();
 
@@ -628,7 +628,7 @@ mod tests {
     fn convert_ordermap_limit() {
         let mut ordermap = Map::new(
             prepare_ordermap_params_limit(),
-            Some(&SimBox::from([5.0, 5.0, 5.0])),
+            &PBC3D::new(&SimBox::from([5.0, 5.0, 5.0])),
         )
         .unwrap();
 

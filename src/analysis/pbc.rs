@@ -55,11 +55,14 @@ pub(crate) trait PBCHandler {
 
     /// Get the simulation box center or PANIC if PBC are ignored.
     fn get_box_center(&self) -> Vector3D;
+
+    /// Get refrence to the simulation box. Returns None, if PBC are ignored.
+    fn get_simbox(&self) -> Option<&SimBox>;
 }
 
 /// PBCHandler that ignores all periodic boundary conditions.
 #[derive(Debug, Clone)]
-pub(super) struct NoPBC;
+pub(crate) struct NoPBC;
 
 impl PBCHandler for NoPBC {
     #[inline(always)]
@@ -123,11 +126,16 @@ impl PBCHandler for NoPBC {
     fn get_box_center(&self) -> Vector3D {
         panic!("FATAL GORDER ERROR | NoPBC::get_box_center | PBC are ignored. Can't get box center. {}", PANIC_MESSAGE);
     }
+
+    #[inline(always)]
+    fn get_simbox(&self) -> Option<&SimBox> {
+        None
+    }
 }
 
 /// PBCHandler that assumes periodic boundary conditions in all three dimensions.
 #[derive(Debug, Clone)]
-pub(super) struct PBC3D<'a>(&'a SimBox);
+pub(crate) struct PBC3D<'a>(&'a SimBox);
 
 impl<'a> PBCHandler for PBC3D<'a> {
     #[inline(always)]
@@ -193,10 +201,26 @@ impl<'a> PBCHandler for PBC3D<'a> {
     fn get_box_center(&self) -> Vector3D {
         Vector3D::new(self.0.x / 2.0f32, self.0.y / 2.0f32, self.0.z / 2.0f32)
     }
+
+    #[inline(always)]
+    fn get_simbox(&self) -> Option<&SimBox> {
+        Some(self.0)
+    }
 }
 
 impl<'a> PBC3D<'a> {
-    pub(super) fn new(simbox: &'a SimBox) -> Self {
+    pub(crate) fn new(simbox: &'a SimBox) -> Self {
         Self(simbox)
+    }
+
+    /// Create a periodic boundary handler for a system.
+    /// Assumes that the simulation box is defined and orthogonal.
+    pub(super) fn from_system(system: &'a System) -> Self {
+        Self(
+            system.get_box()
+            .unwrap_or_else(|| 
+                panic!("FATAL GORDER ERROR | PBC3D::from_system | Simulation box is undefined but this should have been handled before.")
+            )
+        )
     }
 }

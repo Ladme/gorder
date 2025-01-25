@@ -2814,6 +2814,38 @@ fn test_cg_order_leaflets_no_pbc_multiple_threads() {
 }
 
 #[test]
+fn test_cg_order_error_leaflets_no_pbc_multiple_threads() {
+    for n_threads in [1, 3, 8, 32] {
+        for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/cg_whole_nobox.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+                .handle_pbc(false)
+                .estimate_error(EstimateError::default())
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/cg_order_error_leaflets_nopbc.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/cg.tpr")

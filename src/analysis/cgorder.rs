@@ -8,6 +8,7 @@ use groan_rs::prelude::{GroupXtcReader, ProgressPrinter};
 use crate::{
     analysis::{
         common::{analyze_frame, macros::group_name, sanity_check_molecules},
+        pbc::{NoPBC, PBC3D},
         topology::SystemTopology,
     },
     errors::AnalysisError,
@@ -69,17 +70,27 @@ pub(super) fn analyze_coarse_grained(
     log::logger().flush();
 
     // get the relevant molecules
-    let molecules = super::common::classify_molecules(
-        &system,
-        "Beads",
-        "Beads",
-        analysis.leaflets().as_ref(),
-        analysis.membrane_normal().into(),
-        analysis.map().as_ref(),
-        analysis.estimate_error().as_ref(),
-        analysis.n_threads(),
-        analysis.step(),
-    )?;
+    macro_rules! classify_molecules_with_pbc {
+        ($pbc:expr) => {
+            super::common::classify_molecules(
+                &system,
+                "Beads",
+                "Beads",
+                analysis.leaflets().as_ref(),
+                analysis.membrane_normal().into(),
+                analysis.map().as_ref(),
+                analysis.estimate_error().as_ref(),
+                analysis.n_threads(),
+                analysis.step(),
+                $pbc,
+            )
+        };
+    }
+
+    let molecules = match analysis.handle_pbc() {
+        true => classify_molecules_with_pbc!(&PBC3D::from_system(&system))?,
+        false => classify_molecules_with_pbc!(&NoPBC)?,
+    };
 
     if !sanity_check_molecules(&molecules) {
         return Ok(AnalysisResults::CG(CGOrderResults::empty(analysis)));
@@ -190,6 +201,7 @@ mod tests {
             None,
             1,
             1,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
         (
