@@ -4302,11 +4302,63 @@ fn test_aa_order_maps_leaflets_no_pbc_fail_autodim() {
             .unwrap();
 
         match analysis.run() {
-            Ok(_) => panic!("Function should have failed."),
+            Ok(_) => panic!("Analysis should have failed."),
             Err(e) => assert!(e
                 .to_string()
                 .contains("simulation box and periodic boundary conditions are ignored")),
         }
+    }
+}
+
+#[test]
+fn test_aa_order_basic_yaml_nobox_xtc_fail() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("all dimensions of the simulation box are zero")),
+    }
+}
+
+#[test]
+fn test_aa_order_basic_yaml_nobox_pdb_fail() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg_nobox.pdb")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("system has undefined simulation box")),
     }
 }
 

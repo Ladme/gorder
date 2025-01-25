@@ -251,6 +251,28 @@ fn test_bin_cg_leaflets_from_map() {
 }
 
 #[test]
+fn test_bin_aa_leaflets_no_pbc() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/aa_leaflets_no_pbc.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_aa_order_leaflets_no_pbc.yaml",
+        "tests/files/aa_order_leaflets_nopbc.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_aa_order_leaflets_no_pbc.yaml").unwrap();
+}
+
+#[test]
 fn test_bin_aa_order_writing_fail() {
     Command::cargo_bin("gorder")
         .unwrap()
