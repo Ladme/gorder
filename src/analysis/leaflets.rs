@@ -283,6 +283,10 @@ impl MoleculeLeafletClassification {
                         .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
                 })?;
 
+                if center.x.is_nan() || center.y.is_nan() || center.z.is_nan() {
+                    return Err(AnalysisError::InvalidGlobalMembraneCenter);
+                }
+
                 x.set_membrane_center(center.clone());
                 y.assign_lipids(system, pbc_handler, x, current_frame)
             }
@@ -438,6 +442,10 @@ impl LocalClassification {
             );
             let center = pbc_handler.group_filter_geometry_get_center(system, group_name!("Membrane"), cylinder)
                 .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index))?;
+            
+            if center.x.is_nan() || center.y.is_nan() || center.z.is_nan() {
+                return Err(AnalysisError::InvalidLocalMembraneCenter(index));
+            }
 
             self.membrane_center[i] = center;
         }

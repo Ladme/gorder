@@ -60,7 +60,14 @@ impl LeafletClassification {
     /// - `heads` - reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
     ///    there must only be one such atom/bead per lipid molecule.
     /// - `radius` - radius of a cylinder for the calculation of local membrane center of geometry (in nm)
+    ///
+    /// ## Panic
+    /// Panics if the radius is not positive.
     pub fn local(membrane: &str, heads: &str, radius: f32) -> LeafletClassification {
+        if radius <= 0.0 {
+            panic!("Radius must be greater than 0, not `{}`.", radius);
+        }
+
         Self::Local(LocalParams {
             membrane: membrane.to_string(),
             heads: heads.to_string(),
@@ -184,11 +191,24 @@ pub struct LocalParams {
     heads: String,
     /// Radius of a cylinder for the calculation of local membrane center of geometry (in nm).
     #[getset(get_copy = "pub")]
+    #[serde(deserialize_with = "validate_radius")]
     radius: f32,
     /// Frequency of leaflet assignment.
     #[getset(get_copy = "pub")]
     #[serde(default)]
     frequency: Frequency,
+}
+
+fn validate_radius<'de, D>(deserializer: D) -> Result<f32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let radius = f32::deserialize(deserializer)?;
+    if radius <= 0.0 {
+        Err(de::Error::custom("radius must be greater than 0"))
+    } else {
+        Ok(radius)
+    }
 }
 
 /// Parameters for classification of lipids.
@@ -375,6 +395,18 @@ impl ManualParams {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[should_panic]
+    fn local_radius_negative_fail() {
+        let _classification = LeafletClassification::local("@membrane", "name P", -1.4);
+    }
+
+    #[test]
+    #[should_panic]
+    fn local_radius_zero_fail() {
+        let _classification = LeafletClassification::local("@membrane", "name P", 0.0);
+    }
 
     #[test]
     fn test_parse_manual_file_only() {
@@ -596,5 +628,35 @@ frequency: some";
 
         let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
         assert!(params.is_err());
+    }
+
+    #[test]
+    fn test_parse_local_negative_radius_fail() {
+        let string = "!Local
+membrane: \"@membrane\"
+heads: name P
+radius: -1.5";
+
+        let result: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+
+        match result {
+            Err(e) => assert_eq!(e.to_string(), "radius must be greater than 0"),
+            Ok(_) => panic!("Should have failed."),
+        }
+    }
+
+    #[test]
+    fn test_parse_local_zero_radius_fail() {
+        let string = "!Local
+membrane: \"@membrane\"
+heads: name P
+radius: 0.0";
+
+        let result: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+
+        match result {
+            Err(e) => assert_eq!(e.to_string(), "radius must be greater than 0"),
+            Ok(_) => panic!("Should have failed."),
+        }
     }
 }
