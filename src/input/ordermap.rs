@@ -14,6 +14,7 @@ use crate::errors::{GridSpanError, OrderMapConfigError};
 
 /// Orientation of the order map. Should correspond to the plane in which the membrane is built.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub enum Plane {
     #[default]
     #[serde(alias = "xy")]

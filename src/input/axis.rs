@@ -14,6 +14,7 @@ use super::ordermap::Plane;
 
 /// Represents the X, Y, or Z axis.
 #[derive(Debug, Clone, PartialEq, Eq, Copy, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub enum Axis {
     #[serde(alias = "x")]
     X,

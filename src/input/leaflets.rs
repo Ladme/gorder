@@ -18,6 +18,7 @@ use super::frequency::Frequency;
 
 /// Parameters for the classification of lipids into membrane leaflets.
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub enum LeafletClassification {
     Global(GlobalParams),
     Local(LocalParams),
