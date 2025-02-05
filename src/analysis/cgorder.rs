@@ -3,15 +3,12 @@
 
 //! Contains the implementation of the calculation of the coarse-grained order parameters.
 
-use groan_rs::prelude::{GroupXtcReader, ProgressPrinter};
-
 use crate::{
     analysis::{
-        common::{analyze_frame, macros::group_name, sanity_check_molecules},
+        common::{macros::group_name, read_trajectory, sanity_check_molecules},
         pbc::{NoPBC, PBC3D},
         topology::SystemTopology,
     },
-    errors::AnalysisError,
     input::{Analysis, LeafletClassification},
     presentation::cgresults::CGOrderResults,
     PANIC_MESSAGE,
@@ -113,42 +110,21 @@ pub(super) fn analyze_coarse_grained(
         data.finalize_manual_leaflet_classification(params)?;
     }
 
-    let progress_printer = if analysis.silent() {
-        None
-    } else {
-        Some(ProgressPrinter::new().with_print_freq(100 / analysis.n_threads()))
-    };
-
-    log::info!(
-        "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
-        analysis.trajectory(),
-        analysis.begin(),
-        analysis.end(),
-        analysis.step()
-    );
-
     if let Some(error_estimation) = analysis.estimate_error() {
         error_estimation.info();
     }
 
     prepare_master_group(&mut system, &analysis);
 
-    log::info!(
-        "Performing the analysis using {} thread(s)...",
-        analysis.n_threads()
-    );
-
-    // run the analysis in parallel
-    let result = system.traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
+    let result = read_trajectory(
+        &system,
+        data,
         analysis.trajectory(),
         analysis.n_threads(),
-        analyze_frame,
-        data,
-        Some(group_name!("Master")),
-        Some(analysis.begin()),
-        Some(analysis.end()),
-        Some(analysis.step()),
-        progress_printer,
+        analysis.begin(),
+        analysis.end(),
+        analysis.step(),
+        analysis.silent(),
     )?;
 
     if let Some(LeafletClassification::Manual(_)) = analysis.leaflets() {
@@ -172,6 +148,7 @@ mod tests {
     use super::*;
     use crate::{
         analysis::{
+            common::analyze_frame,
             geometry::GeometrySelectionType,
             molecule::{BondType, MoleculeType},
         },

@@ -14,7 +14,7 @@ exclude = ["/tests", "/validation"]
 backitup = "0.1.1"
 groan_rs = { path = "../groan_rs", features = [
     "parallel",
-    "no-xdrfile",
+    "chemfiles",
     "serde",
 ] }
 colored = "2.1"

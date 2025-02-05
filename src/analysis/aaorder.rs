@@ -5,18 +5,17 @@
 
 use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{
-    analyze_frame, prepare_geometry_selection, prepare_master_group, sanity_check_molecules,
+    prepare_geometry_selection, prepare_master_group, read_trajectory, sanity_check_molecules,
 };
 use crate::analysis::pbc::{NoPBC, PBC3D};
 use crate::analysis::structure;
-use crate::errors::{AnalysisError, TopologyError};
+use crate::errors::TopologyError;
 use crate::input::LeafletClassification;
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
 
-use groan_rs::prelude::ProgressPrinter;
-use groan_rs::prelude::{GroupXtcReader, OrderedAtomIterator};
+use groan_rs::prelude::OrderedAtomIterator;
 
 /// Calculate the atomistic order parameters.
 pub(super) fn analyze_atomistic(
@@ -141,42 +140,21 @@ pub(super) fn analyze_atomistic(
         data.finalize_manual_leaflet_classification(params)?;
     }
 
-    let progress_printer = if analysis.silent() {
-        None
-    } else {
-        Some(ProgressPrinter::new().with_print_freq(100 / analysis.n_threads()))
-    };
-
-    log::info!(
-        "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
-        analysis.trajectory(),
-        analysis.begin(),
-        analysis.end(),
-        analysis.step()
-    );
-
     if let Some(error_estimation) = analysis.estimate_error() {
         error_estimation.info();
     }
 
     prepare_master_group(&mut system, &analysis);
 
-    log::info!(
-        "Performing the analysis using {} thread(s)...",
-        analysis.n_threads()
-    );
-
-    // run the analysis in parallel
-    let result = system.traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
+    let result = read_trajectory(
+        &system,
+        data,
         analysis.trajectory(),
         analysis.n_threads(),
-        analyze_frame,
-        data,
-        Some(group_name!("Master")),
-        Some(analysis.begin()),
-        Some(analysis.end()),
-        Some(analysis.step()),
-        progress_printer,
+        analysis.begin(),
+        analysis.end(),
+        analysis.step(),
+        analysis.silent(),
     )?;
 
     if let Some(LeafletClassification::Manual(_)) = analysis.leaflets() {
@@ -200,6 +178,7 @@ mod tests {
     use super::*;
     use crate::{
         analysis::{
+            common::analyze_frame,
             geometry::GeometrySelectionType,
             molecule::{BondType, MoleculeType},
         },

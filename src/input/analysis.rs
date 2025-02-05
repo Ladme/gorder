@@ -9,6 +9,7 @@ use std::path::Path;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
 use getset::{MutGetters, Setters};
+use groan_rs::files::FileType;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::errors::ConfigError;
@@ -283,6 +284,26 @@ fn validate_begin_end(begin: f32, end: f32) -> Result<(), ConfigError> {
     }
 }
 
+fn validate_structure_format(file: &str) -> Result<(), ConfigError> {
+    match FileType::from_name(file) {
+        FileType::TPR | FileType::GRO | FileType::PDB | FileType::PQR => Ok(()),
+        _ => Err(ConfigError::InvalidStructureFormat(file.to_owned())),
+    }
+}
+
+fn validate_trajectory_format(file: &str) -> Result<(), ConfigError> {
+    match FileType::from_name(file) {
+        FileType::XTC
+        | FileType::TRR
+        | FileType::GRO
+        | FileType::PDB
+        | FileType::NC
+        | FileType::DCD
+        | FileType::LAMMPSTRJ => Ok(()),
+        _ => Err(ConfigError::InvalidTrajectoryFormat(file.to_owned())),
+    }
+}
+
 fn deserialize_order_map<'de, D>(deserializer: D) -> Result<Option<OrderMap>, D::Error>
 where
     D: Deserializer<'de>,
@@ -352,6 +373,8 @@ impl Analysis {
         validate_min_samples(self.min_samples)?;
         validate_n_threads(self.n_threads)?;
         validate_begin_end(self.begin, self.end)?;
+        validate_structure_format(&self.structure)?;
+        validate_trajectory_format(&self.trajectory)?;
 
         // check the validity of the order map, if present
         if let Some(ref map) = self.map {
@@ -479,6 +502,16 @@ impl AnalysisBuilder {
         // check that start is not larger than end
         if let (Some(begin), Some(end)) = (self.begin, self.end) {
             validate_begin_end(begin, end).map_err(|e| e.to_string())?;
+        }
+
+        // check that structure file has a supported format
+        if let Some(structure) = &self.structure {
+            validate_structure_format(structure).map_err(|e| e.to_string())?;
+        }
+
+        // check that the trajectory file has a supported format
+        if let Some(trajectory) = &self.trajectory {
+            validate_trajectory_format(trajectory).map_err(|e| e.to_string())?;
         }
 
         Ok(())
@@ -665,6 +698,16 @@ mod tests_yaml {
                 ConfigError::InvalidMinSamples if expected_variant == "InvalidMinSamples" => (),
                 ConfigError::InvalidNThreads if expected_variant == "InvalidNThreads" => (),
                 ConfigError::InvalidBeginEnd if expected_variant == "InvalidBeginEnd" => (),
+                ConfigError::InvalidStructureFormat(_)
+                    if expected_variant == "InvalidStructureFormat" =>
+                {
+                    ()
+                }
+                ConfigError::InvalidTrajectoryFormat(_)
+                    if expected_variant == "InvalidTrajectoryFormat" =>
+                {
+                    ()
+                }
                 _ => panic!("Unexpected error type returned: {}", e),
             },
         }
@@ -691,6 +734,22 @@ mod tests_yaml {
     #[test]
     fn analysis_yaml_fail_start_higher_than_end() {
         check_analysis_error("tests/files/inputs/begin_higher.yaml", "InvalidBeginEnd");
+    }
+
+    #[test]
+    fn analysis_yaml_fail_invalid_structure_format() {
+        check_analysis_error(
+            "tests/files/inputs/invalid_structure_format.yaml",
+            "InvalidStructureFormat",
+        );
+    }
+
+    #[test]
+    fn analysis_yaml_fail_invalid_trajectory_format() {
+        check_analysis_error(
+            "tests/files/inputs/invalid_trajectory_format.yaml",
+            "InvalidTrajectoryFormat",
+        );
     }
 
     #[test]
@@ -1108,6 +1167,42 @@ mod tests_builder {
             ))
             .begin(100_000.0)
             .end(50_000.0)
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_invalid_structure_format() {
+        match Analysis::builder()
+            .structure("system.ndx")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_invalid_trajectory_format() {
+        match Analysis::builder()
+            .structure("system.tpr")
+            .trajectory("md.xyz")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .build()
         {
             Ok(_) => panic!("Should have failed, but succeeded."),

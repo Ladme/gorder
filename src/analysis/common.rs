@@ -13,7 +13,11 @@ use crate::input::{Analysis, AnalysisType, EstimateError, Geometry};
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::OrderMap, PANIC_MESSAGE};
 use colored::Colorize;
-use groan_rs::prelude::{Dimension, SimBox, Vector3D};
+use groan_rs::files::FileType;
+use groan_rs::prelude::{
+    ChemfilesReader, Dimension, GroReader, GroupXtcReader, ProgressPrinter, SimBox, TrrReader,
+    Vector3D,
+};
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
 use once_cell::unsync::OnceCell;
@@ -517,6 +521,88 @@ pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
             groups, PANIC_MESSAGE
         )
     });
+}
+
+/// Perform the analysis.
+pub(super) fn read_trajectory(
+    system: &System,
+    topology: SystemTopology,
+    trajectory: &str,
+    n_threads: usize,
+    begin: f32,
+    end: f32,
+    step: usize,
+    silent: bool,
+) -> Result<SystemTopology, Box<dyn std::error::Error + Send + Sync>> {
+    let format = FileType::from_name(trajectory);
+
+    let progress_printer = if silent {
+        None
+    } else {
+        Some(ProgressPrinter::new().with_print_freq(100 / n_threads))
+    };
+
+    log::info!(
+        "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
+        trajectory,
+        begin,
+        end,
+        step
+    );
+
+    log::info!("Performing the analysis using {} thread(s)...", n_threads);
+
+    match format {
+        FileType::XTC => system
+            .traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
+                trajectory,
+                n_threads,
+                analyze_frame,
+                topology,
+                Some(group_name!("Master")),
+                Some(begin),
+                Some(end),
+                Some(step),
+                progress_printer,
+            ),
+        FileType::TRR => system
+        .traj_iter_map_reduce::<TrrReader, SystemTopology, AnalysisError>(
+            trajectory,
+            n_threads,
+            analyze_frame,
+            topology,
+            None,
+            Some(begin),
+            Some(end),
+            Some(step),
+            progress_printer,
+        ),
+        FileType::GRO => system
+            .traj_iter_map_reduce::<GroReader, SystemTopology, AnalysisError>(
+                trajectory,
+                n_threads,
+                analyze_frame,
+                topology,
+                None,
+                Some(begin),
+                Some(end),
+                Some(step),
+                progress_printer,
+            ),
+        FileType::PDB | FileType::NC | FileType::DCD | FileType::LAMMPSTRJ | FileType::TNG => system
+            .traj_iter_map_reduce::<ChemfilesReader, SystemTopology, AnalysisError>(
+                trajectory,
+                n_threads,
+                analyze_frame,
+                topology,
+                None,
+                Some(begin),
+                Some(end),
+                Some(step),
+                progress_printer,
+            ),
+        _ => panic!("FATAL GORDER ERROR | common::read_trajectory | Unexpected trajectory file format `{}`.", format),
+    }
 }
 
 #[cfg(test)]

@@ -238,6 +238,12 @@ pub enum ConfigError {
     #[error("{} cannot parse topology from the provided PDB file '{}' - non-unique atom numbers make the CONECT information ambiguous (see: https://www.wwpdb.org/documentation/file-format-content/format33/sect10.html)",
     "error:".red().bold(), .0.yellow())]
     InvalidPdbTopology(String),
+
+    #[error("{} the provided structure file '{}' has an unknown, invalid, or unsupported format", "error:".red().bold(), .0.yellow())]
+    InvalidStructureFormat(String),
+
+    #[error("{} the provided trajectory file '{}' has an unknown, invalid, or unsupported format", "error:".red().bold(), .0.yellow())]
+    InvalidTrajectoryFormat(String),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.
