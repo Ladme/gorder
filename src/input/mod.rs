@@ -9,6 +9,7 @@ pub mod estimate_error;
 pub mod frequency;
 pub mod geometry;
 pub mod leaflets;
+pub mod membrane_normal;
 pub mod ordermap;
 
 pub use analysis::{Analysis, AnalysisType};
@@ -17,4 +18,5 @@ pub use estimate_error::EstimateError;
 pub use frequency::Frequency;
 pub use geometry::{GeomReference, Geometry};
 pub use leaflets::LeafletClassification;
+pub use membrane_normal::{DynamicNormal, MembraneNormal};
 pub use ordermap::{GridSpan, OrderMap, Plane};

@@ -14,6 +14,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::errors::ConfigError;
 
+use super::membrane_normal::MembraneNormal;
 use super::OrderMap;
 use super::{Axis, EstimateError};
 use super::{Geometry, LeafletClassification};
@@ -136,11 +137,17 @@ pub struct Analysis {
     #[serde(alias = "type")]
     analysis_type: AnalysisType,
 
-    /// Direction of the membrane normal. Defaults to 'Axis::Z' if not provided.
-    #[builder(setter(into), default = "Axis::Z")]
-    #[serde(default = "default_membrane_normal")]
-    #[getset(get_copy = "pub")]
-    membrane_normal: Axis,
+    /// Direction of the membrane normal. Defaults to 'z axis' if not provided.
+    ///
+    /// You can either provide `Axis`, `DynamicNormal`, or `MembraneNormal`.
+    /// The former two types will automatically get converted into `MembraneNormal`.
+    #[builder(setter(into), default = "Axis::Z.into()")]
+    #[serde(
+        default = "default_membrane_normal",
+        deserialize_with = "deserialize_membrane_normal"
+    )]
+    #[getset(get = "pub")]
+    membrane_normal: MembraneNormal,
 
     /// Starting time of the trajectory analysis in picoseconds (ps).
     /// Defaults to the beginning of the trajectory if not specified.
@@ -228,8 +235,8 @@ pub struct Analysis {
     overwrite: bool,
 }
 
-fn default_membrane_normal() -> Axis {
-    Axis::Z
+fn default_membrane_normal() -> MembraneNormal {
+    Axis::Z.into()
 }
 
 fn default_begin() -> f32 {
@@ -302,6 +309,20 @@ fn validate_trajectory_format(file: &str) -> Result<(), ConfigError> {
         | FileType::LAMMPSTRJ => Ok(()),
         _ => Err(ConfigError::InvalidTrajectoryFormat(file.to_owned())),
     }
+}
+
+fn deserialize_membrane_normal<'de, D>(deserializer: D) -> Result<MembraneNormal, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+    let value = serde_yaml::Value::deserialize(deserializer)?;
+
+    if let Ok(axis) = Axis::deserialize(&value) {
+        return Ok(axis.into());
+    }
+
+    MembraneNormal::deserialize(&value).map_err(D::Error::custom)
 }
 
 fn deserialize_order_map<'de, D>(deserializer: D) -> Result<Option<OrderMap>, D::Error>
@@ -542,7 +563,10 @@ mod tests_yaml {
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
         assert!(analysis.output_csv().is_none());
-        assert_eq!(analysis.membrane_normal(), Axis::Z);
+        assert!(matches!(
+            analysis.membrane_normal(),
+            MembraneNormal::Static(Axis::Z)
+        ));
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
@@ -576,7 +600,10 @@ mod tests_yaml {
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
         assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
-        assert_eq!(analysis.membrane_normal(), Axis::X);
+        assert!(matches!(
+            analysis.membrane_normal(),
+            MembraneNormal::Static(Axis::X)
+        ));
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());
         assert_eq!(analysis.atoms().unwrap(), "@membrane");
@@ -926,7 +953,10 @@ mod tests_builder {
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
         assert!(analysis.output_csv().is_none());
-        assert_eq!(analysis.membrane_normal(), Axis::Z);
+        assert!(matches!(
+            analysis.membrane_normal(),
+            MembraneNormal::Static(Axis::Z)
+        ));
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
@@ -1001,7 +1031,10 @@ mod tests_builder {
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
         assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
-        assert_eq!(analysis.membrane_normal(), Axis::X);
+        assert!(matches!(
+            analysis.membrane_normal(),
+            MembraneNormal::Static(Axis::X)
+        ));
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());
         assert_eq!(analysis.atoms().unwrap(), "@membrane");

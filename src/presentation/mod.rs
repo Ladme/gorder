@@ -594,10 +594,7 @@ impl Analysis {
     /// Print basic information about the analysis for the user.
     pub(crate) fn info(&self) {
         log::info!("Will calculate {}.", self.analysis_type().name());
-        log::info!(
-            "Membrane normal expected to be oriented along the {} axis.",
-            self.membrane_normal()
-        );
+        log::info!("{}", self.membrane_normal());
         if self.map().is_some() {
             log::info!(
                 "Will calculate ordermaps in the {} plane.",

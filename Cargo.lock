@@ -532,6 +532,7 @@ dependencies = [
  "hashbrown",
  "indexmap",
  "log",
+ "nalgebra",
  "once_cell",
  "parking_lot",
  "rand 0.8.5",

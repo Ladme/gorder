@@ -5,12 +5,15 @@
 
 use groan_rs::prelude::Vector3D;
 
-use crate::input::{Analysis, AnalysisType, Axis};
+use crate::errors::OrderMapConfigError;
+use crate::input::membrane_normal::MembraneNormal;
+use crate::input::{Analysis, AnalysisType};
 use crate::presentation::AnalysisResults;
 
 mod aaorder;
 mod cgorder;
 mod common;
+mod dynamic;
 pub(crate) mod geometry;
 mod leaflets;
 pub(crate) mod molecule;
@@ -25,7 +28,7 @@ pub(crate) mod topology;
 impl Analysis {
     /// Perform the analysis.
     pub fn run(mut self) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
-        self.init_ordermap(self.membrane_normal());
+        self.init_ordermap(self.membrane_normal().clone())?;
         self.info();
 
         match self.analysis_type() {
@@ -38,12 +41,25 @@ impl Analysis {
     }
 
     /// Finish the ordermap plane initialization.
-    fn init_ordermap(&mut self, membrane_normal: Axis) {
+    fn init_ordermap(
+        &mut self,
+        membrane_normal: MembraneNormal,
+    ) -> Result<(), OrderMapConfigError> {
         if let Some(map) = self.map_mut().as_mut() {
-            if map.plane().is_none() {
-                map.set_plane(Some(membrane_normal.perpendicular()));
+            if map.plane().is_some() {
+                return Ok(());
             }
+
+            return match membrane_normal {
+                MembraneNormal::Static(axis) => {
+                    map.set_plane(Some(axis.perpendicular()));
+                    Ok(())
+                }
+                MembraneNormal::Dynamic(_) => Err(OrderMapConfigError::InvalidPlaneAuto),
+            };
         }
+
+        Ok(())
     }
 }
 

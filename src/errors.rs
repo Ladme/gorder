@@ -133,6 +133,23 @@ pub enum AnalysisError {
     /// Used when there is an error in the manual leaflet classification.
     #[error("{}", .0)]
     ManualLeafletError(ManualLeafletClassificationError),
+
+    /// Used when there is an error in the dynamic membrane normal calculation.
+    #[error("{}", .0)]
+    DynamicNormalError(DynamicNormalError),
+}
+
+/// Errors that can occur when calculating dynamic membrane normals.
+#[derive(Error, Debug)]
+pub enum DynamicNormalError {
+    #[error("{} not enough points for dynamic local membrane normal calculation: got '{}', need at least '{}' points 
+({} try increasing the '{}' in the '{}' section of your input configuration file)", 
+    "error:".red().bold(), .0.to_string().yellow(), "3".yellow(),
+    "hint:".blue().bold(), "radius".bright_blue(), "membrane_normal".bright_blue())]
+    NotEnoughPoints(usize),
+
+    #[error("{} could not perform Singular Value Decomposition for dynamic local membrane normal calculation", "error:".red().bold())]
+    SVDFailed,
 }
 
 /// Errors that can occur while writing the results.
@@ -279,6 +296,10 @@ pub enum OrderMapConfigError {
     #[error("{} simulation box and periodic boundary conditions are ignored => unable to automatically set ordermap dimensions ({} set ordermap dimensions manually)",
     "error:".red().bold(), "hint:".blue().bold())]
     InvalidBoxAuto,
+
+    #[error("{} membrane normal is to be dynamically calculated during the analysis => unable to automatically set ordermap plane ({} set ordermap plane manually)",
+    "error:".red().bold(), "hint:".blue().bold())]
+    InvalidPlaneAuto,
 }
 
 /// Errors that can occur when estimating the error of the calculation.
