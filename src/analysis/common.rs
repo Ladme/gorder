@@ -3,10 +3,13 @@
 
 //! Implementations of common function used by both AAOrder and CGOrder calculations.
 
+use std::time::{Duration, Instant};
+
 use super::geometry::{GeometrySelection, GeometrySelectionType};
 use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
 use super::pbc::{NoPBC, PBCHandler, PBC3D};
+use super::spinner::Spinner;
 use super::topology::SystemTopology;
 use crate::errors::{AnalysisError, GeometryConfigError};
 use crate::input::{Analysis, AnalysisType, EstimateError, Geometry};
@@ -20,10 +23,19 @@ use groan_rs::prelude::{
 };
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
+use once_cell::sync::Lazy;
 use once_cell::unsync::OnceCell;
 
 /// A prefix used as an identifier for gorder groups.
 pub(super) const GORDER_GROUP_PREFIX: &str = "xxxGorderReservedxxx-";
+
+/// Time in ms after which the progress of molecule classification will be logged.
+static MOLECULE_CLASSIFICATION_TIME_LIMIT: Lazy<u64> = Lazy::new(|| {
+    std::env::var("GORDER_MOLECULE_CLASSIFICATION_TIME_LIMIT")
+        .ok()
+        .and_then(|v| v.parse::<u64>().ok())
+        .unwrap_or(500)
+});
 
 #[macro_use]
 pub(crate) mod macros {
@@ -139,6 +151,7 @@ pub(super) fn classify_molecules(
     n_threads: usize,
     step_size: usize,
     pbc_handler: &impl PBCHandler,
+    silent: bool,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -146,8 +159,31 @@ pub(super) fn classify_molecules(
     let mut visited = HashSet::new();
     let mut molecules: Vec<MoleculeType> = Vec::new();
 
-    for atom in system.group_iter(&group1_name).expect(PANIC_MESSAGE) {
+    let start = Instant::now();
+    let n_atoms = system.group_get_n_atoms(&group1_name).expect(PANIC_MESSAGE);
+    let mut spinner: Option<Spinner> = None;
+
+    for (i, atom) in system
+        .group_iter(&group1_name)
+        .expect(PANIC_MESSAGE)
+        .enumerate()
+    {
         let index = atom.get_index();
+
+        // print progress if the molecule classification takes too long
+        if i % 1000 == 0 {
+            if start.elapsed() >= Duration::from_millis(*MOLECULE_CLASSIFICATION_TIME_LIMIT)
+                && spinner.is_none()
+            {
+                log::info!("Detecting molecule types...");
+                spinner = Some(Spinner::new(silent));
+            }
+
+            if let Some(spin) = spinner.as_mut() {
+                spin.tick(100 * i / n_atoms);
+            }
+        }
+
         if !visited.insert(index) {
             continue;
         }
@@ -188,6 +224,10 @@ pub(super) fn classify_molecules(
                 pbc_handler,
             )?);
         }
+    }
+
+    if let Some(spin) = spinner.as_ref() {
+        spin.done();
     }
 
     // rename molecules that share names
@@ -1465,6 +1505,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
@@ -1918,6 +1959,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
         let expected_names = ["POPE", "POPG"];
@@ -2604,6 +2646,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
 
@@ -2640,6 +2683,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
 
@@ -2676,6 +2720,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
 
@@ -2712,6 +2757,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
 

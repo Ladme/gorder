@@ -1045,6 +1045,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
 
@@ -1080,6 +1081,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
 

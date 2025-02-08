@@ -3,6 +3,7 @@
 - **Ordermaps visualization:** A python script is now generated inside any created `ordermaps` directory which can be used to easily plot the ordermaps. Changed the default range of the colorbar in ordermaps to more reasonable values.
 - **Bug fixes and other changes:**
   - `gorder` now returns an error if the center of geometry calculation for leaflet classification is nonsensical (i.e., `nan`).
+  - If molecule classification runs longer than expected, progress is logged. By default, progress output begins after 500 ms, but you can adjust this delay using the environment variable `GORDER_MOLECULE_CLASSIFICATION_TIME_LIMIT`.
 
 ## Version 0.4.0
 - **Geometry selection:** Added the ability to select a geometric region for analysis. Users can now specify cuboidal, spherical, or cylindrical regions, and order parameters will be calculated only for bonds located within the selected region.

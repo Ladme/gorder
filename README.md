@@ -51,7 +51,6 @@ $ gorder YOUR_INPUT_YAML_FILE
 - [ ] United-atom order parameters.
 - [ ] Python API: using `gorder` as a Python library.
 - [ ] Dynamic membrane normal calculation, supporting membrane vesicles.
-- [ ] Improved multithreading (currently, multithreading is only implemented at the trajectory reading level).
 
 ## Validation
 

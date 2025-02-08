@@ -17,6 +17,7 @@ pub(crate) mod molecule;
 pub(crate) mod order;
 pub(crate) mod ordermap;
 pub(crate) mod pbc;
+mod spinner;
 mod structure;
 pub(crate) mod timewise;
 pub(crate) mod topology;

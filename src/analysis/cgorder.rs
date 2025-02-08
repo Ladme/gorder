@@ -63,9 +63,6 @@ pub(super) fn analyze_coarse_grained(
     )?;
     geom.info();
 
-    log::info!("Detecting molecule types...");
-    log::logger().flush();
-
     // get the relevant molecules
     macro_rules! classify_molecules_with_pbc {
         ($pbc:expr) => {
@@ -80,6 +77,7 @@ pub(super) fn analyze_coarse_grained(
                 analysis.n_threads(),
                 analysis.step(),
                 $pbc,
+                analysis.silent(),
             )
         };
     }
@@ -179,6 +177,7 @@ mod tests {
             1,
             1,
             &PBC3D::from_system(&system),
+            true,
         )
         .unwrap();
         (
