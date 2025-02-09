@@ -69,7 +69,7 @@ pub struct DynamicNormal {
     heads: String,
     /// Radius of the sphere for selecting nearby lipids for membrane normal estimation.
     /// The default value is 2 nm. The recommended value is half the membrane thickness.
-    #[getset(get = "pub")]
+    #[getset(get_copy = "pub")]
     #[serde(default = "default_dynamic_radius")]
     radius: f32,
 }

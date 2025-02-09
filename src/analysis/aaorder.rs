@@ -5,7 +5,8 @@
 
 use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{
-    prepare_geometry_selection, prepare_master_group, read_trajectory, sanity_check_molecules,
+    prepare_geometry_selection, prepare_master_group, prepare_membrane_normal_calculation,
+    read_trajectory, sanity_check_molecules,
 };
 use crate::analysis::pbc::{NoPBC, PBC3D};
 use crate::analysis::structure;
@@ -86,6 +87,10 @@ pub(super) fn analyze_atomistic(
         leaflet.prepare_system(&mut system)?;
     }
 
+    // prepare system for dynamic normal calculation, if needed
+    prepare_membrane_normal_calculation(analysis.membrane_normal(), &mut system)?;
+
+    // prepare system for geometry selection
     let geom = prepare_geometry_selection(
         analysis.geometry().as_ref(),
         &mut system,
@@ -96,19 +101,7 @@ pub(super) fn analyze_atomistic(
     // get the relevant molecules
     macro_rules! classify_molecules_with_pbc {
         ($pbc:expr) => {
-            super::common::classify_molecules(
-                &system,
-                "HeavyAtoms",
-                "Hydrogens",
-                analysis.leaflets().as_ref(),
-                analysis.membrane_normal().into(),
-                analysis.map().as_ref(),
-                analysis.estimate_error().as_ref(),
-                analysis.n_threads(),
-                analysis.step(),
-                $pbc,
-                analysis.silent(),
-            )
+            super::common::classify_molecules(&system, "HeavyAtoms", "Hydrogens", &analysis, $pbc)
         };
     }
 
@@ -123,7 +116,6 @@ pub(super) fn analyze_atomistic(
 
     let mut data = SystemTopology::new(
         molecules,
-        analysis.membrane_normal().into(),
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
@@ -171,7 +163,7 @@ pub(super) fn analyze_atomistic(
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use groan_rs::{prelude::Dimension, system::System};
+    use groan_rs::system::System;
 
     use super::*;
     use crate::{
@@ -180,7 +172,7 @@ mod tests {
             geometry::GeometrySelectionType,
             molecule::{BondType, MoleculeType},
         },
-        input::leaflets::LeafletClassification,
+        input::{leaflets::LeafletClassification, AnalysisType},
     };
 
     fn prepare_data_for_tests(
@@ -202,22 +194,36 @@ mod tests {
             )
             .unwrap();
 
-        if let Some(leaflet) = &leaflet_classification {
+        let analysis = if let Some(leaflet) = &leaflet_classification {
             leaflet.prepare_system(&mut system).unwrap();
-        }
+            Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(leaflet.clone())
+                .build()
+                .unwrap()
+        } else {
+            Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .build()
+                .unwrap()
+        };
 
         let molecules = super::super::common::classify_molecules(
             &system,
             "HeavyAtoms",
             "Hydrogens",
-            leaflet_classification.as_ref(),
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
             &PBC3D::from_system(&system),
-            true,
         )
         .unwrap();
 
@@ -225,7 +231,6 @@ mod tests {
             system,
             SystemTopology::new(
                 molecules,
-                Dimension::Z,
                 None,
                 1,
                 1,

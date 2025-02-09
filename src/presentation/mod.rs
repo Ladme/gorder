@@ -611,11 +611,21 @@ impl LeafletClassification {
     /// Print basic information about the leaflet classification.
     #[inline(always)]
     fn info(&self) {
-        log::info!(
-            "Will classify lipids into membrane leaflets {} using the '{}' method.",
-            self.get_frequency(),
-            self
-        )
+        if let Some(normal) = self.get_membrane_normal() {
+            log::info!(
+                "Will classify lipids into membrane leaflets {} using the '{}' method.
+Note: membrane normal for leaflet classification assumed to be oriented along the {} axis.",
+                self.get_frequency(),
+                self,
+                normal,
+            )
+        } else {
+            log::info!(
+                "Will classify lipids into membrane leaflets {} using the '{}' method.",
+                self.get_frequency(),
+                self,
+            )
+        }
     }
 }
 

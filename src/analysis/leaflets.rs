@@ -11,10 +11,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use super::{common::{create_group, macros::group_name}, pbc::PBCHandler, topology::SystemTopology};
+use super::{common::{create_group, get_reference_head, macros::group_name}, pbc::PBCHandler, topology::SystemTopology};
 use crate::{
-    errors::{AnalysisError, ManualLeafletClassificationError, TopologyError},
-    input::{leaflets::ManualParams, Analysis, Frequency, LeafletClassification},
+    errors::{AnalysisError, ConfigError, ManualLeafletClassificationError, TopologyError},
+    input::{leaflets::ManualParams, Analysis, Frequency, LeafletClassification, MembraneNormal},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
@@ -64,33 +64,6 @@ impl LeafletClassification {
     }
 }
 
-/// Get index of an atom that represents the head of the given lipid molecule.
-fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, TopologyError> {
-    let group_name = group_name!("Heads");
-    let mut atoms = Vec::new();
-    for index in molecule.get_atoms().iter() {
-        if system.group_isin(group_name, index).expect(PANIC_MESSAGE) {
-            atoms.push(index);
-        }
-    }
-
-    if atoms.is_empty() {
-        return Err(TopologyError::NoHead(
-            molecule
-                .get_atoms()
-                .first()
-                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | leaflets::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
-    }
-
-    if atoms.len() > 1 {
-        return Err(TopologyError::MultipleHeads(
-            molecule.get_atoms().first().expect(PANIC_MESSAGE),
-        ));
-    }
-
-    Ok(*atoms.first().expect(PANIC_MESSAGE))
-}
-
 /// Get indices of atoms representing the methyls (or ends of tails) of the given lipid molecule.
 fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>, TopologyError> {
     let group_name = group_name!("Methyls");
@@ -126,10 +99,10 @@ impl MoleculeLeafletClassification {
     /// Convert the input `LeafletClassification` into an enum that is used in the analysis.
     pub(super) fn new(
         params: &LeafletClassification,
-        membrane_normal: Dimension,
+        membrane_normal: &MembraneNormal,
         n_threads: usize,
         step_size: usize,
-    ) -> Self {
+    ) -> Result<Self, ConfigError> {
         let needs_shared_storage = match (params.get_frequency(), n_threads) {
             // shared storage is not needed if only one thread is used
             // (there is no other thread to share data with, duh)
@@ -141,12 +114,20 @@ impl MoleculeLeafletClassification {
             _ => true,
         };
 
-        match params {
+        fn get_membrane_normal(params: &LeafletClassification, membrane_normal: &MembraneNormal) -> Result<Dimension, ConfigError> {
+            match (params.get_membrane_normal(), membrane_normal) {
+                (None, MembraneNormal::Static(y)) => Ok((*y).into()),
+                (None, MembraneNormal::Dynamic(_)) => Err(ConfigError::MissingMembraneNormal),
+                (Some(x), _) => Ok(x.into()),
+            }
+        }
+
+        let classification = match params {
             LeafletClassification::Global(_) => Self::Global(
                 GlobalClassification {
                     heads: Vec::new(),
                     membrane_center: Vector3D::new(0.0, 0.0, 0.0),
-                    membrane_normal,
+                    membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
@@ -157,7 +138,7 @@ impl MoleculeLeafletClassification {
                     heads: Vec::new(),
                     radius: params.get_radius().expect(PANIC_MESSAGE),
                     membrane_center: Vec::new(),
-                    membrane_normal,
+                    membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
@@ -167,7 +148,7 @@ impl MoleculeLeafletClassification {
                 IndividualClassification {
                     heads: Vec::new(),
                     methyls: Vec::new(),
-                    membrane_normal,
+                    membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
@@ -180,7 +161,9 @@ impl MoleculeLeafletClassification {
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
-        }
+        };
+
+        Ok(classification)
     }
 
     /// Insert new molecule into the leaflet classifier.
@@ -364,7 +347,7 @@ impl GlobalClassification {
     /// Insert a new molecule into the classifier.
     #[inline(always)]
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
-        self.heads.push(get_reference_head(molecule, system)?);
+        self.heads.push(get_reference_head(molecule, system, group_name!("Heads"))?);
         Ok(())
     }
 }
@@ -417,7 +400,7 @@ pub(super) struct LocalClassification {
 impl LocalClassification {
     #[inline(always)]
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
-        self.heads.push(get_reference_head(molecule, system)?);
+        self.heads.push(get_reference_head(molecule, system, group_name!("Heads"))?);
         self.membrane_center.push(Vector3D::new(0.0, 0.0, 0.0));
         Ok(())
     }
@@ -517,7 +500,7 @@ pub(crate) struct IndividualClassification {
 
 impl IndividualClassification {
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
-        self.heads.push(get_reference_head(molecule, system)?);
+        self.heads.push(get_reference_head(molecule, system, group_name!("Heads"))?);
         self.methyls.push(get_reference_methyls(molecule, system)?);
 
         // check that the number of methyls is concistent in the molecule
@@ -675,8 +658,7 @@ impl SystemTopology {
 
         Ok(())
     }
-
-    /// Check that all frames in 
+    
     pub(super) fn validate_manual_leaflet_classification(
         &self,
         analysis: &Analysis,
@@ -943,6 +925,7 @@ mod tests {
     use groan_rs::prelude::AtomIteratorWithBox;
 
     use crate::analysis::pbc::PBC3D;
+    use crate::input::{Axis, DynamicNormal};
 
     use super::super::common::macros::group_name;
     use super::*;
@@ -953,10 +936,10 @@ mod tests {
         create_group(&mut system, "Heads", "name P").unwrap();
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
@@ -979,10 +962,10 @@ mod tests {
         create_group(&mut system, "Heads", "name P").unwrap();
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 3.3),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
@@ -1007,10 +990,10 @@ mod tests {
         create_group(&mut system, "Methyls", "name C218 C316").unwrap();
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
@@ -1071,7 +1054,7 @@ mod tests {
         F: Fn(&TopologyError) -> bool,
     {
         let mut molecule_classifier =
-            MoleculeLeafletClassification::new(&classifier, Dimension::Z, 1, 1);
+            MoleculeLeafletClassification::new(&classifier, &Axis::Z.into(), 1, 1).unwrap();
         let group = Group::from_query(group_query, system).unwrap();
         match molecule_classifier.insert(&group, system) {
             Err(e) if is_expected_error(&e) => (),
@@ -1183,7 +1166,7 @@ mod tests {
         );
 
         let mut molecule_classifier =
-            MoleculeLeafletClassification::new(&classifier, Dimension::Z, 1, 1);
+            MoleculeLeafletClassification::new(&classifier, &Axis::Z.into(), 1, 1).unwrap();
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
 
@@ -1205,10 +1188,10 @@ mod tests {
         let pbc = PBC3D::new(system.get_box().unwrap());
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let membrane_center = system
             .selection_iter("@membrane")
@@ -1245,10 +1228,10 @@ mod tests {
         let pbc = PBC3D::new(system.get_box().unwrap());
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         match &mut classifier {
             MoleculeLeafletClassification::Local(x, _) => {
@@ -1277,10 +1260,10 @@ mod tests {
         let pbc = PBC3D::new(system.get_box().unwrap());
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         match &mut classifier {
             MoleculeLeafletClassification::Individual(x, _) => {
@@ -1303,14 +1286,15 @@ mod tests {
     }
 
     macro_rules! test_classification_new {
-        ($name:ident, $classification:expr, $variant:path, $frequency:pat) => {
+        ($name:ident, $classification:expr, $variant:path, $frequency:pat, $normal:expr, $exp_normal:pat) => {
             #[test]
             fn $name() {
                 let single_threaded =
-                    MoleculeLeafletClassification::new(&$classification, Dimension::Z, 1, 2);
+                    MoleculeLeafletClassification::new(&$classification, &$normal, 1, 2).unwrap();
                 match single_threaded {
                     $variant(x, y) => {
                         assert!(matches!(x.frequency, $frequency));
+                        assert!(matches!(x.membrane_normal, $exp_normal));
                         assert!(y.shared.is_none());
                         assert!(y.local.is_none());
                         assert!(y.local_frame.is_none());
@@ -1319,7 +1303,7 @@ mod tests {
                 }
 
                 let multi_threaded =
-                    MoleculeLeafletClassification::new(&$classification, Dimension::Z, 4, 2);
+                    MoleculeLeafletClassification::new(&$classification, &$normal, 4, 2).unwrap();
                 match multi_threaded {
                     $variant(x, y) => {
                         assert!(matches!(x.frequency, $frequency));
@@ -1344,14 +1328,18 @@ mod tests {
         test_global_leaflet_classification_new_once,
         LeafletClassification::global("@membrane", "name P").with_frequency(Frequency::once()),
         MoleculeLeafletClassification::Global,
-        Frequency::Once
+        Frequency::Once,
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
         test_local_leaflet_classification_new_once,
         LeafletClassification::local("@membrane", "name P", 2.5).with_frequency(Frequency::once()),
         MoleculeLeafletClassification::Local,
-        Frequency::Once
+        Frequency::Once,
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1359,7 +1347,9 @@ mod tests {
         LeafletClassification::individual("name P", "name C218 C316")
             .with_frequency(Frequency::once()),
         MoleculeLeafletClassification::Individual,
-        Frequency::Once
+        Frequency::Once,
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1367,7 +1357,9 @@ mod tests {
         LeafletClassification::global("@membrane", "name P")
             .with_frequency(Frequency::every(5).unwrap()),
         MoleculeLeafletClassification::Global,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1375,7 +1367,9 @@ mod tests {
         LeafletClassification::local("@membrane", "name P", 2.5)
             .with_frequency(Frequency::every(5).unwrap()),
         MoleculeLeafletClassification::Local,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1383,7 +1377,9 @@ mod tests {
         LeafletClassification::individual("name P", "name C218 C316")
             .with_frequency(Frequency::every(5).unwrap()),
         MoleculeLeafletClassification::Individual,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1391,7 +1387,9 @@ mod tests {
         LeafletClassification::global("@membrane", "name P")
             .with_frequency(Frequency::every(1).unwrap()),
         MoleculeLeafletClassification::Global,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1399,7 +1397,9 @@ mod tests {
         LeafletClassification::local("@membrane", "name P", 2.5)
             .with_frequency(Frequency::every(1).unwrap()),
         MoleculeLeafletClassification::Local,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1407,17 +1407,145 @@ mod tests {
         LeafletClassification::individual("name P", "name C218 C316")
             .with_frequency(Frequency::every(1).unwrap()),
         MoleculeLeafletClassification::Individual,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
+
+    test_classification_new!(
+        test_global_leaflet_classification_matching_normals,
+        LeafletClassification::global("@membrane", "name P")
+            .with_membrane_normal(Axis::Z),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_matching_normals,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_membrane_normal(Axis::Z),
+        MoleculeLeafletClassification::Local,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_matching_normals,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_membrane_normal(Axis::Z)
+            .with_frequency(Frequency::once()),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Once,
+        Axis::Z.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_global_leaflet_classification_unmatching_normals,
+        LeafletClassification::global("@membrane", "name P")
+            .with_membrane_normal(Axis::X)
+            .with_frequency(Frequency::every(5).unwrap()),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::X
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_unmatching_normals,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_membrane_normal(Axis::Z),
+        MoleculeLeafletClassification::Local,
+        Frequency::Every(_),
+        Axis::X.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_unmatching_normals,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_membrane_normal(Axis::Y),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Every(_),
+        Axis::X.into(),
+        Dimension::Y
+    );
+
+    test_classification_new!(
+        test_global_leaflet_classification_dynamic_normals,
+        LeafletClassification::global("@membrane", "name P")
+            .with_membrane_normal(Axis::Y),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_),
+        DynamicNormal::new("name P", 2.0).into(),
+        Dimension::Y
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_dynamic_normals,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_membrane_normal(Axis::Z)
+            .with_frequency(Frequency::once()),
+        MoleculeLeafletClassification::Local,
+        Frequency::Once,
+        DynamicNormal::new("name P", 2.0).into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_dynamic_normals,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_membrane_normal(Axis::X),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Every(_),
+        DynamicNormal::new("name P", 2.0).into(),
+        Dimension::X
+    );
+
+    #[test]
+    fn test_global_leaflet_classification_new_fail() {
+        let params = LeafletClassification::global("@membrane", "name P");
+        
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).into(), 1, 1) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(ConfigError::MissingMembraneNormal) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_local_leaflet_classification_new_fail() {
+        let params = LeafletClassification::local("@membrane", "name P", 2.5);
+        
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).into(), 1, 1) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(ConfigError::MissingMembraneNormal) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_individual_leaflet_classification_new_fail() {
+        let params = LeafletClassification::individual("name P", "name C218 C316");
+        
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).into(), 1, 1) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(ConfigError::MissingMembraneNormal) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
 
     #[test]
     fn test_should_assign_every() {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         for i in 0..50 {
             assert!(classifier.should_assign(i));
@@ -1425,10 +1553,10 @@ mod tests {
 
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             5,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1439,10 +1567,10 @@ mod tests {
 
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5),
-            Dimension::Z,
+            &Axis::Z.into(),
             3,
             5,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1454,10 +1582,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P")
                 .with_frequency(Frequency::every(4).unwrap()),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1471,10 +1599,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316")
                 .with_frequency(Frequency::every(5).unwrap()),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             7,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1489,10 +1617,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5)
                 .with_frequency(Frequency::every(2).unwrap()),
-            Dimension::Z,
+            &Axis::Z.into(),
             6,
             11,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1511,10 +1639,10 @@ mod tests {
     fn test_should_assign_once() {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P").with_frequency(Frequency::once()),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         for i in 1..51 {
@@ -1524,10 +1652,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316")
                 .with_frequency(Frequency::once()),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             7,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         for i in 1..51 {
@@ -1537,10 +1665,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5)
                 .with_frequency(Frequency::once()),
-            Dimension::Z,
+            &Axis::Z.into(),
             6,
             11,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         for i in 1..51 {
@@ -1553,7 +1681,7 @@ mod tests {
 mod tests_assigned_leaflets {
     use groan_rs::prelude::AtomIteratorWithBox;
 
-    use crate::analysis::pbc::PBC3D;
+    use crate::{analysis::pbc::PBC3D, input::Axis};
 
     use super::*;
 
@@ -1672,10 +1800,10 @@ mod tests_assigned_leaflets {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let membrane_center = system
             .selection_iter("@membrane")

@@ -5,7 +5,10 @@
 
 use crate::{
     analysis::{
-        common::{macros::group_name, read_trajectory, sanity_check_molecules},
+        common::{
+            macros::group_name, prepare_membrane_normal_calculation, read_trajectory,
+            sanity_check_molecules,
+        },
         pbc::{NoPBC, PBC3D},
         topology::SystemTopology,
     },
@@ -56,6 +59,10 @@ pub(super) fn analyze_coarse_grained(
         leaflet.prepare_system(&mut system)?;
     }
 
+    // prepare system for dynamic normal calculation, if needed
+    prepare_membrane_normal_calculation(analysis.membrane_normal(), &mut system)?;
+
+    // prepare system for geometry selection
     let geom = prepare_geometry_selection(
         analysis.geometry().as_ref(),
         &mut system,
@@ -66,19 +73,7 @@ pub(super) fn analyze_coarse_grained(
     // get the relevant molecules
     macro_rules! classify_molecules_with_pbc {
         ($pbc:expr) => {
-            super::common::classify_molecules(
-                &system,
-                "Beads",
-                "Beads",
-                analysis.leaflets().as_ref(),
-                analysis.membrane_normal().into(),
-                analysis.map().as_ref(),
-                analysis.estimate_error().as_ref(),
-                analysis.n_threads(),
-                analysis.step(),
-                $pbc,
-                analysis.silent(),
-            )
+            super::common::classify_molecules(&system, "Beads", "Beads", &analysis, $pbc)
         };
     }
 
@@ -93,7 +88,6 @@ pub(super) fn analyze_coarse_grained(
 
     let mut data = SystemTopology::new(
         molecules,
-        analysis.membrane_normal().into(),
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
@@ -141,7 +135,7 @@ pub(super) fn analyze_coarse_grained(
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use groan_rs::{prelude::Dimension, system::System};
+    use groan_rs::system::System;
 
     use super::*;
     use crate::{
@@ -150,7 +144,7 @@ mod tests {
             geometry::GeometrySelectionType,
             molecule::{BondType, MoleculeType},
         },
-        input::LeafletClassification,
+        input::{AnalysisType, LeafletClassification},
     };
 
     fn prepare_data_for_tests(
@@ -162,29 +156,36 @@ mod tests {
             .group_create(group_name!("Beads"), "@membrane")
             .unwrap();
 
-        if let Some(leaflet) = &leaflet_classification {
+        let analysis = if let Some(leaflet) = &leaflet_classification {
             leaflet.prepare_system(&mut system).unwrap();
-        }
+            Analysis::builder()
+                .structure("tests/files/cg.tpr")
+                .trajectory("tests/files/cg.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .leaflets(leaflet.clone())
+                .build()
+                .unwrap()
+        } else {
+            Analysis::builder()
+                .structure("tests/files/cg.tpr")
+                .trajectory("tests/files/cg.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .build()
+                .unwrap()
+        };
 
         let molecules = super::super::common::classify_molecules(
             &system,
             "Beads",
             "Beads",
-            leaflet_classification.as_ref(),
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
             &PBC3D::from_system(&system),
-            true,
         )
         .unwrap();
         (
             system,
             SystemTopology::new(
                 molecules,
-                Dimension::Z,
                 None,
                 1,
                 1,

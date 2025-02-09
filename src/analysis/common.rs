@@ -8,18 +8,18 @@ use std::time::{Duration, Instant};
 use super::geometry::{GeometrySelection, GeometrySelectionType};
 use super::leaflets::MoleculeLeafletClassification;
 use super::molecule::{MoleculeTopology, MoleculeType};
+use super::normal::MoleculeMembraneNormal;
 use super::pbc::{NoPBC, PBCHandler, PBC3D};
 use super::spinner::Spinner;
 use super::topology::SystemTopology;
 use crate::errors::{AnalysisError, GeometryConfigError};
-use crate::input::{Analysis, AnalysisType, EstimateError, Geometry};
+use crate::input::{Analysis, AnalysisType, Geometry, MembraneNormal};
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::OrderMap, PANIC_MESSAGE};
 use colored::Colorize;
 use groan_rs::files::FileType;
 use groan_rs::prelude::{
-    ChemfilesReader, Dimension, GroReader, GroupXtcReader, ProgressPrinter, SimBox, TrrReader,
-    Vector3D,
+    ChemfilesReader, GroReader, GroupXtcReader, ProgressPrinter, SimBox, TrrReader,
 };
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
@@ -56,6 +56,7 @@ fn get_hint(group: &str) -> String {
         "Beads" => ("beads".bright_blue(), "analysis_type".bright_blue()),
         "Membrane" => ("membrane".bright_blue(), "leaflets".bright_blue()),
         "Heads" => ("heads".bright_blue(), "leaflets".bright_blue()),
+        "NormalHeads" => ("heads".bright_blue(), "membrane_normal".bright_blue()),
         "Methyls" => ("methyls".bright_blue(), "leaflets".bright_blue()),
         "GeomReference" => ("reference".bright_blue(), "geometry".bright_blue()),
         // unknown group name; this should not happen, but it's not important so we will pretend it's okay
@@ -137,21 +138,25 @@ pub(super) fn prepare_geometry_selection(
     Ok(geom)
 }
 
+/// Prepare the system for dynamic membrane normal calculation, if this is needed.
+pub(super) fn prepare_membrane_normal_calculation(
+    membrane_normal: &MembraneNormal,
+    system: &mut System,
+) -> Result<(), TopologyError> {
+    match membrane_normal {
+        MembraneNormal::Static(_) => Ok(()), // do nothing
+        MembraneNormal::Dynamic(params) => create_group(system, "NormalHeads", params.heads()),
+    }
+}
+
 /// Classifies molecules in the system based on their topology and returns a list of molecule types,
 /// along with information about the atoms that form each molecule.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn classify_molecules(
     system: &System,
     group1: &str,
     group2: &str,
-    leaflet_classification: Option<&LeafletClassification>,
-    membrane_normal: Dimension,
-    ordermap_params: Option<&OrderMap>,
-    estimate_error: Option<&EstimateError>,
-    n_threads: usize,
-    step_size: usize,
+    analysis_options: &Analysis,
     pbc_handler: &impl PBCHandler,
-    silent: bool,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -176,7 +181,7 @@ pub(super) fn classify_molecules(
                 && spinner.is_none()
             {
                 log::info!("Detecting molecule types...");
-                spinner = Some(Spinner::new(silent));
+                spinner = Some(Spinner::new(analysis_options.silent()));
             }
 
             if let Some(spin) = spinner.as_mut() {
@@ -215,12 +220,12 @@ pub(super) fn classify_molecules(
                 &order_bonds,
                 order_atoms,
                 &all_atom_indices,
-                membrane_normal,
-                leaflet_classification,
-                ordermap_params,
-                estimate_error.is_some(),
-                n_threads,
-                step_size,
+                analysis_options.membrane_normal(),
+                analysis_options.leaflets().as_ref(),
+                analysis_options.map().as_ref(),
+                analysis_options.estimate_error().is_some(),
+                analysis_options.n_threads(),
+                analysis_options.step(),
                 pbc_handler,
             )?);
         }
@@ -287,7 +292,6 @@ pub(super) fn analyze_frame(
         analyze_molecules(
             frame,
             unsafe { &mut *molecules },
-            &data.membrane_normal().into(),
             data.frame(),
             data.geometry(),
             &pbc,
@@ -300,7 +304,6 @@ pub(super) fn analyze_frame(
         analyze_molecules(
             frame,
             unsafe { &mut *molecules },
-            &data.membrane_normal().into(),
             data.frame(),
             data.geometry(),
             &pbc,
@@ -324,7 +327,6 @@ pub(super) fn analyze_frame(
 fn analyze_molecules(
     frame: &System,
     molecules: &mut [MoleculeType],
-    membrane_normal: &Vector3D,
     frame_index: usize,
     geometry: &GeometrySelectionType,
     pbc_handler: &impl PBCHandler,
@@ -340,16 +342,16 @@ fn analyze_molecules(
         // calculate order parameters
         match geometry {
             GeometrySelectionType::None(x) => {
-                molecule.analyze_frame(frame, pbc_handler, membrane_normal, frame_index, x)?
+                molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
             }
             GeometrySelectionType::Cuboid(x) => {
-                molecule.analyze_frame(frame, pbc_handler, membrane_normal, frame_index, x)?
+                molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
             }
             GeometrySelectionType::Cylinder(x) => {
-                molecule.analyze_frame(frame, pbc_handler, membrane_normal, frame_index, x)?
+                molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
             }
             GeometrySelectionType::Sphere(x) => {
-                molecule.analyze_frame(frame, pbc_handler, membrane_normal, frame_index, x)?
+                molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
             }
         }
     }
@@ -448,7 +450,7 @@ fn create_new_molecule_type(
     order_bonds: &HashSet<(usize, usize)>,
     order_atoms: Vec<usize>,
     all_atom_indices: &Group,
-    membrane_normal: Dimension,
+    membrane_normal: &MembraneNormal,
     leaflet_classification: Option<&LeafletClassification>,
     ordermap_params: Option<&OrderMap>,
     errors: bool,
@@ -462,13 +464,18 @@ fn create_new_molecule_type(
     // construct a leaflet classifier
     let classifier = if let Some(params) = leaflet_classification {
         let mut leaflet_classifier =
-            MoleculeLeafletClassification::new(params, membrane_normal, n_threads, step_size);
+            MoleculeLeafletClassification::new(params, membrane_normal, n_threads, step_size)
+                .map_err(|e| TopologyError::ConfigError(e))?;
         leaflet_classifier.insert(all_atom_indices, system)?;
 
         Some(leaflet_classifier)
     } else {
         None
     };
+
+    // construct a membrane normal structure
+    let mut normal = MoleculeMembraneNormal::from(membrane_normal);
+    normal.insert(all_atom_indices, system)?;
 
     let minimum_index = all_atom_indices
                 .get_atoms()
@@ -487,6 +494,7 @@ fn create_new_molecule_type(
         ordermap_params,
         errors,
         pbc_handler,
+        normal,
     )
 }
 
@@ -643,6 +651,39 @@ pub(super) fn read_trajectory(
             ),
         _ => panic!("FATAL GORDER ERROR | common::read_trajectory | Unexpected trajectory file format `{}`.", format),
     }
+}
+
+/// Get index of an atom that represents the head of the given lipid molecule.
+pub(super) fn get_reference_head(
+    molecule: &Group,
+    system: &System,
+    group_to_search: &'static str,
+) -> Result<usize, TopologyError> {
+    let mut atoms = Vec::new();
+    for index in molecule.get_atoms().iter() {
+        if system
+            .group_isin(group_to_search, index)
+            .expect(PANIC_MESSAGE)
+        {
+            atoms.push(index);
+        }
+    }
+
+    if atoms.is_empty() {
+        return Err(TopologyError::NoHead(
+            molecule
+                .get_atoms()
+                .first()
+                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | common::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
+    }
+
+    if atoms.len() > 1 {
+        return Err(TopologyError::MultipleHeads(
+            molecule.get_atoms().first().expect(PANIC_MESSAGE),
+        ));
+    }
+
+    Ok(*atoms.first().expect(PANIC_MESSAGE))
 }
 
 #[cfg(test)]
@@ -1494,18 +1535,23 @@ mod tests {
 
         create_group(&mut system, "Heads", "name P").unwrap();
 
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::local("@membrane", "name P", 2.5))
+            .build()
+            .unwrap();
+
         let molecules = classify_molecules(
             &system,
             "HeavyAtoms",
             "Hydrogens",
-            Some(&LeafletClassification::local("@membrane", "name P", 2.5)),
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
             &PBC3D::from_system(&system),
-            true,
         )
         .unwrap();
         let expected_names = ["POPE", "POPC", "POPG"];
@@ -1945,21 +1991,26 @@ mod tests {
         create_group(&mut system, "Heads", "name PO4").unwrap();
         create_group(&mut system, "Methyls", "name C4A C4B").unwrap();
 
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::individual(
+                "name PO4",
+                "name C4A C4B",
+            ))
+            .build()
+            .unwrap();
+
         let molecules = classify_molecules(
             &system,
             "Atoms",
             "Atoms",
-            Some(&LeafletClassification::individual(
-                "name PO4",
-                "name C4A C4B",
-            )),
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
             &PBC3D::from_system(&system),
-            true,
         )
         .unwrap();
         let expected_names = ["POPE", "POPG"];
@@ -2635,18 +2686,19 @@ mod tests {
         let mut system = System::from_file("tests/files/same_name.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC").unwrap();
 
+        let analysis = Analysis::builder()
+            .structure("tests/files/same_name.tpr")
+            .trajectory("tests/files/same_name.xtc")
+            .analysis_type(AnalysisType::cgorder("resname POPC"))
+            .build()
+            .unwrap();
+
         let molecules = classify_molecules(
             &system,
             "Atoms",
             "Atoms",
-            None,
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
             &PBC3D::from_system(&system),
-            true,
         )
         .unwrap();
 
@@ -2672,18 +2724,19 @@ mod tests {
         let mut system = System::from_file("tests/files/multiple_resid.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
 
+        let analysis = Analysis::builder()
+            .structure("tests/files/multiple_resid.tpr")
+            .trajectory("tests/files/multiple_resid.xtc")
+            .analysis_type(AnalysisType::cgorder("resname POPC POPE"))
+            .build()
+            .unwrap();
+
         let molecules = classify_molecules(
             &system,
             "Atoms",
             "Atoms",
-            None,
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
             &PBC3D::from_system(&system),
-            true,
         )
         .unwrap();
 
@@ -2709,18 +2762,19 @@ mod tests {
         let mut system = System::from_file("tests/files/multiple_resid_same_name.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC POPE").unwrap();
 
+        let analysis = Analysis::builder()
+            .structure("tests/files/multiple_resid_same_name.tpr")
+            .trajectory("tests/files/multiple_resid_same_name.xtc")
+            .analysis_type(AnalysisType::cgorder("resname POPC POPE"))
+            .build()
+            .unwrap();
+
         let molecules = classify_molecules(
             &system,
             "Atoms",
             "Atoms",
-            None,
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
             &PBC3D::from_system(&system),
-            true,
         )
         .unwrap();
 
@@ -2746,18 +2800,19 @@ mod tests {
         let mut system = System::from_file("tests/files/cyclic.tpr").unwrap();
         create_group(&mut system, "Atoms", "resname POPC").unwrap();
 
+        let analysis = Analysis::builder()
+            .structure("tests/files/cyclic.tpr")
+            .trajectory("tests/files/cyclic.xtc")
+            .analysis_type(AnalysisType::cgorder("resname POPC"))
+            .build()
+            .unwrap();
+
         let molecules = classify_molecules(
             &system,
             "Atoms",
             "Atoms",
-            None,
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
             &PBC3D::from_system(&system),
-            true,
         )
         .unwrap();
 

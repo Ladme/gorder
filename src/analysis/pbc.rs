@@ -11,7 +11,7 @@ use groan_rs::{
     system::System,
 };
 
-use crate::PANIC_MESSAGE;
+use crate::{errors::AnalysisError, PANIC_MESSAGE};
 
 use super::geometry::GeometrySelection;
 
@@ -19,6 +19,9 @@ use super::geometry::GeometrySelection;
 pub(crate) trait PBCHandler {
     /// Get the geometric center of a group.
     fn group_get_center(&self, system: &System, group: &str) -> Result<Vector3D, GroupError>;
+
+    /// Take atoms of a group in a specified geometry and collect their positions.
+    fn group_filter_geometry_get_pos<S: Shape + NaiveShape>(&self, system: &System, group: &str, shape: S) -> Result<Vec<Vector3D>, AnalysisError>;
 
     /// Take atoms of a group in a specified geometry and calculate their center of geometry.
     fn group_filter_geometry_get_center<S: Shape + NaiveShape>(
@@ -84,6 +87,24 @@ impl PBCHandler for NoPBC {
             .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | NoPBC::group_filter_geometry_get_center | Unknown group `{}`. {}", group, PANIC_MESSAGE))
             .filter_geometry_naive(shape)
             .get_center_naive()
+    }
+
+    fn group_filter_geometry_get_pos<S: Shape + NaiveShape>(
+        &self,
+        system: &System,
+        group: &str,
+        shape: S,
+    ) -> Result<Vec<Vector3D>, AnalysisError> {
+        system
+            .group_iter(group)
+            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | NoPBC::group_filter_geometry_get_pos | Unknown group `{}`. {}", group, PANIC_MESSAGE))
+            .filter_geometry_naive(shape)
+            .map(|atom| atom
+                .get_position()
+                .ok_or_else(|| AnalysisError::UndefinedPosition(atom.get_index()))
+                .cloned()
+            )
+            .collect::<Result<Vec<_>, _>>()
     }
 
     #[inline(always)]
@@ -167,6 +188,24 @@ impl<'a> PBCHandler for PBC3D<'a> {
             .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | PBC3D::group_filter_geometry_get_center | Unknown group `{}`. {}", group, PANIC_MESSAGE))
             .filter_geometry(shape)
             .get_center()
+    }
+
+    fn group_filter_geometry_get_pos<S: Shape + NaiveShape>(
+        &self,
+        system: &System,
+        group: &str,
+        shape: S,
+    ) -> Result<Vec<Vector3D>, AnalysisError> {
+        system
+            .group_iter(group)
+            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | PBC3D::group_filter_geometry_get_pos | Unknown group `{}`. {}", group, PANIC_MESSAGE))
+            .filter_geometry(shape)
+            .map(|atom| atom
+                .get_position()
+                .ok_or_else(|| AnalysisError::UndefinedPosition(atom.get_index()))
+                .cloned()
+            )
+            .collect::<Result<Vec<_>, _>>()
     }
 
     #[inline(always)]

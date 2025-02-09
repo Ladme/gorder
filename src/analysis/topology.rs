@@ -12,7 +12,6 @@ use super::pbc::PBCHandler;
 use crate::errors::ErrorEstimationError;
 use crate::presentation::converter::{MolConvert, ResultsConverter};
 use getset::{CopyGetters, Getters, MutGetters};
-use groan_rs::prelude::Dimension;
 use groan_rs::system::{ParallelTrajData, System};
 use indexmap::IndexMap;
 use std::ops::Add;
@@ -36,9 +35,6 @@ pub(crate) struct SystemTopology {
     /// All molecule types for which order parameters are calculated.
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     molecule_types: Vec<MoleculeType>,
-    /// Normal of the membrane.
-    #[getset(get_copy = "pub(super)")]
-    membrane_normal: Dimension,
     /// Parameters of error estimation.
     #[getset(get = "pub(super)")]
     estimate_error: Option<EstimateError>,
@@ -54,7 +50,6 @@ impl SystemTopology {
     #[inline(always)]
     pub(crate) fn new(
         molecule_types: Vec<MoleculeType>,
-        membrane_normal: Dimension,
         estimate_error: Option<EstimateError>,
         step_size: usize,
         n_threads: usize,
@@ -68,7 +63,6 @@ impl SystemTopology {
             step_size,
             total_frames: 0,
             molecule_types,
-            membrane_normal,
             estimate_error,
             geometry,
             handle_pbc,
@@ -217,7 +211,6 @@ impl Add<SystemTopology> for SystemTopology {
                 .zip(rhs.molecule_types)
                 .map(|(a, b)| a + b)
                 .collect::<Vec<MoleculeType>>(),
-            membrane_normal: self.membrane_normal,
             estimate_error: self.estimate_error,
             geometry: self.geometry,
             handle_pbc: self.handle_pbc,
@@ -268,7 +261,6 @@ mod tests {
                         .map(|i| {
                             let mut top = SystemTopology::new(
                                 vec![],
-                                Dimension::Z,
                                 None,
                                 step,
                                 n_threads,

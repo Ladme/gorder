@@ -36,21 +36,45 @@ $ gorder YOUR_INPUT_YAML_FILE
 **See the [gorder manual](https://ladme.github.io/gorder-manual/) for more information about using this program.**
 
 ## Features
-- **Atomistic and coarse-grained systems.** `gorder` is able to calculate atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
-- **Powerful selection language.** `gorder` allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files. (Read more about the language [here](https://ladme.github.io/gsl-guide/).)
-- **Automatic identification of molecule types.** `gorder` automatically recognizes bonds and classifies molecule types based on their topology. Order parameters are calculated and reported separately for each molecule type.
-- **Various output formats.** `gorder` can output results in YAML, XVG, CSV, and custom "table" format.
-- **Supports any force-field.** `gorder` is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force-field? As long as your lipids have bonds, it will work.
-- **Leaflet-wise analysis.** `gorder` can perform scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculate lipid order parameters for individual leaflets.
-- **Order parameter maps.** `gorder` can construct 2D maps of order parameters, so you know what parts of the membrane are ordered and disordered.
-- **Error estimation.** `gorder` can automatically estimate the error of the analysis and indicate how well your analysis has converged.
-- **Analysis of specific membrane regions.** `gorder` can dynamically select lipids in a specified part of the membrane and calculate order parameters only for them.
-- **Extremely fast.** `gorder` is extremely fast (see [below](#benchmarking)) due to its ability to read only the necessary atoms from XTC files and its support for multithreading.
+- ⚛️ **Atomistic and coarse-grained systems**   
+Calculates atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
+
+- 🔠 **Powerful selection language**  
+Allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files. (Read more about the language [here](https://ladme.github.io/gsl-guide/).)
+
+- 🔍 **Automatic identification of molecule types**  
+Automatically recognizes bonds and classifies molecule types based on their topology. Order parameters are calculated and reported separately for each molecule type.
+
+- 📋 **Various output formats**  
+Outputs results in YAML, XVG, CSV, and custom "table" format.
+
+- 🏗️ **Supports any model and force-field**  
+Is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force-field? As long as your lipids have bonds, it will work.
+
+- 🍃 **Leaflet-wise analysis**  
+Performs scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculates lipid order parameters for individual leaflets.
+
+- 🟠 **Order parameters for vesicles**  
+Dynamically calculats membrane normals based on the membrane's shape, enabling the calculation of order parameters for highly curved systems such as micelles, tubes, and vesicles.
+
+- 🗺️ **Order parameter maps**  
+Constructs 2D maps of order parameters, so you know what parts of the membrane are ordered and disordered.
+
+- 📉 **Error estimation**  
+Automatically estimates the error of the analysis and indicates how well your analysis has converged.
+
+- 🌍 **Analysis of specific membrane regions**  
+Dynamically selects lipids in a specified part of the membrane and calculates order parameters only for them.
+
+- ⚡ **Extremely fast**  
+Is extremely fast (see [below](#benchmarking)) due to its ability to read only the necessary atoms from XTC files and its support for multithreading.
+
+- 📖 **Extensive manual**  
+Includes a [comprehensive manual](https://ladme.github.io/gorder-manual/introduction.html) detailing how to use the program, along with its strengths and limitations.
 
 ## Planned
 - [ ] United-atom order parameters.
 - [ ] Python API: using `gorder` as a Python library.
-- [ ] Dynamic membrane normal calculation, supporting membrane vesicles.
 
 ## Validation
 

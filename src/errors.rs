@@ -102,6 +102,10 @@ pub enum TopologyError {
 
     #[error("{}", .0)]
     OrderMapError(OrderMapConfigError),
+
+    /// Used for (other) configuration errors that are detected while constructing the system topology.
+    #[error("{}", .0)]
+    ConfigError(ConfigError),
 }
 
 /// Errors that can occur while analyzing the trajectory.
@@ -261,6 +265,11 @@ pub enum ConfigError {
 
     #[error("{} the provided trajectory file '{}' has an unknown, invalid, or unsupported format", "error:".red().bold(), .0.yellow())]
     InvalidTrajectoryFormat(String),
+
+    #[error("{} dynamic membrane normal calculation was requested but leaflet classification requires static membrane normal 
+({} add `{}` to the `{}` section of your input configuration file or, if analyzing a vesicle, assign the lipids into leaflets manually)", 
+    "error:".red().bold(), "hint:".blue().bold(), "membrane_normal".bright_blue(), "leaflets".bright_blue())]
+    MissingMembraneNormal,
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.

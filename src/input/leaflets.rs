@@ -14,7 +14,7 @@ use serde::{
 
 use crate::Leaflet;
 
-use super::frequency::Frequency;
+use super::{frequency::Frequency, Axis};
 
 /// Parameters for the classification of lipids into membrane leaflets.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -50,6 +50,7 @@ impl LeafletClassification {
             membrane: membrane.to_string(),
             heads: heads.to_string(),
             frequency: Frequency::default(),
+            membrane_normal: None,
         })
     }
 
@@ -74,6 +75,7 @@ impl LeafletClassification {
             heads: heads.to_string(),
             radius,
             frequency: Frequency::default(),
+            membrane_normal: None,
         })
     }
 
@@ -91,6 +93,7 @@ impl LeafletClassification {
             heads: heads.to_string(),
             methyls: methyls.to_string(),
             frequency: Frequency::default(),
+            membrane_normal: None,
         })
     }
 
@@ -139,6 +142,24 @@ impl LeafletClassification {
         self
     }
 
+    /// Set the membrane normal for leaflet classification.
+    /// If not set, the globally specified membrane normal (Z-axis by default) is used.
+    /// You only need to set this value when using a dynamic membrane normal as the global one.
+    ///
+    /// The method has no effect if you are assigning lipids manually into leaflets.
+    #[inline(always)]
+    pub fn with_membrane_normal(mut self, membrane_normal: Axis) -> Self {
+        match &mut self {
+            LeafletClassification::Global(x) => x.membrane_normal = Some(membrane_normal),
+            LeafletClassification::Local(x) => x.membrane_normal = Some(membrane_normal),
+            LeafletClassification::Individual(x) => x.membrane_normal = Some(membrane_normal),
+            // ignore for manual classification
+            LeafletClassification::Manual(_) => (),
+        }
+
+        self
+    }
+
     /// Get the frequency of the analysis.
     #[inline(always)]
     pub fn get_frequency(&self) -> Frequency {
@@ -147,6 +168,18 @@ impl LeafletClassification {
             LeafletClassification::Local(x) => x.frequency(),
             LeafletClassification::Individual(x) => x.frequency(),
             LeafletClassification::Manual(x) => x.frequency(),
+        }
+    }
+
+    /// Get the membrane normal specified for the leaflet classification.
+    /// Returns `None` for Manual leaflet assignment.
+    #[inline(always)]
+    pub fn get_membrane_normal(&self) -> Option<Axis> {
+        match self {
+            LeafletClassification::Global(x) => x.membrane_normal(),
+            LeafletClassification::Local(x) => x.membrane_normal(),
+            LeafletClassification::Individual(x) => x.membrane_normal(),
+            LeafletClassification::Manual(_) => None,
         }
     }
 
@@ -176,6 +209,11 @@ pub struct GlobalParams {
     #[getset(get_copy = "pub")]
     #[serde(default)]
     frequency: Frequency,
+    /// Orientation of the membrane normal.
+    /// By default set based on the globally specified mmebrane normal.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    membrane_normal: Option<Axis>,
 }
 
 /// Parameters for classification of lipids.
@@ -198,6 +236,11 @@ pub struct LocalParams {
     #[getset(get_copy = "pub")]
     #[serde(default)]
     frequency: Frequency,
+    /// Orientation of the membrane normal.
+    /// By default set based on the globally specified mmebrane normal.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    membrane_normal: Option<Axis>,
 }
 
 fn validate_radius<'de, D>(deserializer: D) -> Result<f32, D::Error>
@@ -229,6 +272,11 @@ pub struct IndividualParams {
     #[getset(get_copy = "pub")]
     #[serde(default)]
     frequency: Frequency,
+    /// Orientation of the membrane normal.
+    /// By default set based on the globally specified mmebrane normal.
+    #[getset(get_copy = "pub")]
+    #[serde(default)]
+    membrane_normal: Option<Axis>,
 }
 
 #[derive(Debug, Clone, Serialize)]
