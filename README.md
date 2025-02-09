@@ -55,7 +55,7 @@ Is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force
 Performs scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculates lipid order parameters for individual leaflets.
 
 - 🟠 **Order parameters for vesicles**  
-Dynamically calculats membrane normals based on the membrane's shape, enabling the calculation of order parameters for highly curved systems such as micelles, tubes, and vesicles.
+Dynamically calculates membrane normals based on the membrane's shape, enabling the calculation of order parameters for highly curved systems such as micelles, tubes, and vesicles.
 
 - 🗺️ **Order parameter maps**  
 Constructs 2D maps of order parameters, so you know what parts of the membrane are ordered and disordered.
