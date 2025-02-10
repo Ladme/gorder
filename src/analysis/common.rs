@@ -563,6 +563,10 @@ pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
         }
     }
 
+    if let MembraneNormal::Dynamic(_) = analysis.membrane_normal() {
+        groups.push(group_name!("NormalHeads"));
+    }
+
     create_group(system, "Master", &groups.join(" ")).unwrap_or_else(|_| {
         panic!(
             "FATAL GORDER ERROR | common::prepare_master_group | Merging groups failed: `{:?}`. {}",
