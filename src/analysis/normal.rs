@@ -107,6 +107,7 @@ impl DynamicMembraneNormal {
     }
 
     /// Calculate local membrane normal for the specified atom.
+    // Cold because this function gets called only once per frame and molecule, but `get_normal` gets called many times more often.
     #[cold]
     fn calculate_normal(head: usize, system: &System, radius: f32, pbc: &impl PBCHandler) -> Result<Vector3D, AnalysisError> {
         let reference = system.get_atom(head)
@@ -114,8 +115,13 @@ impl DynamicMembraneNormal {
                 panic!("FATAL GORDER ERROR | DynamicMembraneNormal::calculate_normal | Atom not found. Atom with index `{}` should exist. {}", 
                     head, PANIC_MESSAGE));
         
-        let geometry = Sphere::new(reference.get_position().unwrap().clone(), radius);
-        let positions = pbc.group_filter_geometry_get_pos(system, group_name!("NormalHeads"), geometry)?;
+        let reference_pos = reference
+            .get_position()
+            .ok_or_else(|| AnalysisError::UndefinedPosition(reference.get_index()))?;
+
+        let geometry = Sphere::new(reference_pos.clone(), radius);
+        // get the cloud of headgroup atoms around the reference atom; this cloud must be whole in the simulation box
+        let positions = pbc.group_filter_geometry_get_pos(system, group_name!("NormalHeads"), geometry, reference_pos)?;
 
         membrane_normal_from_cloud(&positions).map_err(AnalysisError::DynamicNormalError)
     }
@@ -127,6 +133,7 @@ impl DynamicMembraneNormal {
 }
 
 /// Calculate membrane normal from a cloud of points using PCA.
+/// **Make sure that the points are not broken at box boundaries!**
 ///
 /// The input is a list of `Vector3D` representing the positions of lipid head groups.
 /// Returns an error if fewer than 3 points are provided.

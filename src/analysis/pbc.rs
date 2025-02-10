@@ -21,7 +21,13 @@ pub(crate) trait PBCHandler {
     fn group_get_center(&self, system: &System, group: &str) -> Result<Vector3D, GroupError>;
 
     /// Take atoms of a group in a specified geometry and collect their positions.
-    fn group_filter_geometry_get_pos<S: Shape + NaiveShape>(&self, system: &System, group: &str, shape: S) -> Result<Vec<Vector3D>, AnalysisError>;
+    fn group_filter_geometry_get_pos<S: Shape + NaiveShape>(
+        &self, 
+        system: &System, 
+        group: &str, 
+        shape: S, 
+        reference: &Vector3D
+    ) -> Result<Vec<Vector3D>, AnalysisError>;
 
     /// Take atoms of a group in a specified geometry and calculate their center of geometry.
     fn group_filter_geometry_get_center<S: Shape + NaiveShape>(
@@ -94,6 +100,7 @@ impl PBCHandler for NoPBC {
         system: &System,
         group: &str,
         shape: S,
+        _reference: &Vector3D,
     ) -> Result<Vec<Vector3D>, AnalysisError> {
         system
             .group_iter(group)
@@ -190,22 +197,29 @@ impl<'a> PBCHandler for PBC3D<'a> {
             .get_center()
     }
 
+    /// Take atoms of a group in a specified geometry and collect their positions.
+    /// The cloud of positions is made whole, i.e. it is not broken at PBC.
     fn group_filter_geometry_get_pos<S: Shape + NaiveShape>(
         &self,
         system: &System,
         group: &str,
         shape: S,
+        reference: &Vector3D,
     ) -> Result<Vec<Vector3D>, AnalysisError> {
-        system
+        let mut positions = Vec::new();
+        for atom in system
             .group_iter(group)
             .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | PBC3D::group_filter_geometry_get_pos | Unknown group `{}`. {}", group, PANIC_MESSAGE))
             .filter_geometry(shape)
-            .map(|atom| atom
-                .get_position()
-                .ok_or_else(|| AnalysisError::UndefinedPosition(atom.get_index()))
-                .cloned()
-            )
-            .collect::<Result<Vec<_>, _>>()
+        {
+            // select images of atoms that are closest to the reference atom
+            // if this is not done, the positions might be broken at box boundaries which breaks the PCA
+            let position = atom.get_position().ok_or_else(|| AnalysisError::UndefinedPosition(atom.get_index()))?;
+            let vector = reference.vector_to(position, self.0);
+            positions.push(reference + vector);
+        }
+
+        Ok(positions)
     }
 
     #[inline(always)]
@@ -289,4 +303,60 @@ impl<'a> PBC3D<'a> {
             )
         )
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use groan_rs::prelude::Sphere;
+
+    use super::*;
+
+    #[test]
+    fn test_group_filter_geometry_get_pos_pbc3d() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        system.group_create("Phosphori", "name P").unwrap();
+
+        let pbc = PBC3D::new(system.get_box().unwrap());
+
+        for radius in [1.5, 2.0, 2.5, 3.0, 3.5, 5.0] {
+            for x in [7.5, 8.0, 8.5, 9.0, 10.0] {
+                for y in [7.5, 8.0, 8.5, 9.0, 10.0] {
+                    for z in [3.0, 3.5, 5.0, 5.5, 6.0] {
+                        let reference = Vector3D::new(x, y, z);
+                        let geom = Sphere::new(reference.clone(), radius);
+                        let positions = pbc.group_filter_geometry_get_pos(&system, "Phosphori", geom, &reference).unwrap();
+                        
+                        for pos in positions {
+                            assert!(reference.distance_naive(&pos, Dimension::XYZ) <= radius);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_group_filter_geometry_get_pos_nopbc() {
+        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        system.group_create("Phosphori", "name P").unwrap();
+
+        let pbc = NoPBC;
+
+        for radius in [1.5, 2.0, 2.5, 3.0, 3.5, 5.0] {
+            for x in [7.5, 8.0, 8.5, 9.0, 10.0] {
+                for y in [7.5, 8.0, 8.5, 9.0, 10.0] {
+                    for z in [3.0, 3.5, 5.0, 5.5, 6.0] {
+                        let reference = Vector3D::new(x, y, z);
+                        let geom = Sphere::new(reference.clone(), radius);
+                        let positions = pbc.group_filter_geometry_get_pos(&system, "Phosphori", geom, &reference).unwrap();
+                        
+                        for pos in positions {
+                            assert!(reference.distance_naive(&pos, Dimension::XYZ) <= radius);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }
