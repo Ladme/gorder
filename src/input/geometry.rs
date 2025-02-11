@@ -106,15 +106,6 @@ impl Geometry {
         Ok(())
     }
 
-    /// Returns `true` if the geometry requires a constructed group to use as a reference.
-    pub(crate) fn needs_group(&self) -> bool {
-        match self {
-            Self::Cuboid(cuboid) => cuboid.reference.needs_group(),
-            Self::Cylinder(cylinder) => cylinder.reference.needs_group(),
-            Self::Sphere(sphere) => sphere.reference.needs_group(),
-        }
-    }
-
     /// Returns `true` if the geometry requires box information.
     pub(crate) fn uses_box_center(&self) -> bool {
         match self {
@@ -299,15 +290,6 @@ impl GeomReference {
     #[inline(always)]
     pub fn center() -> Self {
         GeomReference::Center
-    }
-
-    /// Returns `true` if a group should be constructed for a the reference.
-    #[inline(always)]
-    pub(crate) fn needs_group(&self) -> bool {
-        match self {
-            GeomReference::Point(_) | GeomReference::Center => false,
-            GeomReference::Selection(_) => true,
-        }
     }
 
     /// Returns `true` if the geometric reference should be placed into the center of the simulation box.

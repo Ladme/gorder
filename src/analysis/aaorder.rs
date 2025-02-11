@@ -5,8 +5,8 @@
 
 use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{
-    prepare_geometry_selection, prepare_master_group, prepare_membrane_normal_calculation,
-    read_trajectory, sanity_check_molecules,
+    prepare_geometry_selection, prepare_membrane_normal_calculation, read_trajectory,
+    sanity_check_molecules,
 };
 use crate::analysis::pbc::{NoPBC, PBC3D};
 use crate::analysis::structure;
@@ -133,8 +133,6 @@ pub(super) fn analyze_atomistic(
     if let Some(error_estimation) = analysis.estimate_error() {
         error_estimation.info();
     }
-
-    prepare_master_group(&mut system, &analysis);
 
     let result = read_trajectory(
         &system,

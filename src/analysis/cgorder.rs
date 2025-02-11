@@ -4,6 +4,10 @@
 //! Contains the implementation of the calculation of the coarse-grained order parameters.
 
 use crate::{
+    analysis::{common::prepare_geometry_selection, structure},
+    presentation::{AnalysisResults, OrderResults},
+};
+use crate::{
     analysis::{
         common::{
             macros::group_name, prepare_membrane_normal_calculation, read_trajectory,
@@ -15,13 +19,6 @@ use crate::{
     input::{Analysis, LeafletClassification},
     presentation::cgresults::CGOrderResults,
     PANIC_MESSAGE,
-};
-use crate::{
-    analysis::{
-        common::{prepare_geometry_selection, prepare_master_group},
-        structure,
-    },
-    presentation::{AnalysisResults, OrderResults},
 };
 
 /// Analyze the coarse-grained order parameters.
@@ -105,8 +102,6 @@ pub(super) fn analyze_coarse_grained(
     if let Some(error_estimation) = analysis.estimate_error() {
         error_estimation.info();
     }
-
-    prepare_master_group(&mut system, &analysis);
 
     let result = read_trajectory(
         &system,

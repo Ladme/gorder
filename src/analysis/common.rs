@@ -13,7 +13,7 @@ use super::pbc::{NoPBC, PBCHandler, PBC3D};
 use super::spinner::Spinner;
 use super::topology::SystemTopology;
 use crate::errors::{AnalysisError, GeometryConfigError};
-use crate::input::{Analysis, AnalysisType, Geometry, MembraneNormal};
+use crate::input::{Analysis, Geometry, MembraneNormal};
 use crate::{errors::TopologyError, input::LeafletClassification};
 use crate::{input::OrderMap, PANIC_MESSAGE};
 use colored::Colorize;
@@ -69,7 +69,8 @@ fn get_hint(group: &str) -> String {
     )
 }
 
-/// Create a group while handling all potential errors. Also check that the group is not empty.
+/// Create a group while handling all potential errors. Check that the group is not empty.
+/// Also adds the atoms of the newly created group into the master group.
 pub(super) fn create_group(
     system: &mut System,
     group: &str,
@@ -100,6 +101,17 @@ pub(super) fn create_group(
             hint,
         })
     } else {
+        // add group to the master group
+        if !system.group_exists(group_name!("Master")) {
+            system
+                .group_create(group_name!("Master"), "not all")
+                .expect(PANIC_MESSAGE);
+        }
+        system
+            .group_extend(group_name!("Master"), &group_name)
+            .unwrap_or_else(|e| {
+                panic!("FATAL GORDER ERROR | common::create_group | Could not extend Master group: `{}`", e)
+            });
         Ok(())
     }
 }
@@ -528,53 +540,6 @@ fn solve_name_conflicts(molecules: &mut [MoleculeType]) {
     }
 }
 
-/// Prepare a master group which atoms will be read from an xtc trajectory.
-pub(super) fn prepare_master_group(system: &mut System, analysis: &Analysis) {
-    let mut groups = Vec::new();
-    match analysis.analysis_type() {
-        AnalysisType::AAOrder {
-            heavy_atoms: _,
-            hydrogens: _,
-        } => {
-            groups.push(group_name!("HeavyAtoms"));
-            groups.push(group_name!("Hydrogens"));
-        }
-        AnalysisType::CGOrder { beads: _ } => {
-            groups.push(group_name!("Beads"));
-        }
-    }
-
-    match analysis.leaflets() {
-        None => (),
-        Some(LeafletClassification::Global(_)) | Some(LeafletClassification::Local(_)) => {
-            groups.push(group_name!("Membrane"));
-            groups.push(group_name!("Heads"));
-        }
-        Some(LeafletClassification::Individual(_)) => {
-            groups.push(group_name!("Heads"));
-            groups.push(group_name!("Methyls"));
-        }
-        Some(LeafletClassification::Manual(_)) => (),
-    }
-
-    if let Some(geometry) = analysis.geometry() {
-        if geometry.needs_group() {
-            groups.push(group_name!("GeomReference"));
-        }
-    }
-
-    if let MembraneNormal::Dynamic(_) = analysis.membrane_normal() {
-        groups.push(group_name!("NormalHeads"));
-    }
-
-    create_group(system, "Master", &groups.join(" ")).unwrap_or_else(|_| {
-        panic!(
-            "FATAL GORDER ERROR | common::prepare_master_group | Merging groups failed: `{:?}`. {}",
-            groups, PANIC_MESSAGE
-        )
-    });
-}
-
 /// Perform the analysis.
 pub(super) fn read_trajectory(
     system: &System,
@@ -693,7 +658,10 @@ pub(super) fn get_reference_head(
 #[cfg(test)]
 mod tests {
 
-    use crate::analysis::molecule::{AtomType, BondTopology, OrderAtoms};
+    use crate::{
+        analysis::molecule::{AtomType, BondTopology, OrderAtoms},
+        input::AnalysisType,
+    };
 
     use super::*;
 
