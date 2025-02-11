@@ -8,7 +8,8 @@ use crate::input::Plane;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults};
 use crate::presentation::cgresults::CGMoleculeResults;
 use crate::presentation::{
-    BondResults, GridMapF32, OrderResults, OrderType, OutputFormat, Presenter, PresenterProperties,
+    BondResults, FileStatus, GridMapF32, OrderResults, OrderType, OutputFormat, Presenter,
+    PresenterProperties,
 };
 use crate::{GORDER_VERSION, PANIC_MESSAGE};
 use std::fs::File;
@@ -105,7 +106,7 @@ impl<'a, R: OrderResults> Presenter<'a, R> for OrderMapPresenter<'a, R> {
 
     /// Write all ordermaps. Handles backing of the directory.
     fn write(&self, directory: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
-        prepare_ordermaps_directory(&directory, overwrite)
+        let dir_status = prepare_ordermaps_directory(&directory, overwrite)
             .map_err(WriteError::CouldNotWriteOrderMap)?;
 
         Self::create_plot_script(&directory)?;
@@ -126,6 +127,8 @@ impl<'a, R: OrderResults> Presenter<'a, R> for OrderMapPresenter<'a, R> {
                 .write_map::<R::OrderType>(&directory, &self.properties)
                 .map_err(WriteError::CouldNotWriteOrderMap)?;
         }
+
+        dir_status.info_dir(directory.as_ref().to_str().expect(PANIC_MESSAGE));
 
         Ok(())
     }
@@ -247,38 +250,28 @@ impl MapWrite for CGMoleculeResults {
 fn prepare_ordermaps_directory(
     directory: &impl AsRef<Path>,
     overwrite: bool,
-) -> Result<(), OrderMapWriteError> {
-    log::info!(
-        "Writing ordermaps into a directory '{}'...",
-        directory.as_ref().to_str().expect(PANIC_MESSAGE)
-    );
-
-    log::logger().flush();
-
-    if directory.as_ref().is_dir() {
+) -> Result<FileStatus, OrderMapWriteError> {
+    let dir_status = if directory.as_ref().is_dir() {
         if !overwrite {
-            log::warn!(
-                "Output directory for ordermaps '{}' already exists. Backing it up.",
-                directory.as_ref().to_str().expect(PANIC_MESSAGE)
-            );
             backitup::backup(directory).map_err(|_| {
                 OrderMapWriteError::CouldNotBackupDirectory(Box::from(directory.as_ref()))
             })?;
+            FileStatus::Backup
         } else {
-            log::warn!("Output directory for ordermaps '{}' already exists. It will be overwritten as requested.",
-                        directory.as_ref().to_str().expect(PANIC_MESSAGE)
-                    );
             std::fs::remove_dir_all(directory).map_err(|_| {
                 OrderMapWriteError::CouldNotRemoveDirectory(Box::from(directory.as_ref()))
             })?;
+            FileStatus::Overwrite
         }
-    }
+    } else {
+        FileStatus::New
+    };
 
     // create a new directory
     std::fs::create_dir_all(directory)
         .map_err(|_| OrderMapWriteError::CouldNotCreateDirectory(Box::from(directory.as_ref())))?;
 
-    Ok(())
+    Ok(dir_status)
 }
 
 /// Write the map of order parameters for a bond type or an atom type into an output file.

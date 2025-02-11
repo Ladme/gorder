@@ -26,7 +26,7 @@ pub(super) fn analyze_atomistic(
 
     if let Some(ndx) = analysis.index() {
         system.read_ndx(ndx)?;
-        log::info!(
+        colog_info!(
             "Read {} group(s) from ndx file '{}'.",
             system.get_n_groups() - 2,
             ndx
@@ -40,7 +40,7 @@ pub(super) fn analyze_atomistic(
             panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of heavy atoms should be provided. {}", PANIC_MESSAGE)),
     )?;
 
-    log::info!(
+    colog_info!(
         "Detected {} heavy atoms using a query '{}'.",
         system
             .group_get_n_atoms(group_name!("HeavyAtoms"))
@@ -55,7 +55,7 @@ pub(super) fn analyze_atomistic(
             panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of hydrogens should be provided. {}", PANIC_MESSAGE)),
     )?;
 
-    log::info!(
+    colog_info!(
         "Detected {} hydrogen atoms using a query '{}'.",
         system
             .group_get_n_atoms(group_name!("Hydrogens"))

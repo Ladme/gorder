@@ -353,6 +353,30 @@ pub(crate) const PANIC_MESSAGE: &str =
     "\n\n\n            >>> THIS SHOULD NOT HAVE HAPPENED! PLEASE REPORT THIS ERROR <<<
 (open an issue at 'github.com/Ladme/gorder/issues' or write an e-mail to 'ladmeb@proton.me')\n\n";
 
+/// Log colored info message.
+#[macro_export]
+macro_rules! colog_info {
+    ($msg:expr) => {
+        log::info!($msg)
+    };
+    ($msg:expr, $($arg:expr),+ $(,)?) => {{
+        use colored::Colorize;
+        log::info!($msg, $( $arg.to_string().cyan() ),+)
+    }};
+}
+
+/// Log colored warning message.
+#[macro_export]
+macro_rules! colog_warn {
+    ($msg:expr) => {
+        log::warn!($msg)
+    };
+    ($msg:expr, $($arg:expr),+ $(,)?) => {{
+        use colored::Colorize;
+        log::warn!($msg, $( $arg.to_string().yellow() ),+)
+    }};
+}
+
 /// Specifies the leaflet a lipid is in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Leaflet {

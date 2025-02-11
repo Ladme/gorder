@@ -5,6 +5,7 @@
 
 use std::fmt::{self, Display};
 
+use colored::Colorize;
 use getset::{CopyGetters, Getters};
 use groan_rs::prelude::Dimension;
 use serde::{Deserialize, Serialize};
@@ -40,11 +41,12 @@ impl Display for MembraneNormal {
             Self::Static(x) => write!(
                 f,
                 "Membrane normal expected to be oriented along the {} axis.",
-                x
+                x.to_string().cyan()
             ),
             Self::Dynamic(_) => write!(
                 f,
-                "Membrane normal will be dynamically calculated for each molecule."
+                "Membrane normal will be {} calculated for each molecule.",
+                "dynamically".cyan(),
             ),
         }
     }

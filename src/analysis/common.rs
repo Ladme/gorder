@@ -527,7 +527,7 @@ fn solve_name_conflicts(molecules: &mut [MoleculeType]) {
     }
 
     for (name, count) in counts.iter() {
-        log::warn!("There are {} types of entities consisting of residue(s) '{}' that are actually different molecule types and will be treated as such.", count, name.replace("-", " "));
+        colog_warn!("There are {} types of entities consisting of residue(s) '{}' that are actually different molecule types and will be treated as such.", count, name.replace("-", " "));
     }
 
     // rename molecules in conflict
@@ -559,7 +559,7 @@ pub(super) fn read_trajectory(
         Some(ProgressPrinter::new().with_print_freq(100 / n_threads))
     };
 
-    log::info!(
+    colog_info!(
         "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
         trajectory,
         begin,
@@ -567,7 +567,7 @@ pub(super) fn read_trajectory(
         step
     );
 
-    log::info!("Performing the analysis using {} thread(s)...", n_threads);
+    colog_info!("Performing the analysis using {} thread(s)...", n_threads);
 
     match format {
         FileType::XTC => system

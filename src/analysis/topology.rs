@@ -113,17 +113,17 @@ impl SystemTopology {
             }
 
             if block_size < 10 {
-                log::warn!("Error estimation: you probably do not have enough data for reasonable error estimation ({} frames might be too little).",
+                colog_warn!("Error estimation: you probably do not have enough data for reasonable error estimation ({} frames might be too little).",
                     n_frames);
             }
 
-            log::info!(
+            colog_info!(
                     "Error estimation: collected {} blocks, each consisting of {} trajectory frames (total: {} frames).",
                     n_blocks, block_size, n_blocks * block_size
                 );
 
             if n_frames != n_blocks * block_size {
-                log::info!(
+                colog_info!(
                     "Error estimation: data from {} frame(s) could not be distributed into blocks and will be excluded from error estimation.",
                     n_frames - n_blocks * block_size,
                 );
@@ -171,14 +171,14 @@ impl SystemTopology {
         }
 
         if !upper.is_empty() {
-            log::info!(
+            colog_info!(
                 "Upper leaflet in the first analyzed frame: {}",
                 indexmap2string(&upper)
             );
         }
 
         if !lower.is_empty() {
-            log::info!(
+            colog_info!(
                 "Lower leaflet in the first analyzed frame: {}",
                 indexmap2string(&lower)
             );
@@ -187,7 +187,7 @@ impl SystemTopology {
 
     /// Log the total number of frames analyzed by this thread.
     pub(super) fn log_total_analyzed_frames(&self) {
-        log::info!(
+        colog_info!(
             "Trajectory reading completed. Analyzed {} trajectory frames.",
             self.total_frames,
         );

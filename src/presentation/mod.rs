@@ -164,8 +164,6 @@ pub(crate) trait OrderResults:
         }
 
         if let Some(xvg) = analysis.output_xvg() {
-            log::info!("Writing the order parameters into xvg file(s)...");
-
             XvgPresenter::new(
                 self,
                 XvgProperties::new(input_structure, input_trajectory, leaflets),
@@ -241,6 +239,51 @@ pub(crate) enum OutputFormat {
     CONV, // convergence data file (xvg format)
 }
 
+/// Specifies whether a file with the same name existed or not
+/// and whether it has been overwritten or backed up.
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+pub(crate) enum FileStatus {
+    New,
+    Backup,
+    Overwrite,
+}
+
+impl FileStatus {
+    /// Log information about a file and what has been performed with it.
+    fn info(self, format: OutputFormat, filename: &str) {
+        match self {
+            Self::New => colog_info!(
+                "Written order parameters into {} file '{}'.",
+                format,
+                filename
+            ),
+            Self::Backup => colog_info!(
+                "Backed up an already existing file '{}' and saved order parameters.",
+                filename,
+            ),
+            Self::Overwrite => colog_warn!(
+                "Overwritten an already existing file '{}' with order parameters.",
+                filename,
+            ),
+        }
+    }
+
+    /// Log information abbout a directory and what has been performed with it.
+    fn info_dir(self, dirname: &str) {
+        match self {
+            Self::New => colog_info!("Written ordermaps into a directory '{}'.", dirname),
+            Self::Backup => colog_info!(
+                "Backed up an already existing directory '{}' and saved ordermaps.",
+                dirname,
+            ),
+            Self::Overwrite => colog_warn!(
+                "Overwritten an already existing directory '{}' with ordermaps.",
+                dirname,
+            ),
+        }
+    }
+}
+
 /// Trait implemented by all structures that store properties of Presenters.
 pub(crate) trait PresenterProperties: Debug + Clone {
     /// Is the data for leaflets available?
@@ -285,16 +328,14 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
 
     /// Create (and potentially back up) an output file, open it and write the results into it.
     fn write(&self, filename: impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
-        log::info!(
-            "Writing order parameters into {} file '{}'...",
-            self.file_format(),
-            filename.as_ref().to_str().expect(PANIC_MESSAGE)
-        );
-        log::logger().flush();
-
-        self.try_backup(&filename, overwrite)?;
+        let file_status = self.try_backup(&filename, overwrite)?;
         let mut writer = Self::create_and_open(&filename)?;
-        self.write_results(&mut writer)
+        self.write_results(&mut writer)?;
+        file_status.info(
+            self.file_format(),
+            filename.as_ref().to_str().expect(PANIC_MESSAGE),
+        );
+        Ok(())
     }
 
     /// Create and open a file for buffered writing.
@@ -307,26 +348,24 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
     }
 
     /// Back up an output file, if it is necessary and if it is requested.
-    fn try_backup(&self, filename: &impl AsRef<Path>, overwrite: bool) -> Result<(), WriteError> {
+    #[inline(always)]
+    fn try_backup(
+        &self,
+        filename: &impl AsRef<Path>,
+        overwrite: bool,
+    ) -> Result<FileStatus, WriteError> {
         if filename.as_ref().exists() {
             if !overwrite {
-                log::warn!(
-                    "Output {} file '{}' already exists. Backing it up.",
-                    self.file_format(),
-                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
-                );
                 backitup::backup(filename.as_ref())
                     .map_err(|_| WriteError::CouldNotBackupFile(Box::from(filename.as_ref())))?;
-            } else {
-                log::warn!(
-                    "Output {} file '{}' already exists. It will be overwritten as requested.",
-                    self.file_format(),
-                    filename.as_ref().to_str().expect(PANIC_MESSAGE)
-                );
-            }
-        }
 
-        Ok(())
+                Ok(FileStatus::Backup)
+            } else {
+                Ok(FileStatus::Overwrite)
+            }
+        } else {
+            Ok(FileStatus::New)
+        }
     }
 
     /// Write header into the output file specifying version of the library used and some other basic info.
@@ -593,10 +632,10 @@ impl Serialize for AtomType {
 impl Analysis {
     /// Print basic information about the analysis for the user.
     pub(crate) fn info(&self) {
-        log::info!("Will calculate {}.", self.analysis_type().name());
+        colog_info!("Will calculate {}.", self.analysis_type().name());
         log::info!("{}", self.membrane_normal());
         if self.map().is_some() {
-            log::info!(
+            colog_info!(
                 "Will calculate ordermaps in the {} plane.",
                 self.map().as_ref().unwrap().plane().expect(PANIC_MESSAGE)
             );
@@ -612,7 +651,7 @@ impl LeafletClassification {
     #[inline(always)]
     fn info(&self) {
         if let Some(normal) = self.get_membrane_normal() {
-            log::info!(
+            colog_info!(
                 "Will classify lipids into membrane leaflets {} using the '{}' method.
 Note: membrane normal for leaflet classification assumed to be oriented along the {} axis.",
                 self.get_frequency(),
@@ -620,7 +659,7 @@ Note: membrane normal for leaflet classification assumed to be oriented along th
                 normal,
             )
         } else {
-            log::info!(
+            colog_info!(
                 "Will classify lipids into membrane leaflets {} using the '{}' method.",
                 self.get_frequency(),
                 self,
@@ -645,7 +684,7 @@ impl MoleculeType {
     /// Print basic information about the molecule type for the user.
     #[inline(always)]
     fn info(&self) {
-        log::info!(
+        colog_info!(
             "Molecule type {}: {} order bonds, {} molecules.",
             self.name(),
             self.order_bonds().bond_types().len(),
@@ -663,7 +702,7 @@ impl SystemTopology {
     /// Print basic information about the system topology for the user.
     #[inline(always)]
     pub(crate) fn info(&self) {
-        log::info!(
+        colog_info!(
             "Detected {} relevant molecule type(s).",
             self.molecule_types().len()
         );

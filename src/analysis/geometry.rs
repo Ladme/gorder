@@ -59,12 +59,13 @@ impl GeometrySelectionType {
         match self {
             GeometrySelectionType::None(_) => (),
             GeometrySelectionType::Cuboid(cuboid) => {
-                log::info!(
-                    "Will only consider bonds located inside a cuboid:
+                colog_info!(
+                    "Will only consider bonds located inside a {}:
 x-dimension: from {} nm to {} nm
 y-dimension: from {} nm to {} nm
 z-dimension: from {} nm to {} nm
 relative to {}",
+                    "cuboid",
                     cuboid.properties.xdim()[0],
                     cuboid.properties.xdim()[1],
                     cuboid.properties.ydim()[0],
@@ -75,12 +76,13 @@ relative to {}",
                 );
             }
             GeometrySelectionType::Cylinder(cylinder) => {
-                log::info!(
-                    "Will only consider bonds located inside a cylinder:
+                colog_info!(
+                    "Will only consider bonds located inside a {}:
 radius: {} nm
 oriented along the {} axis 
 going from {} nm to {} nm along the {} axis
 relative to {}",
+                    "cylinder",
                     cylinder.properties.radius(),
                     cylinder.properties.orientation(),
                     cylinder.properties.span()[0],
@@ -90,10 +92,11 @@ relative to {}",
                 )
             }
             GeometrySelectionType::Sphere(sphere) => {
-                log::info!(
-                    "Will only consider bonds located inside a sphere:
+                colog_info!(
+                    "Will only consider bonds located inside a {}:
 radius: {} nm
 center: {}",
+                    "sphere",
                     sphere.properties.radius(),
                     sphere.properties.reference()
                 )

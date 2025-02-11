@@ -64,9 +64,9 @@ impl EstimateError {
 
     /// Log basic info about the error estimation.
     pub(crate) fn info(&self) {
-        log::info!("Will estimate error using {} blocks.", self.n_blocks());
+        colog_info!("Will estimate error using {} blocks.", self.n_blocks());
         if let Some(output) = &self.output_convergence {
-            log::info!("Will write convergence data into a file '{}'.", output);
+            colog_info!("Will write convergence data into a file '{}'.", output);
         }
     }
 

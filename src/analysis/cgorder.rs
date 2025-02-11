@@ -29,7 +29,7 @@ pub(super) fn analyze_coarse_grained(
 
     if let Some(ndx) = analysis.index() {
         system.read_ndx(ndx)?;
-        log::info!(
+        colog_info!(
             "Read {} group(s) from ndx file '{}'.",
             system.get_n_groups() - 2,
             ndx
@@ -43,7 +43,7 @@ pub(super) fn analyze_coarse_grained(
             panic!("FATAL GORDER ERROR | cgorder::analyze_coarse_grained | Selection of order beads should be provided. {}", PANIC_MESSAGE)),
     )?;
 
-    log::info!(
+    colog_info!(
         "Detected {} beads for order calculation using a query '{}'.",
         system
             .group_get_n_atoms(group_name!("Beads"))

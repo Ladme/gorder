@@ -38,9 +38,9 @@ pub(super) fn read_structure_and_topology(
 
     if let Some(bonds_file) = analysis.bonds() {
         // if `bonds` file is provided, read it no matter the input file type
-        log::info!("Read molecular structure from '{}'.", analysis.structure());
+        colog_info!("Read molecular structure from '{}'.", analysis.structure());
         read_bonds(&mut system, bonds_file)?;
-        log::info!("Read topology from bonds file '{}'.", bonds_file);
+        colog_info!("Read topology from bonds file '{}'.", bonds_file);
 
         if file_type != FileType::TPR {
             maybe_guess_elements(analysis, &mut system)?;
@@ -63,7 +63,7 @@ pub(super) fn read_structure_and_topology(
             Err(e) => return Err(Box::from(e)),
         }
 
-        log::info!(
+        colog_info!(
             "Read molecular structure and topology from '{}'.",
             analysis.structure()
         );
@@ -72,7 +72,7 @@ pub(super) fn read_structure_and_topology(
         Ok(system)
     } else if file_type == FileType::TPR {
         // no further checks required for a TPR file
-        log::info!(
+        colog_info!(
             "Read molecular structure and topology from '{}'.",
             analysis.structure()
         );
