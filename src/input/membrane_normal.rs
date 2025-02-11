@@ -9,6 +9,8 @@ use getset::{CopyGetters, Getters};
 use groan_rs::prelude::Dimension;
 use serde::{Deserialize, Serialize};
 
+use crate::errors::ConfigError;
+
 use super::Axis;
 
 /// Structure describing the direction of the membrane normal
@@ -20,6 +22,16 @@ pub enum MembraneNormal {
     Static(Axis),
     /// Membrane normal should be calculated dynamically for each molecule based on the shape of the membrane.
     Dynamic(DynamicNormal),
+}
+
+impl MembraneNormal {
+    /// Check the validity of the membrane normal.
+    pub(super) fn validate(&self) -> Result<(), ConfigError> {
+        match self {
+            Self::Static(_) => Ok(()),
+            Self::Dynamic(dynamic) => DynamicNormal::check_radius(dynamic.radius),
+        }
+    }
 }
 
 impl Display for MembraneNormal {
@@ -82,10 +94,21 @@ impl DynamicNormal {
     ///    there must only be one such atom/bead per lipid molecule
     /// - `radius`: radius of the sphere for selecting nearby lipids for membrane normal estimation;
     ///    the recommended value is half the membrane thickness
-    pub fn new(heads: &str, radius: f32) -> DynamicNormal {
-        DynamicNormal {
+    pub fn new(heads: &str, radius: f32) -> Result<DynamicNormal, ConfigError> {
+        Self::check_radius(radius)?;
+
+        Ok(DynamicNormal {
             heads: heads.to_owned(),
             radius,
+        })
+    }
+
+    /// Check that the radius specified for the dynamic membrane normal estimation is valid.
+    fn check_radius(radius: f32) -> Result<(), ConfigError> {
+        if radius <= 0.0 {
+            Err(ConfigError::InvalidDynamicNormalRadius(radius.to_string()))
+        } else {
+            Ok(())
         }
     }
 }
@@ -148,11 +171,46 @@ radius: 3.5",
         );
 
         assert_eq!(
-            serde_yaml::to_string(&MembraneNormal::Dynamic(DynamicNormal::new("name P", 3.0)))
-                .unwrap(),
+            serde_yaml::to_string(&MembraneNormal::Dynamic(
+                DynamicNormal::new("name P", 3.0).unwrap()
+            ))
+            .unwrap(),
             "!Dynamic
 heads: name P
 radius: 3.0\n"
         );
+    }
+
+    #[test]
+    fn test_validate() {
+        let normal: MembraneNormal = DynamicNormal::new("name P", 1.5).unwrap().into();
+        assert!(normal.validate().is_ok());
+
+        let normal: MembraneNormal = Axis::Z.into();
+        assert!(normal.validate().is_ok());
+
+        let normal: MembraneNormal =
+            serde_yaml::from_str("!Dynamic { heads: name P, radius: 0.0 }").unwrap();
+        assert!(matches!(
+            normal.validate(),
+            Err(ConfigError::InvalidDynamicNormalRadius(_))
+        ));
+
+        let normal: MembraneNormal =
+            serde_yaml::from_str("!Dynamic { heads: name P, radius: -2.0 }").unwrap();
+        assert!(matches!(
+            normal.validate(),
+            Err(ConfigError::InvalidDynamicNormalRadius(_))
+        ));
+    }
+
+    #[test]
+    fn test_new() {
+        let normal = DynamicNormal::new("name P", 1.5).unwrap();
+        assert_eq!(normal.heads(), "name P");
+        assert_relative_eq!(normal.radius(), 1.5);
+
+        assert!(DynamicNormal::new("name P", 0.0).is_err());
+        assert!(DynamicNormal::new("name P", -2.0).is_err());
     }
 }

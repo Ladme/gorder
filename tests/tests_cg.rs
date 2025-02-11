@@ -10,7 +10,7 @@ use std::{
 };
 
 use approx::assert_relative_eq;
-use gorder::{prelude::*, Leaflet};
+use gorder::{input::DynamicNormal, prelude::*, Leaflet};
 use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
@@ -3100,6 +3100,237 @@ fn test_cg_order_geometry_sphere_ordermaps_no_pbc() {
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_cg_nopbc/sphere.dat";
         assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_dynamic_membrane_normal_yaml() {
+    for n_threads in [1, 3, 8, 32] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::individual("name PO4", "name C4A C4B")
+                    .with_membrane_normal(Axis::Z)
+                    .with_frequency(Frequency::once()),
+            )
+            .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets_dynamic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normal_yaml() {
+    for n_threads in [1, 3, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/vesicle.tpr")
+            .trajectory("tests/files/vesicle.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder(
+                "name C1A D2A C3A C4A C1B C2B C3B C4B",
+            ))
+            .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_vesicle.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_leaflets_dynamic_membrane_normal_yaml() {
+    todo!("This test is currently not implemented.");
+    /*
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle.yaml",
+        1
+    ));*/
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normal_centered_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle_centered.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle_centered.yaml", // very small differences compared to `cg_order_vesicle.yaml`
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_buckled_dynamic_membrane_normal_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg_buckled.tpr")
+        .trajectory("tests/files/cg_buckled.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_buckled.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_fail_dynamic_undefined_ordermap_plane() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("unable to automatically set ordermap plane")),
+    }
+}
+
+#[test]
+fn test_cg_order_fail_dynamic_undefined_leaflet_normal() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .leaflets(LeafletClassification::individual(
+            "name PO4",
+            "name C4A C4B",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("leaflet classification requires static membrane normal")),
+    }
+}
+
+#[test]
+fn test_cg_order_fail_dynamic_multiple_heads() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4 NC3", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("multiple head group atoms")),
+    }
+}
+
+#[test]
+fn test_cg_order_fail_dynamic_no_head() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name W", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("no head group atom")),
     }
 }
 

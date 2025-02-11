@@ -267,9 +267,15 @@ pub enum ConfigError {
     InvalidTrajectoryFormat(String),
 
     #[error("{} dynamic membrane normal calculation was requested but leaflet classification requires static membrane normal 
-({} add `{}` to the `{}` section of your input configuration file or, if analyzing a vesicle, assign the lipids into leaflets manually)", 
+({} add '{}' to the '{}' section of your input configuration file or, if analyzing a vesicle, assign the lipids into leaflets manually)", 
     "error:".red().bold(), "hint:".blue().bold(), "membrane_normal".bright_blue(), "leaflets".bright_blue())]
     MissingMembraneNormal,
+
+    #[error("{} the specified radius for dynamic membrane normal calculation must be larger than 0, not '{}'
+({} the recommended value for '{}' is roughly half of the membrane thickness)", 
+    "error:".red().bold(), .0.yellow(),
+    "hint:".blue().bold(), "radius".bright_blue())]
+    InvalidDynamicNormalRadius(String),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.

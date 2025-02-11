@@ -1,0 +1,35 @@
+# Order parameters calculated with 'gorder v0.5.0-dev.1' using structure file 'tests/files/vesicle.tpr' and trajectory file 'tests/files/vesicle_centered.xtc'.
+average order:
+  total: 0.3221
+POPE:
+  average order:
+    total: 0.3221
+  order parameters:
+    POPE C1A (4) - POPE D2A (5):
+      total: 0.3582
+    POPE D2A (5) - POPE C3A (6):
+      total: 0.2507
+    POPE C3A (6) - POPE C4A (7):
+      total: 0.2021
+    POPE C1B (8) - POPE C2B (9):
+      total: 0.4789
+    POPE C2B (9) - POPE C3B (10):
+      total: 0.3911
+    POPE C3B (10) - POPE C4B (11):
+      total: 0.2515
+POPG:
+  average order:
+    total: 0.3219
+  order parameters:
+    POPG C1A (4) - POPG D2A (5):
+      total: 0.3525
+    POPG D2A (5) - POPG C3A (6):
+      total: 0.2654
+    POPG C3A (6) - POPG C4A (7):
+      total: 0.211
+    POPG C1B (8) - POPG C2B (9):
+      total: 0.4755
+    POPG C2B (9) - POPG C3B (10):
+      total: 0.3824
+    POPG C3B (10) - POPG C4B (11):
+      total: 0.2444

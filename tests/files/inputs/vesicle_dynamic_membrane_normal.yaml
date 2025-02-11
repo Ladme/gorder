@@ -1,0 +1,10 @@
+# Test file for binary application.
+structure: tests/files/vesicle.tpr
+trajectory: tests/files/vesicle.xtc
+output: "temp_cg_order_vesicle_dynamic_membrane_normal.yaml"
+analysis_type: !CGOrder
+  beads: "name C1A D2A C3A C4A C1B C2B C3B C4B"
+membrane_normal: !Dynamic
+  heads: "name PO4"
+silent: true
+overwrite: true

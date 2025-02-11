@@ -273,6 +273,27 @@ fn test_bin_aa_leaflets_no_pbc() {
 }
 
 #[test]
+fn test_bin_cg_vesicle_dynamic() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/vesicle_dynamic_membrane_normal.yaml",
+            // silent and overwrite part of the config file
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_order_vesicle_dynamic_membrane_normal.yaml",
+        "tests/files/cg_order_vesicle.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_order_vesicle_dynamic_membrane_normal.yaml").unwrap();
+}
+
+#[test]
 fn test_bin_aa_order_writing_fail() {
     Command::cargo_bin("gorder")
         .unwrap()

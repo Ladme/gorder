@@ -396,6 +396,7 @@ impl Analysis {
         validate_begin_end(self.begin, self.end)?;
         validate_structure_format(&self.structure)?;
         validate_trajectory_format(&self.trajectory)?;
+        self.membrane_normal.validate()?;
 
         // check the validity of the order map, if present
         if let Some(ref map) = self.map {
@@ -707,6 +708,20 @@ mod tests_yaml {
     }
 
     #[test]
+    fn analysis_yaml_pass_dynamic_membrane_normal() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/dynamic_membrane_normal.yaml").unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::Static(_) => panic!("Invalid membrane normal returned."),
+            MembraneNormal::Dynamic(dynamic) => {
+                assert_eq!(dynamic.heads(), "name PO4");
+                assert_relative_eq!(dynamic.radius(), 2.5);
+            }
+        }
+    }
+
+    #[test]
     fn analysis_yaml_fail_incomplete() {
         match Analysis::from_file("tests/files/inputs/incomplete.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
@@ -732,6 +747,11 @@ mod tests_yaml {
                 }
                 ConfigError::InvalidTrajectoryFormat(_)
                     if expected_variant == "InvalidTrajectoryFormat" =>
+                {
+                    ()
+                }
+                ConfigError::InvalidDynamicNormalRadius(_)
+                    if expected_variant == "InvalidDynamicNormalRadius" =>
                 {
                     ()
                 }
@@ -776,6 +796,20 @@ mod tests_yaml {
         check_analysis_error(
             "tests/files/inputs/invalid_trajectory_format.yaml",
             "InvalidTrajectoryFormat",
+        );
+    }
+
+    #[test]
+    fn analysis_yaml_fail_invalid_dynamic_normal_radius() {
+        // radius 0
+        check_analysis_error(
+            "tests/files/inputs/invalid_dynamic_normal_radius1.yaml",
+            "InvalidDynamicNormalRadius",
+        );
+        // radius -2
+        check_analysis_error(
+            "tests/files/inputs/invalid_dynamic_normal_radius2.yaml",
+            "InvalidDynamicNormalRadius",
         );
     }
 
@@ -929,7 +963,7 @@ mod tests_builder {
 
     use crate::input::geometry::GeomReference;
     use crate::input::ordermap::Plane;
-    use crate::input::Frequency;
+    use crate::input::{DynamicNormal, Frequency};
 
     use super::super::GridSpan;
     use super::*;
@@ -1115,6 +1149,26 @@ mod tests_builder {
         assert_eq!(ordermap.min_samples(), 1);
         matches!(ordermap.dim_x(), GridSpan::Auto);
         matches!(ordermap.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn analysis_builder_pass_dynamic_membrane_normal() {
+        let analysis = Analysis::builder()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .membrane_normal(DynamicNormal::new("name PO4", 2.5).unwrap())
+            .build()
+            .unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::Static(_) => panic!("Invalid membrane normal returned."),
+            MembraneNormal::Dynamic(dynamic) => {
+                assert_eq!(dynamic.heads(), "name PO4");
+                assert_relative_eq!(dynamic.radius(), 2.5);
+            }
+        }
     }
 
     #[test]

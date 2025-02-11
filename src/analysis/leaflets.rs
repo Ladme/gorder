@@ -874,7 +874,7 @@ impl SharedAssignedLeaflets {
         let start_time = Instant::now();
         let mut warning_logged = false;
 
-        // spin-lock: waiting for the requested frame to be available
+        // spin-lock: waiting for the requested frame to become available
         loop {
             let shared_data = self.0.lock();
             let assignment = shared_data.get(&frame);
@@ -889,7 +889,7 @@ impl SharedAssignedLeaflets {
 This may be due to resource contention or a bug. Ensure that your CPU is not oversubscribed and that you have not lost access to the trajectory file.
 If `gorder` is causing oversubscription, reduce the number of threads used for the analysis.
 If other computationally intensive software is running alongside `gorder`, consider terminating it.
-If the issue persists, please report it by opening an issue at `github.com/Ladme/gorder/issues` or sending an email to `ladmeb@gmail.com`. 
+If the issue persists, please report it by opening an issue at `github.com/Ladme/gorder/issues` or sending an email to `ladmeb@proton.me`. 
 (Note: If no progress is made, this thread will terminate in {} seconds to prevent resource exhaustion.)",
                     frame,
                     TIMEOUT_SECONDS,
@@ -1480,7 +1480,7 @@ mod tests {
             .with_membrane_normal(Axis::Y),
         MoleculeLeafletClassification::Global,
         Frequency::Every(_),
-        DynamicNormal::new("name P", 2.0).into(),
+        DynamicNormal::new("name P", 2.0).unwrap().into(),
         Dimension::Y
     );
 
@@ -1491,7 +1491,7 @@ mod tests {
             .with_frequency(Frequency::once()),
         MoleculeLeafletClassification::Local,
         Frequency::Once,
-        DynamicNormal::new("name P", 2.0).into(),
+        DynamicNormal::new("name P", 2.0).unwrap().into(),
         Dimension::Z
     );
 
@@ -1501,7 +1501,7 @@ mod tests {
             .with_membrane_normal(Axis::X),
         MoleculeLeafletClassification::Individual,
         Frequency::Every(_),
-        DynamicNormal::new("name P", 2.0).into(),
+        DynamicNormal::new("name P", 2.0).unwrap().into(),
         Dimension::X
     );
 
@@ -1509,7 +1509,7 @@ mod tests {
     fn test_global_leaflet_classification_new_fail() {
         let params = LeafletClassification::global("@membrane", "name P");
         
-        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).into(), 1, 1) {
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).unwrap().into(), 1, 1) {
             Ok(_) => panic!("Function should have failed."),
             Err(ConfigError::MissingMembraneNormal) => (),
             Err(e) => panic!("Unexpected error type `{}` returned.", e),
@@ -1520,7 +1520,7 @@ mod tests {
     fn test_local_leaflet_classification_new_fail() {
         let params = LeafletClassification::local("@membrane", "name P", 2.5);
         
-        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).into(), 1, 1) {
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).unwrap().into(), 1, 1) {
             Ok(_) => panic!("Function should have failed."),
             Err(ConfigError::MissingMembraneNormal) => (),
             Err(e) => panic!("Unexpected error type `{}` returned.", e),
@@ -1531,7 +1531,7 @@ mod tests {
     fn test_individual_leaflet_classification_new_fail() {
         let params = LeafletClassification::individual("name P", "name C218 C316");
         
-        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).into(), 1, 1) {
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).unwrap().into(), 1, 1) {
             Ok(_) => panic!("Function should have failed."),
             Err(ConfigError::MissingMembraneNormal) => (),
             Err(e) => panic!("Unexpected error type `{}` returned.", e),

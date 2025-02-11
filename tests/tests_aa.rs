@@ -10,7 +10,7 @@ use std::{
 };
 
 use approx::assert_relative_eq;
-use gorder::{prelude::*, Leaflet};
+use gorder::{input::DynamicNormal, prelude::*, Leaflet};
 use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
@@ -4439,6 +4439,192 @@ fn test_aa_order_leaflets_yaml_shifted_trajectory() {
             "tests/files/aa_order_leaflets_shifted.yaml",
             1
         ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_dynamic_membrane_normal_yaml() {
+    for n_threads in [1, 3, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+            .leaflets(
+                LeafletClassification::individual("name P", "name C218 C316")
+                    .with_membrane_normal(Axis::Z)
+                    .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets_dynamic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_buckled_dynamic_membrane_normal_ordermaps_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/aa_buckled.tpr")
+        .trajectory("tests/files/aa_buckled.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .output_directory(path_to_dir)
+                .min_samples(5)
+                .plane(Plane::XY)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_buckled.yaml",
+        1
+    ));
+
+    let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
+    let test_file = "tests/files/ordermaps_buckled/ordermap_average_full.dat";
+    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+    let real_file = format!("{}/POPC/ordermap_average_full.dat", path_to_dir);
+    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+}
+
+#[test]
+fn test_aa_order_fail_dynamic_undefined_ordermap_plane() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("unable to automatically set ordermap plane")),
+    }
+}
+
+#[test]
+fn test_aa_order_fail_dynamic_undefined_leaflet_normal() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+        .leaflets(LeafletClassification::individual(
+            "name P",
+            "name C218 C316",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("leaflet classification requires static membrane normal")),
+    }
+}
+
+#[test]
+fn test_aa_order_fail_dynamic_multiple_heads() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P O13", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("multiple head group atoms")),
+    }
+}
+
+#[test]
+fn test_aa_order_fail_dynamic_no_head() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name OH2", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("no head group atom")),
     }
 }
 
