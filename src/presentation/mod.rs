@@ -636,7 +636,7 @@ impl Analysis {
         log::info!("{}", self.membrane_normal());
         if self.map().is_some() {
             colog_info!(
-                "Will calculate ordermaps in the {} plane.",
+                "Will construct ordermaps in the {} plane.",
                 self.map().as_ref().unwrap().plane().expect(PANIC_MESSAGE)
             );
         }
