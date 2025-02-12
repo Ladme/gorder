@@ -5,15 +5,12 @@
 
 use core::f32;
 use std::{
-    fs::read_to_string,
-    num::NonZeroUsize,
-    sync::Arc,
-    time::{Duration, Instant},
+    cmp::Ordering, fs::read_to_string, num::NonZeroUsize, sync::Arc, time::{Duration, Instant}
 };
 
 use super::{common::{create_group, get_reference_head, macros::group_name}, pbc::PBCHandler, topology::SystemTopology};
 use crate::{
-    errors::{AnalysisError, ConfigError, ManualLeafletClassificationError, TopologyError},
+    errors::{AnalysisError, ConfigError, ManualLeafletClassificationError, NdxLeafletClassificationError, TopologyError},
     input::{Analysis, Frequency, LeafletClassification, MembraneNormal},
     Leaflet, PANIC_MESSAGE,
 };
@@ -21,6 +18,7 @@ use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
     errors::{AtomError, PositionError},
     prelude::{Dimension, Vector3D},
+    system::groups::Groups,
     structures::group::Group,
     system::System,
 };
@@ -96,6 +94,7 @@ pub(super) enum MoleculeLeafletClassification {
     Local(LocalClassification, AssignedLeaflets),
     Individual(IndividualClassification, AssignedLeaflets),
     Manual(ManualClassification, AssignedLeaflets),
+    ManualNdx(NdxClassification, AssignedLeaflets),
 }
 
 impl MoleculeLeafletClassification {
@@ -164,7 +163,18 @@ impl MoleculeLeafletClassification {
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
-            LeafletClassification::FromNdx(_) => todo!("NDX classification not yet supported."),
+            LeafletClassification::FromNdx(ndx_params) => Self::ManualNdx(
+                NdxClassification {
+                    ndx: ndx_params.ndx().clone(),
+                    heads: Vec::new(),
+                    groups: None,
+                    last_assigned_frame: None,
+                    upper_leaflet: ndx_params.upper_leaflet().clone(),
+                    lower_leaflet: ndx_params.lower_leaflet().clone(),
+                    frequency: params.get_frequency() * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                },
+                AssignedLeaflets::new(needs_shared_storage)
+            )
         };
 
         Ok(classification)
@@ -187,7 +197,10 @@ impl MoleculeLeafletClassification {
             Self::Individual(x, _) => {
                 x.insert(molecule, system)?;
             }
-            // do nothing; manual classifier is not set-up like this
+            Self::ManualNdx(x, _) => {
+                x.insert(molecule, system)?;
+            } 
+            // do nothing; manual "leaflet assignment file" classifier is not set-up like this
             Self::Manual(_, _) => (),
         }
 
@@ -197,7 +210,11 @@ impl MoleculeLeafletClassification {
     /// Calculate the number of molecules assigned to the upper and to the lower leaflet.
     pub(super) fn statistics(&self) -> (usize, usize) {
         match self {
-            Self::Global(_, y) | Self::Local(_, y) | Self::Individual(_, y) | Self::Manual(_, y) => {
+            Self::Global(_, y) | 
+            Self::Local(_, y) | 
+            Self::Individual(_, y) | 
+            Self::Manual(_, y) | 
+            Self::ManualNdx(_, y) => {
                 y.calc_assignment_statistics()
             }
         }
@@ -211,6 +228,7 @@ impl MoleculeLeafletClassification {
             Self::Local(x, _) => x.frequency,
             Self::Individual(x, _) => x.frequency,
             Self::Manual(x, _) => x.frequency,
+            Self::ManualNdx(x, _) => x.frequency,
         }
     }
 
@@ -218,7 +236,7 @@ impl MoleculeLeafletClassification {
     #[inline(always)]
     #[allow(unused)]
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
         pbc_handler: &impl PBCHandler,
         molecule_index: usize,
@@ -235,6 +253,9 @@ impl MoleculeLeafletClassification {
                 x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
             MoleculeLeafletClassification::Manual(x, _) => {
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
+            }
+            MoleculeLeafletClassification::ManualNdx(x, _) => {
                 x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
         }
@@ -287,6 +308,9 @@ impl MoleculeLeafletClassification {
             MoleculeLeafletClassification::Manual(x, y) => {
                 y.assign_lipids(system, pbc_handler, x, current_frame)
             }
+            MoleculeLeafletClassification::ManualNdx(x, y) => {
+                y.assign_lipids(system, pbc_handler, x, current_frame)
+            }
         }
     }
 
@@ -311,6 +335,9 @@ impl MoleculeLeafletClassification {
             MoleculeLeafletClassification::Manual(x, y) => {
                 y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
             }
+            MoleculeLeafletClassification::ManualNdx(x, y) => {
+                y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
+            }
         }
     }
 }
@@ -319,7 +346,7 @@ impl MoleculeLeafletClassification {
 trait LeafletClassifier {
     /// Caclulate membrane leaflet the specified molecule belongs to.
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
         pbc_handler: &impl PBCHandler,
         molecule_index: usize,
@@ -359,7 +386,7 @@ impl GlobalClassification {
 impl LeafletClassifier for GlobalClassification {
     #[inline(always)]
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
         pbc_handler: &impl PBCHandler,
         molecule_index: usize,
@@ -439,7 +466,7 @@ impl LocalClassification {
 impl LeafletClassifier for LocalClassification {
     #[inline(always)]
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
         pbc_handler: &impl PBCHandler,
         molecule_index: usize,
@@ -526,7 +553,7 @@ impl IndividualClassification {
 
 impl LeafletClassifier for IndividualClassification {
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
         pbc_handler: &impl PBCHandler,
         molecule_index: usize,
@@ -569,7 +596,7 @@ pub(crate) struct ManualClassification {
 
 impl LeafletClassifier for ManualClassification {
     fn identify_leaflet(
-        &self,
+        &mut self,
         _system: &System,
         _pbc_handler: &impl PBCHandler,
         molecule_index: usize,
@@ -722,6 +749,166 @@ impl ManualClassification {
     }
 }
 
+/// Leaflet classification method that uses positions of lipid heads and the global membrane center of geometry.
+#[derive(Debug, Clone, CopyGetters, Getters, MutGetters, Setters)]
+pub(super) struct NdxClassification {
+    /// NDX files to read.
+    #[getset(get = "pub(super)")]
+    ndx: Vec<String>,
+    /// Currently loaded groups from an ndx file.
+    groups: Option<Groups>,
+    /// Frame for which the current `groups` field has been obtained.
+    last_assigned_frame: Option<usize>,
+    /// Indices of headgroup identifiers (one per molecule).
+    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    heads: Vec<usize>,
+    /// Name of the upper leaflet group.
+    #[getset(get = "pub(super)")]
+    upper_leaflet: String,
+    /// Name of the lower leaflet group.
+    #[getset(get = "pub(super)")]
+    lower_leaflet: String,
+    /// Frequency with which the assignment should be performed.
+    /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
+    frequency: Frequency,
+}
+
+impl NdxClassification {
+    /// Insert a new molecule into the classifier.
+    #[inline(always)]
+    fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
+        self.heads.push(get_reference_head(molecule, system, group_name!("Heads"))?);
+        Ok(())
+    }
+
+    /// Read an ndx file and store the groups from it.
+    fn read_ndx_file(&mut self, frame_index: usize, n_atoms: usize) -> Result<(), NdxLeafletClassificationError> {
+        // get the index of the frame in the assignment
+        let assignment_index = match self.frequency {
+            // frame must be zero no matter the thread this is
+            Frequency::Once => 0,
+            Frequency::Every(n) => frame_index / n.get(),
+        };
+        
+        // get the ndx file to read
+        let ndx_file = self
+            .ndx
+            .get(assignment_index)
+            .ok_or_else(|| NdxLeafletClassificationError::FrameNotFound(
+                frame_index, assignment_index, self.ndx.len()))?;
+
+        // read the ndx file
+        let (groups, invalid, duplicate) = Groups::from_ndx(ndx_file, n_atoms)
+            .map_err(|e| NdxLeafletClassificationError::CouldNotParse(e))?;
+
+        // handle issues
+        for invalid_name in invalid {
+            if invalid_name == self.upper_leaflet || invalid_name == self.lower_leaflet {
+                return Err(NdxLeafletClassificationError::InvalidName(invalid_name));
+            }
+            // ignore warnings and errors that are irrelevant
+        }
+
+        for duplicate_name in duplicate {
+            if duplicate_name == self.upper_leaflet || duplicate_name == self.lower_leaflet {
+                return Err(NdxLeafletClassificationError::DuplicateName(duplicate_name, ndx_file.clone()));
+            }
+            // ignore warnings and errors that are irrelevant
+        }
+
+        // check that the required groups exist
+        if !groups.exists(self.upper_leaflet()) {
+            return Err(NdxLeafletClassificationError::GroupNotFound(
+                self.upper_leaflet.clone(), "upper-leaflet".to_owned(), ndx_file.clone()));
+        }
+
+        if !groups.exists(self.lower_leaflet()) {
+            return Err(NdxLeafletClassificationError::GroupNotFound(
+                self.lower_leaflet.clone(), "lower-leaflet".to_owned(), ndx_file.clone()));
+        }
+
+        self.groups = Some(groups);
+        self.last_assigned_frame = Some(frame_index);
+
+        Ok(())
+    }
+
+    /// Assign molecule to leaflet based on the loaded groups.
+    // This could be done much more efficiently using head index -> molecule index hash map,
+    // and looping through each NDX group only once
+    // but the current trait system requires the assignment to be performed molecule-wise...
+    fn assign_molecule(&self, molecule_index: usize) -> Result<Leaflet, NdxLeafletClassificationError> {
+        let head_index = self
+            .heads
+            .get(molecule_index)
+            .unwrap_or_else(|| panic!("FATAL GORDER ERROR | NdxClassification::assign_molecule | Could not find head identifier for molecule index `{}`.", molecule_index));
+
+        // groups must exist; checked in Self::read_ndx_file
+        let groups = self.groups.as_ref().expect(PANIC_MESSAGE);
+        
+        // check upper leaflet
+        if groups
+            .get(self.upper_leaflet())
+            .expect(PANIC_MESSAGE)
+            .get_atoms()
+            .isin(*head_index) {
+                return Ok(Leaflet::Upper);
+            }
+        
+        // check lower leaflet
+        if groups
+            .get(self.lower_leaflet())
+            .expect(PANIC_MESSAGE)
+            .get_atoms()
+            .isin(*head_index) {
+            return Ok(Leaflet::Lower);
+        }
+
+        Err(NdxLeafletClassificationError::AssignmentNotFound(molecule_index, *head_index))
+
+    }
+}
+
+impl LeafletClassifier for NdxClassification {
+    #[inline(always)]
+    fn n_molecules(&self) -> usize {
+        self.heads.len()
+    }
+
+    fn identify_leaflet(
+            &mut self,
+            system: &System,
+            _pbc_handler: &impl PBCHandler,
+            molecule_index: usize,
+            current_frame: usize,
+        ) -> Result<Leaflet, AnalysisError> {
+        // only read the NDX file if a) it is not read, or b) it is too old
+        // we write it defensively, since this is sensitive
+        match (&self.groups, self.last_assigned_frame) {
+            (None, None) => self
+                .read_ndx_file(current_frame, system.get_n_atoms())
+                .map_err(|e| AnalysisError::NdxLeafletError(e))?,
+            
+            (Some(_), None) | (None, Some(_)) => 
+                panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Inconsistent state of `groups` and `last_ndx_index`."),
+            
+            (Some(_), Some(index)) => {
+                match index.cmp(&current_frame) {
+                    Ordering::Less => self
+                        .read_ndx_file(current_frame, system.get_n_atoms())
+                        .map_err(|e| AnalysisError::NdxLeafletError(e))?,
+                    Ordering::Equal => (),
+                    Ordering::Greater => 
+                        panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Last read NDX file is for frame `{}`, but the current frame is `{}`. Went back in time?", index, current_frame),
+                }
+            }
+        };
+
+        // get the assignment for the target molecule
+        self.assign_molecule(molecule_index).map_err(|e| AnalysisError::NdxLeafletError(e))
+    }
+}
+
 /// Vector of leaflet assignments for each molecule of the given type.
 #[derive(Debug, Clone)]
 pub(super) struct AssignedLeaflets {
@@ -761,7 +948,7 @@ impl AssignedLeaflets {
         &mut self,
         system: &System,
         pbc_handler: &impl PBCHandler,
-        classifier: &impl LeafletClassifier,
+        classifier: &mut impl LeafletClassifier,
         current_frame: usize,
     ) -> Result<(), AnalysisError> {
         self.local = Some(
@@ -1841,10 +2028,10 @@ mod tests_assigned_leaflets {
 
     #[test]
     fn test_assign_lipids_no_shared() {
-        let (system, classifier, mut leaflets) = prepare_data(false);
+        let (system, mut classifier, mut leaflets) = prepare_data(false);
         let pbc = PBC3D::new(system.get_box().unwrap());
 
-        leaflets.assign_lipids(&system, &pbc, &classifier, 15).unwrap();
+        leaflets.assign_lipids(&system, &pbc, &mut classifier, 15).unwrap();
 
         assert_eq!(leaflets.local_frame.unwrap(), 15);
         assert_eq!(leaflets.get_leaflet_from_local(0), Leaflet::Upper);
@@ -1854,10 +2041,10 @@ mod tests_assigned_leaflets {
 
     #[test]
     fn test_assign_lipids_with_shared() {
-        let (system, classifier, mut leaflets) = prepare_data(true);
+        let (system, mut classifier, mut leaflets) = prepare_data(true);
         let pbc = PBC3D::new(system.get_box().unwrap());
 
-        leaflets.assign_lipids(&system, &pbc, &classifier, 15).unwrap();
+        leaflets.assign_lipids(&system, &pbc, &mut classifier, 15).unwrap();
 
         assert_eq!(leaflets.local_frame.unwrap(), 15);
         assert_eq!(leaflets.get_leaflet_from_local(0), Leaflet::Upper);

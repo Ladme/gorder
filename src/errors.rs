@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use colored::{ColoredString, Colorize};
-use groan_rs::errors::SelectError;
+use groan_rs::errors::{ParseNdxError, SelectError};
 use thiserror::Error;
 
 use crate::input::Frequency;
@@ -134,9 +134,13 @@ pub enum AnalysisError {
     )]
     InvalidLocalMembraneCenter(usize),
 
-    /// Used when there is an error in the manual leaflet classification.
+    /// Used when there is an error in the manual leaflet classification using the leaflet assignment file.
     #[error("{}", .0)]
     ManualLeafletError(ManualLeafletClassificationError),
+
+    /// Used when there is an error in the manual leaflet classification using NDX files.
+    #[error("{}", .0)]
+    NdxLeafletError(NdxLeafletClassificationError),
 
     /// Used when there is an error in the dynamic membrane normal calculation.
     #[error("{}", .0)]
@@ -349,7 +353,36 @@ pub enum BondsError {
     AtomNotFound(usize, usize),
 }
 
-/// Errors that can occur when working with manual leaflet assignment.
+/// Errors that can occur when working manual leaflet assignment using NDX files.
+#[derive(Error, Debug)]
+pub enum NdxLeafletClassificationError {
+    #[error("{}", .0)]
+    CouldNotParse(ParseNdxError),
+
+    #[error("{} could not get NDX file for frame index '{}' [expected index of the NDX file: '{}']
+(total number of specified NDX files is '{}'; maybe the assignment frequency is incorrect?)", 
+    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+    FrameNotFound(usize, usize, usize),
+
+    #[error("{} group name '{}' is invalid and cannot be used ({} following characters are not allowed in group names: \'\"&|!@()<>=)",
+"error:".red().bold(), .0.yellow(), "hint:".blue().bold())]
+    InvalidName(String),
+
+    #[error("{} group '{}' is defined multiple times in an NDX file '{}'", "error:".red().bold(), .0.yellow(), .1.yellow())]
+    DuplicateName(String, String),
+
+    #[error("{} group '{}' for selecting {} molecules was not found in the NDX file '{}'", 
+    "error:".red().bold(), .0.yellow(), .1.yellow(), .2.yellow())]
+    GroupNotFound(String, String, String),
+
+    #[error("{} could not find leaflet assignment for molecule index '{}' (head index '{}')
+({} head identifier index '{}' is missing from both specified NDX groups)",
+    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(),
+    "hint:".blue().bold(), .1.to_string().yellow())]
+    AssignmentNotFound(usize, usize),
+}
+
+/// Errors that can occur when working with manual leaflet assignment from a leaflet assignment file.
 #[derive(Error, Debug)]
 pub enum ManualLeafletClassificationError {
     #[error("{} could not open the leaflet assignment file '{}'", "error:".red().bold(), .0.yellow())]
