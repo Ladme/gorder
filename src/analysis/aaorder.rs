@@ -126,8 +126,8 @@ pub(super) fn analyze_atomistic(
     data.info();
 
     // finalize the manual leaflet classification
-    if let Some(LeafletClassification::Manual(params)) = analysis.leaflets() {
-        data.finalize_manual_leaflet_classification(params)?;
+    if let Some(classification) = analysis.leaflets() {
+        data.finalize_manual_leaflet_classification(classification)?;
     }
 
     if let Some(error_estimation) = analysis.estimate_error() {
@@ -145,9 +145,13 @@ pub(super) fn analyze_atomistic(
         analysis.silent(),
     )?;
 
-    if let Some(LeafletClassification::Manual(_)) = analysis.leaflets() {
-        result.validate_manual_leaflet_classification(&analysis)?;
+    match analysis.leaflets() {
+        Some(LeafletClassification::FromFile(_)) | Some(LeafletClassification::FromMap(_)) => {
+            result.validate_manual_leaflet_classification(&analysis)?
+        }
+        _ => (),
     }
+
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation

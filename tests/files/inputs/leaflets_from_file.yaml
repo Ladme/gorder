@@ -4,5 +4,5 @@ trajectory: tests/files/pcpepg.xtc
 type: !AAOrder
   heavy_atoms: "@membrane and element name carbon"
   hydrogens: "@membrane and element name hydrogen"
-leaflets: !Manual "tests/files/inputs/leaflets_files/pcpepg_every.yaml"
+leaflets: !FromFile "tests/files/inputs/leaflets_files/pcpepg_every.yaml"
 output_yaml: temp_aa_order_leaflets_from_file.yaml

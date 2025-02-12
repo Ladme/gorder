@@ -408,8 +408,8 @@ use serde::{Deserialize, Serialize};
 pub mod prelude {
     pub use super::input::{
         analysis::AnalysisBuilder, ordermap::OrderMapBuilder, Analysis, AnalysisType, Axis,
-        EstimateError, Frequency, GeomReference, Geometry, GridSpan, LeafletClassification,
-        OrderMap, Plane,
+        DynamicNormal, EstimateError, Frequency, GeomReference, Geometry, GridSpan,
+        LeafletClassification, MembraneNormal, OrderMap, Plane,
     };
 
     pub use super::analysis::molecule::AtomType;

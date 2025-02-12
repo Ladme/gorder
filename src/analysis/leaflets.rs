@@ -14,7 +14,7 @@ use std::{
 use super::{common::{create_group, get_reference_head, macros::group_name}, pbc::PBCHandler, topology::SystemTopology};
 use crate::{
     errors::{AnalysisError, ConfigError, ManualLeafletClassificationError, TopologyError},
-    input::{leaflets::ManualParams, Analysis, Frequency, LeafletClassification, MembraneNormal},
+    input::{Analysis, Frequency, LeafletClassification, MembraneNormal},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
@@ -57,7 +57,10 @@ impl LeafletClassification {
                 create_group(system, "Heads", params.heads())?;
                 create_group(system, "Methyls", params.methyls())?;
             }
-            Self::Manual(_) => (),
+            Self::FromNdx(params) => {
+                create_group(system, "Heads", params.heads())?;
+            }
+            Self::FromFile(_) | Self::FromMap(_) => (),
         }
 
         Ok(())
@@ -154,13 +157,14 @@ impl MoleculeLeafletClassification {
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
-            LeafletClassification::Manual(_) => Self::Manual(
+            LeafletClassification::FromFile(_) | LeafletClassification::FromMap(_) => Self::Manual(
                 ManualClassification {
                     assignment: None,
                     frequency: params.get_frequency() * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
+            LeafletClassification::FromNdx(_) => todo!("NDX classification not yet supported."),
         };
 
         Ok(classification)
@@ -610,10 +614,12 @@ impl LeafletClassifier for ManualClassification {
 
 impl SystemTopology {
     /// Finalize the set up of the manual leaflet classifier.
-    pub(super) fn finalize_manual_leaflet_classification(&mut self, params: &ManualParams) -> Result<(), ManualLeafletClassificationError> {
+    pub(super) fn finalize_manual_leaflet_classification(&mut self, params: &LeafletClassification) -> Result<(), ManualLeafletClassificationError> {
         let classification = match params {
-            ManualParams::FromFile {file, frequency: _} => &ManualClassification::map_from_file(file)?,
-            ManualParams::FromMap { assignment, frequency: _ } => assignment,
+            LeafletClassification::FromFile(params) => &ManualClassification::map_from_file(params.file())?,
+            LeafletClassification::FromMap(params) => params.assignment(),
+            // do nothing for the other types of classification
+            _ => return Ok(()),
         };
 
         let mut molecule_names = Vec::new();

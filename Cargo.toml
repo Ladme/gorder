@@ -33,6 +33,7 @@ statistical = "1.0.0"
 strum_macros = "0.26.4"
 parking_lot = "0.12.3"
 nalgebra = "0.33.2"
+glob = "0.3.2"
 
 [dev-dependencies]
 approx = "0.5.1"

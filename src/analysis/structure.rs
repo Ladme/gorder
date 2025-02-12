@@ -5,7 +5,9 @@
 
 use crate::{
     errors::{BondsError, ConfigError},
-    input::{Analysis, AnalysisType, GeomReference, Geometry, LeafletClassification},
+    input::{
+        Analysis, AnalysisType, GeomReference, Geometry, LeafletClassification, MembraneNormal,
+    },
     PANIC_MESSAGE,
 };
 use colored::Colorize;
@@ -215,12 +217,16 @@ fn should_guess_elements(analysis: &Analysis) -> bool {
         Some(LeafletClassification::Local(x)) => {
             has_element(x.heads()) || has_element(x.membrane())
         }
-        Some(LeafletClassification::Manual(_)) => false,
+        Some(LeafletClassification::FromNdx(x)) => has_element(x.heads()),
+        Some(LeafletClassification::FromFile(_)) | Some(LeafletClassification::FromMap(_)) => false,
     } || match analysis.geometry() {
         Some(Geometry::Cuboid(x)) => reference_has_element(x.reference()),
         Some(Geometry::Cylinder(x)) => reference_has_element(x.reference()),
         Some(Geometry::Sphere(x)) => reference_has_element(x.reference()),
         None => false,
+    } || match analysis.membrane_normal() {
+        MembraneNormal::Static(_) => false,
+        MembraneNormal::Dynamic(dynamic) => has_element(dynamic.heads()),
     };
 
     guess
