@@ -650,19 +650,29 @@ impl LeafletClassification {
     /// Print basic information about the leaflet classification.
     #[inline(always)]
     fn info(&self) {
+        let mut ndx_files = String::new();
+        if let LeafletClassification::FromNdx(params) = self {
+            ndx_files += "\n";
+            params
+                .compact_display_ndx(&mut ndx_files)
+                .expect(PANIC_MESSAGE);
+        }
+
         if let Some(normal) = self.get_membrane_normal() {
             colog_info!(
                 "Will classify lipids into membrane leaflets {} using the '{}' method.
-Note: membrane normal for leaflet classification assumed to be oriented along the {} axis.",
+Note: membrane normal for leaflet classification assumed to be oriented along the {} axis.{}",
                 self.get_frequency(),
                 self,
                 normal,
+                ndx_files,
             )
         } else {
             colog_info!(
-                "Will classify lipids into membrane leaflets {} using the '{}' method.",
+                "Will classify lipids into membrane leaflets {} using the '{}' method.{}",
                 self.get_frequency(),
                 self,
+                ndx_files,
             )
         }
     }

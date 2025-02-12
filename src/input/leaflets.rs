@@ -3,8 +3,9 @@
 
 //! Contains structures and methods for the assignment of lipids into membrane leaflets.
 
-use std::fmt;
+use std::fmt::{self, Write};
 
+use colored::Colorize;
 use getset::{CopyGetters, Getters};
 use hashbrown::HashMap;
 use serde::{
@@ -406,6 +407,38 @@ pub struct FromNdxParams {
     #[serde(default)]
     #[getset(get_copy = "pub(crate)")]
     frequency: Frequency,
+}
+
+impl FromNdxParams {
+    /// Print some of the NDX files that will be read.
+    pub(crate) fn compact_display_ndx<W: Write>(&self, f: &mut W) -> fmt::Result {
+        let n_ndx = self.ndx.len();
+        if n_ndx == 1 {
+            write!(f, "Using an ndx file")?;
+        } else {
+            write!(f, "Using ndx files:")?;
+        }
+
+        write!(f, " {}", self.ndx[0].cyan())?;
+
+        if n_ndx <= 6 {
+            for item in &self.ndx[1..] {
+                write!(f, ", {}", item.cyan())?;
+            }
+        } else {
+            for item in &self.ndx[1..3] {
+                write!(f, ", {}", item.cyan())?;
+            }
+            write!(f, "{}", ", ...".clear())?;
+            for item in &self.ndx[self.ndx.len() - 3..] {
+                write!(f, ", {}", item.cyan())?;
+            }
+        }
+
+        write!(f, "{}", ".".clear())?;
+
+        Ok(())
+    }
 }
 
 pub fn deserialize_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
