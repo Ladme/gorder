@@ -68,7 +68,16 @@ jobs:
           target: x86_64-pc-windows-${{ matrix.toolchain }}
           components: rustc, cargo, rust-std
           override: true
+          default: ${{ matrix.toolchain == 'gnu' && true || false }}
       
+      - name: Configure MinGW Environment
+        if: matrix.toolchain == 'gnu'
+        shell: bash
+        run: |
+          echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc" >> $GITHUB_ENV
+          echo "CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc" >> $GITHUB_ENV
+          echo "CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++" >> $GITHUB_ENV
+
       - name: Set Cargo Path
         shell: pwsh
         run: |
