@@ -34,7 +34,7 @@ pub(super) fn read_structure_and_topology(
         // check simulation box
         super::common::check_box(&system)?;
     } else {
-        // log info in case handle_pbc is false
+        // log warning in case handle_pbc is false
         log::warn!("Periodic boundary conditions ignored. Lipid molecules must be made whole!")
     }
 
@@ -237,7 +237,7 @@ fn maybe_guess_elements(analysis: &Analysis, system: &mut System) -> Result<(), 
     if should_guess_elements(analysis) {
         match system.guess_elements(Elements::default()) {
             Ok(_) => {
-                log::info!("Assigned elements to atoms without warnings...");
+                log::info!("Assigned elements to atoms without warnings.");
                 Ok(())
             }
             Err(ElementError::ElementGuessWarning(e)) => {
