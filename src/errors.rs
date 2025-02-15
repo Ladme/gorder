@@ -380,6 +380,17 @@ pub enum NdxLeafletClassificationError {
     "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(),
     "hint:".blue().bold(), .1.to_string().yellow())]
     AssignmentNotFound(usize, usize),
+
+    #[error("{} number of ndx files provided ('{}') is not consistent with the number of analyzed frames ('{}')
+    (leaflet assignment was supposed to be performed {}, therefore there should be exactly '{}' ndx file(s) provided)",
+    "error:".red().bold(), .ndx_files.to_string().yellow(), .analyzed_frames.to_string().yellow(), 
+    .frequency.to_string().yellow(), .expected_ndx_files.to_string().yellow())]
+    UnexpectedNumberOfNdxFiles {
+        ndx_files: usize,
+        analyzed_frames: usize,
+        frequency: Frequency,
+        expected_ndx_files: usize,
+    },
 }
 
 /// Errors that can occur when working with manual leaflet assignment from a leaflet assignment file.

@@ -125,6 +125,32 @@ impl LeafletClassification {
         })
     }
 
+    /// Get leaflet assignment using NDX file(s).
+    ///
+    /// ## Parameters
+    /// - `ndx`: a vector of NDX files to read
+    /// - `heads`: GSL query specifying the atoms to use as head identifiers of molecules
+    /// - `upper_leaflet`: name of the group in the NDX file(s) specifying the atoms of the upper leaflet
+    /// - `lower_leaflet`: name of the group in the NDX file(s) specifying the atoms of the lower leaflet
+    ///
+    /// ## Notes
+    /// - No glob expansion is performed for the NDX files.
+    #[inline(always)]
+    pub fn from_ndx(
+        ndx: &[&str],
+        heads: &str,
+        upper_leaflet: &str,
+        lower_leaflet: &str,
+    ) -> LeafletClassification {
+        Self::FromNdx(FromNdxParams {
+            ndx: ndx.iter().map(|x| (*x).to_owned()).collect(),
+            heads: heads.to_owned(),
+            upper_leaflet: upper_leaflet.to_owned(),
+            lower_leaflet: lower_leaflet.to_owned(),
+            frequency: Frequency::default(),
+        })
+    }
+
     /// Assign lipids to leaflets every N analyzed trajectory frames or only once (using the first trajectory frame).
     /// (Note that this is 'analyzed trajectory frames' - if you skip some frames using `step`,
     /// they will not be counted here.)

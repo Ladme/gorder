@@ -11,7 +11,6 @@ use crate::analysis::common::{
 use crate::analysis::pbc::{NoPBC, PBC3D};
 use crate::analysis::structure;
 use crate::errors::TopologyError;
-use crate::input::LeafletClassification;
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
@@ -145,13 +144,7 @@ pub(super) fn analyze_atomistic(
         analysis.silent(),
     )?;
 
-    match analysis.leaflets() {
-        Some(LeafletClassification::FromFile(_)) | Some(LeafletClassification::FromMap(_)) => {
-            result.validate_manual_leaflet_classification(&analysis)?
-        }
-        _ => (),
-    }
-
+    result.validate_leaflet_classification(analysis.step())?;
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation

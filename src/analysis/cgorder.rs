@@ -16,7 +16,7 @@ use crate::{
         pbc::{NoPBC, PBC3D},
         topology::SystemTopology,
     },
-    input::{Analysis, LeafletClassification},
+    input::Analysis,
     presentation::cgresults::CGOrderResults,
     PANIC_MESSAGE,
 };
@@ -114,13 +114,7 @@ pub(super) fn analyze_coarse_grained(
         analysis.silent(),
     )?;
 
-    match analysis.leaflets() {
-        Some(LeafletClassification::FromFile(_)) | Some(LeafletClassification::FromMap(_)) => {
-            result.validate_manual_leaflet_classification(&analysis)?
-        }
-        _ => (),
-    }
-
+    result.validate_leaflet_classification(analysis.step())?;
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation
