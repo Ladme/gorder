@@ -733,13 +733,13 @@ impl SystemTopology {
 
         if expected_n_frames != n_frames {
             if matches!(classification, &MoleculeLeafletClassification::Manual(_, _)) {
-                return Err(Box::from(ManualLeafletClassificationError::UnexpectedNumberOfFrames { 
-                assignment_frames: n_frames,
-                analyzed_frames: total_frames,
-                frequency,
-                expected_assignment_frames: expected_n_frames,
+                Err(Box::from(ManualLeafletClassificationError::UnexpectedNumberOfFrames { 
+                    assignment_frames: n_frames,
+                    analyzed_frames: total_frames,
+                    frequency,
+                    expected_assignment_frames: expected_n_frames,
             }))} else {
-                return Err(Box::from(NdxLeafletClassificationError::UnexpectedNumberOfNdxFiles {
+                Err(Box::from(NdxLeafletClassificationError::UnexpectedNumberOfNdxFiles {
                     ndx_files: n_frames,
                     analyzed_frames: total_frames,
                     frequency,
@@ -812,7 +812,7 @@ impl NdxClassification {
 
         // read the ndx file
         let (groups, invalid, duplicate) = Groups::from_ndx(ndx_file, n_atoms)
-            .map_err(|e| NdxLeafletClassificationError::CouldNotParse(e))?;
+            .map_err( NdxLeafletClassificationError::CouldNotParse)?;
 
         // handle issues
         for invalid_name in invalid {
@@ -900,7 +900,7 @@ impl LeafletClassifier for NdxClassification {
         match (&self.groups, self.last_assigned_frame) {
             (None, None) => self
                 .read_ndx_file(current_frame, system.get_n_atoms())
-                .map_err(|e| AnalysisError::NdxLeafletError(e))?,
+                .map_err(AnalysisError::NdxLeafletError)?,
             
             (Some(_), None) | (None, Some(_)) => 
                 panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Inconsistent state of `groups` and `last_ndx_index`."),
@@ -909,7 +909,7 @@ impl LeafletClassifier for NdxClassification {
                 match index.cmp(&current_frame) {
                     Ordering::Less => self
                         .read_ndx_file(current_frame, system.get_n_atoms())
-                        .map_err(|e| AnalysisError::NdxLeafletError(e))?,
+                        .map_err( AnalysisError::NdxLeafletError)?,
                     Ordering::Equal => (),
                     Ordering::Greater => 
                         panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Last read NDX file is for frame `{}`, but the current frame is `{}`. Went back in time?", index, current_frame),
@@ -918,7 +918,7 @@ impl LeafletClassifier for NdxClassification {
         };
 
         // get the assignment for the target molecule
-        self.assign_molecule(molecule_index).map_err(|e| AnalysisError::NdxLeafletError(e))
+        self.assign_molecule(molecule_index).map_err( AnalysisError::NdxLeafletError)
     }
 }
 

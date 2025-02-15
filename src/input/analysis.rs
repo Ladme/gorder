@@ -741,20 +741,11 @@ mod tests_yaml {
                 ConfigError::InvalidNThreads if expected_variant == "InvalidNThreads" => (),
                 ConfigError::InvalidBeginEnd if expected_variant == "InvalidBeginEnd" => (),
                 ConfigError::InvalidStructureFormat(_)
-                    if expected_variant == "InvalidStructureFormat" =>
-                {
-                    ()
-                }
+                    if expected_variant == "InvalidStructureFormat" => {}
                 ConfigError::InvalidTrajectoryFormat(_)
-                    if expected_variant == "InvalidTrajectoryFormat" =>
-                {
-                    ()
-                }
+                    if expected_variant == "InvalidTrajectoryFormat" => {}
                 ConfigError::InvalidDynamicNormalRadius(_)
-                    if expected_variant == "InvalidDynamicNormalRadius" =>
-                {
-                    ()
-                }
+                    if expected_variant == "InvalidDynamicNormalRadius" => {}
                 _ => panic!("Unexpected error type returned: {}", e),
             },
         }

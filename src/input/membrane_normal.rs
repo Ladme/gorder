@@ -67,7 +67,7 @@ impl From<DynamicNormal> for MembraneNormal {
 impl From<&MembraneNormal> for Dimension {
     fn from(value: &MembraneNormal) -> Self {
         match value {
-            MembraneNormal::Static(axis) => axis.clone().into(),
+            MembraneNormal::Static(axis) => (*axis).into(),
             MembraneNormal::Dynamic(_) => todo!("Dynamic membrane normal not yet implemented."),
         }
     }

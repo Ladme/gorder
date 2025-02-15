@@ -3478,7 +3478,7 @@ fn test_cg_order_leaflets_from_ndx_once_multiple_threads() {
 
 #[test]
 fn test_cg_order_leaflets_from_ndx_every_multiple_threads() {
-    let mut ndx = vec![
+    let mut ndx = [
         "tests/files/ndx/cg_leaflets.ndx",
         "tests/files/ndx/cg_leaflets_all.ndx",
     ]
@@ -3566,8 +3566,8 @@ fn test_cg_order_leaflets_from_ndx_partial() {
     .into_iter()
     .zip([
         vec!["tests/files/ndx/cg_leaflets.ndx"],
-        vec!["tests/files/ndx/cg_leaflets.ndx"].repeat(101),
-        vec!["tests/files/ndx/cg_leaflets.ndx"].repeat(6),
+        ["tests/files/ndx/cg_leaflets.ndx"].repeat(101),
+        ["tests/files/ndx/cg_leaflets.ndx"].repeat(6),
     ]) {
         let analysis = Analysis::builder()
             .structure("tests/files/cg.tpr")

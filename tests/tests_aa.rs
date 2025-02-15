@@ -4669,7 +4669,7 @@ fn test_aa_order_leaflets_from_ndx_once_multiple_threads() {
 
 #[test]
 fn test_aa_order_leaflets_from_ndx_every_multiple_threads() {
-    let mut ndx = vec![
+    let mut ndx = [
         "tests/files/ndx/pcpepg_leaflets.ndx",
         "tests/files/ndx/pcpepg_leaflets_all.ndx",
     ]
@@ -4752,7 +4752,7 @@ fn test_aa_order_leaflets_from_ndx_every10_multiple_threads() {
 
 #[test]
 fn test_aa_order_leaflets_from_ndx_step_multiple_threads() {
-    let ndx = vec!["tests/files/ndx/pcpepg_leaflets.ndx"];
+    let ndx = ["tests/files/ndx/pcpepg_leaflets.ndx"];
     for n_threads in [1, 2, 5, 8, 64] {
         for (repeat, freq) in [11, 3, 1, 1].into_iter().zip([
             Frequency::every(1).unwrap(),

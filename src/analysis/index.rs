@@ -16,7 +16,7 @@ fn unpack_set(set: &HashSet<String>) -> String {
     let len = set.len();
 
     for (i, key) in set.iter().enumerate() {
-        write!(output, "\n").expect(PANIC_MESSAGE);
+        writeln!(output).expect(PANIC_MESSAGE);
         write!(output, "> {}", key.yellow()).expect(PANIC_MESSAGE);
 
         if i >= 9 && len != i + 1 {
@@ -40,13 +40,13 @@ pub(super) fn read_ndx_file(system: &mut System, ndx: &str) -> Result<(), ParseN
         Err(ParseNdxError::DuplicateGroupsWarning(x)) => colog_warn!(
             "Duplicate group(s) detected in the ndx file '{}': {}",
             ndx,
-            unpack_set(&*x).yellow()
+            unpack_set(&x).yellow()
         ),
         Err(ParseNdxError::InvalidNamesWarning(x)) => {
             colog_warn!(
                 "Group(s) with invalid name(s) detected in the ndx file '{}': {}",
                 ndx,
-                unpack_set(&*x).yellow()
+                unpack_set(&x).yellow()
             )
         }
         Err(e) => return Err(e),

@@ -250,8 +250,8 @@ mod tests {
         }
 
         let normal = membrane_normal_from_cloud(&points).unwrap();
-        assert_relative_eq!(normal.x.abs(), 0.7071068);
-        assert_relative_eq!(normal.y.abs(), 0.7071068);
+        assert_relative_eq!(normal.x.abs(), std::f32::consts::FRAC_1_SQRT_2);
+        assert_relative_eq!(normal.y.abs(), std::f32::consts::FRAC_1_SQRT_2);
         assert_relative_eq!(normal.z, 0.0);
         assert_relative_eq!(normal.x + normal.y, 0.0);
     }

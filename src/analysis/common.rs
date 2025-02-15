@@ -477,7 +477,7 @@ fn create_new_molecule_type(
     let classifier = if let Some(params) = leaflet_classification {
         let mut leaflet_classifier =
             MoleculeLeafletClassification::new(params, membrane_normal, n_threads, step_size)
-                .map_err(|e| TopologyError::ConfigError(e))?;
+                .map_err(TopologyError::ConfigError)?;
         leaflet_classifier.insert(all_atom_indices, system)?;
 
         Some(leaflet_classifier)
@@ -541,6 +541,7 @@ fn solve_name_conflicts(molecules: &mut [MoleculeType]) {
 }
 
 /// Perform the analysis.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn read_trajectory(
     system: &System,
     topology: SystemTopology,

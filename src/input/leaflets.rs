@@ -775,7 +775,7 @@ lower_leaflet: LowerLeaflet";
     fn test_parse_manual_ndx_glob_multiple() {
         let string = "!FromNdx
 heads: \"name P\"
-ndx: \"tests/files/*.ndx\"
+ndx: \"tests/files/ndx/glob/index*.ndx\"
 upper_leaflet: UpperLeaflet
 lower_leaflet: LowerLeaflet";
 
@@ -784,7 +784,10 @@ lower_leaflet: LowerLeaflet";
                 assert_eq!(params.heads(), "name P");
                 assert_eq!(
                     params.ndx(),
-                    &vec!["tests/files/cg.ndx", "tests/files/pcpepg.ndx"]
+                    &vec![
+                        "tests/files/ndx/glob/index1.ndx",
+                        "tests/files/ndx/glob/index2.ndx"
+                    ]
                 );
                 assert_eq!(params.upper_leaflet(), "UpperLeaflet");
                 assert_eq!(params.lower_leaflet(), "LowerLeaflet");
