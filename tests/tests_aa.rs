@@ -4629,6 +4629,250 @@ fn test_aa_order_fail_dynamic_no_head() {
 }
 
 #[test]
+fn test_aa_order_leaflets_from_ndx_once_multiple_threads() {
+    for n_threads in [1, 3, 5, 8, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(
+                LeafletClassification::from_ndx(
+                    &["tests/files/ndx/pcpepg_leaflets.ndx"],
+                    "name P",
+                    "Upper",
+                    "Lower",
+                )
+                .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_every_multiple_threads() {
+    let mut ndx = vec![
+        "tests/files/ndx/pcpepg_leaflets.ndx",
+        "tests/files/ndx/pcpepg_leaflets_all.ndx",
+    ]
+    .repeat(25);
+    ndx.push("tests/files/ndx/pcpepg_leaflets.ndx");
+
+    for n_threads in [1, 3, 5, 8, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::from_ndx(
+                &ndx, "name P", "Upper", "Lower",
+            ))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_every10_multiple_threads() {
+    let ndx = vec![
+        "tests/files/ndx/pcpepg_leaflets.ndx",
+        "tests/files/ndx/pcpepg_leaflets_all.ndx",
+        "tests/files/ndx/pcpepg_leaflets_duplicate_irrelevant.ndx",
+        "tests/files/ndx/pcpepg_leaflets_invalid_irrelevant.ndx",
+        "tests/files/ndx/pcpepg_leaflets.ndx",
+        "tests/files/ndx/pcpepg_leaflets_all.ndx",
+    ];
+
+    for n_threads in [1, 3, 5, 8, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(
+                LeafletClassification::from_ndx(&ndx, "name P", "Upper", "Lower")
+                    .with_frequency(Frequency::every(10).unwrap()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_step_multiple_threads() {
+    let ndx = vec!["tests/files/ndx/pcpepg_leaflets.ndx"];
+    for n_threads in [1, 2, 5, 8, 64] {
+        for (repeat, freq) in [11, 3, 1, 1].into_iter().zip([
+            Frequency::every(1).unwrap(),
+            Frequency::every(5).unwrap(),
+            Frequency::every(30).unwrap(),
+            Frequency::once(),
+        ]) {
+            let ndx = ndx.repeat(repeat);
+
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .step(5)
+                .leaflets(
+                    LeafletClassification::from_ndx(&ndx, "name P", "Upper", "Lower")
+                        .with_frequency(freq),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            let results = analysis.run().unwrap();
+            assert_eq!(results.n_analyzed_frames(), 11);
+            results.write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_step.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_fail_missing_ndx() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_ndx(
+                &[
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                ],
+                "name P",
+                "Upper",
+                "Lower",
+            )
+            .with_frequency(Frequency::every(10).unwrap()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed but it succeeded."),
+        Err(e) => {
+            assert!(e
+                .to_string()
+                .contains("could not get ndx file for frame index"))
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_fail_too_many_ndx() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_ndx(
+                &[
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets_all.ndx",
+                ],
+                "name P",
+                "Upper",
+                "Lower",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed but it succeeded."),
+        Err(e) => {
+            assert!(e
+                .to_string()
+                .contains("is not consistent with the number of analyzed frames"))
+        }
+    }
+}
+
+#[test]
 fn test_aa_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")

@@ -817,7 +817,7 @@ impl NdxClassification {
         // handle issues
         for invalid_name in invalid {
             if invalid_name == self.upper_leaflet || invalid_name == self.lower_leaflet {
-                return Err(NdxLeafletClassificationError::InvalidName(invalid_name));
+                return Err(NdxLeafletClassificationError::InvalidName(invalid_name, ndx_file.clone()));
             }
             // ignore warnings and errors that are irrelevant
         }
@@ -1881,6 +1881,52 @@ mod tests {
             assert!(!classifier.should_assign(i));
         }
     }
+
+    #[test]
+    fn test_ndx_fail_missing_assignment() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/cg_leaflets.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![3049, 3061, 6, 25, 37, 73, 3637],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        classification.read_ndx_file(0, 7000).unwrap();
+        match classification.assign_molecule(2) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::AssignmentNotFound(mol_id, head_id)) => {
+                assert_eq!(mol_id, 2);
+                assert_eq!(head_id, 6);
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_fail_missing_frame() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/cg_leaflets.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![3049, 3061, 25, 37, 73, 3637],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::every(5).unwrap(),
+        };
+
+        match classification.read_ndx_file(6, 7000) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::FrameNotFound(frame_index, ndx_index, total_number)) => {
+                assert_eq!(frame_index, 6);
+                assert_eq!(ndx_index, 1);
+                assert_eq!(total_number, 1);
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2371,5 +2417,118 @@ mod tests_shared_assigned_leaflets {
 
         producer.join().expect("Producer thread panicked");
         consumer.join().expect("Consumer thread panicked");
+    }
+}
+
+#[cfg(test)]
+mod tests_ndx_reading {
+    use super::*;
+
+    #[test]
+    fn test_ndx_fail_duplicate_group() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_duplicate_main.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        match classification.read_ndx_file(0, 10) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::DuplicateName(name, ndx)) => {
+                assert_eq!(name, "Upper");
+                assert_eq!(ndx, "tests/files/ndx/leaflets_duplicate_main.ndx");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_fail_invalid_group_name() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_invalid_main.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "U!pper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        match classification.read_ndx_file(0, 10) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::InvalidName(name, ndx)) => {
+                assert_eq!(name, "U!pper");
+                assert_eq!(ndx, "tests/files/ndx/leaflets_invalid_main.ndx");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_fail_upper_not_found() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_missing_upper.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        match classification.read_ndx_file(0, 10) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::GroupNotFound(name, leaflet, ndx)) => {
+                assert_eq!(name, "Upper");
+                assert_eq!(leaflet, "upper-leaflet");
+                assert_eq!(ndx, "tests/files/ndx/leaflets_missing_upper.ndx");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_fail_lower_not_found() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_missing_lower.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        match classification.read_ndx_file(0, 10) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::GroupNotFound(name, leaflet, ndx)) => {
+                assert_eq!(name, "Lower");
+                assert_eq!(leaflet, "lower-leaflet");
+                assert_eq!(ndx, "tests/files/ndx/leaflets_missing_lower.ndx");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_pass_empty_leaflet() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_only_upper.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        classification.read_ndx_file(0, 10).unwrap();
+        let groups = classification.groups.unwrap();
+        assert_eq!(groups.get_n_atoms("Upper").unwrap(), 4);
+        assert_eq!(groups.get_n_atoms("Lower").unwrap(), 0);
     }
 }

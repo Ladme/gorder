@@ -1914,6 +1914,77 @@ fn test_cg_order_leaflets_scrambling_from_map() {
 }
 
 #[test]
+fn test_cg_order_leaflets_scrambling_from_ndx() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for n_threads in [1, 2, 3, 5, 8, 128] {
+        for (ndx, freq) in [
+            glob::glob("tests/files/scrambling/ndx/leaflets_frame_*.ndx")
+                .unwrap()
+                .filter_map(Result::ok)
+                .map(|path| path.to_str().unwrap().to_owned())
+                .collect(),
+            vec![
+                "tests/files/scrambling/ndx/leaflets_frame_000.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_010.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_020.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_030.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_040.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_050.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_060.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_070.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_080.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_090.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_100.ndx".to_owned(),
+            ],
+            vec!["tests/files/scrambling/ndx/leaflets_frame_000.ndx".to_owned()],
+        ]
+        .into_iter()
+        .zip(
+            [
+                Frequency::every(1).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ]
+            .into_iter(),
+        ) {
+            let ndx_ref: Vec<&str> = ndx.iter().map(|s| s.as_str()).collect();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/scrambling/cg_scrambling.tpr")
+                .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .output_yaml(path_to_output)
+                .leaflets(
+                    LeafletClassification::from_ndx(&ndx_ref, "name PO4", "Upper", "Lower")
+                        .with_frequency(freq),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let test_file = match freq {
+                Frequency::Every(x) if x.get() == 1 => "order_global.yaml",
+                Frequency::Every(x) if x.get() == 10 => "order_global_every_10.yaml",
+                Frequency::Once => "order_once.yaml",
+                _ => panic!("Unexpected frequency."),
+            };
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                &format!("tests/files/scrambling/{}", test_file),
+                1
+            ));
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_leaflets_asymmetric_multiple_threads() {
     for n_threads in [1, 2, 5, 8] {
         let output_yaml = NamedTempFile::new().unwrap();
@@ -3168,8 +3239,6 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_yaml() {
 
 #[test]
 fn test_cg_order_vesicle_leaflets_dynamic_membrane_normal_yaml() {
-    todo!("This test is currently not implemented.");
-    /*
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
 
@@ -3180,7 +3249,16 @@ fn test_cg_order_vesicle_leaflets_dynamic_membrane_normal_yaml() {
         .analysis_type(AnalysisType::cgorder(
             "name C1A D2A C3A C4A C1B C2B C3B C4B",
         ))
-        .membrane_normal(DynamicNormal::new("name PO4", 2.0))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .leaflets(
+            LeafletClassification::from_ndx(
+                &["tests/files/vesicle.ndx"],
+                "name PO4",
+                "UpperLeaflet",
+                "LowerLeaflet",
+            )
+            .with_frequency(Frequency::once()),
+        )
         .silent()
         .overwrite()
         .build()
@@ -3190,9 +3268,9 @@ fn test_cg_order_vesicle_leaflets_dynamic_membrane_normal_yaml() {
 
     assert!(diff_files_ignore_first(
         path_to_output,
-        "tests/files/cg_order_vesicle.yaml",
+        "tests/files/cg_order_vesicle_leaflets.yaml",
         1
-    ));*/
+    ));
 }
 
 #[test]
@@ -3359,6 +3437,119 @@ fn test_cg_order_fail_dynamic_no_head() {
     match analysis.run() {
         Ok(_) => panic!("Analysis should have failed."),
         Err(e) => assert!(e.to_string().contains("no head group atom")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_ndx_once_multiple_threads() {
+    for n_threads in [1, 3, 5, 8, 16, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::from_ndx(
+                    &["tests/files/ndx/cg_leaflets.ndx"],
+                    "name PO4",
+                    "Upper",
+                    "Lower",
+                )
+                .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_ndx_every_multiple_threads() {
+    let mut ndx = vec![
+        "tests/files/ndx/cg_leaflets.ndx",
+        "tests/files/ndx/cg_leaflets_all.ndx",
+    ]
+    .repeat(50);
+    ndx.push("tests/files/ndx/cg_leaflets.ndx");
+
+    for n_threads in [1, 3, 5, 8, 16, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(LeafletClassification::from_ndx(
+                &ndx, "name PO4", "Upper", "Lower",
+            ))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_ndx_every20_multiple_threads() {
+    let ndx = vec![
+        "tests/files/ndx/cg_leaflets.ndx",
+        "tests/files/ndx/cg_leaflets_all.ndx",
+        "tests/files/ndx/cg_leaflets_duplicate_irrelevant.ndx",
+        "tests/files/ndx/cg_leaflets_invalid_irrelevant.ndx",
+        "tests/files/ndx/cg_leaflets.ndx",
+        "tests/files/ndx/cg_leaflets_all.ndx",
+    ];
+
+    for n_threads in [1, 3, 5, 8, 16, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::from_ndx(&ndx, "name PO4", "Upper", "Lower")
+                    .with_frequency(Frequency::every(20).unwrap()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
     }
 }
 

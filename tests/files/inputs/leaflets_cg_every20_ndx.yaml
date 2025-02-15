@@ -1,0 +1,20 @@
+# Test file for binary application.
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
+type: !CGOrder
+  beads: "@membrane"
+output_yaml: temp_cg_leaflets_every20_ndx.yaml
+leaflets: !FromNdx
+  ndx: 
+  - tests/files/ndx/cg_leaflets.ndx
+  - tests/files/ndx/cg_leaflets_all.ndx
+  - tests/files/ndx/cg_leaflets_duplicate_irrelevant.ndx
+  - tests/files/ndx/cg_leaflets_invalid_irrelevant.ndx
+  - tests/files/ndx/cg_leaflets.ndx
+  - tests/files/ndx/cg_leaflets.ndx
+  heads: "name PO4"
+  upper_leaflet: Upper
+  lower_leaflet: Lower
+  frequency: !Every 20
+
+silent: true

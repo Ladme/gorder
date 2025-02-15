@@ -55,7 +55,7 @@ pub enum FrequencyError {
 pub enum TopologyError {
     #[error("{} {}", .0, 
         if matches!(.0, SelectError::GroupNotFound(_)) {
-            format!("({} one of your atom selection queries uses a name for a group not defined in your system; maybe an NDX file is missing?)", "hint:".blue().bold()) 
+            format!("({} one of your atom selection queries uses a name for a group not defined in your system; maybe an ndx file is missing?)", "hint:".blue().bold()) 
         } else {
             String::from("")
         }
@@ -359,16 +359,16 @@ pub enum NdxLeafletClassificationError {
     #[error("{}", .0)]
     CouldNotParse(ParseNdxError),
 
-    #[error("{} could not get ndx file for frame index '{}' [expected index of the NDX file: '{}']
+    #[error("{} could not get ndx file for frame index '{}' [expected index of the ndx file: '{}']
 (total number of specified ndx files is '{}'; maybe the assignment frequency is incorrect?)", 
     "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
     FrameNotFound(usize, usize, usize),
 
-    #[error("{} group name '{}' is invalid and cannot be used ({} following characters are not allowed in group names: \'\"&|!@()<>=)",
-"error:".red().bold(), .0.yellow(), "hint:".blue().bold())]
-    InvalidName(String),
+    #[error("{} group name '{}' specified in an ndx file '{}' is invalid and cannot be used ({} following characters are not allowed in group names: \'\"&|!@()<>=)",
+"error:".red().bold(), .0.yellow(), .1.yellow(), "hint:".blue().bold())]
+    InvalidName(String, String),
 
-    #[error("{} group '{}' is defined multiple times in an NDX file '{}'", "error:".red().bold(), .0.yellow(), .1.yellow())]
+    #[error("{} group '{}' is defined multiple times in an ndx file '{}'", "error:".red().bold(), .0.yellow(), .1.yellow())]
     DuplicateName(String, String),
 
     #[error("{} group '{}' for selecting {} molecules was not found in the ndx file '{}'", 
@@ -376,13 +376,13 @@ pub enum NdxLeafletClassificationError {
     GroupNotFound(String, String, String),
 
     #[error("{} could not find leaflet assignment for molecule index '{}' (head index '{}')
-({} head identifier index '{}' is missing from both specified NDX groups)",
+({} head identifier index '{}' is missing from both specified ndx groups)",
     "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(),
     "hint:".blue().bold(), .1.to_string().yellow())]
     AssignmentNotFound(usize, usize),
 
     #[error("{} number of ndx files provided ('{}') is not consistent with the number of analyzed frames ('{}')
-    (leaflet assignment was supposed to be performed {}, therefore there should be exactly '{}' ndx file(s) provided)",
+(leaflet assignment was supposed to be performed {}, therefore there should be exactly '{}' ndx file(s) provided)",
     "error:".red().bold(), .ndx_files.to_string().yellow(), .analyzed_frames.to_string().yellow(), 
     .frequency.to_string().yellow(), .expected_ndx_files.to_string().yellow())]
     UnexpectedNumberOfNdxFiles {
