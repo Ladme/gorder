@@ -242,8 +242,9 @@
 //! 2. [`AnalysisType`](crate::prelude::AnalysisType) for the types of analysis.
 //! 3. [`OrderMapBuilder`](crate::prelude::OrderMapBuilder) and [`OrderMap`](crate::prelude::OrderMap) for specifying order parameter maps.
 //! 4. [`LeafletClassification`](crate::prelude::LeafletClassification) for leaflet classification.
-//! 5. [`EstimateError`](crate::prelude::EstimateError) for error estimation.
-//! 6. [`Geometry`](crate::prelude::Geometry) for geometry selection.
+//! 5. [`MembraneNormal`](crate::prelude::MembraneNormal), [`Axis`](crate::prelude::Axis), and [`DynamicNormal`](crate::prelude::DynamicNormal) for membrane normal specification.
+//! 6. [`EstimateError`](crate::prelude::EstimateError) for error estimation.
+//! 7. [`Geometry`](crate::prelude::Geometry) for geometry selection.
 //!
 //! ### Step 2: Running the analysis
 //!
