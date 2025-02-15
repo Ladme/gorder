@@ -39,7 +39,7 @@ $ gorder YOUR_INPUT_YAML_FILE
 - ⚛️ **[Atomistic](https://ladme.github.io/gorder-manual/aaorder_basics.html) and [coarse-grained](https://ladme.github.io/gorder-manual/cgorder_basics.html) systems**   
 Calculates atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
 
-- 🔠 [**Powerful selection language**]((https://ladme.github.io/gsl-guide/))  
+- 🔠 [**Powerful selection language**](https://ladme.github.io/gsl-guide/)  
 Allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files.
 
 - 🔍 **Automatic identification of molecule types**  
