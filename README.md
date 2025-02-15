@@ -36,34 +36,34 @@ $ gorder YOUR_INPUT_YAML_FILE
 **See the [gorder manual](https://ladme.github.io/gorder-manual/) for more information about using this program.**
 
 ## Features
-- ⚛️ **Atomistic and coarse-grained systems**   
+- ⚛️ **[Atomistic](https://ladme.github.io/gorder-manual/aaorder_basics.html) and [coarse-grained](https://ladme.github.io/gorder-manual/cgorder_basics.html) systems**   
 Calculates atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
 
-- 🔠 **Powerful selection language**  
-Allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files. (Read more about the language [here](https://ladme.github.io/gsl-guide/).)
+- 🔠 [**Powerful selection language**]((https://ladme.github.io/gsl-guide/))  
+Allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files.
 
 - 🔍 **Automatic identification of molecule types**  
 Automatically recognizes bonds and classifies molecule types based on their topology. Order parameters are calculated and reported separately for each molecule type.
 
-- 📋 **Various output formats**  
+- 📋 [**Various output formats**](https://ladme.github.io/gorder-manual/output.html)  
 Outputs results in YAML, XVG, CSV, and custom "table" format.
 
-- 🏗️ **Supports any model and force-field**  
+- 🏗️ **Any model and force-field**  
 Is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force-field? As long as your lipids have bonds, it will work.
 
-- 🍃 **Leaflet-wise analysis**  
+- 🍃 [**Leaflet-wise analysis**](https://ladme.github.io/gorder-manual/leaflets.html)  
 Performs scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculates lipid order parameters for individual leaflets.
 
-- 🟠 **Order parameters for vesicles**  
+- 🟠 [**Order parameters for vesicles**](https://ladme.github.io/gorder-manual/membrane_normal.html)  
 Dynamically calculates membrane normals based on the membrane's shape, enabling the calculation of order parameters for highly curved systems such as micelles, tubes, and vesicles.
 
-- 🗺️ **Order parameter maps**  
+- 🗺️ [**Order parameter maps**](https://ladme.github.io/gorder-manual/ordermaps.html)  
 Constructs 2D maps of order parameters, so you know what parts of the membrane are ordered and disordered.
 
-- 📉 **Error estimation**  
+- 📉 [**Error estimation**](https://ladme.github.io/gorder-manual/errors.html)  
 Automatically estimates the error of the analysis and indicates how well your analysis has converged.
 
-- 🌍 **Analysis of specific membrane regions**  
+- 🌍 [**Analysis of specific membrane regions**](https://ladme.github.io/gorder-manual/geometry.html)  
 Dynamically selects lipids in a specified part of the membrane and calculates order parameters only for them.
 
 - ⚡ **Extremely fast**  
