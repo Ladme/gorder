@@ -118,7 +118,7 @@ pub(super) fn analyze_atomistic(
         analysis.handle_pbc(),
     );
 
-    data.info();
+    data.info()?;
 
     // finalize the manual leaflet classification
     if let Some(classification) = analysis.leaflets() {

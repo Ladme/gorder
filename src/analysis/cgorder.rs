@@ -87,7 +87,7 @@ pub(super) fn analyze_coarse_grained(
         analysis.handle_pbc(),
     );
 
-    data.info();
+    data.info()?;
 
     // finalize the manual leaflet classification
     if let Some(classification) = analysis.leaflets() {

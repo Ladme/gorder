@@ -14,7 +14,7 @@ use crate::presentation::xvg_presenter::{XvgPresenter, XvgProperties, XvgWrite};
 use crate::presentation::yaml_presenter::{YamlPresenter, YamlProperties, YamlWrite};
 use crate::{
     analysis::{
-        molecule::{AtomType, BondTopology, MoleculeType},
+        molecule::{AtomType, BondTopology},
         topology::SystemTopology,
     },
     errors::WriteError,
@@ -29,6 +29,7 @@ use indexmap::IndexMap;
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use std::fmt::Debug;
+use std::fmt::Write as fmtWrite;
 use std::{
     fs::File,
     io::{BufWriter, Write},
@@ -689,36 +690,39 @@ impl std::fmt::Display for Frequency {
     }
 }
 
-impl MoleculeType {
-    /// Print basic information about the molecule type for the user.
-    #[inline(always)]
-    fn info(&self) {
-        colog_info!(
-            "Molecule type {}: {} order bonds, {} molecules.",
-            self.name(),
-            self.order_bonds().bond_types().len(),
-            self.order_bonds()
-                .bond_types()
-                .first()
-                .expect(PANIC_MESSAGE)
-                .bonds()
-                .len()
-        )
-    }
-}
-
 impl SystemTopology {
     /// Print basic information about the system topology for the user.
     #[inline(always)]
-    pub(crate) fn info(&self) {
-        colog_info!(
-            "Detected {} relevant molecule type(s).",
-            self.molecule_types().len()
-        );
+    pub(crate) fn info(&self) -> std::fmt::Result {
+        let mut string = String::new();
 
-        for molecule in self.molecule_types() {
-            molecule.info();
+        write!(
+            string,
+            "Detected {} relevant molecule type(s):",
+            self.molecule_types().len().to_string().cyan()
+        )?;
+
+        for molecule in self.molecule_types().iter() {
+            write!(
+                string,
+                "\n  Molecule type {}: {} order bonds, {} molecules.",
+                molecule.name().cyan(),
+                molecule.order_bonds().bond_types().len().to_string().cyan(),
+                molecule
+                    .order_bonds()
+                    .bond_types()
+                    .first()
+                    .expect(PANIC_MESSAGE)
+                    .bonds()
+                    .len()
+                    .to_string()
+                    .cyan(),
+            )?
         }
+
+        log::info!("{}", string);
+
+        Ok(())
     }
 }
 
