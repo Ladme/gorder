@@ -145,6 +145,7 @@
 //!             [-2.0, 2.0],                           // Span of the cylinder relative to reference
 //!             Axis::Z                                // Orientation of the main cylinder axis
 //!         )?)               
+//!         .handle_pbc(true)                          // Handle periodic boundary conditions?
 //!         .build()?;                                 // Build the analysis
 //!
 //!     // Activate colog for logging (requires the `colog` crate)
@@ -239,10 +240,11 @@
 //! To learn more about the various input parameters for `Analysis`, refer to:
 //! 1. [`AnalysisBuilder`](crate::prelude::AnalysisBuilder) for an overview of the builder.
 //! 2. [`AnalysisType`](crate::prelude::AnalysisType) for the types of analysis.
-//! 3. [`OrderMapBuilder`](crate::prelude::OrderMapBuilder) and [`OrderMap`](crate::prelude::OrderMap) for specifying parameter maps.
+//! 3. [`OrderMapBuilder`](crate::prelude::OrderMapBuilder) and [`OrderMap`](crate::prelude::OrderMap) for specifying order parameter maps.
 //! 4. [`LeafletClassification`](crate::prelude::LeafletClassification) for leaflet classification.
-//! 5. [`EstimateError`](crate::prelude::EstimateError) for error estimation.
-//! 6. [`Geometry`](crate::prelude::Geometry) for geometry selection.
+//! 5. [`MembraneNormal`](crate::prelude::MembraneNormal), [`Axis`](crate::prelude::Axis), and [`DynamicNormal`](crate::prelude::DynamicNormal) for membrane normal specification.
+//! 6. [`EstimateError`](crate::prelude::EstimateError) for error estimation.
+//! 7. [`Geometry`](crate::prelude::Geometry) for geometry selection.
 //!
 //! ### Step 2: Running the analysis
 //!
@@ -352,7 +354,31 @@ pub(crate) const PANIC_MESSAGE: &str =
     "\n\n\n            >>> THIS SHOULD NOT HAVE HAPPENED! PLEASE REPORT THIS ERROR <<<
 (open an issue at 'github.com/Ladme/gorder/issues' or write an e-mail to 'ladmeb@gmail.com')\n\n";
 
-/// Specifies leaflet a lipid is part of.
+/// Log colored info message.
+#[macro_export]
+macro_rules! colog_info {
+    ($msg:expr) => {
+        log::info!($msg)
+    };
+    ($msg:expr, $($arg:expr),+ $(,)?) => {{
+        use colored::Colorize;
+        log::info!($msg, $( $arg.to_string().cyan() ),+)
+    }};
+}
+
+/// Log colored warning message.
+#[macro_export]
+macro_rules! colog_warn {
+    ($msg:expr) => {
+        log::warn!($msg)
+    };
+    ($msg:expr, $($arg:expr),+ $(,)?) => {{
+        use colored::Colorize;
+        log::warn!($msg, $( $arg.to_string().yellow() ),+)
+    }};
+}
+
+/// Specifies the leaflet a lipid is in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Leaflet {
     #[serde(alias = "1")]
@@ -383,8 +409,8 @@ use serde::{Deserialize, Serialize};
 pub mod prelude {
     pub use super::input::{
         analysis::AnalysisBuilder, ordermap::OrderMapBuilder, Analysis, AnalysisType, Axis,
-        EstimateError, Frequency, GeomReference, Geometry, GridSpan, LeafletClassification,
-        OrderMap, Plane,
+        DynamicNormal, EstimateError, Frequency, GeomReference, Geometry, GridSpan,
+        LeafletClassification, MembraneNormal, OrderMap, Plane,
     };
 
     pub use super::analysis::molecule::AtomType;

@@ -8,6 +8,7 @@ use std::{fs::File, io::BufWriter, path::Path};
 use clap::Parser;
 use colored::Colorize;
 use gorder::{
+    colog_info,
     errors::{ConfigError, WriteError},
     prelude::Analysis,
     GORDER_VERSION,
@@ -104,7 +105,7 @@ pub(crate) fn run() -> bool {
     } else {
         let header = format!(">>> GORDER v{} <<<", GORDER_VERSION).bold();
         println!("\n{}\n", header);
-        log::info!("Read config file '{}'.", args.config);
+        colog_info!("Read config file '{}'.", args.config);
     }
 
     let result = match analysis.run() {
@@ -172,7 +173,7 @@ fn export_analysis_options(
     filename: impl AsRef<Path>,
     overwrite: bool,
 ) -> Result<(), WriteError> {
-    log::info!(
+    colog_info!(
         "Exporting all analysis options into file '{}'...",
         filename.as_ref().to_str().unwrap()
     );

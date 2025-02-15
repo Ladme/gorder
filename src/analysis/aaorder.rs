@@ -5,17 +5,18 @@
 
 use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{
-    analyze_frame, prepare_geometry_selection, prepare_master_group, sanity_check_molecules,
+    prepare_geometry_selection, prepare_membrane_normal_calculation, read_trajectory,
+    sanity_check_molecules,
 };
+use crate::analysis::index::read_ndx_file;
+use crate::analysis::pbc::{NoPBC, PBC3D};
 use crate::analysis::structure;
-use crate::errors::{AnalysisError, TopologyError};
-use crate::input::LeafletClassification;
+use crate::errors::TopologyError;
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
 
-use groan_rs::prelude::ProgressPrinter;
-use groan_rs::prelude::{GroupXtcReader, OrderedAtomIterator};
+use groan_rs::prelude::OrderedAtomIterator;
 
 /// Calculate the atomistic order parameters.
 pub(super) fn analyze_atomistic(
@@ -24,12 +25,7 @@ pub(super) fn analyze_atomistic(
     let mut system = structure::read_structure_and_topology(&analysis)?;
 
     if let Some(ndx) = analysis.index() {
-        system.read_ndx(ndx)?;
-        log::info!(
-            "Read {} group(s) from ndx file '{}'.",
-            system.get_n_groups() - 2,
-            ndx
-        );
+        read_ndx_file(&mut system, ndx)?;
     }
 
     super::common::create_group(
@@ -39,7 +35,7 @@ pub(super) fn analyze_atomistic(
             panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of heavy atoms should be provided. {}", PANIC_MESSAGE)),
     )?;
 
-    log::info!(
+    colog_info!(
         "Detected {} heavy atoms using a query '{}'.",
         system
             .group_get_n_atoms(group_name!("HeavyAtoms"))
@@ -54,7 +50,7 @@ pub(super) fn analyze_atomistic(
             panic!("FATAL GORDER ERROR | aaorder::analyze_atomistic | Selection of hydrogens should be provided. {}", PANIC_MESSAGE)),
     )?;
 
-    log::info!(
+    colog_info!(
         "Detected {} hydrogen atoms using a query '{}'.",
         system
             .group_get_n_atoms(group_name!("Hydrogens"))
@@ -86,24 +82,28 @@ pub(super) fn analyze_atomistic(
         leaflet.prepare_system(&mut system)?;
     }
 
-    let geom = prepare_geometry_selection(analysis.geometry().as_ref(), &mut system)?;
+    // prepare system for dynamic normal calculation, if needed
+    prepare_membrane_normal_calculation(analysis.membrane_normal(), &mut system)?;
+
+    // prepare system for geometry selection
+    let geom = prepare_geometry_selection(
+        analysis.geometry().as_ref(),
+        &mut system,
+        analysis.handle_pbc(),
+    )?;
     geom.info();
 
-    log::info!("Detecting molecule types...");
-    log::logger().flush();
-
     // get the relevant molecules
-    let molecules = super::common::classify_molecules(
-        &system,
-        "HeavyAtoms",
-        "Hydrogens",
-        analysis.leaflets().as_ref(),
-        analysis.membrane_normal().into(),
-        analysis.map().as_ref(),
-        analysis.estimate_error().as_ref(),
-        analysis.n_threads(),
-        analysis.step(),
-    )?;
+    macro_rules! classify_molecules_with_pbc {
+        ($pbc:expr) => {
+            super::common::classify_molecules(&system, "HeavyAtoms", "Hydrogens", &analysis, $pbc)
+        };
+    }
+
+    let molecules = match analysis.handle_pbc() {
+        true => classify_molecules_with_pbc!(&PBC3D::from_system(&system))?,
+        false => classify_molecules_with_pbc!(&NoPBC)?,
+    };
 
     if !sanity_check_molecules(&molecules) {
         return Ok(AnalysisResults::AA(AAOrderResults::empty(analysis)));
@@ -111,61 +111,36 @@ pub(super) fn analyze_atomistic(
 
     let mut data = SystemTopology::new(
         molecules,
-        analysis.membrane_normal().into(),
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
         geom,
+        analysis.handle_pbc(),
     );
 
-    data.info();
+    data.info()?;
 
     // finalize the manual leaflet classification
-    if let Some(LeafletClassification::Manual(params)) = analysis.leaflets() {
-        data.finalize_manual_leaflet_classification(params)?;
+    if let Some(classification) = analysis.leaflets() {
+        data.finalize_manual_leaflet_classification(classification)?;
     }
-
-    let progress_printer = if analysis.silent() {
-        None
-    } else {
-        Some(ProgressPrinter::new().with_print_freq(100 / analysis.n_threads()))
-    };
-
-    log::info!(
-        "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
-        analysis.trajectory(),
-        analysis.begin(),
-        analysis.end(),
-        analysis.step()
-    );
 
     if let Some(error_estimation) = analysis.estimate_error() {
         error_estimation.info();
     }
 
-    prepare_master_group(&mut system, &analysis);
-
-    log::info!(
-        "Performing the analysis using {} thread(s)...",
-        analysis.n_threads()
-    );
-
-    // run the analysis in parallel
-    let result = system.traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
+    let result = read_trajectory(
+        &system,
+        data,
         analysis.trajectory(),
         analysis.n_threads(),
-        analyze_frame,
-        data,
-        Some(group_name!("Master")),
-        Some(analysis.begin()),
-        Some(analysis.end()),
-        Some(analysis.step()),
-        progress_printer,
+        analysis.begin(),
+        analysis.end(),
+        analysis.step(),
+        analysis.silent(),
     )?;
 
-    if let Some(LeafletClassification::Manual(_)) = analysis.leaflets() {
-        result.validate_manual_leaflet_classification(&analysis)?;
-    }
+    result.validate_leaflet_classification(analysis.step())?;
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation
@@ -179,15 +154,16 @@ pub(super) fn analyze_atomistic(
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
-    use groan_rs::{prelude::Dimension, system::System};
+    use groan_rs::system::System;
 
     use super::*;
     use crate::{
         analysis::{
+            common::analyze_frame,
             geometry::GeometrySelectionType,
             molecule::{BondType, MoleculeType},
         },
-        input::leaflets::LeafletClassification,
+        input::{leaflets::LeafletClassification, AnalysisType},
     };
 
     fn prepare_data_for_tests(
@@ -209,20 +185,36 @@ mod tests {
             )
             .unwrap();
 
-        if let Some(leaflet) = &leaflet_classification {
+        let analysis = if let Some(leaflet) = &leaflet_classification {
             leaflet.prepare_system(&mut system).unwrap();
-        }
+            Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(leaflet.clone())
+                .build()
+                .unwrap()
+        } else {
+            Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .build()
+                .unwrap()
+        };
 
         let molecules = super::super::common::classify_molecules(
             &system,
             "HeavyAtoms",
             "Hydrogens",
-            leaflet_classification.as_ref(),
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 
@@ -230,11 +222,11 @@ mod tests {
             system,
             SystemTopology::new(
                 molecules,
-                Dimension::Z,
                 None,
                 1,
                 1,
                 GeometrySelectionType::default(),
+                true,
             ),
         )
     }

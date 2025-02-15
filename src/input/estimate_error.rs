@@ -12,6 +12,7 @@ const DEFAULT_N_BLOCKS: usize = 5;
 
 /// Parameters for estimating the error of the analysis.
 #[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct EstimateError {
     /// Number of blocks to divide the trajectory into for error estimation.
     /// Default value is 5 and you should not tweak it to get lower error estimates.
@@ -63,9 +64,9 @@ impl EstimateError {
 
     /// Log basic info about the error estimation.
     pub(crate) fn info(&self) {
-        log::info!("Will estimate error using {} blocks.", self.n_blocks());
+        colog_info!("Will estimate error using {} blocks.", self.n_blocks());
         if let Some(output) = &self.output_convergence {
-            log::info!("Will write convergence data into a file '{}'.", output);
+            colog_info!("Will write convergence data into a file '{}'.", output);
         }
     }
 

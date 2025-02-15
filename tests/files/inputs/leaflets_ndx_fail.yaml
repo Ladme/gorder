@@ -1,0 +1,13 @@
+# Test file for binary application.
+structure: tests/files/pcpepg.tpr
+trajectory: tests/files/pcpepg.xtc
+type: !AAOrder
+  heavy_atoms: "@membrane and element name carbon"
+  hydrogens: "@membrane and element name hydrogen"
+output_yaml: temp_this_file_will_not_be_created_ndx.yaml
+leaflets: !FromNdx
+  ndx: tests/files/nonexistent*.ndx
+  heads: "name P"
+  upper_leaflet: Upper
+  lower_leaflet: Lower
+  frequency: !Once

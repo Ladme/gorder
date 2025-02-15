@@ -5,7 +5,9 @@
 
 use crate::{
     errors::{BondsError, ConfigError},
-    input::{Analysis, AnalysisType, GeomReference, Geometry, LeafletClassification},
+    input::{
+        Analysis, AnalysisType, GeomReference, Geometry, LeafletClassification, MembraneNormal,
+    },
     PANIC_MESSAGE,
 };
 use colored::Colorize;
@@ -21,18 +23,26 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-/// Read the input structure and topology.
+/// Read the input structure and topology. Handles box validation for the structure file.
 pub(super) fn read_structure_and_topology(
     analysis: &Analysis,
 ) -> Result<System, Box<dyn std::error::Error + Send + Sync>> {
     let file_type = FileType::from_name(analysis.structure());
     let mut system = System::from_file_with_format(analysis.structure(), file_type)?;
 
+    if analysis.handle_pbc() {
+        // check simulation box
+        super::common::check_box(&system)?;
+    } else {
+        // log warning in case handle_pbc is false
+        log::warn!("Periodic boundary conditions ignored. Lipid molecules must be made whole!")
+    }
+
     if let Some(bonds_file) = analysis.bonds() {
         // if `bonds` file is provided, read it no matter the input file type
-        log::info!("Read molecular structure from '{}'.", analysis.structure());
+        colog_info!("Read molecular structure from '{}'.", analysis.structure());
         read_bonds(&mut system, bonds_file)?;
-        log::info!("Read topology from bonds file '{}'.", bonds_file);
+        colog_info!("Read topology from bonds file '{}'.", bonds_file);
 
         if file_type != FileType::TPR {
             maybe_guess_elements(analysis, &mut system)?;
@@ -55,7 +65,7 @@ pub(super) fn read_structure_and_topology(
             Err(e) => return Err(Box::from(e)),
         }
 
-        log::info!(
+        colog_info!(
             "Read molecular structure and topology from '{}'.",
             analysis.structure()
         );
@@ -64,7 +74,7 @@ pub(super) fn read_structure_and_topology(
         Ok(system)
     } else if file_type == FileType::TPR {
         // no further checks required for a TPR file
-        log::info!(
+        colog_info!(
             "Read molecular structure and topology from '{}'.",
             analysis.structure()
         );
@@ -207,12 +217,16 @@ fn should_guess_elements(analysis: &Analysis) -> bool {
         Some(LeafletClassification::Local(x)) => {
             has_element(x.heads()) || has_element(x.membrane())
         }
-        Some(LeafletClassification::Manual(_)) => false,
+        Some(LeafletClassification::FromNdx(x)) => has_element(x.heads()),
+        Some(LeafletClassification::FromFile(_)) | Some(LeafletClassification::FromMap(_)) => false,
     } || match analysis.geometry() {
         Some(Geometry::Cuboid(x)) => reference_has_element(x.reference()),
         Some(Geometry::Cylinder(x)) => reference_has_element(x.reference()),
         Some(Geometry::Sphere(x)) => reference_has_element(x.reference()),
         None => false,
+    } || match analysis.membrane_normal() {
+        MembraneNormal::Static(_) => false,
+        MembraneNormal::Dynamic(dynamic) => has_element(dynamic.heads()),
     };
 
     guess
@@ -223,7 +237,7 @@ fn maybe_guess_elements(analysis: &Analysis, system: &mut System) -> Result<(), 
     if should_guess_elements(analysis) {
         match system.guess_elements(Elements::default()) {
             Ok(_) => {
-                log::info!("Assigned elements to atoms without warnings...");
+                log::info!("Assigned elements to atoms without warnings.");
                 Ok(())
             }
             Err(ElementError::ElementGuessWarning(e)) => {

@@ -106,12 +106,12 @@ impl Geometry {
         Ok(())
     }
 
-    /// Returns `true` if the geometry requires a constructed group to use as a reference.
-    pub(crate) fn needs_group(&self) -> bool {
+    /// Returns `true` if the geometry requires box information.
+    pub(crate) fn uses_box_center(&self) -> bool {
         match self {
-            Self::Cuboid(cuboid) => cuboid.reference.needs_group(),
-            Self::Cylinder(cylinder) => cylinder.reference.needs_group(),
-            Self::Sphere(sphere) => sphere.reference.needs_group(),
+            Self::Cuboid(cuboid) => cuboid.reference.uses_box_center(),
+            Self::Cylinder(cylinder) => cylinder.reference.uses_box_center(),
+            Self::Sphere(sphere) => sphere.reference.uses_box_center(),
         }
     }
 }
@@ -292,12 +292,12 @@ impl GeomReference {
         GeomReference::Center
     }
 
-    /// Returns `true` if a group should be constructed for a the reference.
+    /// Returns `true` if the geometric reference should be placed into the center of the simulation box.
     #[inline(always)]
-    pub(crate) fn needs_group(&self) -> bool {
+    pub(crate) fn uses_box_center(&self) -> bool {
         match self {
-            GeomReference::Point(_) | GeomReference::Center => false,
-            GeomReference::Selection(_) => true,
+            GeomReference::Point(_) | GeomReference::Selection(_) => false,
+            GeomReference::Center => true,
         }
     }
 }

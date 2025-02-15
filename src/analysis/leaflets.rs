@@ -5,22 +5,19 @@
 
 use core::f32;
 use std::{
-    fs::read_to_string,
-    num::NonZeroUsize,
-    sync::Arc,
-    time::{Duration, Instant},
+    cmp::Ordering, fs::read_to_string, num::NonZeroUsize, sync::Arc, time::{Duration, Instant}
 };
 
-use super::{common::{create_group, macros::group_name}, topology::SystemTopology};
+use super::{common::{create_group, get_reference_head, macros::group_name}, pbc::PBCHandler, topology::SystemTopology};
 use crate::{
-    errors::{AnalysisError, ManualLeafletClassificationError, TopologyError},
-    input::{leaflets::ManualParams, Analysis, Frequency, LeafletClassification},
+    errors::{AnalysisError, ConfigError, ManualLeafletClassificationError, NdxLeafletClassificationError, TopologyError},
+    input::{Frequency, LeafletClassification, MembraneNormal},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
-    errors::{AtomError, PositionError, SimBoxError},
-    prelude::{AtomIteratorWithBox, Cylinder, Dimension, Vector3D},
+    errors::{AtomError, PositionError},
+    prelude::{Dimension, Vector3D, Groups},
     structures::group::Group,
     system::System,
 };
@@ -57,38 +54,14 @@ impl LeafletClassification {
                 create_group(system, "Heads", params.heads())?;
                 create_group(system, "Methyls", params.methyls())?;
             }
-            Self::Manual(_) => (),
+            Self::FromNdx(params) => {
+                create_group(system, "Heads", params.heads())?;
+            }
+            Self::FromFile(_) | Self::FromMap(_) => (),
         }
 
         Ok(())
     }
-}
-
-/// Get index of an atom that represents the head of the given lipid molecule.
-fn get_reference_head(molecule: &Group, system: &System) -> Result<usize, TopologyError> {
-    let group_name = group_name!("Heads");
-    let mut atoms = Vec::new();
-    for index in molecule.get_atoms().iter() {
-        if system.group_isin(group_name, index).expect(PANIC_MESSAGE) {
-            atoms.push(index);
-        }
-    }
-
-    if atoms.is_empty() {
-        return Err(TopologyError::NoHead(
-            molecule
-                .get_atoms()
-                .first()
-                .unwrap_or_else(|| panic!("FATAL GORDER ERROR | leaflets::get_reference_head | No atoms detected inside a molecule. {}", PANIC_MESSAGE))));
-    }
-
-    if atoms.len() > 1 {
-        return Err(TopologyError::MultipleHeads(
-            molecule.get_atoms().first().expect(PANIC_MESSAGE),
-        ));
-    }
-
-    Ok(*atoms.first().expect(PANIC_MESSAGE))
 }
 
 /// Get indices of atoms representing the methyls (or ends of tails) of the given lipid molecule.
@@ -120,16 +93,17 @@ pub(super) enum MoleculeLeafletClassification {
     Local(LocalClassification, AssignedLeaflets),
     Individual(IndividualClassification, AssignedLeaflets),
     Manual(ManualClassification, AssignedLeaflets),
+    ManualNdx(NdxClassification, AssignedLeaflets),
 }
 
 impl MoleculeLeafletClassification {
     /// Convert the input `LeafletClassification` into an enum that is used in the analysis.
     pub(super) fn new(
         params: &LeafletClassification,
-        membrane_normal: Dimension,
+        membrane_normal: &MembraneNormal,
         n_threads: usize,
         step_size: usize,
-    ) -> Self {
+    ) -> Result<Self, ConfigError> {
         let needs_shared_storage = match (params.get_frequency(), n_threads) {
             // shared storage is not needed if only one thread is used
             // (there is no other thread to share data with, duh)
@@ -141,12 +115,20 @@ impl MoleculeLeafletClassification {
             _ => true,
         };
 
-        match params {
+        fn get_membrane_normal(params: &LeafletClassification, membrane_normal: &MembraneNormal) -> Result<Dimension, ConfigError> {
+            match (params.get_membrane_normal(), membrane_normal) {
+                (None, MembraneNormal::Static(y)) => Ok((*y).into()),
+                (None, MembraneNormal::Dynamic(_)) => Err(ConfigError::MissingMembraneNormal),
+                (Some(x), _) => Ok(x.into()),
+            }
+        }
+
+        let classification = match params {
             LeafletClassification::Global(_) => Self::Global(
                 GlobalClassification {
                     heads: Vec::new(),
                     membrane_center: Vector3D::new(0.0, 0.0, 0.0),
-                    membrane_normal,
+                    membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
@@ -157,7 +139,7 @@ impl MoleculeLeafletClassification {
                     heads: Vec::new(),
                     radius: params.get_radius().expect(PANIC_MESSAGE),
                     membrane_center: Vec::new(),
-                    membrane_normal,
+                    membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
@@ -167,20 +149,34 @@ impl MoleculeLeafletClassification {
                 IndividualClassification {
                     heads: Vec::new(),
                     methyls: Vec::new(),
-                    membrane_normal,
+                    membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
-            LeafletClassification::Manual(_) => Self::Manual(
+            LeafletClassification::FromFile(_) | LeafletClassification::FromMap(_) => Self::Manual(
                 ManualClassification {
                     assignment: None,
                     frequency: params.get_frequency() * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
-        }
+            LeafletClassification::FromNdx(ndx_params) => Self::ManualNdx(
+                NdxClassification {
+                    ndx: ndx_params.ndx().clone(),
+                    heads: Vec::new(),
+                    groups: None,
+                    last_assigned_frame: None,
+                    upper_leaflet: ndx_params.upper_leaflet().clone(),
+                    lower_leaflet: ndx_params.lower_leaflet().clone(),
+                    frequency: params.get_frequency() * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                },
+                AssignedLeaflets::new(needs_shared_storage)
+            )
+        };
+
+        Ok(classification)
     }
 
     /// Insert new molecule into the leaflet classifier.
@@ -200,7 +196,10 @@ impl MoleculeLeafletClassification {
             Self::Individual(x, _) => {
                 x.insert(molecule, system)?;
             }
-            // do nothing; manual classifier is not set-up like this
+            Self::ManualNdx(x, _) => {
+                x.insert(molecule, system)?;
+            } 
+            // do nothing; manual "leaflet assignment file" classifier is not set-up like this
             Self::Manual(_, _) => (),
         }
 
@@ -210,7 +209,11 @@ impl MoleculeLeafletClassification {
     /// Calculate the number of molecules assigned to the upper and to the lower leaflet.
     pub(super) fn statistics(&self) -> (usize, usize) {
         match self {
-            Self::Global(_, y) | Self::Local(_, y) | Self::Individual(_, y) | Self::Manual(_, y) => {
+            Self::Global(_, y) | 
+            Self::Local(_, y) | 
+            Self::Individual(_, y) | 
+            Self::Manual(_, y) | 
+            Self::ManualNdx(_, y) => {
                 y.calc_assignment_statistics()
             }
         }
@@ -224,6 +227,7 @@ impl MoleculeLeafletClassification {
             Self::Local(x, _) => x.frequency,
             Self::Individual(x, _) => x.frequency,
             Self::Manual(x, _) => x.frequency,
+            Self::ManualNdx(x, _) => x.frequency,
         }
     }
 
@@ -231,23 +235,27 @@ impl MoleculeLeafletClassification {
     #[inline(always)]
     #[allow(unused)]
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
         match self {
             MoleculeLeafletClassification::Global(x, _) => {
-                x.identify_leaflet(system, molecule_index, current_frame)
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
             MoleculeLeafletClassification::Local(x, _) => {
-                x.identify_leaflet(system, molecule_index,current_frame)
+                x.identify_leaflet(system, pbc_handler, molecule_index,current_frame)
             }
             MoleculeLeafletClassification::Individual(x, _) => {
-                x.identify_leaflet(system, molecule_index, current_frame)
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
             MoleculeLeafletClassification::Manual(x, _) => {
-                x.identify_leaflet(system, molecule_index, current_frame)
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
+            }
+            MoleculeLeafletClassification::ManualNdx(x, _) => {
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
         }
     }
@@ -266,6 +274,7 @@ impl MoleculeLeafletClassification {
     pub(super) fn assign_lipids(
         &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         current_frame: usize,
         membrane_center: &OnceCell<Vector3D>, // only used for the `global` classification method
     ) -> Result<(), AnalysisError> {
@@ -277,23 +286,29 @@ impl MoleculeLeafletClassification {
             MoleculeLeafletClassification::Global(x, y) => {
                 // calculate global membrane center of mass
                 let center = membrane_center.get_or_try_init(|| {
-                    system
-                        .group_get_center(group_name!("Membrane"))
+                    pbc_handler.group_get_center(system, group_name!("Membrane"))
                         .map_err(|_| AnalysisError::InvalidGlobalMembraneCenter)
                 })?;
 
+                if center.x.is_nan() || center.y.is_nan() || center.z.is_nan() {
+                    return Err(AnalysisError::InvalidGlobalMembraneCenter);
+                }
+
                 x.set_membrane_center(center.clone());
-                y.assign_lipids(system, x, current_frame)
+                y.assign_lipids(system, pbc_handler, x, current_frame)
             }
             MoleculeLeafletClassification::Local(x, y) => {
-                x.set_membrane_center(system, x.membrane_normal)?;
-                y.assign_lipids(system, x, current_frame)
+                x.set_membrane_center(system, pbc_handler, x.membrane_normal)?;
+                y.assign_lipids(system, pbc_handler, x, current_frame)
             }
             MoleculeLeafletClassification::Individual(x, y) => {
-                y.assign_lipids(system, x, current_frame)
+                y.assign_lipids(system, pbc_handler, x, current_frame)
             }
             MoleculeLeafletClassification::Manual(x, y) => {
-                y.assign_lipids(system, x, current_frame)
+                y.assign_lipids(system, pbc_handler, x, current_frame)
+            }
+            MoleculeLeafletClassification::ManualNdx(x, y) => {
+                y.assign_lipids(system, pbc_handler, x, current_frame)
             }
         }
     }
@@ -319,6 +334,9 @@ impl MoleculeLeafletClassification {
             MoleculeLeafletClassification::Manual(x, y) => {
                 y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
             }
+            MoleculeLeafletClassification::ManualNdx(x, y) => {
+                y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
+            }
         }
     }
 }
@@ -327,8 +345,9 @@ impl MoleculeLeafletClassification {
 trait LeafletClassifier {
     /// Caclulate membrane leaflet the specified molecule belongs to.
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError>;
@@ -358,7 +377,7 @@ impl GlobalClassification {
     /// Insert a new molecule into the classifier.
     #[inline(always)]
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
-        self.heads.push(get_reference_head(molecule, system)?);
+        self.heads.push(get_reference_head(molecule, system, group_name!("Heads"))?);
         Ok(())
     }
 }
@@ -366,8 +385,9 @@ impl GlobalClassification {
 impl LeafletClassifier for GlobalClassification {
     #[inline(always)]
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -375,6 +395,7 @@ impl LeafletClassifier for GlobalClassification {
             &self.heads,
             molecule_index,
             system,
+            pbc_handler,
             self.membrane_center(),
             self.membrane_normal(),
         )
@@ -409,7 +430,7 @@ pub(super) struct LocalClassification {
 impl LocalClassification {
     #[inline(always)]
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
-        self.heads.push(get_reference_head(molecule, system)?);
+        self.heads.push(get_reference_head(molecule, system, group_name!("Heads"))?);
         self.membrane_center.push(Vector3D::new(0.0, 0.0, 0.0));
         Ok(())
     }
@@ -418,6 +439,7 @@ impl LocalClassification {
     pub(super) fn set_membrane_center(
         &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         membrane_normal: Dimension,
     ) -> Result<(), AnalysisError> {
         for (i, &index) in self.heads.iter().enumerate() {
@@ -425,18 +447,13 @@ impl LocalClassification {
                 .get_position()
                 .ok_or(AnalysisError::UndefinedPosition(index))?;
 
-            let cylinder = Cylinder::new(
-                position.clone(),
-                self.radius,
-                f32::INFINITY,
-                membrane_normal,
-            );
-            let center = system
-                .group_iter(group_name!("Membrane"))
-                .expect(PANIC_MESSAGE)
-                .filter_geometry(cylinder)
-                .get_center()
+            let cylinder = pbc_handler.cylinder_for_local_center(position.x, position.y, self.radius, membrane_normal);
+            let center = pbc_handler.group_filter_geometry_get_center(system, group_name!("Membrane"), cylinder)
                 .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index))?;
+
+            if center.x.is_nan() || center.y.is_nan() || center.z.is_nan() {
+                return Err(AnalysisError::InvalidLocalMembraneCenter(index));
+            }
 
             self.membrane_center[i] = center;
         }
@@ -448,8 +465,9 @@ impl LocalClassification {
 impl LeafletClassifier for LocalClassification {
     #[inline(always)]
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -457,6 +475,7 @@ impl LeafletClassifier for LocalClassification {
             &self.heads,
             molecule_index,
             system,
+            pbc_handler,
             self.membrane_center()
                 .get(molecule_index)
                 .expect(PANIC_MESSAGE),
@@ -475,19 +494,15 @@ fn common_identify_leaflet(
     heads: &[usize],
     molecule_index: usize,
     system: &System,
+    pbc_handler: &impl PBCHandler,
     membrane_center: &Vector3D,
     membrane_normal: Dimension,
 ) -> Result<Leaflet, AnalysisError> {
     let head_index = *heads.get(molecule_index).expect(PANIC_MESSAGE);
     let head = unsafe { system.get_atom_unchecked(head_index) };
 
-    let distance = head
-        .distance_from_point(
-            membrane_center,
-            membrane_normal,
-            system.get_box().ok_or(AnalysisError::UndefinedBox)?,
-        )
-        .map_err(|_| AnalysisError::UndefinedPosition(head_index))?;
+    let head_pos = head.get_position().ok_or_else(|| AnalysisError::UndefinedPosition(head_index))?;
+    let distance = pbc_handler.distance(head_pos, membrane_center, membrane_normal);
 
     if distance >= 0.0 {
         Ok(Leaflet::Upper)
@@ -515,7 +530,7 @@ pub(crate) struct IndividualClassification {
 
 impl IndividualClassification {
     fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
-        self.heads.push(get_reference_head(molecule, system)?);
+        self.heads.push(get_reference_head(molecule, system, group_name!("Heads"))?);
         self.methyls.push(get_reference_methyls(molecule, system)?);
 
         // check that the number of methyls is concistent in the molecule
@@ -537,8 +552,9 @@ impl IndividualClassification {
 
 impl LeafletClassifier for IndividualClassification {
     fn identify_leaflet(
-        &self,
+        &mut self,
         system: &System,
+        pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -546,12 +562,10 @@ impl LeafletClassifier for IndividualClassification {
 
         let mut total_distance = 0.0;
         for methyl_index in self.methyls.get(molecule_index).expect(PANIC_MESSAGE) {
-            total_distance += match system.atoms_distance(*head_index, *methyl_index, self.membrane_normal) {
+            total_distance += match pbc_handler.atoms_distance(system, *head_index, *methyl_index, self.membrane_normal) {
                 Ok(x) => x,
-                Err(AtomError::OutOfRange(x)) => panic!("FATAL GORDER ERROR | IndividualClassification::identify_leaflet | Index '{}' out of range. {}", x, PANIC_MESSAGE),
-                Err(AtomError::InvalidSimBox(SimBoxError::DoesNotExist)) => return Err(AnalysisError::UndefinedBox),
-                Err(AtomError::InvalidSimBox(SimBoxError::NotOrthogonal)) => return Err(AnalysisError::NotOrthogonalBox),
                 Err(AtomError::InvalidPosition(PositionError::NoPosition(x))) => return Err(AnalysisError::UndefinedPosition(x)),
+                Err(AtomError::OutOfRange(x)) => panic!("FATAL GORDER ERROR | IndividualClassification::identify_leaflet | Index '{}' out of range. {}", x, PANIC_MESSAGE),
                 Err(e) => panic!("FATAL GORDER ERROR | IndividualClassification::identify_leaflet | Unexpected error type '{}' returned. {}", e, PANIC_MESSAGE),
             };
         }
@@ -581,8 +595,9 @@ pub(crate) struct ManualClassification {
 
 impl LeafletClassifier for ManualClassification {
     fn identify_leaflet(
-        &self,
+        &mut self,
         _system: &System,
+        _pbc_handler: &impl PBCHandler,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -625,10 +640,12 @@ impl LeafletClassifier for ManualClassification {
 
 impl SystemTopology {
     /// Finalize the set up of the manual leaflet classifier.
-    pub(super) fn finalize_manual_leaflet_classification(&mut self, params: &ManualParams) -> Result<(), ManualLeafletClassificationError> {
+    pub(super) fn finalize_manual_leaflet_classification(&mut self, params: &LeafletClassification) -> Result<(), ManualLeafletClassificationError> {
         let classification = match params {
-            ManualParams::FromFile {file, frequency: _} => &ManualClassification::map_from_file(file)?,
-            ManualParams::FromMap { assignment, frequency: _ } => assignment,
+            LeafletClassification::FromFile(params) => &ManualClassification::map_from_file(params.file())?,
+            LeafletClassification::FromMap(params) => params.assignment(),
+            // do nothing for the other types of classification
+            _ => return Ok(()),
         };
 
         let mut molecule_names = Vec::new();
@@ -674,51 +691,64 @@ impl SystemTopology {
         Ok(())
     }
 
-    /// Check that all frames in 
-    pub(super) fn validate_manual_leaflet_classification(
-        &self,
-        analysis: &Analysis,
-    ) -> Result<(), ManualLeafletClassificationError> {
+    /// Sanity check for manual leaflet classification. 
+    /// Checks that the number of analyzed frames matches the number of frames specified in the manual leaflet classification.
+    /// Doesn't do anything if the leaflet classification is not manual.
+    pub(super) fn validate_leaflet_classification(&self, step: usize) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         for molecule in self.molecule_types() {
-            let manual = molecule
-                .leaflet_classification()
-                .as_ref()
-                .and_then(|classification| match classification {
-                    MoleculeLeafletClassification::Manual(x, _) => Some(x),
-                    _ => None,
-                })
-                .unwrap_or_else(||
-                    panic!("FATAL GORDER ERROR | SystemTopology::validate_manual_leaflet_classification | Unexpected MoleculeLeafletClassification. Expected Manual. {}", PANIC_MESSAGE));
-    
-            let frequency = match manual.frequency {
-                Frequency::Once => Frequency::Once,
-                Frequency::Every(n) => Frequency::Every(
-                    NonZeroUsize::new(n.get() / analysis.step()).expect(PANIC_MESSAGE),
-                ),
-            };
-    
-            let expected_assignment_frames = match frequency {
-                Frequency::Once => 1,
-                Frequency::Every(n) => (self.total_frames() - 1) / n + 1,
-            };
-    
-            let assignment_frames = manual
-                .assignment
-                .as_ref()
-                .expect(PANIC_MESSAGE)
-                .len();
-    
-            if expected_assignment_frames != assignment_frames {
-                return Err(ManualLeafletClassificationError::UnexpectedNumberOfFrames {
-                    assignment_frames,
-                    analyzed_frames: self.total_frames(),
-                    frequency,
-                    expected_assignment_frames,
-                });
+            match molecule.leaflet_classification().as_ref() {
+                None => continue,
+                Some(classification) => 
+                    Self::validate_molecule_leaflet_classification(classification, step, self.total_frames())?,
             }
         }
-    
+
         Ok(())
+    }
+
+    fn validate_molecule_leaflet_classification(
+        classification: &MoleculeLeafletClassification, 
+        step: usize, 
+        total_frames: usize
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let (frequency, n_frames) = match classification {
+            MoleculeLeafletClassification::Manual(x, _) => 
+                (x.frequency, x.assignment.as_ref().expect(PANIC_MESSAGE).len()),
+            MoleculeLeafletClassification::ManualNdx(x, _) => 
+                (x.frequency, x.ndx.len()),
+            _ => return Ok(()),
+        };
+            
+        let frequency = match frequency {
+            Frequency::Once => Frequency::Once,
+            Frequency::Every(n) => Frequency::Every(
+                NonZeroUsize::new(n.get() / step).expect(PANIC_MESSAGE),
+            ),
+        };
+
+        let expected_n_frames = match frequency {
+            Frequency::Once => 1,
+            Frequency::Every(n) => (total_frames - 1) / n + 1,
+        };
+
+        if expected_n_frames != n_frames {
+            if matches!(classification, &MoleculeLeafletClassification::Manual(_, _)) {
+                Err(Box::from(ManualLeafletClassificationError::UnexpectedNumberOfFrames { 
+                    assignment_frames: n_frames,
+                    analyzed_frames: total_frames,
+                    frequency,
+                    expected_assignment_frames: expected_n_frames,
+            }))} else {
+                Err(Box::from(NdxLeafletClassificationError::UnexpectedNumberOfNdxFiles {
+                    ndx_files: n_frames,
+                    analyzed_frames: total_frames,
+                    frequency,
+                    expected_ndx_files: expected_n_frames,
+                }))
+            }
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -729,6 +759,166 @@ impl ManualClassification {
             .map_err(|_| ManualLeafletClassificationError::FileNotFound(file.to_owned()))?;
         serde_yaml::from_str(&string)
             .map_err(|e| ManualLeafletClassificationError::CouldNotParse(file.to_owned(), e))
+    }
+}
+
+/// Leaflet classification method that uses positions of lipid heads and the global membrane center of geometry.
+#[derive(Debug, Clone, CopyGetters, Getters, MutGetters, Setters)]
+pub(super) struct NdxClassification {
+    /// NDX files to read.
+    #[getset(get = "pub(super)")]
+    ndx: Vec<String>,
+    /// Currently loaded groups from an ndx file.
+    groups: Option<Groups>,
+    /// Frame for which the current `groups` field has been obtained.
+    last_assigned_frame: Option<usize>,
+    /// Indices of headgroup identifiers (one per molecule).
+    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    heads: Vec<usize>,
+    /// Name of the upper leaflet group.
+    #[getset(get = "pub(super)")]
+    upper_leaflet: String,
+    /// Name of the lower leaflet group.
+    #[getset(get = "pub(super)")]
+    lower_leaflet: String,
+    /// Frequency with which the assignment should be performed.
+    /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
+    frequency: Frequency,
+}
+
+impl NdxClassification {
+    /// Insert a new molecule into the classifier.
+    #[inline(always)]
+    fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
+        self.heads.push(get_reference_head(molecule, system, group_name!("Heads"))?);
+        Ok(())
+    }
+
+    /// Read an ndx file and store the groups from it.
+    fn read_ndx_file(&mut self, frame_index: usize, n_atoms: usize) -> Result<(), NdxLeafletClassificationError> {
+        // get the index of the frame in the assignment
+        let assignment_index = match self.frequency {
+            // frame must be zero no matter the thread this is
+            Frequency::Once => 0,
+            Frequency::Every(n) => frame_index / n.get(),
+        };
+        
+        // get the ndx file to read
+        let ndx_file = self
+            .ndx
+            .get(assignment_index)
+            .ok_or_else(|| NdxLeafletClassificationError::FrameNotFound(
+                frame_index, assignment_index, self.ndx.len()))?;
+
+        // read the ndx file
+        let (groups, invalid, duplicate) = Groups::from_ndx(ndx_file, n_atoms)
+            .map_err( NdxLeafletClassificationError::CouldNotParse)?;
+
+        // handle issues
+        for invalid_name in invalid {
+            if invalid_name == self.upper_leaflet || invalid_name == self.lower_leaflet {
+                return Err(NdxLeafletClassificationError::InvalidName(invalid_name, ndx_file.clone()));
+            }
+            // ignore warnings and errors that are irrelevant
+        }
+
+        for duplicate_name in duplicate {
+            if duplicate_name == self.upper_leaflet || duplicate_name == self.lower_leaflet {
+                return Err(NdxLeafletClassificationError::DuplicateName(duplicate_name, ndx_file.clone()));
+            }
+            // ignore warnings and errors that are irrelevant
+        }
+
+        // check that the required groups exist
+        if !groups.exists(self.upper_leaflet()) {
+            return Err(NdxLeafletClassificationError::GroupNotFound(
+                self.upper_leaflet.clone(), "upper-leaflet".to_owned(), ndx_file.clone()));
+        }
+
+        if !groups.exists(self.lower_leaflet()) {
+            return Err(NdxLeafletClassificationError::GroupNotFound(
+                self.lower_leaflet.clone(), "lower-leaflet".to_owned(), ndx_file.clone()));
+        }
+
+        self.groups = Some(groups);
+        self.last_assigned_frame = Some(frame_index);
+
+        Ok(())
+    }
+
+    /// Assign molecule to leaflet based on the loaded groups.
+    // This could be done much more efficiently using head index -> molecule index hash map,
+    // and looping through each NDX group only once
+    // but the current trait system requires the assignment to be performed molecule-wise...
+    fn assign_molecule(&self, molecule_index: usize) -> Result<Leaflet, NdxLeafletClassificationError> {
+        let head_index = self
+            .heads
+            .get(molecule_index)
+            .unwrap_or_else(|| panic!("FATAL GORDER ERROR | NdxClassification::assign_molecule | Could not find head identifier for molecule index `{}`.", molecule_index));
+
+        // groups must exist; checked in Self::read_ndx_file
+        let groups = self.groups.as_ref().expect(PANIC_MESSAGE);
+        
+        // check upper leaflet
+        if groups
+            .get(self.upper_leaflet())
+            .expect(PANIC_MESSAGE)
+            .get_atoms()
+            .isin(*head_index) {
+                return Ok(Leaflet::Upper);
+            }
+        
+        // check lower leaflet
+        if groups
+            .get(self.lower_leaflet())
+            .expect(PANIC_MESSAGE)
+            .get_atoms()
+            .isin(*head_index) {
+            return Ok(Leaflet::Lower);
+        }
+
+        Err(NdxLeafletClassificationError::AssignmentNotFound(molecule_index, *head_index))
+
+    }
+}
+
+impl LeafletClassifier for NdxClassification {
+    #[inline(always)]
+    fn n_molecules(&self) -> usize {
+        self.heads.len()
+    }
+
+    fn identify_leaflet(
+            &mut self,
+            system: &System,
+            _pbc_handler: &impl PBCHandler,
+            molecule_index: usize,
+            current_frame: usize,
+        ) -> Result<Leaflet, AnalysisError> {
+        // only read the NDX file if a) it is not read, or b) it is too old
+        // we write it defensively, since this is sensitive
+        match (&self.groups, self.last_assigned_frame) {
+            (None, None) => self
+                .read_ndx_file(current_frame, system.get_n_atoms())
+                .map_err(AnalysisError::NdxLeafletError)?,
+            
+            (Some(_), None) | (None, Some(_)) => 
+                panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Inconsistent state of `groups` and `last_ndx_index`."),
+            
+            (Some(_), Some(index)) => {
+                match index.cmp(&current_frame) {
+                    Ordering::Less => self
+                        .read_ndx_file(current_frame, system.get_n_atoms())
+                        .map_err( AnalysisError::NdxLeafletError)?,
+                    Ordering::Equal => (),
+                    Ordering::Greater => 
+                        panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Last read NDX file is for frame `{}`, but the current frame is `{}`. Went back in time?", index, current_frame),
+                }
+            }
+        };
+
+        // get the assignment for the target molecule
+        self.assign_molecule(molecule_index).map_err( AnalysisError::NdxLeafletError)
     }
 }
 
@@ -770,12 +960,13 @@ impl AssignedLeaflets {
     fn assign_lipids(
         &mut self,
         system: &System,
-        classifier: &impl LeafletClassifier,
+        pbc_handler: &impl PBCHandler,
+        classifier: &mut impl LeafletClassifier,
         current_frame: usize,
     ) -> Result<(), AnalysisError> {
         self.local = Some(
             (0..classifier.n_molecules())
-                .map(|index| classifier.identify_leaflet(system, index, current_frame))
+                .map(|index| classifier.identify_leaflet(system, pbc_handler, index, current_frame))
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -889,7 +1080,7 @@ impl SharedAssignedLeaflets {
         let start_time = Instant::now();
         let mut warning_logged = false;
 
-        // spin-lock: waiting for the requested frame to be available
+        // spin-lock: waiting for the requested frame to become available
         loop {
             let shared_data = self.0.lock();
             let assignment = shared_data.get(&frame);
@@ -900,7 +1091,7 @@ impl SharedAssignedLeaflets {
             // defensive check for a deadlock
             if start_time.elapsed() > *TIMEOUT {
                 if !warning_logged {
-                    log::warn!("DEADLOCKED? Thread has been waiting for shared leaflet assignment data (frame '{}') for more than {} seconds.
+                    colog_warn!("DEADLOCKED? Thread has been waiting for shared leaflet assignment data (frame '{}') for more than {} seconds.
 This may be due to resource contention or a bug. Ensure that your CPU is not oversubscribed and that you have not lost access to the trajectory file.
 If `gorder` is causing oversubscription, reduce the number of threads used for the analysis.
 If other computationally intensive software is running alongside `gorder`, consider terminating it.
@@ -937,6 +1128,11 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
 
 #[cfg(test)]
 mod tests {
+    use groan_rs::prelude::AtomIteratorWithBox;
+
+    use crate::analysis::pbc::PBC3D;
+    use crate::input::{Axis, DynamicNormal};
+
     use super::super::common::macros::group_name;
     use super::*;
 
@@ -946,10 +1142,10 @@ mod tests {
         create_group(&mut system, "Heads", "name P").unwrap();
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
@@ -972,10 +1168,10 @@ mod tests {
         create_group(&mut system, "Heads", "name P").unwrap();
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 3.3),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
@@ -1000,10 +1196,10 @@ mod tests {
         create_group(&mut system, "Methyls", "name C218 C316").unwrap();
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
@@ -1064,7 +1260,7 @@ mod tests {
         F: Fn(&TopologyError) -> bool,
     {
         let mut molecule_classifier =
-            MoleculeLeafletClassification::new(&classifier, Dimension::Z, 1, 1);
+            MoleculeLeafletClassification::new(&classifier, &Axis::Z.into(), 1, 1).unwrap();
         let group = Group::from_query(group_query, system).unwrap();
         match molecule_classifier.insert(&group, system) {
             Err(e) if is_expected_error(&e) => (),
@@ -1176,7 +1372,7 @@ mod tests {
         );
 
         let mut molecule_classifier =
-            MoleculeLeafletClassification::new(&classifier, Dimension::Z, 1, 1);
+            MoleculeLeafletClassification::new(&classifier, &Axis::Z.into(), 1, 1).unwrap();
         let group1 = Group::from_query("resid 7", &system).unwrap();
         let group2 = Group::from_query("resid 144", &system).unwrap();
 
@@ -1195,12 +1391,13 @@ mod tests {
     #[test]
     fn test_global_assign_to_leaflet() {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let pbc = PBC3D::new(system.get_box().unwrap());
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let membrane_center = system
             .selection_iter("@membrane")
@@ -1218,11 +1415,11 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0, 1).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 0, 1).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1, 1).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 1, 1).unwrap(),
             Leaflet::Lower
         );
     }
@@ -1230,16 +1427,17 @@ mod tests {
     #[test]
     fn test_local_assign_to_leaflet() {
         let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
-        let mut classifier = MoleculeLeafletClassification::new(
-            &LeafletClassification::local("@membrane", "name P", 2.5),
-            Dimension::Z,
-            1,
-            1,
-        );
-
         system
             .group_create(group_name!("Membrane"), "@membrane")
             .unwrap();
+
+        let pbc = PBC3D::new(system.get_box().unwrap());
+        let mut classifier = MoleculeLeafletClassification::new(
+            &LeafletClassification::local("@membrane", "name P", 2.5),
+            &Axis::Z.into(),
+            1,
+            1,
+        ).unwrap();
 
         match &mut classifier {
             MoleculeLeafletClassification::Local(x, _) => {
@@ -1247,17 +1445,17 @@ mod tests {
                 x.heads_mut().push(11885);
                 x.membrane_center_mut().push(Vector3D::new(0.0, 0.0, 0.0));
                 x.membrane_center_mut().push(Vector3D::new(0.0, 0.0, 0.0));
-                x.set_membrane_center(&system, Dimension::Z).unwrap();
+                x.set_membrane_center(&system, &pbc, Dimension::Z).unwrap();
             }
             _ => panic!("Unexpected classification method."),
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0, 0).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 0, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1, 2).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 1, 2).unwrap(),
             Leaflet::Lower
         );
     }
@@ -1265,12 +1463,13 @@ mod tests {
     #[test]
     fn test_individual_assign_to_leaflet() {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
+        let pbc = PBC3D::new(system.get_box().unwrap());
         let mut classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         match &mut classifier {
             MoleculeLeafletClassification::Individual(x, _) => {
@@ -1283,24 +1482,25 @@ mod tests {
         }
 
         assert_eq!(
-            classifier.identify_leaflet(&system, 0, 0).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 0, 0).unwrap(),
             Leaflet::Upper
         );
         assert_eq!(
-            classifier.identify_leaflet(&system, 1, 4).unwrap(),
+            classifier.identify_leaflet(&system, &pbc, 1, 4).unwrap(),
             Leaflet::Lower
         );
     }
 
     macro_rules! test_classification_new {
-        ($name:ident, $classification:expr, $variant:path, $frequency:pat) => {
+        ($name:ident, $classification:expr, $variant:path, $frequency:pat, $normal:expr, $exp_normal:pat) => {
             #[test]
             fn $name() {
                 let single_threaded =
-                    MoleculeLeafletClassification::new(&$classification, Dimension::Z, 1, 2);
+                    MoleculeLeafletClassification::new(&$classification, &$normal, 1, 2).unwrap();
                 match single_threaded {
                     $variant(x, y) => {
                         assert!(matches!(x.frequency, $frequency));
+                        assert!(matches!(x.membrane_normal, $exp_normal));
                         assert!(y.shared.is_none());
                         assert!(y.local.is_none());
                         assert!(y.local_frame.is_none());
@@ -1309,7 +1509,7 @@ mod tests {
                 }
 
                 let multi_threaded =
-                    MoleculeLeafletClassification::new(&$classification, Dimension::Z, 4, 2);
+                    MoleculeLeafletClassification::new(&$classification, &$normal, 4, 2).unwrap();
                 match multi_threaded {
                     $variant(x, y) => {
                         assert!(matches!(x.frequency, $frequency));
@@ -1334,14 +1534,18 @@ mod tests {
         test_global_leaflet_classification_new_once,
         LeafletClassification::global("@membrane", "name P").with_frequency(Frequency::once()),
         MoleculeLeafletClassification::Global,
-        Frequency::Once
+        Frequency::Once,
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
         test_local_leaflet_classification_new_once,
         LeafletClassification::local("@membrane", "name P", 2.5).with_frequency(Frequency::once()),
         MoleculeLeafletClassification::Local,
-        Frequency::Once
+        Frequency::Once,
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1349,7 +1553,9 @@ mod tests {
         LeafletClassification::individual("name P", "name C218 C316")
             .with_frequency(Frequency::once()),
         MoleculeLeafletClassification::Individual,
-        Frequency::Once
+        Frequency::Once,
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1357,7 +1563,9 @@ mod tests {
         LeafletClassification::global("@membrane", "name P")
             .with_frequency(Frequency::every(5).unwrap()),
         MoleculeLeafletClassification::Global,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1365,7 +1573,9 @@ mod tests {
         LeafletClassification::local("@membrane", "name P", 2.5)
             .with_frequency(Frequency::every(5).unwrap()),
         MoleculeLeafletClassification::Local,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1373,7 +1583,9 @@ mod tests {
         LeafletClassification::individual("name P", "name C218 C316")
             .with_frequency(Frequency::every(5).unwrap()),
         MoleculeLeafletClassification::Individual,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1381,7 +1593,9 @@ mod tests {
         LeafletClassification::global("@membrane", "name P")
             .with_frequency(Frequency::every(1).unwrap()),
         MoleculeLeafletClassification::Global,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1389,7 +1603,9 @@ mod tests {
         LeafletClassification::local("@membrane", "name P", 2.5)
             .with_frequency(Frequency::every(1).unwrap()),
         MoleculeLeafletClassification::Local,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     test_classification_new!(
@@ -1397,17 +1613,145 @@ mod tests {
         LeafletClassification::individual("name P", "name C218 C316")
             .with_frequency(Frequency::every(1).unwrap()),
         MoleculeLeafletClassification::Individual,
-        Frequency::Every(_)
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
+
+    test_classification_new!(
+        test_global_leaflet_classification_matching_normals,
+        LeafletClassification::global("@membrane", "name P")
+            .with_membrane_normal(Axis::Z),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_matching_normals,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_membrane_normal(Axis::Z),
+        MoleculeLeafletClassification::Local,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_matching_normals,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_membrane_normal(Axis::Z)
+            .with_frequency(Frequency::once()),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Once,
+        Axis::Z.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_global_leaflet_classification_unmatching_normals,
+        LeafletClassification::global("@membrane", "name P")
+            .with_membrane_normal(Axis::X)
+            .with_frequency(Frequency::every(5).unwrap()),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::X
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_unmatching_normals,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_membrane_normal(Axis::Z),
+        MoleculeLeafletClassification::Local,
+        Frequency::Every(_),
+        Axis::X.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_unmatching_normals,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_membrane_normal(Axis::Y),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Every(_),
+        Axis::X.into(),
+        Dimension::Y
+    );
+
+    test_classification_new!(
+        test_global_leaflet_classification_dynamic_normals,
+        LeafletClassification::global("@membrane", "name P")
+            .with_membrane_normal(Axis::Y),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_),
+        DynamicNormal::new("name P", 2.0).unwrap().into(),
+        Dimension::Y
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_dynamic_normals,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_membrane_normal(Axis::Z)
+            .with_frequency(Frequency::once()),
+        MoleculeLeafletClassification::Local,
+        Frequency::Once,
+        DynamicNormal::new("name P", 2.0).unwrap().into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_individual_leaflet_classification_dynamic_normals,
+        LeafletClassification::individual("name P", "name C218 C316")
+            .with_membrane_normal(Axis::X),
+        MoleculeLeafletClassification::Individual,
+        Frequency::Every(_),
+        DynamicNormal::new("name P", 2.0).unwrap().into(),
+        Dimension::X
+    );
+
+    #[test]
+    fn test_global_leaflet_classification_new_fail() {
+        let params = LeafletClassification::global("@membrane", "name P");
+        
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).unwrap().into(), 1, 1) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(ConfigError::MissingMembraneNormal) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_local_leaflet_classification_new_fail() {
+        let params = LeafletClassification::local("@membrane", "name P", 2.5);
+        
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).unwrap().into(), 1, 1) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(ConfigError::MissingMembraneNormal) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_individual_leaflet_classification_new_fail() {
+        let params = LeafletClassification::individual("name P", "name C218 C316");
+        
+        match MoleculeLeafletClassification::new(&params, &DynamicNormal::new("name P", 2.0).unwrap().into(), 1, 1) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(ConfigError::MissingMembraneNormal) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
 
     #[test]
     fn test_should_assign_every() {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         for i in 0..50 {
             assert!(classifier.should_assign(i));
@@ -1415,10 +1759,10 @@ mod tests {
 
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             5,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1429,10 +1773,10 @@ mod tests {
 
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5),
-            Dimension::Z,
+            &Axis::Z.into(),
             3,
             5,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1444,10 +1788,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P")
                 .with_frequency(Frequency::every(4).unwrap()),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1461,10 +1805,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316")
                 .with_frequency(Frequency::every(5).unwrap()),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             7,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1479,10 +1823,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5)
                 .with_frequency(Frequency::every(2).unwrap()),
-            Dimension::Z,
+            &Axis::Z.into(),
             6,
             11,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         assert!(!classifier.should_assign(1));
@@ -1501,10 +1845,10 @@ mod tests {
     fn test_should_assign_once() {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P").with_frequency(Frequency::once()),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         for i in 1..51 {
@@ -1514,10 +1858,10 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316")
                 .with_frequency(Frequency::once()),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             7,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         for i in 1..51 {
@@ -1527,20 +1871,70 @@ mod tests {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::local("@membrane", "name P", 2.5)
                 .with_frequency(Frequency::once()),
-            Dimension::Z,
+            &Axis::Z.into(),
             6,
             11,
-        );
+        ).unwrap();
 
         assert!(classifier.should_assign(0));
         for i in 1..51 {
             assert!(!classifier.should_assign(i));
         }
     }
+
+    #[test]
+    fn test_ndx_fail_missing_assignment() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/cg_leaflets.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![3049, 3061, 6, 25, 37, 73, 3637],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        classification.read_ndx_file(0, 7000).unwrap();
+        match classification.assign_molecule(2) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::AssignmentNotFound(mol_id, head_id)) => {
+                assert_eq!(mol_id, 2);
+                assert_eq!(head_id, 6);
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_fail_missing_frame() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/cg_leaflets.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![3049, 3061, 25, 37, 73, 3637],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::every(5).unwrap(),
+        };
+
+        match classification.read_ndx_file(6, 7000) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::FrameNotFound(frame_index, ndx_index, total_number)) => {
+                assert_eq!(frame_index, 6);
+                assert_eq!(ndx_index, 1);
+                assert_eq!(total_number, 1);
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests_assigned_leaflets {
+    use groan_rs::prelude::AtomIteratorWithBox;
+
+    use crate::{analysis::pbc::PBC3D, input::Axis};
+
     use super::*;
 
     #[test]
@@ -1658,10 +2052,10 @@ mod tests_assigned_leaflets {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::global("@membrane", "name P"),
-            Dimension::Z,
+            &Axis::Z.into(),
             1,
             1,
-        );
+        ).unwrap();
 
         let membrane_center = system
             .selection_iter("@membrane")
@@ -1693,9 +2087,10 @@ mod tests_assigned_leaflets {
 
     #[test]
     fn test_assign_lipids_no_shared() {
-        let (system, classifier, mut leaflets) = prepare_data(false);
+        let (system, mut classifier, mut leaflets) = prepare_data(false);
+        let pbc = PBC3D::new(system.get_box().unwrap());
 
-        leaflets.assign_lipids(&system, &classifier, 15).unwrap();
+        leaflets.assign_lipids(&system, &pbc, &mut classifier, 15).unwrap();
 
         assert_eq!(leaflets.local_frame.unwrap(), 15);
         assert_eq!(leaflets.get_leaflet_from_local(0), Leaflet::Upper);
@@ -1705,9 +2100,10 @@ mod tests_assigned_leaflets {
 
     #[test]
     fn test_assign_lipids_with_shared() {
-        let (system, classifier, mut leaflets) = prepare_data(true);
+        let (system, mut classifier, mut leaflets) = prepare_data(true);
+        let pbc = PBC3D::new(system.get_box().unwrap());
 
-        leaflets.assign_lipids(&system, &classifier, 15).unwrap();
+        leaflets.assign_lipids(&system, &pbc, &mut classifier, 15).unwrap();
 
         assert_eq!(leaflets.local_frame.unwrap(), 15);
         assert_eq!(leaflets.get_leaflet_from_local(0), Leaflet::Upper);
@@ -1718,6 +2114,255 @@ mod tests_assigned_leaflets {
         assert_eq!(shared[0], Leaflet::Upper);
         assert_eq!(shared[1], Leaflet::Lower);
     }
+}
+
+#[cfg(test)]
+mod tests_validation {
+    use crate::input::Axis;
+
+    use super::*;
+
+    #[test]
+    fn test_validate_not_manual() {
+        let params = LeafletClassification::global("@membrane", "name PO4");
+        let step = 1;
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            let classification = MoleculeLeafletClassification::new(
+                &params, 
+                &MembraneNormal::Static(Axis::Z), 
+                n_threads,
+                step
+            ).unwrap();
+            assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 101).is_ok());
+        }
+        
+    }
+
+    #[test]
+    fn test_validate_once() {
+        let params = LeafletClassification::from_file("tests/files/inputs/leaflets_files/cg_once.yaml")
+            .with_frequency(Frequency::once());
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            for step in [1, 3, 5, 10, 15, 20, 50, 200] {
+                let mut classification = MoleculeLeafletClassification::new(
+                    &params, 
+                    &MembraneNormal::Static(Axis::Z), 
+                    n_threads,
+                    step
+                ).unwrap();
+        
+                if let MoleculeLeafletClassification::Manual(ref mut x, _) = classification {
+                    x.assignment = ManualClassification::map_from_file("tests/files/inputs/leaflets_files/cg_once.yaml")
+                        .unwrap()
+                        .get("POPC")
+                        .cloned();
+                }
+        
+                assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 101 / step).is_ok());
+            }
+        }   
+    }
+
+    #[test]
+    fn test_validate_once_ndx() {
+        let params = LeafletClassification::from_ndx(
+            &["index.ndx"], 
+            "name PO4", 
+            "UpperLeaflet", 
+            "LowerLeaflet"
+        ).with_frequency(Frequency::once());
+
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            for step in [1, 3, 5, 10, 15, 20, 50, 200] {
+                let classification = MoleculeLeafletClassification::new(
+                    &params, 
+                    &MembraneNormal::Static(Axis::Z), 
+                    n_threads,
+                    step
+                ).unwrap();
+
+                assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 101 / step).is_ok());
+            }
+        }
+    }
+
+    #[test]
+    fn test_validate_every() {
+        let params = LeafletClassification::from_file("tests/files/inputs/leaflets_files/cg_every.yaml");
+        let step = 1;
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            let mut classification = MoleculeLeafletClassification::new(
+                &params, 
+                &MembraneNormal::Static(Axis::Z), 
+                n_threads,
+                step
+            ).unwrap();
+    
+            if let MoleculeLeafletClassification::Manual(ref mut x, _) = classification {
+                x.assignment = ManualClassification::map_from_file("tests/files/inputs/leaflets_files/cg_every.yaml").unwrap().get("POPC").cloned();
+            }
+    
+            assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 101).is_ok());
+        }   
+    }
+
+    #[test]
+    fn test_validate_every_ndx() {
+        let params = LeafletClassification::from_ndx(
+            &["index1.ndx", "index2.ndx", "index3.ndx", "index4.ndx", "index5.ndx", "index6.ndx", "index7.ndx", "index8.ndx"], 
+            "name PO4", 
+            "UpperLeaflet", 
+            "LowerLeaflet"
+        );
+
+        let step = 1;
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            let classification = MoleculeLeafletClassification::new(
+                &params, 
+                &MembraneNormal::Static(Axis::Z), 
+                n_threads,
+                step
+            ).unwrap();
+    
+            assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 8).is_ok());
+        }   
+    }
+
+    #[test]
+    fn test_validate_every20() {
+        let params = LeafletClassification::from_file("tests/files/inputs/leaflets_files/cg_every20.yaml")
+            .with_frequency(Frequency::every(20).unwrap());
+        let step = 1;
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            let mut classification = MoleculeLeafletClassification::new(
+                &params, 
+                &MembraneNormal::Static(Axis::Z), 
+                n_threads,
+                step
+            ).unwrap();
+    
+            if let MoleculeLeafletClassification::Manual(ref mut x, _) = classification {
+                x.assignment = ManualClassification::map_from_file("tests/files/inputs/leaflets_files/cg_every20.yaml").unwrap().get("POPC").cloned();
+            }
+    
+            assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 101).is_ok());
+        }
+    }
+
+    #[test]
+    fn test_validate_every20_ndx() {
+        let params = LeafletClassification::from_ndx(
+            &["index1.ndx", "index2.ndx", "index3.ndx", "index4.ndx", "index5.ndx", "index6.ndx"], 
+            "name PO4", 
+            "UpperLeaflet", 
+            "LowerLeaflet"
+        ).with_frequency(Frequency::every(20).unwrap());
+
+        let step = 1;
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            let classification = MoleculeLeafletClassification::new(
+                &params, 
+                &MembraneNormal::Static(Axis::Z), 
+                n_threads,
+                step
+            ).unwrap();
+    
+            assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 101).is_ok());
+        }   
+    }
+
+    #[test]
+    fn test_validate_every_step() {
+        let params = LeafletClassification::from_file("tests/files/inputs/leaflets_files/cg_every20.yaml");
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            for step in [1, 2, 3, 5, 10, 15, 20, 25, 30, 75] {
+                let mut classification = MoleculeLeafletClassification::new(
+                    &params, 
+                    &MembraneNormal::Static(Axis::Z), 
+                    n_threads,
+                    step
+                ).unwrap();
+        
+                if let MoleculeLeafletClassification::Manual(ref mut x, _) = classification {
+                    x.assignment = ManualClassification::map_from_file("tests/files/inputs/leaflets_files/cg_every20.yaml").unwrap().get("POPC").cloned();
+                }
+        
+                assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 6).is_ok());
+            }
+            
+        }
+    }
+
+    #[test]
+    fn test_validate_every_step_ndx() {
+        let params = LeafletClassification::from_ndx(
+            &["index1.ndx", "index2.ndx", "index3.ndx", "index4.ndx", "index5.ndx", "index6.ndx"], 
+            "name PO4", 
+            "UpperLeaflet", 
+            "LowerLeaflet"
+        );
+
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            for step in [1, 2, 3, 5, 10, 15, 20, 25, 30, 75] {
+                let classification = MoleculeLeafletClassification::new(
+                    &params, 
+                    &MembraneNormal::Static(Axis::Z), 
+                    n_threads,
+                    step
+                ).unwrap();
+        
+                assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 6).is_ok());
+            }
+            
+        }   
+    }
+
+    #[test]
+    fn test_validate_every4() {
+        let params = LeafletClassification::from_file("tests/files/inputs/leaflets_files/cg_every20.yaml")
+            .with_frequency(Frequency::every(4).unwrap());
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            for step in [1, 2, 3, 5, 10, 15, 20, 25, 30, 75] {
+                let mut classification = MoleculeLeafletClassification::new(
+                    &params, 
+                    &MembraneNormal::Static(Axis::Z), 
+                    n_threads,
+                    step
+                ).unwrap();
+        
+                if let MoleculeLeafletClassification::Manual(ref mut x, _) = classification {
+                    x.assignment = ManualClassification::map_from_file("tests/files/inputs/leaflets_files/cg_every20.yaml").unwrap().get("POPC").cloned();
+                }
+        
+                assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 21).is_ok());
+            }
+        }
+    }   
+
+    #[test]
+    fn test_validate_every4_ndx() {
+        let params = LeafletClassification::from_ndx(
+            &["index1.ndx", "index2.ndx", "index3.ndx", "index4.ndx", "index5.ndx", "index6.ndx"], 
+            "name PO4", 
+            "UpperLeaflet", 
+            "LowerLeaflet"
+        ).with_frequency(Frequency::every(4).unwrap());
+
+        for n_threads in [1, 2, 3, 4, 8, 64, 128] {
+            for step in [1, 2, 3, 5, 10, 15, 20, 25, 30, 75] {
+                let classification = MoleculeLeafletClassification::new(
+                    &params, 
+                    &MembraneNormal::Static(Axis::Z), 
+                    n_threads,
+                    step
+                ).unwrap();
+        
+                assert!(SystemTopology::validate_molecule_leaflet_classification(&classification, step, 21).is_ok());
+            }
+            
+        }   
+    }
+
 }
 
 #[cfg(test)]
@@ -1772,5 +2417,118 @@ mod tests_shared_assigned_leaflets {
 
         producer.join().expect("Producer thread panicked");
         consumer.join().expect("Consumer thread panicked");
+    }
+}
+
+#[cfg(test)]
+mod tests_ndx_reading {
+    use super::*;
+
+    #[test]
+    fn test_ndx_fail_duplicate_group() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_duplicate_main.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        match classification.read_ndx_file(0, 10) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::DuplicateName(name, ndx)) => {
+                assert_eq!(name, "Upper");
+                assert_eq!(ndx, "tests/files/ndx/leaflets_duplicate_main.ndx");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_fail_invalid_group_name() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_invalid_main.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "U!pper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        match classification.read_ndx_file(0, 10) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::InvalidName(name, ndx)) => {
+                assert_eq!(name, "U!pper");
+                assert_eq!(ndx, "tests/files/ndx/leaflets_invalid_main.ndx");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_fail_upper_not_found() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_missing_upper.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        match classification.read_ndx_file(0, 10) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::GroupNotFound(name, leaflet, ndx)) => {
+                assert_eq!(name, "Upper");
+                assert_eq!(leaflet, "upper-leaflet");
+                assert_eq!(ndx, "tests/files/ndx/leaflets_missing_upper.ndx");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_fail_lower_not_found() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_missing_lower.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        match classification.read_ndx_file(0, 10) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(NdxLeafletClassificationError::GroupNotFound(name, leaflet, ndx)) => {
+                assert_eq!(name, "Lower");
+                assert_eq!(leaflet, "lower-leaflet");
+                assert_eq!(ndx, "tests/files/ndx/leaflets_missing_lower.ndx");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_ndx_pass_empty_leaflet() {
+        let mut classification = NdxClassification {
+            ndx: vec!["tests/files/ndx/leaflets_only_upper.ndx".to_string()],
+            groups: None,
+            last_assigned_frame: None,
+            heads: vec![1, 2, 3, 4],
+            upper_leaflet: "Upper".to_string(),
+            lower_leaflet: "Lower".to_string(),
+            frequency: Frequency::once(),
+        };
+
+        classification.read_ndx_file(0, 10).unwrap();
+        let groups = classification.groups.unwrap();
+        assert_eq!(groups.get_n_atoms("Upper").unwrap(), 4);
+        assert_eq!(groups.get_n_atoms("Lower").unwrap(), 0);
     }
 }

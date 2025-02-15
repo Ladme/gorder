@@ -1,0 +1,8 @@
+structure: system.tpr
+trajectory: md.xtc
+output: order.yaml
+analysis_type: !CGOrder
+  beads: "@membrane"
+membrane_normal: !Dynamic
+  heads: "name PO4"
+  radius: 0.0

@@ -7,17 +7,15 @@ use core::fmt;
 use std::ops::Add;
 
 use getset::{CopyGetters, Getters, MutGetters};
-use groan_rs::{
-    prelude::{Atom, SimBox, Vector3D},
-    structures::group::Group,
-    system::System,
-};
+use groan_rs::{prelude::Atom, structures::group::Group, system::System};
 use hashbrown::HashSet;
 
 use super::{
     geometry::GeometrySelection,
     leaflets::MoleculeLeafletClassification,
+    normal::MoleculeMembraneNormal,
     ordermap::{merge_option_maps, Map},
+    pbc::PBCHandler,
 };
 use crate::analysis::order::AnalysisOrder;
 use crate::{
@@ -42,6 +40,9 @@ pub(crate) struct MoleculeType {
     /// List of all atoms for which order parameter should be calculated (all atoms for CG, heavy atoms for AA).
     #[getset(get = "pub(crate)")]
     order_atoms: OrderAtoms,
+    /// Either a statically assigned or dynamically computed membrane normal for all molecules of this type.
+    #[getset(get = "pub(super)")]
+    membrane_normal: MoleculeMembraneNormal,
     /// Method to use to assign this molecule to membrane leaflet.
     #[getset(get = "pub(super)", get_mut = "pub(super)")]
     leaflet_classification: Option<MoleculeLeafletClassification>,
@@ -60,6 +61,8 @@ impl MoleculeType {
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
         errors: bool,
+        pbc_handler: &impl PBCHandler,
+        membrane_normal: MoleculeMembraneNormal,
     ) -> Result<Self, TopologyError> {
         Ok(Self {
             name,
@@ -71,9 +74,11 @@ impl MoleculeType {
                 leaflet_classification.is_some(),
                 ordermap_params,
                 errors,
+                pbc_handler,
             )?,
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
+            membrane_normal,
         })
     }
 
@@ -95,6 +100,8 @@ impl MoleculeType {
             classifier.insert(&atoms, system)?;
         }
 
+        self.membrane_normal.insert(&atoms, system)?;
+
         Ok(())
     }
 
@@ -103,8 +110,7 @@ impl MoleculeType {
     pub(super) fn analyze_frame<Geom: GeometrySelection>(
         &mut self,
         frame: &System,
-        simbox: &SimBox,
-        membrane_normal: &Vector3D,
+        pbc_handler: &impl PBCHandler,
         frame_index: usize,
         geometry: &Geom,
     ) -> Result<(), AnalysisError> {
@@ -115,8 +121,8 @@ impl MoleculeType {
                 bond_type.analyze_frame(
                     frame,
                     &mut self.leaflet_classification,
-                    simbox,
-                    membrane_normal,
+                    pbc_handler,
+                    &mut self.membrane_normal,
                     frame_index,
                     geometry,
                 )
@@ -128,6 +134,8 @@ impl MoleculeType {
     /// Initialize reading of a new frame.
     #[inline(always)]
     pub(super) fn init_new_frame(&mut self) {
+        self.membrane_normal.init_new_frame();
+
         self.order_bonds
             .bond_types
             .iter_mut()
@@ -155,6 +163,7 @@ impl Add<MoleculeType> for MoleculeType {
             order_bonds: self.order_bonds + rhs.order_bonds,
             order_atoms: self.order_atoms,
             leaflet_classification: self.leaflet_classification,
+            membrane_normal: self.membrane_normal,
         }
     }
 }
@@ -219,18 +228,9 @@ impl OrderBonds {
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
         errors: bool,
+        pbc_handler: &impl PBCHandler,
     ) -> Result<Self, TopologyError> {
         bonds_sanity_check(bonds, min_index);
-
-        let simbox = system.get_box().ok_or(TopologyError::UndefinedBox)?;
-
-        if !simbox.is_orthogonal() {
-            return Err(TopologyError::NotOrthogonalBox);
-        }
-
-        if simbox.is_zero() {
-            return Err(TopologyError::ZeroBox);
-        }
 
         let mut order_bonds = Vec::new();
         for &(index1, index2) in bonds.iter() {
@@ -243,7 +243,7 @@ impl OrderBonds {
                 min_index,
                 classify_leaflets,
                 ordermap,
-                simbox,
+                pbc_handler,
                 errors,
             )?;
             order_bonds.push(bond)
@@ -417,7 +417,7 @@ impl BondType {
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
-        simbox: &SimBox,
+        pbc_handler: &impl PBCHandler,
         errors: bool,
     ) -> Result<Self, TopologyError> {
         let bond_topology = BondTopology::new(
@@ -433,7 +433,10 @@ impl BondType {
         };
 
         let optional_map = if let Some(map_params) = ordermap {
-            Some(Map::new(map_params.to_owned(), simbox).map_err(TopologyError::OrderMapError)?)
+            Some(
+                Map::new(map_params.to_owned(), pbc_handler)
+                    .map_err(TopologyError::OrderMapError)?,
+            )
         } else {
             None
         };
@@ -523,8 +526,8 @@ impl BondType {
         &mut self,
         frame: &System,
         leaflet_classification: &mut Option<MoleculeLeafletClassification>,
-        simbox: &SimBox,
-        membrane_normal: &Vector3D,
+        pbc_handler: &impl PBCHandler,
+        membrane_normal: &mut MoleculeMembraneNormal,
         frame_index: usize,
         geometry: &Geom,
     ) -> Result<(), AnalysisError> {
@@ -540,16 +543,19 @@ impl BondType {
                 .get_position()
                 .ok_or_else(|| AnalysisError::UndefinedPosition(atom2.get_index()))?;
 
-            let vec = pos1.vector_to(pos2, simbox);
+            let vec = pbc_handler.vector_to(pos1, pos2);
 
             // get the coordinates of the bond
             let bond_pos = pos1 + (&vec / 2.0);
             // check whether the bond is inside the geometric shape
-            if !geometry.inside(&bond_pos, simbox) {
+            if !pbc_handler.inside(&bond_pos, geometry) {
                 continue;
             }
 
-            let sch = super::calc_sch(&vec, membrane_normal);
+            // get the membrane normal for a molecule
+            let normal = membrane_normal.get_normal(molecule_index, frame, pbc_handler)?;
+
+            let sch = super::calc_sch(&vec, normal);
             self.total += sch;
 
             if let Some(map) = self.total_map.as_mut() {
@@ -712,11 +718,11 @@ impl fmt::Display for AtomType {
 
 #[cfg(test)]
 mod tests {
-    use groan_rs::prelude::Dimension;
+    use groan_rs::prelude::SimBox;
 
     use crate::{
-        analysis::{geometry::NoSelection, topology::SystemTopology},
-        input::{ordermap::Plane, GridSpan},
+        analysis::{geometry::NoSelection, pbc::PBC3D, topology::SystemTopology},
+        input::{ordermap::Plane, Analysis, AnalysisType, GridSpan},
     };
 
     use super::*;
@@ -745,7 +751,7 @@ mod tests {
             455,
             false,
             None,
-            &SimBox::from([10.0, 10.0, 10.0]),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -757,7 +763,7 @@ mod tests {
             455,
             false,
             None,
-            &SimBox::from([10.0, 10.0, 10.0]),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -781,7 +787,7 @@ mod tests {
             455,
             true,
             None,
-            &SimBox::from([10.0, 10.0, 10.0]),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -809,7 +815,7 @@ mod tests {
             455,
             false,
             Some(&ordermap_params),
-            &SimBox::from([10.0, 10.0, 10.0]),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -840,7 +846,7 @@ mod tests {
             455,
             true,
             Some(&ordermap_params),
-            &SimBox::from([10.0, 10.0, 10.0]),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -865,7 +871,7 @@ mod tests {
             455,
             false,
             None,
-            &SimBox::from([10.0, 10.0, 10.0]),
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
             false,
         )
         .unwrap();
@@ -938,7 +944,16 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds);
-        let order_bonds = OrderBonds::new(&system, &bonds_set, 125, false, None, false).unwrap();
+        let order_bonds = OrderBonds::new(
+            &system,
+            &bonds_set,
+            125,
+            false,
+            None,
+            false,
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
+        )
+        .unwrap();
 
         let expected_bonds = expected_bonds(&system);
 
@@ -963,8 +978,16 @@ mod tests {
         let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
         let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
         let bonds_set = HashSet::from(bonds);
-        let mut order_bonds =
-            OrderBonds::new(&system, &bonds_set, 125, false, None, false).unwrap();
+        let mut order_bonds = OrderBonds::new(
+            &system,
+            &bonds_set,
+            125,
+            false,
+            None,
+            false,
+            &PBC3D::new(&SimBox::from([10.0, 10.0, 10.0])),
+        )
+        .unwrap();
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
         let new_bonds_set = HashSet::from(new_bonds);
@@ -1020,26 +1043,32 @@ mod tests {
         )
         .unwrap();
 
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+            .unwrap();
+
         let molecules = crate::analysis::common::classify_molecules(
             &system,
             "HeavyAtoms",
             "Hydrogens",
-            None,
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 
         let topology = SystemTopology::new(
             molecules,
-            Dimension::Z,
             None,
             1,
             1,
             crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+            true,
         );
 
         let expected = [131, 128, 15];
@@ -1053,26 +1082,29 @@ mod tests {
         let mut system = System::from_file("tests/files/cg.tpr").unwrap();
         crate::analysis::common::create_group(&mut system, "Beads", "@membrane").unwrap();
 
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .build()
+            .unwrap();
+
         let molecules = crate::analysis::common::classify_molecules(
             &system,
             "Beads",
             "Beads",
-            None,
-            Dimension::Z,
-            None,
-            None,
-            1,
-            1,
+            &analysis,
+            &PBC3D::from_system(&system),
         )
         .unwrap();
 
         let topology = SystemTopology::new(
             molecules,
-            Dimension::Z,
             None,
             1,
             1,
             crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+            true,
         );
 
         let expected = [242, 242, 24];

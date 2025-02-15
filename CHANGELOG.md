@@ -1,3 +1,15 @@
+## Version 0.5.0
+- **Dynamic membrane normal calculation:** Membrane normals can be now calculated dynamically from actual membrane shape which allows the calculation of order parameters for vesicles and similar systems (see the [manual](https://ladme.github.io/gorder-manual/membrane_normal.html)).
+- **Ignoring PBC:** You can now choose to ignore periodic boundary conditions. This allows analyzing simulations with non-orthogonal simulation boxes with some small additional friction (making molecules whole). See the [manual](https://ladme.github.io/gorder-manual/no_pbc.html) for more information.
+- **Reworked manual lipid assignment:** It is now possible to classify lipids into membrane leaflets using NDX files, enabling integration of `gorder` with `FATSLiM`. **BREAKING CHANGE** The keywords to request manual leaflet assignment using a leaflet assignment file have been changed, see the [manual](https://ladme.github.io/gorder-manual/manual_leaflets.html#assigning-lipids-using-a-leaflet-assignment-file) for more information.
+- **Ordermaps visualization:** A python script is now generated inside any created `ordermaps` directory which can be used to easily plot the ordermaps. Changed the default range of the colorbar in ordermaps to more reasonable values.
+- **More trajectory formats:** Added **experimental** support for more trajectory formats, namely TRR, GRO, PDB, Amber NetCDF, DCD, and LAMMPSTRJ. Always prefer using XTC trajectory as `gorder` is optimized to read it very fast. There are also some limitations connected with using different trajectory formats, see the [manual](https://ladme.github.io/gorder-manual/other_input.html#trajectory-file-formats).
+- **Bug fixes and other changes:**
+  - `gorder` now returns an error if the center of geometry calculation for leaflet classification is nonsensical (i.e., `nan`).
+  - If molecule classification runs longer than expected, progress is logged. By default, progress output begins after 500 ms, but you can adjust this delay using the environment variable `GORDER_MOLECULE_CLASSIFICATION_TIME_LIMIT`.
+  - Added more color to information written to standard output during analysis. Changed logging for output file writing. Changed logging for molecule types.
+  - Reading an ndx file with invalid or duplicated group names no longer results in a hard error but instead raises a warning.
+
 ## Version 0.4.0
 - **Geometry selection:** Added the ability to select a geometric region for analysis. Users can now specify cuboidal, spherical, or cylindrical regions, and order parameters will be calculated only for bonds located within the selected region.
 - **Support for reading GRO, PDB, and PQR files:** These file formats are now supported as input structure files. In some cases, an additional "bonds" file specifying the system's connectivity may be required. Refer to the manual for more details.

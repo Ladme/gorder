@@ -8,10 +8,10 @@ use crate::PANIC_MESSAGE;
 
 use super::geometry::GeometrySelectionType;
 use super::molecule::MoleculeType;
+use super::pbc::PBCHandler;
 use crate::errors::ErrorEstimationError;
 use crate::presentation::converter::{MolConvert, ResultsConverter};
 use getset::{CopyGetters, Getters, MutGetters};
-use groan_rs::prelude::Dimension;
 use groan_rs::system::{ParallelTrajData, System};
 use indexmap::IndexMap;
 use std::ops::Add;
@@ -35,26 +35,26 @@ pub(crate) struct SystemTopology {
     /// All molecule types for which order parameters are calculated.
     #[getset(get = "pub(crate)", get_mut = "pub(super)")]
     molecule_types: Vec<MoleculeType>,
-    /// Normal of the membrane.
-    #[getset(get_copy = "pub(super)")]
-    membrane_normal: Dimension,
     /// Parameters of error estimation.
     #[getset(get = "pub(super)")]
     estimate_error: Option<EstimateError>,
     /// Structure for geometry selection.
     #[getset(get = "pub(super)")]
     geometry: GeometrySelectionType,
+    /// Structure handling PBC treatment.
+    #[getset(get_copy = "pub(super)")]
+    handle_pbc: bool,
 }
 
 impl SystemTopology {
     #[inline(always)]
     pub(crate) fn new(
         molecule_types: Vec<MoleculeType>,
-        membrane_normal: Dimension,
         estimate_error: Option<EstimateError>,
         step_size: usize,
         n_threads: usize,
         geometry: GeometrySelectionType,
+        handle_pbc: bool,
     ) -> SystemTopology {
         SystemTopology {
             thread_id: 0,
@@ -63,9 +63,9 @@ impl SystemTopology {
             step_size,
             total_frames: 0,
             molecule_types,
-            membrane_normal,
             estimate_error,
             geometry,
+            handle_pbc,
         }
     }
 
@@ -76,8 +76,8 @@ impl SystemTopology {
     }
 
     /// Initialize reading of a new frame.
-    pub(super) fn init_new_frame(&mut self, frame: &System) {
-        self.geometry.init_new_frame(frame);
+    pub(super) fn init_new_frame(&mut self, frame: &System, pbc_handler: &impl PBCHandler) {
+        self.geometry.init_new_frame(frame, pbc_handler);
 
         self.molecule_types
             .iter_mut()
@@ -113,17 +113,17 @@ impl SystemTopology {
             }
 
             if block_size < 10 {
-                log::warn!("Error estimation: you probably do not have enough data for reasonable error estimation ({} frames might be too little).",
+                colog_warn!("Error estimation: you probably do not have enough data for reasonable error estimation ({} frames might be too little).",
                     n_frames);
             }
 
-            log::info!(
+            colog_info!(
                     "Error estimation: collected {} blocks, each consisting of {} trajectory frames (total: {} frames).",
                     n_blocks, block_size, n_blocks * block_size
                 );
 
             if n_frames != n_blocks * block_size {
-                log::info!(
+                colog_info!(
                     "Error estimation: data from {} frame(s) could not be distributed into blocks and will be excluded from error estimation.",
                     n_frames - n_blocks * block_size,
                 );
@@ -171,14 +171,14 @@ impl SystemTopology {
         }
 
         if !upper.is_empty() {
-            log::info!(
+            colog_info!(
                 "Upper leaflet in the first analyzed frame: {}",
                 indexmap2string(&upper)
             );
         }
 
         if !lower.is_empty() {
-            log::info!(
+            colog_info!(
                 "Lower leaflet in the first analyzed frame: {}",
                 indexmap2string(&lower)
             );
@@ -187,7 +187,7 @@ impl SystemTopology {
 
     /// Log the total number of frames analyzed by this thread.
     pub(super) fn log_total_analyzed_frames(&self) {
-        log::info!(
+        colog_info!(
             "Trajectory reading completed. Analyzed {} trajectory frames.",
             self.total_frames,
         );
@@ -211,9 +211,9 @@ impl Add<SystemTopology> for SystemTopology {
                 .zip(rhs.molecule_types)
                 .map(|(a, b)| a + b)
                 .collect::<Vec<MoleculeType>>(),
-            membrane_normal: self.membrane_normal,
             estimate_error: self.estimate_error,
             geometry: self.geometry,
+            handle_pbc: self.handle_pbc,
         }
     }
 }
@@ -261,11 +261,11 @@ mod tests {
                         .map(|i| {
                             let mut top = SystemTopology::new(
                                 vec![],
-                                Dimension::Z,
                                 None,
                                 step,
                                 n_threads,
                                 GeometrySelectionType::default(),
+                                true,
                             );
                             top.initialize(i);
                             top

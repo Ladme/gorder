@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use colored::{ColoredString, Colorize};
-use groan_rs::errors::SelectError;
+use groan_rs::errors::{ParseNdxError, SelectError};
 use thiserror::Error;
 
 use crate::input::Frequency;
@@ -38,6 +38,9 @@ pub enum GeometryConfigError {
         "{} the first value for span ('{}' nm) is higher than the second value for span ('{}' nm)", "error".red().bold(), .0.to_string().yellow(), .1.to_string().yellow()
     )]
     InvalidSpan(f32, f32),
+
+    #[error("{} cannot use dynamic center of simulation box as the reference position since periodic boundary conditions are ignored", "error:".red().bold())]
+    InvalidBoxCenter,
 }
 
 /// Errors that can occur when creating a `Frequency` structure.
@@ -52,7 +55,7 @@ pub enum FrequencyError {
 pub enum TopologyError {
     #[error("{} {}", .0, 
         if matches!(.0, SelectError::GroupNotFound(_)) {
-            format!("({} one of your atom selection queries uses a name for a group not defined in your system; maybe an NDX file is missing?)", "hint:".blue().bold()) 
+            format!("({} one of your atom selection queries uses a name for a group not defined in your system; maybe an ndx file is missing?)", "hint:".blue().bold()) 
         } else {
             String::from("")
         }
@@ -99,18 +102,25 @@ pub enum TopologyError {
 
     #[error("{}", .0)]
     OrderMapError(OrderMapConfigError),
+
+    /// Used for (other) configuration errors that are detected while constructing the system topology.
+    #[error("{}", .0)]
+    ConfigError(ConfigError),
 }
 
 /// Errors that can occur while analyzing the trajectory.
 #[derive(Error, Debug)]
 pub enum AnalysisError {
-    #[error("{} system has undefined simulation box", "error:".red().bold())]
+    #[error("{} system has undefined simulation box ({} consider setting '{}' to {} but make sure that your lipid molecules are whole)", 
+    "error:".red().bold(), "hint:".blue().bold(), "handle_pbc".bright_blue(), "false".bright_blue())]
     UndefinedBox,
 
-    #[error("{} the simulation box is not orthogonal", "error:".red().bold())]
+    #[error("{} the simulation box is not orthogonal ({} consider setting '{}' to {} but make sure that your lipid molecules are whole)", 
+    "error:".red().bold(), "hint:".blue().bold(), "handle_pbc".bright_blue(), "false".bright_blue())]
     NotOrthogonalBox,
 
-    #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
+    #[error("{} all dimensions of the simulation box are zero ({} consider setting '{}' to {} but make sure that your lipid molecules are whole)", 
+    "error:".red().bold(), "hint:".blue().bold(), "handle_pbc".bright_blue(), "false".bright_blue())]
     ZeroBox,
 
     #[error("{} atom with atom index '{}' has an undefined position", "error:".red().bold(), .0.to_string().yellow()
@@ -124,9 +134,30 @@ pub enum AnalysisError {
     )]
     InvalidLocalMembraneCenter(usize),
 
-    /// Used when there is an error in the manual leaflet classification.
+    /// Used when there is an error in the manual leaflet classification using the leaflet assignment file.
     #[error("{}", .0)]
     ManualLeafletError(ManualLeafletClassificationError),
+
+    /// Used when there is an error in the manual leaflet classification using NDX files.
+    #[error("{}", .0)]
+    NdxLeafletError(NdxLeafletClassificationError),
+
+    /// Used when there is an error in the dynamic membrane normal calculation.
+    #[error("{}", .0)]
+    DynamicNormalError(DynamicNormalError),
+}
+
+/// Errors that can occur when calculating dynamic membrane normals.
+#[derive(Error, Debug)]
+pub enum DynamicNormalError {
+    #[error("{} not enough points for dynamic local membrane normal calculation: got '{}', need at least '{}' points 
+({} try increasing the '{}' in the '{}' section of your input configuration file)", 
+    "error:".red().bold(), .0.to_string().yellow(), "3".yellow(),
+    "hint:".blue().bold(), "radius".bright_blue(), "membrane_normal".bright_blue())]
+    NotEnoughPoints(usize),
+
+    #[error("{} could not perform Singular Value Decomposition for dynamic local membrane normal calculation", "error:".red().bold())]
+    SVDFailed,
 }
 
 /// Errors that can occur while writing the results.
@@ -155,6 +186,9 @@ pub enum WriteError {
 
     #[error("{} could not write a line to the output file '{}'", "error:".red().bold(), path_to_yellow(.0))]
     CouldNotWriteLine(Box<Path>),
+
+    #[error("{} could not create plotting script at '{}'", "error:".red().bold(), path_to_yellow(.0))]
+    CouldNotCreatePlotScript(Box<Path>),
 }
 
 /// Errors that can occur while writing the order maps.
@@ -229,6 +263,23 @@ pub enum ConfigError {
     #[error("{} cannot parse topology from the provided PDB file '{}' - non-unique atom numbers make the CONECT information ambiguous (see: https://www.wwpdb.org/documentation/file-format-content/format33/sect10.html)",
     "error:".red().bold(), .0.yellow())]
     InvalidPdbTopology(String),
+
+    #[error("{} the provided structure file '{}' has an unknown, invalid, or unsupported format", "error:".red().bold(), .0.yellow())]
+    InvalidStructureFormat(String),
+
+    #[error("{} the provided trajectory file '{}' has an unknown, invalid, or unsupported format", "error:".red().bold(), .0.yellow())]
+    InvalidTrajectoryFormat(String),
+
+    #[error("{} dynamic membrane normal calculation was requested but leaflet classification requires static membrane normal 
+({} add '{}' to the '{}' section of your input configuration file or, if analyzing a vesicle, assign the lipids into leaflets manually)", 
+    "error:".red().bold(), "hint:".blue().bold(), "membrane_normal".bright_blue(), "leaflets".bright_blue())]
+    MissingMembraneNormal,
+
+    #[error("{} the specified radius for dynamic membrane normal calculation must be larger than 0, not '{}'
+({} the recommended value for '{}' is roughly half of the membrane thickness)", 
+    "error:".red().bold(), .0.yellow(),
+    "hint:".blue().bold(), "radius".bright_blue())]
+    InvalidDynamicNormalRadius(String),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.
@@ -260,6 +311,14 @@ pub enum OrderMapConfigError {
             .1.0.to_string().yellow(),
             .1.1.to_string().yellow())]
     BinTooLarge((f32, f32), (f32, f32)),
+
+    #[error("{} simulation box and periodic boundary conditions are ignored => unable to automatically set ordermap dimensions ({} set ordermap dimensions manually)",
+    "error:".red().bold(), "hint:".blue().bold())]
+    InvalidBoxAuto,
+
+    #[error("{} membrane normal is to be dynamically calculated during the analysis => unable to automatically set ordermap plane ({} set ordermap plane manually)",
+    "error:".red().bold(), "hint:".blue().bold())]
+    InvalidPlaneAuto,
 }
 
 /// Errors that can occur when estimating the error of the calculation.
@@ -294,7 +353,47 @@ pub enum BondsError {
     AtomNotFound(usize, usize),
 }
 
-/// Errors that can occur when working with manual leaflet assignment.
+/// Errors that can occur when working manual leaflet assignment using NDX files.
+#[derive(Error, Debug)]
+pub enum NdxLeafletClassificationError {
+    #[error("{}", .0)]
+    CouldNotParse(ParseNdxError),
+
+    #[error("{} could not get ndx file for frame index '{}' [expected index of the ndx file: '{}']
+(total number of specified ndx files is '{}'; maybe the assignment frequency is incorrect?)", 
+    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+    FrameNotFound(usize, usize, usize),
+
+    #[error("{} group name '{}' specified in an ndx file '{}' is invalid and cannot be used ({} following characters are not allowed in group names: \'\"&|!@()<>=)",
+"error:".red().bold(), .0.yellow(), .1.yellow(), "hint:".blue().bold())]
+    InvalidName(String, String),
+
+    #[error("{} group '{}' is defined multiple times in an ndx file '{}'", "error:".red().bold(), .0.yellow(), .1.yellow())]
+    DuplicateName(String, String),
+
+    #[error("{} group '{}' for selecting {} molecules was not found in the ndx file '{}'", 
+    "error:".red().bold(), .0.yellow(), .1.yellow(), .2.yellow())]
+    GroupNotFound(String, String, String),
+
+    #[error("{} could not find leaflet assignment for molecule index '{}' (head index '{}')
+({} head identifier index '{}' is missing from both specified ndx groups)",
+    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(),
+    "hint:".blue().bold(), .1.to_string().yellow())]
+    AssignmentNotFound(usize, usize),
+
+    #[error("{} number of ndx files provided ('{}') is not consistent with the number of analyzed frames ('{}')
+(leaflet assignment was supposed to be performed {}, therefore there should be exactly '{}' ndx file(s) provided)",
+    "error:".red().bold(), .ndx_files.to_string().yellow(), .analyzed_frames.to_string().yellow(), 
+    .frequency.to_string().yellow(), .expected_ndx_files.to_string().yellow())]
+    UnexpectedNumberOfNdxFiles {
+        ndx_files: usize,
+        analyzed_frames: usize,
+        frequency: Frequency,
+        expected_ndx_files: usize,
+    },
+}
+
+/// Errors that can occur when working with manual leaflet assignment from a leaflet assignment file.
 #[derive(Error, Debug)]
 pub enum ManualLeafletClassificationError {
     #[error("{} could not open the leaflet assignment file '{}'", "error:".red().bold(), .0.yellow())]

@@ -9,10 +9,12 @@ use std::path::Path;
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
 use getset::{MutGetters, Setters};
+use groan_rs::files::FileType;
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::errors::ConfigError;
 
+use super::membrane_normal::MembraneNormal;
 use super::OrderMap;
 use super::{Axis, EstimateError};
 use super::{Geometry, LeafletClassification};
@@ -135,11 +137,17 @@ pub struct Analysis {
     #[serde(alias = "type")]
     analysis_type: AnalysisType,
 
-    /// Direction of the membrane normal. Defaults to 'Axis::Z' if not provided.
-    #[builder(setter(into), default = "Axis::Z")]
-    #[serde(default = "default_membrane_normal")]
-    #[getset(get_copy = "pub")]
-    membrane_normal: Axis,
+    /// Direction of the membrane normal. Defaults to 'z axis' if not provided.
+    ///
+    /// You can either provide `Axis`, `DynamicNormal`, or `MembraneNormal`.
+    /// The former two types will automatically get converted into `MembraneNormal`.
+    #[builder(setter(into), default = "Axis::Z.into()")]
+    #[serde(
+        default = "default_membrane_normal",
+        deserialize_with = "deserialize_membrane_normal"
+    )]
+    #[getset(get = "pub")]
+    membrane_normal: MembraneNormal,
 
     /// Starting time of the trajectory analysis in picoseconds (ps).
     /// Defaults to the beginning of the trajectory if not specified.
@@ -205,6 +213,15 @@ pub struct Analysis {
     #[getset(get = "pub")]
     geometry: Option<Geometry>,
 
+    /// If false, periodic boundary conditions will be ignored. This is useful if you are working
+    /// with PBC that are not supported by `gorder`. Note that `gorder` only supports
+    /// orthogonal simulation boxes with PBC applied in all three dimensions.
+    /// If not specified, defaults to `true`.
+    #[builder(default = "true")]
+    #[serde(default = "default_true")]
+    #[getset(get_copy = "pub")]
+    handle_pbc: bool,
+
     /// If true, suppress all output to the standard output during the analysis.
     #[builder(setter(custom), default = "false")]
     #[serde(default = "default_false")]
@@ -218,8 +235,8 @@ pub struct Analysis {
     overwrite: bool,
 }
 
-fn default_membrane_normal() -> Axis {
-    Axis::Z
+fn default_membrane_normal() -> MembraneNormal {
+    Axis::Z.into()
 }
 
 fn default_begin() -> f32 {
@@ -236,6 +253,10 @@ fn default_one() -> usize {
 
 fn default_false() -> bool {
     false
+}
+
+fn default_true() -> bool {
+    true
 }
 
 fn validate_step(step: usize) -> Result<(), ConfigError> {
@@ -268,6 +289,40 @@ fn validate_begin_end(begin: f32, end: f32) -> Result<(), ConfigError> {
     } else {
         Ok(())
     }
+}
+
+fn validate_structure_format(file: &str) -> Result<(), ConfigError> {
+    match FileType::from_name(file) {
+        FileType::TPR | FileType::GRO | FileType::PDB | FileType::PQR => Ok(()),
+        _ => Err(ConfigError::InvalidStructureFormat(file.to_owned())),
+    }
+}
+
+fn validate_trajectory_format(file: &str) -> Result<(), ConfigError> {
+    match FileType::from_name(file) {
+        FileType::XTC
+        | FileType::TRR
+        | FileType::GRO
+        | FileType::PDB
+        | FileType::NC
+        | FileType::DCD
+        | FileType::LAMMPSTRJ => Ok(()),
+        _ => Err(ConfigError::InvalidTrajectoryFormat(file.to_owned())),
+    }
+}
+
+fn deserialize_membrane_normal<'de, D>(deserializer: D) -> Result<MembraneNormal, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+    let value = serde_yaml::Value::deserialize(deserializer)?;
+
+    if let Ok(axis) = Axis::deserialize(&value) {
+        return Ok(axis.into());
+    }
+
+    MembraneNormal::deserialize(&value).map_err(D::Error::custom)
 }
 
 fn deserialize_order_map<'de, D>(deserializer: D) -> Result<Option<OrderMap>, D::Error>
@@ -339,6 +394,9 @@ impl Analysis {
         validate_min_samples(self.min_samples)?;
         validate_n_threads(self.n_threads)?;
         validate_begin_end(self.begin, self.end)?;
+        validate_structure_format(&self.structure)?;
+        validate_trajectory_format(&self.trajectory)?;
+        self.membrane_normal.validate()?;
 
         // check the validity of the order map, if present
         if let Some(ref map) = self.map {
@@ -468,6 +526,16 @@ impl AnalysisBuilder {
             validate_begin_end(begin, end).map_err(|e| e.to_string())?;
         }
 
+        // check that structure file has a supported format
+        if let Some(structure) = &self.structure {
+            validate_structure_format(structure).map_err(|e| e.to_string())?;
+        }
+
+        // check that the trajectory file has a supported format
+        if let Some(trajectory) = &self.trajectory {
+            validate_trajectory_format(trajectory).map_err(|e| e.to_string())?;
+        }
+
         Ok(())
     }
 }
@@ -496,7 +564,10 @@ mod tests_yaml {
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
         assert!(analysis.output_csv().is_none());
-        assert_eq!(analysis.membrane_normal(), Axis::Z);
+        assert!(matches!(
+            analysis.membrane_normal(),
+            MembraneNormal::Static(Axis::Z)
+        ));
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
@@ -514,6 +585,7 @@ mod tests_yaml {
         assert!(analysis.leaflets().is_none());
         assert!(analysis.map().is_none());
         assert!(analysis.geometry().is_none());
+        assert!(analysis.handle_pbc());
         assert!(!analysis.silent());
         assert!(!analysis.overwrite());
     }
@@ -529,7 +601,10 @@ mod tests_yaml {
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
         assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
-        assert_eq!(analysis.membrane_normal(), Axis::X);
+        assert!(matches!(
+            analysis.membrane_normal(),
+            MembraneNormal::Static(Axis::X)
+        ));
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());
         assert_eq!(analysis.atoms().unwrap(), "@membrane");
@@ -581,6 +656,10 @@ mod tests_yaml {
             }
             _ => panic!("Incorrect geometry type returned."),
         }
+
+        assert!(!analysis.handle_pbc());
+        assert!(analysis.overwrite());
+        assert!(analysis.silent());
     }
 
     #[test]
@@ -629,6 +708,20 @@ mod tests_yaml {
     }
 
     #[test]
+    fn analysis_yaml_pass_dynamic_membrane_normal() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/dynamic_membrane_normal.yaml").unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::Static(_) => panic!("Invalid membrane normal returned."),
+            MembraneNormal::Dynamic(dynamic) => {
+                assert_eq!(dynamic.heads(), "name PO4");
+                assert_relative_eq!(dynamic.radius(), 2.5);
+            }
+        }
+    }
+
+    #[test]
     fn analysis_yaml_fail_incomplete() {
         match Analysis::from_file("tests/files/inputs/incomplete.yaml") {
             Ok(_) => panic!("Should have failed, but succeeded."),
@@ -647,6 +740,12 @@ mod tests_yaml {
                 ConfigError::InvalidMinSamples if expected_variant == "InvalidMinSamples" => (),
                 ConfigError::InvalidNThreads if expected_variant == "InvalidNThreads" => (),
                 ConfigError::InvalidBeginEnd if expected_variant == "InvalidBeginEnd" => (),
+                ConfigError::InvalidStructureFormat(_)
+                    if expected_variant == "InvalidStructureFormat" => {}
+                ConfigError::InvalidTrajectoryFormat(_)
+                    if expected_variant == "InvalidTrajectoryFormat" => {}
+                ConfigError::InvalidDynamicNormalRadius(_)
+                    if expected_variant == "InvalidDynamicNormalRadius" => {}
                 _ => panic!("Unexpected error type returned: {}", e),
             },
         }
@@ -673,6 +772,36 @@ mod tests_yaml {
     #[test]
     fn analysis_yaml_fail_start_higher_than_end() {
         check_analysis_error("tests/files/inputs/begin_higher.yaml", "InvalidBeginEnd");
+    }
+
+    #[test]
+    fn analysis_yaml_fail_invalid_structure_format() {
+        check_analysis_error(
+            "tests/files/inputs/invalid_structure_format.yaml",
+            "InvalidStructureFormat",
+        );
+    }
+
+    #[test]
+    fn analysis_yaml_fail_invalid_trajectory_format() {
+        check_analysis_error(
+            "tests/files/inputs/invalid_trajectory_format.yaml",
+            "InvalidTrajectoryFormat",
+        );
+    }
+
+    #[test]
+    fn analysis_yaml_fail_invalid_dynamic_normal_radius() {
+        // radius 0
+        check_analysis_error(
+            "tests/files/inputs/invalid_dynamic_normal_radius1.yaml",
+            "InvalidDynamicNormalRadius",
+        );
+        // radius -2
+        check_analysis_error(
+            "tests/files/inputs/invalid_dynamic_normal_radius2.yaml",
+            "InvalidDynamicNormalRadius",
+        );
     }
 
     #[test]
@@ -825,7 +954,7 @@ mod tests_builder {
 
     use crate::input::geometry::GeomReference;
     use crate::input::ordermap::Plane;
-    use crate::input::Frequency;
+    use crate::input::{DynamicNormal, Frequency};
 
     use super::super::GridSpan;
     use super::*;
@@ -849,7 +978,10 @@ mod tests_builder {
         assert!(analysis.output_tab().is_none());
         assert!(analysis.output_xvg().is_none());
         assert!(analysis.output_csv().is_none());
-        assert_eq!(analysis.membrane_normal(), Axis::Z);
+        assert!(matches!(
+            analysis.membrane_normal(),
+            MembraneNormal::Static(Axis::Z)
+        ));
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
@@ -869,6 +1001,7 @@ mod tests_builder {
         assert!(analysis.geometry().is_none());
         assert!(!analysis.silent());
         assert!(!analysis.overwrite());
+        assert!(analysis.handle_pbc());
     }
 
     #[test]
@@ -910,6 +1043,9 @@ mod tests_builder {
             )
             .estimate_error(EstimateError::new(Some(10), Some("convergence.xvg")).unwrap())
             .geometry(Geometry::cylinder("@protein and name BB", 3.5, [2.3, 5.1], Axis::Z).unwrap())
+            .handle_pbc(false)
+            .overwrite()
+            .silent()
             .build()
             .unwrap();
 
@@ -920,7 +1056,10 @@ mod tests_builder {
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
         assert_eq!(analysis.output_xvg().as_ref().unwrap(), "order.xvg");
         assert_eq!(analysis.output_csv().as_ref().unwrap(), "order.csv");
-        assert_eq!(analysis.membrane_normal(), Axis::X);
+        assert!(matches!(
+            analysis.membrane_normal(),
+            MembraneNormal::Static(Axis::X)
+        ));
         assert!(analysis.heavy_atoms().is_none());
         assert!(analysis.hydrogens().is_none());
         assert_eq!(analysis.atoms().unwrap(), "@membrane");
@@ -974,6 +1113,10 @@ mod tests_builder {
             }
             _ => panic!("Incorrect geometry type returned."),
         }
+
+        assert!(!analysis.handle_pbc());
+        assert!(analysis.overwrite());
+        assert!(analysis.silent());
     }
 
     #[test]
@@ -997,6 +1140,26 @@ mod tests_builder {
         assert_eq!(ordermap.min_samples(), 1);
         matches!(ordermap.dim_x(), GridSpan::Auto);
         matches!(ordermap.dim_y(), GridSpan::Auto);
+    }
+
+    #[test]
+    fn analysis_builder_pass_dynamic_membrane_normal() {
+        let analysis = Analysis::builder()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .membrane_normal(DynamicNormal::new("name PO4", 2.5).unwrap())
+            .build()
+            .unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::Static(_) => panic!("Invalid membrane normal returned."),
+            MembraneNormal::Dynamic(dynamic) => {
+                assert_eq!(dynamic.heads(), "name PO4");
+                assert_relative_eq!(dynamic.radius(), 2.5);
+            }
+        }
     }
 
     #[test]
@@ -1082,6 +1245,42 @@ mod tests_builder {
             ))
             .begin(100_000.0)
             .end(50_000.0)
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_invalid_structure_format() {
+        match Analysis::builder()
+            .structure("system.ndx")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_invalid_trajectory_format() {
+        match Analysis::builder()
+            .structure("system.tpr")
+            .trajectory("md.xyz")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
             .build()
         {
             Ok(_) => panic!("Should have failed, but succeeded."),

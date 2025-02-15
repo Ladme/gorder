@@ -251,6 +251,132 @@ fn test_bin_cg_leaflets_from_map() {
 }
 
 #[test]
+fn test_bin_aa_leaflets_no_pbc() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/aa_leaflets_no_pbc.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_aa_order_leaflets_no_pbc.yaml",
+        "tests/files/aa_order_leaflets_nopbc.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_aa_order_leaflets_no_pbc.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_cg_vesicle_dynamic() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/vesicle_dynamic_membrane_normal.yaml",
+            // silent and overwrite part of the config file
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_order_vesicle_dynamic_membrane_normal.yaml",
+        "tests/files/cg_order_vesicle.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_order_vesicle_dynamic_membrane_normal.yaml").unwrap();
+}
+
+// testing single NDX file
+#[test]
+fn test_bin_aa_leaflets_once_ndx() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/leaflets_aa_ndx.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_aa_order_leaflets_ndx.yaml",
+        "tests/files/aa_order_leaflets.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_aa_order_leaflets_ndx.yaml").unwrap();
+}
+
+// testing glob expansion
+#[test]
+fn test_bin_cg_leaflets_every_ndx() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/leaflets_cg_scrambling_ndx.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_order_scrambling_leaflets_ndx.yaml",
+        "tests/files/scrambling/order_global.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_order_scrambling_leaflets_ndx.yaml").unwrap();
+}
+
+// testing explicitly provided NDX files
+#[test]
+fn test_bin_cg_leaflets_every20_ndx() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/leaflets_cg_every20_ndx.yaml",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_leaflets_every20_ndx.yaml",
+        "tests/files/cg_order_leaflets.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_leaflets_every20_ndx.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_aa_leaflets_fail_no_ndx() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/leaflets_ndx_fail.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .failure()
+        .stdout("")
+        .stderr("[E] error: could not understand the contents of the configuration file 'tests/files/inputs/leaflets_ndx_fail.yaml' (leaflets.ndx: no match for tests/files/nonexistent*.ndx at line 9 column 8)\n");
+}
+
+#[test]
 fn test_bin_aa_order_writing_fail() {
     Command::cargo_bin("gorder")
         .unwrap()

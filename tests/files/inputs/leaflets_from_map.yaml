@@ -3,7 +3,7 @@ structure: tests/files/cg.tpr
 trajectory: tests/files/cg.xtc
 type: !CGOrder
   beads: "@membrane"
-leaflets: !Manual
+leaflets: !Inline
   frequency: !Once
   assignment:
     POPE:

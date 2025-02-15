@@ -5,17 +5,23 @@
 
 use groan_rs::prelude::Vector3D;
 
-use crate::input::{Analysis, AnalysisType, Axis};
+use crate::errors::OrderMapConfigError;
+use crate::input::membrane_normal::MembraneNormal;
+use crate::input::{Analysis, AnalysisType};
 use crate::presentation::AnalysisResults;
 
 mod aaorder;
 mod cgorder;
 mod common;
 pub(crate) mod geometry;
+mod index;
 mod leaflets;
 pub(crate) mod molecule;
+mod normal;
 pub(crate) mod order;
 pub(crate) mod ordermap;
+pub(crate) mod pbc;
+mod spinner;
 mod structure;
 pub(crate) mod timewise;
 pub(crate) mod topology;
@@ -23,7 +29,7 @@ pub(crate) mod topology;
 impl Analysis {
     /// Perform the analysis.
     pub fn run(mut self) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
-        self.init_ordermap(self.membrane_normal());
+        self.init_ordermap(self.membrane_normal().clone())?;
         self.info();
 
         match self.analysis_type() {
@@ -36,12 +42,25 @@ impl Analysis {
     }
 
     /// Finish the ordermap plane initialization.
-    fn init_ordermap(&mut self, membrane_normal: Axis) {
+    fn init_ordermap(
+        &mut self,
+        membrane_normal: MembraneNormal,
+    ) -> Result<(), OrderMapConfigError> {
         if let Some(map) = self.map_mut().as_mut() {
-            if map.plane().is_none() {
-                map.set_plane(Some(membrane_normal.perpendicular()));
+            if map.plane().is_some() {
+                return Ok(());
             }
+
+            return match membrane_normal {
+                MembraneNormal::Static(axis) => {
+                    map.set_plane(Some(axis.perpendicular()));
+                    Ok(())
+                }
+                MembraneNormal::Dynamic(_) => Err(OrderMapConfigError::InvalidPlaneAuto),
+            };
         }
+
+        Ok(())
     }
 }
 
@@ -58,6 +77,9 @@ pub(super) fn calc_sch(vector: &Vector3D, membrane_normal: &Vector3D) -> f32 {
 
 #[cfg(test)]
 mod tests {
+    use crate::input::{Axis, DynamicNormal, OrderMap};
+    use crate::prelude::Plane;
+
     use super::*;
     use approx::assert_relative_eq;
     use groan_rs::prelude::{Dimension, SimBox};
@@ -73,5 +95,41 @@ mod tests {
             calc_sch(&(pos1.vector_to(&pos2, &simbox)), &Dimension::Z.into()),
             0.8544775
         );
+    }
+
+    #[test]
+    fn test_init_ordermap() {
+        let mut analysis = Analysis::builder()
+            .structure("md.tpr")
+            .trajectory("md.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .ordermaps(OrderMap::builder().plane(Plane::XZ).build().unwrap())
+            .build()
+            .unwrap();
+
+        analysis.init_ordermap(Axis::Z.into()).unwrap();
+        assert_eq!(analysis.map().as_ref().unwrap().plane().unwrap(), Plane::XZ);
+
+        analysis
+            .init_ordermap(DynamicNormal::new("name PO4", 2.0).unwrap().into())
+            .unwrap();
+        assert_eq!(analysis.map().as_ref().unwrap().plane().unwrap(), Plane::XZ);
+
+        let mut analysis = Analysis::builder()
+            .structure("md.tpr")
+            .trajectory("md.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .ordermaps(OrderMap::default())
+            .build()
+            .unwrap();
+
+        match analysis.init_ordermap(DynamicNormal::new("name PO4", 2.0).unwrap().into()) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(OrderMapConfigError::InvalidPlaneAuto) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+
+        analysis.init_ordermap(Axis::Z.into()).unwrap();
+        assert_eq!(analysis.map().as_ref().unwrap().plane().unwrap(), Plane::XY);
     }
 }

@@ -1,0 +1,12 @@
+# Test file for binary application.
+structure: tests/files/scrambling/cg_scrambling.tpr
+trajectory: tests/files/scrambling/cg_scrambling.xtc
+type: !CGOrder
+  beads: "@membrane"
+output_yaml: temp_cg_order_scrambling_leaflets_ndx.yaml
+leaflets: !FromNdx
+  ndx: tests/files/scrambling/ndx/leaflets_frame_*.ndx
+  heads: "name PO4"
+  upper_leaflet: Upper
+  lower_leaflet: Lower
+overwrite: true

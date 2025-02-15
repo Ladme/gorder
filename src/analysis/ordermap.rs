@@ -8,11 +8,11 @@ use std::ops::{Add, AddAssign};
 use getset::{Getters, MutGetters};
 use groan_rs::{
     errors::GridMapError,
-    prelude::{GridMap, SimBox, Vector3D},
+    prelude::{GridMap, Vector3D},
     structures::gridmap::DataOrder,
 };
 
-use super::order::OrderValue;
+use super::{order::OrderValue, pbc::PBCHandler};
 use crate::{errors::OrderMapConfigError, input::GridSpan, input::OrderMap, PANIC_MESSAGE};
 
 /// Order parameter map. Stores order parameters calculated for a specific bond/atom
@@ -37,19 +37,32 @@ fn from_order_value(value: &OrderValue) -> f32 {
 
 impl Map {
     /// Construct a new ordermap.
-    pub(crate) fn new(params: OrderMap, simbox: &SimBox) -> Result<Map, OrderMapConfigError> {
+    pub(crate) fn new(
+        params: OrderMap,
+        pbc_handler: &impl PBCHandler,
+    ) -> Result<Map, OrderMapConfigError> {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();
 
-        let (auto_x, auto_y) = params
-            .plane()
-            .unwrap_or_else(|| {
-                panic!(
-                    "FATAL GORDER ERROR | Map::new | Ordermap plane should already be set. {}",
-                    PANIC_MESSAGE
-                )
-            })
-            .dimensions_from_simbox(simbox);
+        let plane = params.plane().unwrap_or_else(|| {
+            panic!(
+                "FATAL GORDER ERROR | Map::new | Ordermap plane should already be set. {}",
+                PANIC_MESSAGE
+            )
+        });
+
+        let simbox = pbc_handler.get_simbox();
+
+        let (auto_x, auto_y) = if matches!(params.dim_x(), GridSpan::Auto)
+            || matches!(params.dim_y(), GridSpan::Auto)
+        {
+            match simbox {
+                None => return Err(OrderMapConfigError::InvalidBoxAuto),
+                Some(sbox) => plane.dimensions_from_simbox(sbox),
+            }
+        } else {
+            (0.0, 0.0) // automatic span will not be used, so we set the values to 0
+        };
 
         let (xmin, xmax) = match params.dim_x() {
             GridSpan::Auto => (0.0, auto_x),
@@ -189,14 +202,22 @@ where
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
+    use groan_rs::prelude::SimBox;
 
-    use crate::{analysis::order::AnalysisOrder, input::ordermap::Plane};
+    use crate::{
+        analysis::{
+            order::AnalysisOrder,
+            pbc::{NoPBC, PBC3D},
+        },
+        input::ordermap::Plane,
+    };
 
     use super::*;
 
     #[test]
     fn new_map_auto() {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
+        let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
             .output_directory(".")
             .bin_size([0.05, 0.2])
@@ -204,7 +225,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let map = Map::new(params, &simbox).unwrap();
+        let map = Map::new(params, &pbc).unwrap();
 
         assert_eq!(map.samples.span_x(), (0.0, 10.0));
         assert_eq!(map.samples.span_y(), (0.0, 5.0));
@@ -218,6 +239,7 @@ mod tests {
     #[test]
     fn new_map_manual() {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
+        let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
             .output_directory(".")
             .dim([
@@ -234,7 +256,7 @@ mod tests {
             .build()
             .unwrap();
 
-        let map = Map::new(params, &simbox).unwrap();
+        let map = Map::new(params, &pbc).unwrap();
 
         assert_eq!(map.samples.span_x(), (-4.0, 8.0));
         assert_eq!(map.samples.span_y(), (1.5, 4.5));
@@ -248,6 +270,7 @@ mod tests {
     #[test]
     fn new_map_fail_bin_size() {
         let simbox = SimBox::from([10.0, 3.0, 6.0]);
+        let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
             .output_directory(".")
             .bin_size([1.0, 5.0])
@@ -255,7 +278,7 @@ mod tests {
             .build()
             .unwrap();
 
-        match Map::new(params, &simbox) {
+        match Map::new(params, &pbc) {
             Ok(_) => panic!("Function should have failed."),
             Err(OrderMapConfigError::BinTooLarge((a, b), (x, y))) => {
                 assert_eq!(a, 1.0);
@@ -264,6 +287,69 @@ mod tests {
                 assert_eq!(y, 3.0);
             }
             Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn new_map_manual_nopbc() {
+        let params = OrderMap::builder()
+            .output_directory(".")
+            .dim([
+                GridSpan::Manual {
+                    start: -4.0,
+                    end: 8.0,
+                },
+                GridSpan::Manual {
+                    start: 1.5,
+                    end: 4.5,
+                },
+            ])
+            .plane(Plane::XY)
+            .build()
+            .unwrap();
+
+        let map = Map::new(params, &NoPBC).unwrap();
+
+        assert_eq!(map.samples.span_x(), (-4.0, 8.0));
+        assert_eq!(map.samples.span_y(), (1.5, 4.5));
+        assert_eq!(map.samples.tile_dim(), (0.1, 0.1));
+
+        assert_eq!(map.values.span_x(), (-4.0, 8.0));
+        assert_eq!(map.values.span_y(), (1.5, 4.5));
+        assert_eq!(map.values.tile_dim(), (0.1, 0.1));
+    }
+
+    #[test]
+    fn new_map_auto_nopbc_fail() {
+        for dim in [
+            [
+                GridSpan::Manual {
+                    start: 1.5,
+                    end: 4.5,
+                },
+                GridSpan::Auto,
+            ],
+            [
+                GridSpan::Auto,
+                GridSpan::Manual {
+                    start: 1.5,
+                    end: 4.5,
+                },
+            ],
+            [GridSpan::Auto, GridSpan::Auto],
+        ] {
+            let params = OrderMap::builder()
+                .output_directory(".")
+                .dim(dim)
+                .plane(Plane::XY)
+                .build()
+                .unwrap();
+
+            match Map::new(params, &NoPBC) {
+                Ok(_) => panic!("Function should have failed."),
+                Err(OrderMapConfigError::InvalidBoxAuto) => (),
+                Err(e) => panic!("Unexpected error `{}` returned.", e),
+            }
         }
     }
 

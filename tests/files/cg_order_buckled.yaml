@@ -1,0 +1,47 @@
+# Order parameters calculated with 'gorder v0.5.0-dev.1' using structure file 'tests/files/cg_buckled.tpr' and trajectory file 'tests/files/cg_buckled.xtc'.
+average order:
+  total: 0.2834
+POPC:
+  average order:
+    total: 0.2717
+  order parameters:
+    POPC NC3 (0) - POPC PO4 (1):
+      total: -0.1219
+    POPC PO4 (1) - POPC GL1 (2):
+      total: 0.6356
+    POPC GL1 (2) - POPC GL2 (3):
+      total: -0.2264
+    POPC GL1 (2) - POPC C1A (4):
+      total: 0.5256
+    POPC GL2 (3) - POPC C1B (8):
+      total: 0.4585
+    POPC C1A (4) - POPC D2A (5):
+      total: 0.4092
+    POPC D2A (5) - POPC C3A (6):
+      total: 0.2018
+    POPC C3A (6) - POPC C4A (7):
+      total: 0.1537
+    POPC C1B (8) - POPC C2B (9):
+      total: 0.4328
+    POPC C2B (9) - POPC C3B (10):
+      total: 0.3295
+    POPC C3B (10) - POPC C4B (11):
+      total: 0.1898
+OPC:
+  average order:
+    total: 0.3387
+  order parameters:
+    OPC NC3 (0) - OPC PO4 (1):
+      total: -0.0081
+    OPC PO4 (1) - OPC GL1 (2):
+      total: 0.5135
+    OPC GL1 (2) - OPC GL2 (3):
+      total: 0.4933
+    OPC GL2 (3) - OPC C1B (4):
+      total: 0.5635
+    OPC C1B (4) - OPC D2B (5):
+      total: 0.4187
+    OPC D2B (5) - OPC C3B (6):
+      total: 0.217
+    OPC C3B (6) - OPC C4B (7):
+      total: 0.1728

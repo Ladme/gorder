@@ -10,7 +10,7 @@ use std::{
 };
 
 use approx::assert_relative_eq;
-use gorder::{prelude::*, Leaflet};
+use gorder::{input::DynamicNormal, prelude::*, Leaflet};
 use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
@@ -198,6 +198,42 @@ fn test_cg_order_leaflets_yaml() {
             .output(path_to_output)
             .analysis_type(AnalysisType::cgorder("@membrane"))
             .leaflets(method)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_alt_traj() {
+    for trajectory in [
+        "tests/files/cg.trr",
+        "tests/files/cg_traj.gro",
+        "tests/files/cg.nc",
+        "tests/files/cg.dcd",
+        "tests/files/cg.lammpstrj",
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory(trajectory)
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::individual("name PO4", "name C4A C4B")
+                    .with_frequency(Frequency::once()),
+            )
             .silent()
             .overwrite()
             .build()
@@ -974,6 +1010,10 @@ fn test_cg_order_maps_basic() {
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
 
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
     // full map for the entire system is the same as for POPC
     let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
@@ -1054,6 +1094,10 @@ fn test_cg_order_maps_leaflets() {
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
+        // check the script
+        let real_script = format!("{}/plot.py", path_to_dir);
+        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/cg_order_leaflets_small.yaml",
@@ -1097,6 +1141,10 @@ fn test_cg_order_maps_leaflets_full() {
         let test_file = format!("tests/files/ordermaps_cg/full/{}", file);
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 }
 
 #[test]
@@ -1148,6 +1196,10 @@ fn test_cg_order_maps_basic_multiple_threads() {
         let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
         let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
         assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+        // check the script
+        let real_script = format!("{}/plot.py", path_to_dir);
+        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -1204,6 +1256,10 @@ fn test_cg_order_maps_basic_backup() {
         let test_file = format!("tests/files/ordermaps_cg/{}", file);
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -1846,6 +1902,77 @@ fn test_cg_order_leaflets_scrambling_from_map() {
                 "every10.yaml" => "order_global_every_10.yaml",
                 "once.yaml" => "order_once.yaml",
                 _ => panic!("Unexpected leaflets file provided."),
+            };
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                &format!("tests/files/scrambling/{}", test_file),
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_scrambling_from_ndx() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for n_threads in [1, 2, 3, 5, 8, 128] {
+        for (ndx, freq) in [
+            glob::glob("tests/files/scrambling/ndx/leaflets_frame_*.ndx")
+                .unwrap()
+                .filter_map(Result::ok)
+                .map(|path| path.to_str().unwrap().to_owned())
+                .collect(),
+            vec![
+                "tests/files/scrambling/ndx/leaflets_frame_000.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_010.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_020.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_030.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_040.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_050.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_060.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_070.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_080.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_090.ndx".to_owned(),
+                "tests/files/scrambling/ndx/leaflets_frame_100.ndx".to_owned(),
+            ],
+            vec!["tests/files/scrambling/ndx/leaflets_frame_000.ndx".to_owned()],
+        ]
+        .into_iter()
+        .zip(
+            [
+                Frequency::every(1).unwrap(),
+                Frequency::every(10).unwrap(),
+                Frequency::once(),
+            ]
+            .into_iter(),
+        ) {
+            let ndx_ref: Vec<&str> = ndx.iter().map(|s| s.as_str()).collect();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/scrambling/cg_scrambling.tpr")
+                .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .output_yaml(path_to_output)
+                .leaflets(
+                    LeafletClassification::from_ndx(&ndx_ref, "name PO4", "Upper", "Lower")
+                        .with_frequency(freq),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let test_file = match freq {
+                Frequency::Every(x) if x.get() == 1 => "order_global.yaml",
+                Frequency::Every(x) if x.get() == 10 => "order_global_every_10.yaml",
+                Frequency::Once => "order_once.yaml",
+                _ => panic!("Unexpected frequency."),
             };
 
             assert!(diff_files_ignore_first(
@@ -2759,6 +2886,712 @@ fn test_cg_order_leaflets_from_file_not_enough_frames() {
         Err(e) => assert!(e
             .to_string()
             .contains("could not get leaflet assignment for frame index")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_no_pbc_multiple_threads() {
+    for n_threads in [1, 3, 8, 32] {
+        for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/cg_whole_nobox.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+                .handle_pbc(false)
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/cg_order_leaflets_nopbc.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_error_leaflets_no_pbc_multiple_threads() {
+    for n_threads in [1, 3, 8, 32] {
+        for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/cg_whole_nobox.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+                .handle_pbc(false)
+                .estimate_error(EstimateError::default())
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/cg_order_error_leaflets_nopbc.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_maps_leaflets_no_pbc() {
+    for method in [
+        LeafletClassification::global("@membrane", "name PO4"),
+        LeafletClassification::local("@membrane", "name PO4", 2.5),
+        LeafletClassification::individual("name PO4", "name C4A C4B"),
+    ] {
+        for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+            let directory = TempDir::new().unwrap();
+            let path_to_dir = directory.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/cg_whole_nobox.xtc")
+                .analysis_type(AnalysisType::cgorder(
+                    "resname POPC and name C1B C2B C3B C4B",
+                ))
+                .leaflets(method.clone())
+                .map(
+                    OrderMap::builder()
+                        .bin_size([1.0, 1.0])
+                        .output_directory(path_to_dir)
+                        .min_samples(10)
+                        .dim([
+                            GridSpan::manual(0.0, 13.0).unwrap(),
+                            GridSpan::manual(0.0, 13.0).unwrap(),
+                        ])
+                        .build()
+                        .unwrap(),
+                )
+                .handle_pbc(false)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let expected_file_names = [
+                "ordermap_average_full.dat",
+                "ordermap_average_upper.dat",
+                "ordermap_average_lower.dat",
+            ];
+
+            for file in expected_file_names {
+                let real_file = format!("{}/POPC/{}", path_to_dir, file);
+                let test_file = format!("tests/files/ordermaps_cg_nopbc/{}", file);
+                assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            }
+
+            // full maps for the entire system are the same as for POPC
+            for file in [
+                "ordermap_average_full.dat",
+                "ordermap_average_upper.dat",
+                "ordermap_average_lower.dat",
+            ] {
+                let real_file = format!("{}/{}", path_to_dir, file);
+                let test_file = format!("tests/files/ordermaps_cg_nopbc/{}", file);
+                assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            }
+
+            // check the script
+            let real_script = format!("{}/plot.py", path_to_dir);
+            assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cuboid_ordermaps_no_pbc() {
+    for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/cg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(
+                Geometry::cuboid(
+                    [-2.0, 11.0, 0.0],
+                    [-2.0, 8.0],
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                )
+                .unwrap(),
+            )
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                        GridSpan::manual(0.0, 14.0).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_cuboid_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_cg_nopbc/cuboid.dat";
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_cylinder_ordermaps_no_pbc() {
+    for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/cg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(
+                Geometry::cylinder(
+                    [10.0, 12.0, 0.0],
+                    4.0,
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    Axis::Z,
+                )
+                .unwrap(),
+            )
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_cylinder_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_cg_nopbc/cylinder.dat";
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    }
+}
+
+#[test]
+fn test_cg_order_geometry_sphere_ordermaps_no_pbc() {
+    for structure in ["tests/files/cg.tpr", "tests/files/cg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/cg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .geometry(Geometry::sphere([10.0, 12.0, 5.5], 4.0).unwrap())
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                        GridSpan::manual(0.0, 12.7).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_sphere_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_cg_nopbc/sphere.dat";
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_dynamic_membrane_normal_yaml() {
+    for n_threads in [1, 3, 8, 32] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::individual("name PO4", "name C4A C4B")
+                    .with_membrane_normal(Axis::Z)
+                    .with_frequency(Frequency::once()),
+            )
+            .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets_dynamic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normal_yaml() {
+    for n_threads in [1, 3, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/vesicle.tpr")
+            .trajectory("tests/files/vesicle.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder(
+                "name C1A D2A C3A C4A C1B C2B C3B C4B",
+            ))
+            .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_vesicle.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_leaflets_dynamic_membrane_normal_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .leaflets(
+            LeafletClassification::from_ndx(
+                &["tests/files/vesicle.ndx"],
+                "name PO4",
+                "UpperLeaflet",
+                "LowerLeaflet",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normal_centered_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle_centered.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle_centered.yaml", // very small differences compared to `cg_order_vesicle.yaml`
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normal_centered_nopbc_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle_centered.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .handle_pbc(false)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle_centered.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_buckled_dynamic_membrane_normal_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg_buckled.tpr")
+        .trajectory("tests/files/cg_buckled.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_buckled.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_fail_dynamic_undefined_ordermap_plane() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("unable to automatically set ordermap plane")),
+    }
+}
+
+#[test]
+fn test_cg_order_fail_dynamic_undefined_leaflet_normal() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .leaflets(LeafletClassification::individual(
+            "name PO4",
+            "name C4A C4B",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("leaflet classification requires static membrane normal")),
+    }
+}
+
+#[test]
+fn test_cg_order_fail_dynamic_multiple_heads() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4 NC3", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("multiple head group atoms")),
+    }
+}
+
+#[test]
+fn test_cg_order_fail_dynamic_no_head() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name W", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("no head group atom")),
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_ndx_once_multiple_threads() {
+    for n_threads in [1, 3, 5, 8, 16, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::from_ndx(
+                    &["tests/files/ndx/cg_leaflets.ndx"],
+                    "name PO4",
+                    "Upper",
+                    "Lower",
+                )
+                .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_ndx_every_multiple_threads() {
+    let mut ndx = [
+        "tests/files/ndx/cg_leaflets.ndx",
+        "tests/files/ndx/cg_leaflets_all.ndx",
+    ]
+    .repeat(50);
+    ndx.push("tests/files/ndx/cg_leaflets.ndx");
+
+    for n_threads in [1, 3, 5, 8, 16, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(LeafletClassification::from_ndx(
+                &ndx, "name PO4", "Upper", "Lower",
+            ))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_ndx_every20_multiple_threads() {
+    let ndx = vec![
+        "tests/files/ndx/cg_leaflets.ndx",
+        "tests/files/ndx/cg_leaflets_all.ndx",
+        "tests/files/ndx/cg_leaflets_duplicate_irrelevant.ndx",
+        "tests/files/ndx/cg_leaflets_invalid_irrelevant.ndx",
+        "tests/files/ndx/cg_leaflets.ndx",
+        "tests/files/ndx/cg_leaflets_all.ndx",
+    ];
+
+    for n_threads in [1, 3, 5, 8, 16, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::from_ndx(&ndx, "name PO4", "Upper", "Lower")
+                    .with_frequency(Frequency::every(20).unwrap()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_from_ndx_partial() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for (freq, ndx) in [
+        Frequency::once(),
+        Frequency::every(1).unwrap(),
+        Frequency::every(20).unwrap(),
+    ]
+    .into_iter()
+    .zip([
+        vec!["tests/files/ndx/cg_leaflets.ndx"],
+        ["tests/files/ndx/cg_leaflets.ndx"].repeat(101),
+        ["tests/files/ndx/cg_leaflets.ndx"].repeat(6),
+    ]) {
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder(
+                "resname POPC and name C1B C2B C3B C4B",
+            ))
+            .leaflets(
+                LeafletClassification::from_ndx(&ndx, "name PO4", "Upper", "Lower")
+                    .with_frequency(freq),
+            )
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets_small.yaml",
+            1
+        ));
     }
 }
 

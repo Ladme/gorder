@@ -122,9 +122,7 @@ impl<'a, R: OrderResults> Presenter<'a, R> for XvgPresenter<'a, R> {
                 None => format!("{}_{}", file_path, names[i]),
             };
 
-            log::info!("Writing an xvg file '{}'...", filename);
-
-            self.try_backup(&filename, overwrite)?;
+            let file_status = self.try_backup(&filename, overwrite)?;
             let mut writer = Self::create_and_open(&filename)?;
             XvgPresenter::<AAOrderResults>::write_header(
                 &mut writer,
@@ -132,6 +130,7 @@ impl<'a, R: OrderResults> Presenter<'a, R> for XvgPresenter<'a, R> {
                 &self.properties.trajectory,
             )?;
             mol.write_xvg(&mut writer, &self.properties)?;
+            file_status.info(self.file_format(), &filename);
         }
 
         Ok(())

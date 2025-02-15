@@ -10,7 +10,7 @@ use std::{
 };
 
 use approx::assert_relative_eq;
-use gorder::{prelude::*, Leaflet};
+use gorder::{input::DynamicNormal, prelude::*, Leaflet};
 use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
@@ -318,6 +318,47 @@ fn test_aa_order_leaflets_yaml() {
             "tests/files/aa_order_leaflets.yaml",
             1
         ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_yaml_alt_traj() {
+    for traj in ["tests/files/pcpepg.nc", "tests/files/pcpepg.dcd"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(traj)
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(
+                LeafletClassification::individual("name P", "name C218 C316")
+                    .with_frequency(Frequency::once()),
+            )
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        if traj == "tests/files/pcpepg.lammpstrj" {
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_leaflets_lammps.yaml",
+                1
+            ));
+        } else {
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_leaflets.yaml",
+                1
+            ));
+        }
     }
 }
 
@@ -1282,6 +1323,10 @@ fn test_aa_order_maps_basic() {
     let test_file = "tests/files/ordermaps/ordermap_average_full.dat";
     assert!(diff_files_ignore_first(&real_file, test_file, 2));
 
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
     assert!(diff_files_ignore_first(
         path_to_output,
         "tests/files/aa_order_small.yaml",
@@ -1379,6 +1424,10 @@ fn test_aa_order_maps_leaflets() {
             assert!(diff_files_ignore_first(&real_file, &test_file, 2));
         }
 
+        // check the script
+        let real_script = format!("{}/plot.py", path_to_dir);
+        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/aa_order_leaflets_small.yaml",
@@ -1425,6 +1474,10 @@ fn test_aa_order_maps_leaflets_full() {
         let test_file = format!("tests/files/ordermaps/full/{}", file);
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 }
 
 #[test]
@@ -1521,6 +1574,10 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
                 assert!(diff_files_ignore_first(&real_file, &test_file, 4));
             }
 
+            // check the script
+            let real_script = format!("{}/plot.py", path_to_dir);
+            assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+
             assert!(diff_files_ignore_first(
                 path_to_output,
                 "tests/files/aa_order_leaflets_small.yaml",
@@ -1587,6 +1644,10 @@ fn test_aa_order_maps_basic_multiple_threads() {
         let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
         let test_file = "tests/files/ordermaps/ordermap_average_full.dat";
         assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+        // check the script
+        let real_script = format!("{}/plot.py", path_to_dir);
+        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
         assert!(diff_files_ignore_first(
             path_to_output,
@@ -1661,6 +1722,10 @@ fn test_aa_order_maps_basic_weird_molecules() {
         let real_file = format!("{}/{}", path_to_dir, file);
         assert!(Path::new(&real_file).exists());
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 }
 
 #[test]
@@ -1718,6 +1783,10 @@ fn test_aa_order_maps_basic_backup() {
         let test_file = format!("tests/files/ordermaps/{}", file);
         assert!(diff_files_ignore_first(&real_file, &test_file, 2));
     }
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -1780,6 +1849,10 @@ fn test_aa_order_maps_basic_different_plane() {
     let real_file = format!("{}/POPC/ordermap_POPC-C218-87_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps/ordermap_xz.dat";
     assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
 
     assert!(diff_files_ignore_first(
         path_to_output,
@@ -3909,6 +3982,893 @@ fn test_aa_order_leaflets_from_map_not_enough_frames() {
         Err(e) => assert!(e
             .to_string()
             .contains("could not get leaflet assignment for frame index")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_no_pbc_multiple_threads() {
+    for n_threads in [1, 3, 8, 16] {
+        for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(LeafletClassification::global("@membrane", "name P"))
+                .handle_pbc(false)
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_leaflets_nopbc.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_error_leaflets_no_pbc_multiple_threads() {
+    for n_threads in [1, 3, 8, 16] {
+        for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(LeafletClassification::global("@membrane", "name P"))
+                .handle_pbc(false)
+                .estimate_error(EstimateError::default())
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_error_leaflets_nopbc.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_maps_leaflets_no_pbc() {
+    for method in [
+        LeafletClassification::global("@membrane", "name P"),
+        LeafletClassification::local("@membrane", "name P", 2.0),
+        LeafletClassification::individual("name P", "name C218 C316"),
+    ] {
+        for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
+            let directory = TempDir::new().unwrap();
+            let path_to_dir = directory.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure(structure)
+                .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+                .analysis_type(AnalysisType::aaorder(
+                    "resname POPC and name C22 C24 C218",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(method.clone())
+                .map(
+                    OrderMap::builder()
+                        .bin_size([0.1, 4.0])
+                        .output_directory(path_to_dir)
+                        .min_samples(5)
+                        .dim([
+                            GridSpan::manual(0.0, 9.0).unwrap(),
+                            GridSpan::manual(0.0, 8.0).unwrap(),
+                        ])
+                        .build()
+                        .unwrap(),
+                )
+                .handle_pbc(false)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let expected_file_names = [
+                "ordermap_average_full.dat",
+                "ordermap_average_upper.dat",
+                "ordermap_average_lower.dat",
+            ];
+
+            for file in expected_file_names {
+                let real_file = format!("{}/POPC/{}", path_to_dir, file);
+                let test_file = format!("tests/files/ordermaps_nopbc/{}", file);
+                assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            }
+
+            // full maps for the entire system are the same as for POPC
+            for file in [
+                "ordermap_average_full.dat",
+                "ordermap_average_upper.dat",
+                "ordermap_average_lower.dat",
+            ] {
+                let real_file = format!("{}/{}", path_to_dir, file);
+                let test_file = format!("tests/files/ordermaps_nopbc/{}", file);
+                assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            }
+
+            // check the script
+            let real_script = format!("{}/plot.py", path_to_dir);
+            assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_geometry_cuboid_ordermaps_no_pbc() {
+    for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .geometry(
+                Geometry::cuboid(
+                    [1.5, -3.0, 3.0],
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    [-1.0, 4.0],
+                    [-2.0, 2.0],
+                )
+                .unwrap(),
+            )
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 9.0).unwrap(),
+                        GridSpan::manual(0.0, 9.0).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_cuboid_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_nopbc/cuboid.dat";
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    }
+}
+
+#[test]
+fn test_aa_order_geometry_cylinder_ordermaps_no_pbc() {
+    for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .geometry(Geometry::cylinder([8.0, 2.0, 0.0], 3.5, [-2.0, 3.0], Axis::X).unwrap())
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 9.0).unwrap(),
+                        GridSpan::manual(0.0, 9.0).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_cylinder_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_nopbc/cylinder.dat";
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    }
+}
+
+#[test]
+fn test_aa_order_geometry_sphere_ordermaps_no_pbc() {
+    for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .geometry(Geometry::sphere([8.0, 2.0, 3.9], 3.5).unwrap())
+            .map(
+                OrderMap::builder()
+                    .bin_size([1.0, 1.0])
+                    .output_directory(path_to_dir)
+                    .dim([
+                        GridSpan::manual(0.0, 9.0).unwrap(),
+                        GridSpan::manual(0.0, 9.0).unwrap(),
+                    ])
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_sphere_nopbc.yaml",
+            1
+        ));
+
+        let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
+        let test_file = "tests/files/ordermaps_nopbc/sphere.dat";
+        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    }
+}
+
+#[test]
+fn test_aa_order_geometry_no_pbc_fail_box_center() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .geometry(
+            Geometry::cylinder(
+                GeomReference::center(),
+                2.5,
+                [f32::NEG_INFINITY, f32::INFINITY],
+                Axis::Z,
+            )
+            .unwrap(),
+        )
+        .handle_pbc(false)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("cannot use dynamic center of simulation box as the reference position")),
+    }
+}
+
+#[test]
+fn test_aa_order_maps_leaflets_no_pbc_fail_autodim() {
+    for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
+        let directory = TempDir::new().unwrap();
+        let path_to_dir = directory.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure(structure)
+            .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "resname POPC and name C22 C24 C218",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .map(
+                OrderMap::builder()
+                    .bin_size([0.1, 4.0])
+                    .output_directory(path_to_dir)
+                    .min_samples(5)
+                    .build()
+                    .unwrap(),
+            )
+            .handle_pbc(false)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        match analysis.run() {
+            Ok(_) => panic!("Analysis should have failed."),
+            Err(e) => assert!(e
+                .to_string()
+                .contains("simulation box and periodic boundary conditions are ignored")),
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_basic_yaml_nobox_xtc_fail() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("all dimensions of the simulation box are zero")),
+    }
+}
+
+#[test]
+fn test_aa_order_basic_yaml_nobox_pdb_fail() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg_nobox.pdb")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("system has undefined simulation box")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_yaml_shifted_trajectory() {
+    let mut file = File::open("tests/files/inputs/leaflets_files/pcpepg_once.yaml").unwrap();
+    let assignment: HashMap<String, Vec<Vec<Leaflet>>> =
+        serde_yaml::from_reader(&mut file).unwrap();
+
+    for method in [
+        LeafletClassification::global("@membrane", "name P"),
+        LeafletClassification::local("@membrane", "name P", 2.5),
+        LeafletClassification::individual("name P", "name C218 C316"),
+        LeafletClassification::from_map(assignment).with_frequency(Frequency::once()),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg_shifted.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(method)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets_shifted.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_dynamic_membrane_normal_yaml() {
+    for n_threads in [1, 3, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+            .leaflets(
+                LeafletClassification::individual("name P", "name C218 C316")
+                    .with_membrane_normal(Axis::Z)
+                    .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets_dynamic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_buckled_dynamic_membrane_normal_ordermaps_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let directory = TempDir::new().unwrap();
+    let path_to_dir = directory.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/aa_buckled.tpr")
+        .trajectory("tests/files/aa_buckled.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .output_directory(path_to_dir)
+                .min_samples(5)
+                .plane(Plane::XY)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_buckled.yaml",
+        1
+    ));
+
+    let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
+    let test_file = "tests/files/ordermaps_buckled/ordermap_average_full.dat";
+    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+    let real_file = format!("{}/POPC/ordermap_average_full.dat", path_to_dir);
+    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+
+    // check the script
+    let real_script = format!("{}/plot.py", path_to_dir);
+    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+}
+
+#[test]
+fn test_aa_order_fail_dynamic_undefined_ordermap_plane() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+        .map(
+            OrderMap::builder()
+                .bin_size([1.0, 1.0])
+                .min_samples(5)
+                .build()
+                .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("unable to automatically set ordermap plane")),
+    }
+}
+
+#[test]
+fn test_aa_order_fail_dynamic_undefined_leaflet_normal() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+        .leaflets(LeafletClassification::individual(
+            "name P",
+            "name C218 C316",
+        ))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("leaflet classification requires static membrane normal")),
+    }
+}
+
+#[test]
+fn test_aa_order_fail_dynamic_multiple_heads() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P O13", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("multiple head group atoms")),
+    }
+}
+
+#[test]
+fn test_aa_order_fail_dynamic_no_head() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name OH2", 2.0).unwrap())
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("no head group atom")),
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_once_multiple_threads() {
+    for n_threads in [1, 3, 5, 8, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(
+                LeafletClassification::from_ndx(
+                    &["tests/files/ndx/pcpepg_leaflets.ndx"],
+                    "name P",
+                    "Upper",
+                    "Lower",
+                )
+                .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_every_multiple_threads() {
+    let mut ndx = [
+        "tests/files/ndx/pcpepg_leaflets.ndx",
+        "tests/files/ndx/pcpepg_leaflets_all.ndx",
+    ]
+    .repeat(25);
+    ndx.push("tests/files/ndx/pcpepg_leaflets.ndx");
+
+    for n_threads in [1, 3, 5, 8, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::from_ndx(
+                &ndx, "name P", "Upper", "Lower",
+            ))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_every10_multiple_threads() {
+    let ndx = vec![
+        "tests/files/ndx/pcpepg_leaflets.ndx",
+        "tests/files/ndx/pcpepg_leaflets_all.ndx",
+        "tests/files/ndx/pcpepg_leaflets_duplicate_irrelevant.ndx",
+        "tests/files/ndx/pcpepg_leaflets_invalid_irrelevant.ndx",
+        "tests/files/ndx/pcpepg_leaflets.ndx",
+        "tests/files/ndx/pcpepg_leaflets_all.ndx",
+    ];
+
+    for n_threads in [1, 3, 5, 8, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(
+                LeafletClassification::from_ndx(&ndx, "name P", "Upper", "Lower")
+                    .with_frequency(Frequency::every(10).unwrap()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_step_multiple_threads() {
+    let ndx = ["tests/files/ndx/pcpepg_leaflets.ndx"];
+    for n_threads in [1, 2, 5, 8, 64] {
+        for (repeat, freq) in [11, 3, 1, 1].into_iter().zip([
+            Frequency::every(1).unwrap(),
+            Frequency::every(5).unwrap(),
+            Frequency::every(30).unwrap(),
+            Frequency::once(),
+        ]) {
+            let ndx = ndx.repeat(repeat);
+
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .step(5)
+                .leaflets(
+                    LeafletClassification::from_ndx(&ndx, "name P", "Upper", "Lower")
+                        .with_frequency(freq),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            let results = analysis.run().unwrap();
+            assert_eq!(results.n_analyzed_frames(), 11);
+            results.write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_step.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_fail_missing_ndx() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_ndx(
+                &[
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                ],
+                "name P",
+                "Upper",
+                "Lower",
+            )
+            .with_frequency(Frequency::every(10).unwrap()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed but it succeeded."),
+        Err(e) => {
+            assert!(e
+                .to_string()
+                .contains("could not get ndx file for frame index"))
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_from_ndx_fail_too_many_ndx() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::from_ndx(
+                &[
+                    "tests/files/ndx/pcpepg_leaflets.ndx",
+                    "tests/files/ndx/pcpepg_leaflets_all.ndx",
+                ],
+                "name P",
+                "Upper",
+                "Lower",
+            )
+            .with_frequency(Frequency::once()),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed but it succeeded."),
+        Err(e) => {
+            assert!(e
+                .to_string()
+                .contains("is not consistent with the number of analyzed frames"))
+        }
     }
 }
 
