@@ -3223,6 +3223,34 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_centered_yaml() {
 }
 
 #[test]
+fn test_cg_order_vesicle_dynamic_membrane_normal_centered_nopbc_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle_centered.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .handle_pbc(false)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle_centered.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_cg_order_buckled_dynamic_membrane_normal_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
