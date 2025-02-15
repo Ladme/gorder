@@ -3554,6 +3554,48 @@ fn test_cg_order_leaflets_from_ndx_every20_multiple_threads() {
 }
 
 #[test]
+fn test_cg_order_leaflets_from_ndx_partial() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for (freq, ndx) in [
+        Frequency::once(),
+        Frequency::every(1).unwrap(),
+        Frequency::every(20).unwrap(),
+    ]
+    .into_iter()
+    .zip([
+        vec!["tests/files/ndx/cg_leaflets.ndx"],
+        vec!["tests/files/ndx/cg_leaflets.ndx"].repeat(101),
+        vec!["tests/files/ndx/cg_leaflets.ndx"].repeat(6),
+    ]) {
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder(
+                "resname POPC and name C1B C2B C3B C4B",
+            ))
+            .leaflets(
+                LeafletClassification::from_ndx(&ndx, "name PO4", "Upper", "Lower")
+                    .with_frequency(freq),
+            )
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets_small.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_cg_order_basic_rust_api() {
     let analysis = Analysis::builder()
         .structure("tests/files/cg.tpr")
