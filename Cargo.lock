@@ -524,7 +524,7 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "gorder"
-version = "0.5.0-dev.1"
+version = "0.5.0"
 dependencies = [
  "approx",
  "assert_cmd",
@@ -554,6 +554,8 @@ dependencies = [
 [[package]]
 name = "groan_rs"
 version = "0.10.0-dev.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3af0a23a21f9bfaf81ab7c30a0f43fbc085fb5c492c89c1603d623d25bc28700"
 dependencies = [
  "cc",
  "chemfiles",
