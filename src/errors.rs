@@ -359,8 +359,8 @@ pub enum NdxLeafletClassificationError {
     #[error("{}", .0)]
     CouldNotParse(ParseNdxError),
 
-    #[error("{} could not get NDX file for frame index '{}' [expected index of the NDX file: '{}']
-(total number of specified NDX files is '{}'; maybe the assignment frequency is incorrect?)", 
+    #[error("{} could not get ndx file for frame index '{}' [expected index of the NDX file: '{}']
+(total number of specified ndx files is '{}'; maybe the assignment frequency is incorrect?)", 
     "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
     FrameNotFound(usize, usize, usize),
 
@@ -371,7 +371,7 @@ pub enum NdxLeafletClassificationError {
     #[error("{} group '{}' is defined multiple times in an NDX file '{}'", "error:".red().bold(), .0.yellow(), .1.yellow())]
     DuplicateName(String, String),
 
-    #[error("{} group '{}' for selecting {} molecules was not found in the NDX file '{}'", 
+    #[error("{} group '{}' for selecting {} molecules was not found in the ndx file '{}'", 
     "error:".red().bold(), .0.yellow(), .1.yellow(), .2.yellow())]
     GroupNotFound(String, String, String),
 

@@ -21,6 +21,7 @@ use crate::{
     input::Analysis,
     PANIC_MESSAGE,
 };
+use colored::Colorize;
 use convergence::{ConvPresenter, ConvProperties, Convergence};
 use getset::{CopyGetters, Getters};
 use groan_rs::prelude::GridMap;
@@ -650,28 +651,26 @@ impl LeafletClassification {
     /// Print basic information about the leaflet classification.
     #[inline(always)]
     fn info(&self) {
-        let mut ndx_files = String::new();
-        if let LeafletClassification::FromNdx(params) = self {
-            ndx_files += "\n";
-            params
-                .compact_display_ndx(&mut ndx_files)
-                .expect(PANIC_MESSAGE);
-        }
-
+        let ndx_files = match self {
+            LeafletClassification::FromNdx(params) => {
+                params.compact_display_ndx().expect(PANIC_MESSAGE)
+            }
+            _ => String::new(),
+        };
         if let Some(normal) = self.get_membrane_normal() {
-            colog_info!(
+            log::info!(
                 "Will classify lipids into membrane leaflets {} using the '{}' method.
 Note: membrane normal for leaflet classification assumed to be oriented along the {} axis.{}",
-                self.get_frequency(),
-                self,
-                normal,
+                self.get_frequency().to_string().cyan(),
+                self.to_string().cyan(),
+                normal.to_string().cyan(),
                 ndx_files,
             )
         } else {
-            colog_info!(
+            log::info!(
                 "Will classify lipids into membrane leaflets {} using the '{}' method.{}",
-                self.get_frequency(),
-                self,
+                self.get_frequency().to_string().cyan(),
+                self.to_string().cyan(),
                 ndx_files,
             )
         }

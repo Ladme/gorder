@@ -14,6 +14,7 @@ mod aaorder;
 mod cgorder;
 mod common;
 pub(crate) mod geometry;
+mod index;
 mod leaflets;
 pub(crate) mod molecule;
 mod normal;

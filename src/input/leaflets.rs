@@ -437,33 +437,35 @@ pub struct FromNdxParams {
 
 impl FromNdxParams {
     /// Print some of the NDX files that will be read.
-    pub(crate) fn compact_display_ndx<W: Write>(&self, f: &mut W) -> fmt::Result {
+    pub(crate) fn compact_display_ndx(&self) -> Result<String, std::fmt::Error> {
+        let mut f = String::new();
+
         let n_ndx = self.ndx.len();
         if n_ndx == 1 {
-            write!(f, "Using an ndx file")?;
+            write!(f, "\nUsing an ndx file")?;
         } else {
-            write!(f, "Using ndx files:")?;
+            write!(f, "\nUsing ndx files:")?;
         }
 
-        write!(f, " {}", self.ndx[0].cyan())?;
+        write!(f, " '{}'", self.ndx[0].cyan())?;
 
         if n_ndx <= 6 {
             for item in &self.ndx[1..] {
-                write!(f, ", {}", item.cyan())?;
+                write!(f, ", '{}'", item.cyan())?;
             }
         } else {
             for item in &self.ndx[1..3] {
-                write!(f, ", {}", item.cyan())?;
+                write!(f, ", '{}'", item.cyan())?;
             }
             write!(f, "{}", ", ...".clear())?;
             for item in &self.ndx[self.ndx.len() - 3..] {
-                write!(f, ", {}", item.cyan())?;
+                write!(f, ", '{}'", item.cyan())?;
             }
         }
 
         write!(f, "{}", ".".clear())?;
 
-        Ok(())
+        Ok(f)
     }
 }
 

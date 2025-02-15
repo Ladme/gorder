@@ -4,7 +4,7 @@
 //! Contains the implementation of the calculation of the coarse-grained order parameters.
 
 use crate::{
-    analysis::{common::prepare_geometry_selection, structure},
+    analysis::{common::prepare_geometry_selection, index::read_ndx_file, structure},
     presentation::{AnalysisResults, OrderResults},
 };
 use crate::{
@@ -28,12 +28,7 @@ pub(super) fn analyze_coarse_grained(
     let mut system = structure::read_structure_and_topology(&analysis)?;
 
     if let Some(ndx) = analysis.index() {
-        system.read_ndx(ndx)?;
-        colog_info!(
-            "Read {} group(s) from ndx file '{}'.",
-            system.get_n_groups() - 2,
-            ndx
-        );
+        read_ndx_file(&mut system, ndx)?;
     }
 
     super::common::create_group(

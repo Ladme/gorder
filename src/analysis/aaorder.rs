@@ -8,6 +8,7 @@ use crate::analysis::common::{
     prepare_geometry_selection, prepare_membrane_normal_calculation, read_trajectory,
     sanity_check_molecules,
 };
+use crate::analysis::index::read_ndx_file;
 use crate::analysis::pbc::{NoPBC, PBC3D};
 use crate::analysis::structure;
 use crate::errors::TopologyError;
@@ -24,12 +25,7 @@ pub(super) fn analyze_atomistic(
     let mut system = structure::read_structure_and_topology(&analysis)?;
 
     if let Some(ndx) = analysis.index() {
-        system.read_ndx(ndx)?;
-        colog_info!(
-            "Read {} group(s) from ndx file '{}'.",
-            system.get_n_groups() - 2,
-            ndx
-        );
+        read_ndx_file(&mut system, ndx)?;
     }
 
     super::common::create_group(
