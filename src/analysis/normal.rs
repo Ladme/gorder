@@ -3,23 +3,34 @@
 
 //! This module contains the implementation of structures and methods for working with membrane normal.
 
-use getset::{Getters, MutGetters};
-use groan_rs::{prelude::{Sphere, Vector3D}, structures::group::Group, system::System};
+use std::fs::read_to_string;
+
+use groan_rs::{
+    prelude::{Sphere, Vector3D},
+    structures::group::Group,
+    system::System,
+};
+use hashbrown::HashMap;
 use nalgebra::{DMatrix, SVD};
 use once_cell::sync::OnceCell;
 
 use crate::{
-    errors::{AnalysisError, DynamicNormalError, TopologyError},
+    errors::{AnalysisError, DynamicNormalError, ManualNormalError, TopologyError},
     input::MembraneNormal,
     PANIC_MESSAGE,
 };
 
-use super::{common::{get_reference_head, macros::group_name}, pbc::PBCHandler};
+use super::{
+    common::{get_reference_head, macros::group_name},
+    pbc::PBCHandler,
+    topology::SystemTopology,
+};
 
 #[derive(Debug, Clone)]
 pub(super) enum MoleculeMembraneNormal {
     Static(Vector3D),
     Dynamic(DynamicMembraneNormal),
+    Manual(ManualMembraneNormal),
 }
 
 impl From<&MembraneNormal> for MoleculeMembraneNormal {
@@ -27,24 +38,30 @@ impl From<&MembraneNormal> for MoleculeMembraneNormal {
     fn from(value: &MembraneNormal) -> Self {
         match value {
             MembraneNormal::Static(axis) => Self::Static((*axis).into()),
-            MembraneNormal::Dynamic(params) => {
-                Self::Dynamic(DynamicMembraneNormal {
-                    heads: Vec::new(),
-                    radius: params.radius(),
-                    normals: Vec::new(),
-                })
-            }
-            MembraneNormal::FromFile(_) => todo!("Reading membrane normal from file is not yet implemented.")
+            MembraneNormal::Dynamic(params) => Self::Dynamic(DynamicMembraneNormal {
+                heads: Vec::new(),
+                radius: params.radius(),
+                normals: Vec::new(),
+            }),
+            MembraneNormal::FromFile(_) => Self::Manual(ManualMembraneNormal(None)),
+            MembraneNormal::FromMap(_) => Self::Manual(ManualMembraneNormal(None)),
         }
     }
 }
 
 impl MoleculeMembraneNormal {
     /// Get membrane normal for the molecule with the target index.
-    pub(super) fn get_normal(&mut self, index: usize, system: &System, pbc_handler: &impl PBCHandler) -> Result<&Vector3D, AnalysisError> {
+    pub(super) fn get_normal(
+        &mut self,
+        frame_index: usize,
+        molecule_index: usize,
+        system: &System,
+        pbc_handler: &impl PBCHandler,
+    ) -> Result<&Vector3D, AnalysisError> {
         match self {
             Self::Static(vector) => Ok(vector),
-            Self::Dynamic(dynamic) => dynamic.get_normal(index, system, pbc_handler),
+            Self::Dynamic(dynamic) => dynamic.get_normal(molecule_index, system, pbc_handler),
+            Self::Manual(manual) => manual.get_normal(frame_index, molecule_index),
         }
     }
 
@@ -53,7 +70,7 @@ impl MoleculeMembraneNormal {
     #[inline(always)]
     pub(super) fn insert(&mut self, indices: &Group, system: &System) -> Result<(), TopologyError> {
         match self {
-            Self::Static(_) => Ok(()),
+            Self::Static(_) | Self::Manual(_) => Ok(()),
             Self::Dynamic(dynamic) => dynamic.insert(indices, system),
         }
     }
@@ -63,14 +80,13 @@ impl MoleculeMembraneNormal {
     #[inline(always)]
     pub(super) fn init_new_frame(&mut self) {
         match self {
-            Self::Static(_) => (),
-            Self::Dynamic(dynamic) => dynamic.reset_normals()
-            
+            Self::Static(_) | Self::Manual(_) => (),
+            Self::Dynamic(dynamic) => dynamic.reset_normals(),
         }
     }
 }
 
-#[derive(Debug, Clone, Getters, MutGetters)]
+#[derive(Debug, Clone)]
 pub(super) struct DynamicMembraneNormal {
     /// Indices of headgroup identifiers (one per molecule).
     heads: Vec<usize>,
@@ -95,7 +111,12 @@ impl DynamicMembraneNormal {
 
     /// Get membrane normal calculated for a molecule or calculate it it has not been already calculated.
     #[inline]
-    fn get_normal(&mut self, index: usize, system: &System, pbc: &impl PBCHandler) -> Result<&Vector3D, AnalysisError> {
+    fn get_normal(
+        &mut self,
+        index: usize,
+        system: &System,
+        pbc: &impl PBCHandler,
+    ) -> Result<&Vector3D, AnalysisError> {
         let normal = self.normals.get_mut(index)
             .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | DynamicMembraneNormal::get_normal (1) | Molecule not found. Molecule with internal `gorder` index `{}` should exist. {}", 
@@ -110,26 +131,175 @@ impl DynamicMembraneNormal {
     /// Calculate local membrane normal for the specified atom.
     // Cold because this function gets called only once per frame and molecule, but `get_normal` gets called many times more often.
     #[cold]
-    fn calculate_normal(head: usize, system: &System, radius: f32, pbc: &impl PBCHandler) -> Result<Vector3D, AnalysisError> {
+    fn calculate_normal(
+        head: usize,
+        system: &System,
+        radius: f32,
+        pbc: &impl PBCHandler,
+    ) -> Result<Vector3D, AnalysisError> {
         let reference = system.get_atom(head)
             .unwrap_or_else(|_| 
                 panic!("FATAL GORDER ERROR | DynamicMembraneNormal::calculate_normal | Atom not found. Atom with index `{}` should exist. {}", 
                     head, PANIC_MESSAGE));
-        
+
         let reference_pos = reference
             .get_position()
             .ok_or_else(|| AnalysisError::UndefinedPosition(reference.get_index()))?;
 
         let geometry = Sphere::new(reference_pos.clone(), radius);
+
         // get the cloud of headgroup atoms around the reference atom; this cloud must be whole in the simulation box
-        let positions = pbc.group_filter_geometry_get_pos(system, group_name!("NormalHeads"), geometry, reference_pos)?;
+        let positions = pbc.group_filter_geometry_get_pos(
+            system,
+            group_name!("NormalHeads"),
+            geometry,
+            reference_pos,
+        )?;
 
         membrane_normal_from_cloud(&positions).map_err(AnalysisError::DynamicNormalError)
     }
 
     #[inline(always)]
     fn reset_normals(&mut self) {
-        self.normals.iter_mut().for_each(|cell| *cell = OnceCell::new());
+        self.normals
+            .iter_mut()
+            .for_each(|cell| *cell = OnceCell::new());
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct ManualMembraneNormal(Option<Vec<Vec<Vector3D>>>);
+
+impl ManualMembraneNormal {
+    /// Get membrane normal for a given molecule in a given frame.
+    fn get_normal(
+        &self,
+        frame_index: usize,
+        molecule_index: usize,
+    ) -> Result<&Vector3D, AnalysisError> {
+        let unwrapped = self.0.as_ref().unwrap_or_else(|| 
+            panic!("FATAL GORDER ERROR | ManualMembraneNormal::get_normal | Membrane normals have not been set up. {}", PANIC_MESSAGE));
+
+        Ok(unwrapped
+            .get(frame_index)
+            .ok_or_else(||
+                AnalysisError::ManualNormalError(ManualNormalError::FrameNotFound(frame_index, unwrapped.len())))?
+            .get(molecule_index)
+            .unwrap_or_else(||
+                panic!("FATAL GORDER ERROR | ManualMembraneNormal::get_normal | Molecule index `{}` not found but this should have been checked before. {}", 
+                molecule_index, PANIC_MESSAGE))
+        )
+    }
+
+    /// Get the number of frames specified for the normals classification.
+    /// Returns 0, if the structure is not finalized.
+    pub(super) fn n_frames(&self) -> usize {
+        match self.0.as_ref() {
+            None => 0,
+            Some(x) => x.len(),
+        }
+    }
+
+    /// Get the normals for a specific molecule type and check their sanity.
+    fn get_normals_for_molecule(
+        normals: &HashMap<String, Vec<Vec<Vector3D>>>,
+        name: &str,
+        n_molecules: usize,
+    ) -> Result<Vec<Vec<Vector3D>>, ManualNormalError> {
+        // get the data for target molecule
+        let normals_for_molecule = normals
+            .get(name)
+            .ok_or_else(|| ManualNormalError::MoleculeTypeNotFound(name.to_owned()))?;
+
+        // at least one frame must be provided
+        if normals_for_molecule.is_empty() {
+            return Err(ManualNormalError::NoNormals(name.to_owned()));
+        }
+
+        // number of molecules must be consistent and match the system
+        for (i, frame) in normals_for_molecule.iter().enumerate() {
+            if frame.len() != n_molecules {
+                return Err(ManualNormalError::InconsistentNumberOfMolecules {
+                    expected: n_molecules,
+                    molecule: name.to_owned(),
+                    got: frame.len(),
+                    frame: i,
+                });
+            }
+        }
+
+        Ok(normals_for_molecule.clone())
+    }
+}
+
+impl SystemTopology {
+    /// Finalize the set up of the manual membrane normals.
+    pub(super) fn finalize_manual_membrane_normals(
+        &mut self,
+        params: &MembraneNormal,
+    ) -> Result<(), ManualNormalError> {
+        let normals: HashMap<String, Vec<Vec<Vector3D>>> = match params {
+            MembraneNormal::FromFile(file) => {
+                let string = read_to_string(file).map_err(|_| ManualNormalError::FileNotFound(file.to_owned()))?;
+                serde_yaml::from_str(&string)
+                    .map_err(|e| ManualNormalError::CouldNotParse(file.to_owned(), e))?
+            }
+            MembraneNormal::FromMap(map) => {
+                map.clone()
+            }
+            // do nothing for the other types of membrane normal specification
+            _ => return Ok(()),
+        };
+
+        let mut molecule_names = Vec::new();
+
+        for molecule in self.molecule_types_mut() {
+            let normals_for_molecule = ManualMembraneNormal::get_normals_for_molecule(
+                &normals,
+                molecule.name(),
+                molecule.n_molecules(),
+            )?;
+
+            match molecule.membrane_normal_mut() {
+                MoleculeMembraneNormal::Manual(x) => x.0 = Some(normals_for_molecule),
+                _ => panic!("FATAL GORDER ERROR | SystemTopology::finalize_manual_membrane_normals | Unexpected MoleculeMembraneNormal. Expected Manual."),
+            }
+
+            molecule_names.push(molecule.name().to_owned());
+        }
+
+        // check that there is no additional molecule in the normals structure
+        for molecule_name in normals.keys() {
+            if !molecule_names.contains(molecule_name) {
+                return Err(ManualNormalError::UnknownMoleculeType(
+                    molecule_name.clone(),
+                    molecule_names,
+                ));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sanity check for manual membrane normals specification.
+    /// Checks that the number of analyzed frames matches the number of frames specified in the manual normals specification.
+    /// Doesn't do anything if the membrane normals are not provided manually.
+    pub(super) fn validate_normals_specification(&self) -> Result<(), ManualNormalError> {
+        for molecule in self.molecule_types() {
+            match molecule.membrane_normal() {
+                MoleculeMembraneNormal::Manual(manual) => {
+                    if self.total_frames() != manual.n_frames() {
+                        return Err(ManualNormalError::UnexpectedNumberOfFrames {
+                            used_frames: manual.n_frames(),
+                            analyzed_frames: self.total_frames(),
+                        });
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        Ok(())
     }
 }
 

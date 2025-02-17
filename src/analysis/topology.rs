@@ -90,6 +90,16 @@ impl SystemTopology {
         self.total_frames += 1;
     }
 
+    /// Check that all frames for manual leaflet classification and membrane normal specification were used.
+    pub(super) fn validate_run(
+        &self,
+        step: usize,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.validate_leaflet_classification(step)?;
+        self.validate_normals_specification()?;
+        Ok(())
+    }
+
     /// Report basic information about the result of the error estimation.
     pub(super) fn error_info(&self) -> Result<(), ErrorEstimationError> {
         let Some(estimate_error) = self.estimate_error() else {

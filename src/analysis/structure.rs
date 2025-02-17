@@ -225,7 +225,9 @@ fn should_guess_elements(analysis: &Analysis) -> bool {
         Some(Geometry::Sphere(x)) => reference_has_element(x.reference()),
         None => false,
     } || match analysis.membrane_normal() {
-        MembraneNormal::Static(_) | MembraneNormal::FromFile(_) => false,
+        MembraneNormal::Static(_) | MembraneNormal::FromFile(_) | MembraneNormal::FromMap(_) => {
+            false
+        }
         MembraneNormal::Dynamic(dynamic) => has_element(dynamic.heads()),
     };
 

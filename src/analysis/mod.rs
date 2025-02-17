@@ -56,9 +56,9 @@ impl Analysis {
                     map.set_plane(Some(axis.perpendicular()));
                     Ok(())
                 }
-                MembraneNormal::Dynamic(_) | MembraneNormal::FromFile(_) => {
-                    Err(OrderMapConfigError::InvalidPlaneAuto)
-                }
+                MembraneNormal::Dynamic(_)
+                | MembraneNormal::FromFile(_)
+                | MembraneNormal::FromMap(_) => Err(OrderMapConfigError::InvalidPlaneAuto),
             };
         }
 

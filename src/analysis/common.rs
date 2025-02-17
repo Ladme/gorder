@@ -156,7 +156,9 @@ pub(super) fn prepare_membrane_normal_calculation(
     system: &mut System,
 ) -> Result<(), TopologyError> {
     match membrane_normal {
-        MembraneNormal::Static(_) | MembraneNormal::FromFile(_) => Ok(()), // do nothing
+        MembraneNormal::Static(_) | MembraneNormal::FromFile(_) | MembraneNormal::FromMap(_) => {
+            Ok(())
+        } // do nothing
         MembraneNormal::Dynamic(params) => create_group(system, "NormalHeads", params.heads()),
     }
 }

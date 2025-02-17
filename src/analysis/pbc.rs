@@ -6,7 +6,8 @@
 use groan_rs::{
     errors::{AtomError, GroupError},
     prelude::{
-        AtomIterable, AtomIteratorWithBox, Cylinder, Dimension, ImmutableAtomIterable, NaiveShape, Shape, SimBox, Vector3D
+        AtomIterable, AtomIteratorWithBox, Cylinder, Dimension, ImmutableAtomIterable, NaiveShape,
+        Shape, SimBox, Vector3D,
     },
     system::System,
 };
@@ -22,11 +23,11 @@ pub(crate) trait PBCHandler {
 
     /// Take atoms of a group in a specified geometry and collect their positions.
     fn group_filter_geometry_get_pos<S: Shape + NaiveShape>(
-        &self, 
-        system: &System, 
-        group: &str, 
-        shape: S, 
-        reference: &Vector3D
+        &self,
+        system: &System,
+        group: &str,
+        shape: S,
+        reference: &Vector3D,
     ) -> Result<Vec<Vector3D>, AnalysisError>;
 
     /// Take atoms of a group in a specified geometry and calculate their center of geometry.
@@ -68,7 +69,13 @@ pub(crate) trait PBCHandler {
     fn get_simbox(&self) -> Option<&SimBox>;
 
     /// Construct a cylinder for local center of geometry calculation.
-    fn cylinder_for_local_center(&self, x: f32, y: f32, radius: f32, orientation: Dimension) -> Cylinder;
+    fn cylinder_for_local_center(
+        &self,
+        x: f32,
+        y: f32,
+        radius: f32,
+        orientation: Dimension,
+    ) -> Cylinder;
 }
 
 /// PBCHandler that ignores all periodic boundary conditions.
@@ -163,7 +170,13 @@ impl PBCHandler for NoPBC {
     }
 
     #[inline(always)]
-    fn cylinder_for_local_center(&self, x: f32, y: f32, radius: f32, orientation: Dimension) -> Cylinder {
+    fn cylinder_for_local_center(
+        &self,
+        x: f32,
+        y: f32,
+        radius: f32,
+        orientation: Dimension,
+    ) -> Cylinder {
         Cylinder::new(
             Vector3D::new(x, y, f32::MIN),
             radius,
@@ -278,13 +291,14 @@ impl<'a> PBCHandler for PBC3D<'a> {
     }
 
     #[inline(always)]
-    fn cylinder_for_local_center(&self, x: f32, y: f32, radius: f32, orientation: Dimension) -> Cylinder {
-        Cylinder::new(
-            Vector3D::new(x, y, 0.0),
-            radius,
-            f32::INFINITY,
-            orientation,
-        )
+    fn cylinder_for_local_center(
+        &self,
+        x: f32,
+        y: f32,
+        radius: f32,
+        orientation: Dimension,
+    ) -> Cylinder {
+        Cylinder::new(Vector3D::new(x, y, 0.0), radius, f32::INFINITY, orientation)
     }
 }
 
@@ -324,8 +338,10 @@ mod tests {
                     for z in [3.0, 3.5, 5.0, 5.5, 6.0] {
                         let reference = Vector3D::new(x, y, z);
                         let geom = Sphere::new(reference.clone(), radius);
-                        let positions = pbc.group_filter_geometry_get_pos(&system, "Phosphori", geom, &reference).unwrap();
-                        
+                        let positions = pbc
+                            .group_filter_geometry_get_pos(&system, "Phosphori", geom, &reference)
+                            .unwrap();
+
                         for pos in positions {
                             assert!(reference.distance_naive(&pos, Dimension::XYZ) <= radius);
                         }
@@ -348,8 +364,10 @@ mod tests {
                     for z in [3.0, 3.5, 5.0, 5.5, 6.0] {
                         let reference = Vector3D::new(x, y, z);
                         let geom = Sphere::new(reference.clone(), radius);
-                        let positions = pbc.group_filter_geometry_get_pos(&system, "Phosphori", geom, &reference).unwrap();
-                        
+                        let positions = pbc
+                            .group_filter_geometry_get_pos(&system, "Phosphori", geom, &reference)
+                            .unwrap();
+
                         for pos in positions {
                             assert!(reference.distance_naive(&pos, Dimension::XYZ) <= radius);
                         }
@@ -358,5 +376,4 @@ mod tests {
             }
         }
     }
-
 }

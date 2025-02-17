@@ -41,7 +41,7 @@ pub(crate) struct MoleculeType {
     #[getset(get = "pub(crate)")]
     order_atoms: OrderAtoms,
     /// Either a statically assigned or dynamically computed membrane normal for all molecules of this type.
-    #[getset(get = "pub(super)")]
+    #[getset(get = "pub(super)", get_mut = "pub(super)")]
     membrane_normal: MoleculeMembraneNormal,
     /// Method to use to assign this molecule to membrane leaflet.
     #[getset(get = "pub(super)", get_mut = "pub(super)")]
@@ -553,7 +553,8 @@ impl BondType {
             }
 
             // get the membrane normal for a molecule
-            let normal = membrane_normal.get_normal(molecule_index, frame, pbc_handler)?;
+            let normal =
+                membrane_normal.get_normal(frame_index, molecule_index, frame, pbc_handler)?;
 
             let sch = super::calc_sch(&vec, normal);
             self.total += sch;

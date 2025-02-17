@@ -713,13 +713,51 @@ mod tests_yaml {
             Analysis::from_file("tests/files/inputs/dynamic_membrane_normal.yaml").unwrap();
 
         match analysis.membrane_normal() {
-            MembraneNormal::Static(_) | MembraneNormal::FromFile(_) => {
-                panic!("Invalid membrane normal returned.")
-            }
             MembraneNormal::Dynamic(dynamic) => {
                 assert_eq!(dynamic.heads(), "name PO4");
                 assert_relative_eq!(dynamic.radius(), 2.5);
             }
+            _ => {
+                panic!("Invalid membrane normal returned.")
+            }
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_pass_membrane_normal_from_file() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/membrane_normal_from_file.yaml").unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::FromFile(file) => {
+                assert_eq!(file, "normals.yaml");
+            }
+            _ => panic!("Invalid membrane normal returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_pass_membrane_normal_inline() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/membrane_normal_inline.yaml").unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::FromMap(map) => {
+                assert!(map.get("POPC").is_some());
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(0).unwrap().get(1).unwrap().y,
+                    3.0
+                );
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(1).unwrap().get(0).unwrap().x,
+                    2.0
+                );
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(1).unwrap().get(2).unwrap().z,
+                    8.0
+                );
+            }
+            _ => panic!("Invalid membrane normal returned."),
         }
     }
 
@@ -953,6 +991,8 @@ mod tests_yaml {
 mod tests_builder {
 
     use approx::assert_relative_eq;
+    use groan_rs::prelude::Vector3D;
+    use hashbrown::HashMap;
 
     use crate::input::geometry::GeomReference;
     use crate::input::ordermap::Plane;
@@ -1156,13 +1196,80 @@ mod tests_builder {
             .unwrap();
 
         match analysis.membrane_normal() {
-            MembraneNormal::Static(_) | MembraneNormal::FromFile(_) => {
-                panic!("Invalid membrane normal returned.")
-            }
             MembraneNormal::Dynamic(dynamic) => {
                 assert_eq!(dynamic.heads(), "name PO4");
                 assert_relative_eq!(dynamic.radius(), 2.5);
             }
+            _ => {
+                panic!("Invalid membrane normal returned.")
+            }
+        }
+    }
+
+    #[test]
+    fn analysis_builder_pass_membrane_normal_from_file() {
+        let analysis = Analysis::builder()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .membrane_normal("normals.yaml")
+            .build()
+            .unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::FromFile(file) => {
+                assert_eq!(file, "normals.yaml");
+            }
+            _ => panic!("Invalid membrane normal returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_pass_membrane_normal_from_map() {
+        let mut map = HashMap::new();
+        map.insert(
+            "POPC".to_owned(),
+            vec![
+                vec![
+                    Vector3D::new(1.0, 2.0, 3.0),
+                    Vector3D::new(2.0, 3.0, 4.0),
+                    Vector3D::new(5.0, 6.0, 7.0),
+                ],
+                vec![
+                    Vector3D::new(2.0, 3.0, 4.0),
+                    Vector3D::new(3.0, 4.0, 5.0),
+                    Vector3D::new(6.0, 7.0, 8.0),
+                ],
+            ],
+        );
+
+        let analysis = Analysis::builder()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .membrane_normal(map)
+            .build()
+            .unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::FromMap(map) => {
+                assert!(map.get("POPC").is_some());
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(0).unwrap().get(1).unwrap().y,
+                    3.0
+                );
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(1).unwrap().get(0).unwrap().x,
+                    2.0
+                );
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(1).unwrap().get(2).unwrap().z,
+                    8.0
+                );
+            }
+            _ => panic!("Invalid membrane normal returned."),
         }
     }
 

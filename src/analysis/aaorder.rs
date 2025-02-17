@@ -125,6 +125,9 @@ pub(super) fn analyze_atomistic(
         data.finalize_manual_leaflet_classification(classification)?;
     }
 
+    // finalize the membrane normal specification
+    data.finalize_manual_membrane_normals(analysis.membrane_normal())?;
+
     if let Some(error_estimation) = analysis.estimate_error() {
         error_estimation.info();
     }
@@ -140,7 +143,7 @@ pub(super) fn analyze_atomistic(
         analysis.silent(),
     )?;
 
-    result.validate_leaflet_classification(analysis.step())?;
+    result.validate_run(analysis.step())?;
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation
