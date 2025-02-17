@@ -118,7 +118,7 @@ impl MoleculeLeafletClassification {
         fn get_membrane_normal(params: &LeafletClassification, membrane_normal: &MembraneNormal) -> Result<Dimension, ConfigError> {
             match (params.get_membrane_normal(), membrane_normal) {
                 (None, MembraneNormal::Static(y)) => Ok((*y).into()),
-                (None, MembraneNormal::Dynamic(_)) => Err(ConfigError::MissingMembraneNormal),
+                (None, MembraneNormal::Dynamic(_) | MembraneNormal::FromFile(_)) => Err(ConfigError::MissingMembraneNormal),
                 (Some(x), _) => Ok(x.into()),
             }
         }

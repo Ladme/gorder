@@ -713,7 +713,9 @@ mod tests_yaml {
             Analysis::from_file("tests/files/inputs/dynamic_membrane_normal.yaml").unwrap();
 
         match analysis.membrane_normal() {
-            MembraneNormal::Static(_) => panic!("Invalid membrane normal returned."),
+            MembraneNormal::Static(_) | MembraneNormal::FromFile(_) => {
+                panic!("Invalid membrane normal returned.")
+            }
             MembraneNormal::Dynamic(dynamic) => {
                 assert_eq!(dynamic.heads(), "name PO4");
                 assert_relative_eq!(dynamic.radius(), 2.5);
@@ -1154,7 +1156,9 @@ mod tests_builder {
             .unwrap();
 
         match analysis.membrane_normal() {
-            MembraneNormal::Static(_) => panic!("Invalid membrane normal returned."),
+            MembraneNormal::Static(_) | MembraneNormal::FromFile(_) => {
+                panic!("Invalid membrane normal returned.")
+            }
             MembraneNormal::Dynamic(dynamic) => {
                 assert_eq!(dynamic.heads(), "name PO4");
                 assert_relative_eq!(dynamic.radius(), 2.5);

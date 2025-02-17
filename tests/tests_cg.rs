@@ -3398,9 +3398,7 @@ fn test_cg_order_fail_dynamic_undefined_leaflet_normal() {
 
     match analysis.run() {
         Ok(_) => panic!("Analysis should have failed."),
-        Err(e) => assert!(e
-            .to_string()
-            .contains("leaflet classification requires static membrane normal")),
+        Err(e) => assert!(e.to_string().contains("leaflet classification requires it")),
     }
 }
 

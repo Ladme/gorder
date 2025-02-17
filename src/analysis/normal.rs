@@ -34,6 +34,7 @@ impl From<&MembraneNormal> for MoleculeMembraneNormal {
                     normals: Vec::new(),
                 })
             }
+            MembraneNormal::FromFile(_) => todo!("Reading membrane normal from file is not yet implemented.")
         }
     }
 }

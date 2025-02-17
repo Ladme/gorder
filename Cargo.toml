@@ -1,6 +1,6 @@
 [package]
 name = "gorder"
-version = "0.5.0"
+version = "0.6.0-dev.1"
 description = "Calculating lipid order parameters from Gromacs simulations"
 edition = "2021"
 rust-version = "1.82"

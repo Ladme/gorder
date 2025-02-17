@@ -7,7 +7,6 @@ use std::fmt::{self, Display};
 
 use colored::Colorize;
 use getset::{CopyGetters, Getters};
-use groan_rs::prelude::Dimension;
 use serde::{Deserialize, Serialize};
 
 use crate::errors::ConfigError;
@@ -23,13 +22,15 @@ pub enum MembraneNormal {
     Static(Axis),
     /// Membrane normal should be calculated dynamically for each molecule based on the shape of the membrane.
     Dynamic(DynamicNormal),
+    /// Membrane normals for individual molecules should be read from a yaml file.
+    FromFile(String),
 }
 
 impl MembraneNormal {
     /// Check the validity of the membrane normal.
     pub(super) fn validate(&self) -> Result<(), ConfigError> {
         match self {
-            Self::Static(_) => Ok(()),
+            Self::Static(_) | Self::FromFile(_) => Ok(()),
             Self::Dynamic(dynamic) => DynamicNormal::check_radius(dynamic.radius),
         }
     }
@@ -48,6 +49,13 @@ impl Display for MembraneNormal {
                 "Membrane normal will be {} calculated for each molecule.",
                 "dynamically".cyan(),
             ),
+            Self::FromFile(x) => {
+                write!(
+                    f,
+                    "Membrane normals will be read from a file '{}'.",
+                    x.cyan(),
+                )
+            }
         }
     }
 }
@@ -61,15 +69,6 @@ impl From<Axis> for MembraneNormal {
 impl From<DynamicNormal> for MembraneNormal {
     fn from(value: DynamicNormal) -> Self {
         Self::Dynamic(value)
-    }
-}
-
-impl From<&MembraneNormal> for Dimension {
-    fn from(value: &MembraneNormal) -> Self {
-        match value {
-            MembraneNormal::Static(axis) => (*axis).into(),
-            MembraneNormal::Dynamic(_) => todo!("Dynamic membrane normal not yet implemented."),
-        }
     }
 }
 

@@ -270,7 +270,7 @@ pub enum ConfigError {
     #[error("{} the provided trajectory file '{}' has an unknown, invalid, or unsupported format", "error:".red().bold(), .0.yellow())]
     InvalidTrajectoryFormat(String),
 
-    #[error("{} dynamic membrane normal calculation was requested but leaflet classification requires static membrane normal 
+    #[error("{} static global membrane normal is not used but leaflet classification requires it
 ({} add '{}' to the '{}' section of your input configuration file or, if analyzing a vesicle, assign the lipids into leaflets manually)", 
     "error:".red().bold(), "hint:".blue().bold(), "membrane_normal".bright_blue(), "leaflets".bright_blue())]
     MissingMembraneNormal,
@@ -316,7 +316,7 @@ pub enum OrderMapConfigError {
     "error:".red().bold(), "hint:".blue().bold())]
     InvalidBoxAuto,
 
-    #[error("{} membrane normal is to be dynamically calculated during the analysis => unable to automatically set ordermap plane ({} set ordermap plane manually)",
+    #[error("{} membrane normal is not a static global dimension => unable to automatically set ordermap plane ({} set ordermap plane manually)",
     "error:".red().bold(), "hint:".blue().bold())]
     InvalidPlaneAuto,
 }
