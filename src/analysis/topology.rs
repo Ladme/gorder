@@ -70,6 +70,7 @@ impl SystemTopology {
     }
 
     /// Convert the topology into a results structure.
+    #[inline(always)]
     pub(super) fn convert<O: MolConvert>(self, analysis: Analysis) -> O {
         let converter = ResultsConverter::<O>::new(analysis);
         converter.convert_topology(self)
@@ -85,12 +86,14 @@ impl SystemTopology {
     }
 
     /// Increase the frame counter by `step_size`.
+    #[inline(always)]
     pub(super) fn increase_frame_counter(&mut self) {
         self.frame += self.step_size * self.n_threads;
         self.total_frames += 1;
     }
 
     /// Check that all frames for manual leaflet classification and membrane normal specification were used.
+    #[inline(always)]
     pub(super) fn validate_run(
         &self,
         step: usize,

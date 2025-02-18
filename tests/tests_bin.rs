@@ -362,6 +362,28 @@ fn test_bin_cg_leaflets_every20_ndx() {
 }
 
 #[test]
+fn test_bin_cg_inline_manual_normals() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/inline_manual_normals.yaml",
+            "--overwrite",
+            "--silent",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_inline_manual_normals.yaml",
+        "tests/files/cg_order_vesicle.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_inline_manual_normals.yaml").unwrap();
+}
+
+#[test]
 fn test_bin_aa_leaflets_fail_no_ndx() {
     Command::cargo_bin("gorder")
         .unwrap()

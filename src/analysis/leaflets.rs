@@ -132,9 +132,12 @@ impl MoleculeLeafletClassification {
         ) -> Result<Dimension, ConfigError> {
             match (params.get_membrane_normal(), membrane_normal) {
                 (None, MembraneNormal::Static(y)) => Ok((*y).into()),
-                (None, MembraneNormal::Dynamic(_) | MembraneNormal::FromFile(_) | MembraneNormal::FromMap(_)) => {
-                    Err(ConfigError::MissingMembraneNormal)
-                }
+                (
+                    None,
+                    MembraneNormal::Dynamic(_)
+                    | MembraneNormal::FromFile(_)
+                    | MembraneNormal::FromMap(_),
+                ) => Err(ConfigError::MissingMembraneNormal),
                 (Some(x), _) => Ok(x.into()),
             }
         }
@@ -1844,12 +1847,7 @@ mod tests {
     #[test]
     fn test_global_leaflet_classification_new_normals_from_file_fail() {
         let params = LeafletClassification::global("@membrane", "name P");
-        match MoleculeLeafletClassification::new(
-            &params,
-            &"orders.yaml".into(),
-            1,
-            1
-        ) {
+        match MoleculeLeafletClassification::new(&params, &"orders.yaml".into(), 1, 1) {
             Ok(_) => panic!("Function should have failed."),
             Err(ConfigError::MissingMembraneNormal) => (),
             Err(e) => panic!("Unexpected error type `{}` returned.", e),
@@ -1868,12 +1866,7 @@ mod tests {
             ],
         );
 
-        match MoleculeLeafletClassification::new(
-            &params,
-            &map.into(),
-            1,
-            1
-        ) {
+        match MoleculeLeafletClassification::new(&params, &map.into(), 1, 1) {
             Ok(_) => panic!("Function should have failed."),
             Err(ConfigError::MissingMembraneNormal) => (),
             Err(e) => panic!("Unexpected error type `{}` returned.", e),

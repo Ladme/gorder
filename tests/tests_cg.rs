@@ -4,7 +4,7 @@
 //! Integration tests for the calculation of coarse-grained order parameters.
 
 use std::{
-    fs::File,
+    fs::{read_to_string, File},
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
 };
@@ -3235,6 +3235,66 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_yaml() {
             1
         ));
     }
+}
+
+#[test]
+fn test_cg_order_vesicle_membrane_normals_from_file_yaml() {
+    for n_threads in [1, 3, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/vesicle.tpr")
+            .trajectory("tests/files/vesicle.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder(
+                "name C1A D2A C3A C4A C1B C2B C3B C4B",
+            ))
+            .membrane_normal("tests/files/normals_vesicle.yaml")
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_vesicle.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_membrane_normals_from_map_yaml() {
+    let string = read_to_string("tests/files/normals_vesicle.yaml").unwrap();
+    let normals_map: HashMap<String, Vec<Vec<Vector3D>>> = serde_yaml::from_str(&string).unwrap();
+
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(MembraneNormal::from(normals_map))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle.yaml",
+        1
+    ));
 }
 
 #[test]

@@ -4,7 +4,7 @@
 //! Integration tests for the calculation of atomistic order parameters.
 
 use std::{
-    fs::File,
+    fs::{read_to_string, File},
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
 };
@@ -4527,6 +4527,53 @@ fn test_aa_order_buckled_dynamic_membrane_normal_ordermaps_yaml() {
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
     assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+}
+
+#[test]
+fn test_aa_order_buckled_membrane_normals_from_file_from_map_min_yaml() {
+    let string = read_to_string("tests/files/normals_aa_buckled_min.yaml").unwrap();
+    let normals_map: HashMap<String, Vec<Vec<Vector3D>>> = serde_yaml::from_str(&string).unwrap();
+
+    let mut output_paths = Vec::new();
+    let mut outputs = Vec::new();
+    for normals in [
+        MembraneNormal::from(DynamicNormal::new("name P", 2.0).unwrap()),
+        MembraneNormal::from(normals_map),
+        MembraneNormal::from("tests/files/normals_aa_buckled_min.yaml"),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        outputs.push(output);
+        let path_to_output = outputs.last().unwrap().path().to_str().unwrap();
+        output_paths.push(path_to_output.to_owned());
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/aa_buckled.tpr")
+            .trajectory("tests/files/aa_buckled.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .membrane_normal(normals)
+            .end(1630000.0)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+    }
+
+    assert!(diff_files_ignore_first(
+        &output_paths[0],
+        &output_paths[1],
+        1
+    ));
+    assert!(diff_files_ignore_first(
+        &output_paths[1],
+        &output_paths[2],
+        1
+    ));
 }
 
 #[test]

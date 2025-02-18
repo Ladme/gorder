@@ -240,13 +240,12 @@ impl SystemTopology {
     ) -> Result<(), ManualNormalError> {
         let normals: HashMap<String, Vec<Vec<Vector3D>>> = match params {
             MembraneNormal::FromFile(file) => {
-                let string = read_to_string(file).map_err(|_| ManualNormalError::FileNotFound(file.to_owned()))?;
+                let string = read_to_string(file)
+                    .map_err(|_| ManualNormalError::FileNotFound(file.to_owned()))?;
                 serde_yaml::from_str(&string)
                     .map_err(|e| ManualNormalError::CouldNotParse(file.to_owned(), e))?
             }
-            MembraneNormal::FromMap(map) => {
-                map.clone()
-            }
+            MembraneNormal::FromMap(map) => map.clone(),
             // do nothing for the other types of membrane normal specification
             _ => return Ok(()),
         };
