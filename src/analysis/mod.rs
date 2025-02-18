@@ -85,6 +85,7 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
     use groan_rs::prelude::{Dimension, SimBox};
+    use hashbrown::HashMap;
 
     #[test]
     fn test_calc_sch() {
@@ -133,5 +134,33 @@ mod tests {
 
         analysis.init_ordermap(Axis::Z.into()).unwrap();
         assert_eq!(analysis.map().as_ref().unwrap().plane().unwrap(), Plane::XY);
+
+        let mut analysis = Analysis::builder()
+            .structure("md.tpr")
+            .trajectory("md.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .ordermaps(OrderMap::default())
+            .build()
+            .unwrap();
+
+        match analysis.init_ordermap("normals.yaml".into()) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(OrderMapConfigError::InvalidPlaneAuto) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+
+        let mut map = HashMap::new();
+        map.insert(
+            "POPE".to_owned(),
+            vec![
+                vec![Vector3D::new(1.0, 2.0, 3.0)],
+                vec![Vector3D::new(2.0, 3.0, 4.0)],
+            ],
+        );
+        match analysis.init_ordermap(map.into()) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(OrderMapConfigError::InvalidPlaneAuto) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
     }
 }

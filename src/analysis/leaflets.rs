@@ -1842,6 +1842,45 @@ mod tests {
     }
 
     #[test]
+    fn test_global_leaflet_classification_new_normals_from_file_fail() {
+        let params = LeafletClassification::global("@membrane", "name P");
+        match MoleculeLeafletClassification::new(
+            &params,
+            &"orders.yaml".into(),
+            1,
+            1
+        ) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(ConfigError::MissingMembraneNormal) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_individual_leaflet_classification_new_normals_from_map_fail() {
+        let params = LeafletClassification::global("@membrane", "name P");
+        let mut map = HashMap::new();
+        map.insert(
+            "POPE".to_owned(),
+            vec![
+                vec![Vector3D::new(1.0, 2.0, 3.0)],
+                vec![Vector3D::new(2.0, 3.0, 4.0)],
+            ],
+        );
+
+        match MoleculeLeafletClassification::new(
+            &params,
+            &map.into(),
+            1,
+            1
+        ) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(ConfigError::MissingMembraneNormal) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
     fn test_should_assign_every() {
         let classifier = MoleculeLeafletClassification::new(
             &LeafletClassification::individual("name P", "name C218 C316"),
