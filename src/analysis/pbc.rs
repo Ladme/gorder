@@ -312,7 +312,7 @@ impl<'a> PBC3D<'a> {
     pub(super) fn from_system(system: &'a System) -> Self {
         Self(
             system.get_box()
-            .unwrap_or_else(|| 
+            .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | PBC3D::from_system | Simulation box is undefined but this should have been handled before.")
             )
         )

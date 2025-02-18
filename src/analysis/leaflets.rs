@@ -641,12 +641,12 @@ impl LeafletClassifier for ManualClassification {
 
         Ok(self.assignment
             .as_ref()
-            .unwrap_or_else(|| 
+            .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | ManualClassification::identify_leaflet | Assignment has not been set up. {}", PANIC_MESSAGE))
             .get(assignment_frame)
-            .ok_or_else(|| 
+            .ok_or_else(||
                 AnalysisError::ManualLeafletError(ManualLeafletClassificationError::FrameNotFound(
-                    current_frame, assignment_frame, 
+                    current_frame, assignment_frame,
                     self.assignment.as_ref().unwrap().len())
                 )
             )?
@@ -661,7 +661,7 @@ impl LeafletClassifier for ManualClassification {
     fn n_molecules(&self) -> usize {
         self.assignment
             .as_ref()
-            .unwrap_or_else(|| 
+            .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | ManualClassification::n_molecules | Assignment has not been set up. {}", PANIC_MESSAGE)).first()
             .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | ManualClassification::n_molecules | Assignment is empty. {}", PANIC_MESSAGE))
@@ -985,20 +985,18 @@ impl LeafletClassifier for NdxClassification {
             (None, None) => self
                 .read_ndx_file(current_frame, system.get_n_atoms())
                 .map_err(AnalysisError::NdxLeafletError)?,
-            
-            (Some(_), None) | (None, Some(_)) => 
-                panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Inconsistent state of `groups` and `last_ndx_index`."),
-            
-            (Some(_), Some(index)) => {
-                match index.cmp(&current_frame) {
-                    Ordering::Less => self
-                        .read_ndx_file(current_frame, system.get_n_atoms())
-                        .map_err( AnalysisError::NdxLeafletError)?,
-                    Ordering::Equal => (),
-                    Ordering::Greater => 
-                        panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Last read NDX file is for frame `{}`, but the current frame is `{}`. Went back in time?", index, current_frame),
-                }
+            (Some(_), None) | (None, Some(_)) => {
+                panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Inconsistent state of `groups` and `last_ndx_index`.");
             }
+            (Some(_), Some(index)) => match index.cmp(&current_frame) {
+                Ordering::Less => self
+                    .read_ndx_file(current_frame, system.get_n_atoms())
+                    .map_err(AnalysisError::NdxLeafletError)?,
+                Ordering::Equal => (),
+                Ordering::Greater => {
+                    panic!("FATAL GORDER ERROR | NdxClassification::identify_leaflet | Last read NDX file is for frame `{}`, but the current frame is `{}`. Went back in time?", index, current_frame);
+                }
+            },
         };
 
         // get the assignment for the target molecule

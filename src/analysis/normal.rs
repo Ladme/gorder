@@ -138,7 +138,7 @@ impl DynamicMembraneNormal {
         pbc: &impl PBCHandler,
     ) -> Result<Vector3D, AnalysisError> {
         let reference = system.get_atom(head)
-            .unwrap_or_else(|_| 
+            .unwrap_or_else(|_|
                 panic!("FATAL GORDER ERROR | DynamicMembraneNormal::calculate_normal | Atom not found. Atom with index `{}` should exist. {}", 
                     head, PANIC_MESSAGE));
 
@@ -177,7 +177,7 @@ impl ManualMembraneNormal {
         frame_index: usize,
         molecule_index: usize,
     ) -> Result<&Vector3D, AnalysisError> {
-        let unwrapped = self.0.as_ref().unwrap_or_else(|| 
+        let unwrapped = self.0.as_ref().unwrap_or_else(||
             panic!("FATAL GORDER ERROR | ManualMembraneNormal::get_normal | Membrane normals have not been set up. {}", PANIC_MESSAGE));
 
         Ok(unwrapped
