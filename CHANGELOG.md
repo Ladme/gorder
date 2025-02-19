@@ -1,3 +1,6 @@
+## Version 0.6.0
+- **Manual membrane normals:** Membrane normals can be now assigned manually for each lipid molecule in each trajectory frame. See the [manual](https://ladme.github.io/gorder-manual/manual_normals.html) for more information.
+
 ## Version 0.5.0
 - **Dynamic membrane normal calculation:** Membrane normals can be now calculated dynamically from actual membrane shape which allows the calculation of order parameters for vesicles and similar systems (see the [manual](https://ladme.github.io/gorder-manual/membrane_normal.html)).
 - **Ignoring PBC:** You can now choose to ignore periodic boundary conditions. This allows analyzing simulations with non-orthogonal simulation boxes with some small additional friction (making molecules whole). See the [manual](https://ladme.github.io/gorder-manual/no_pbc.html) for more information.
