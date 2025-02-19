@@ -3268,6 +3268,115 @@ fn test_cg_order_vesicle_membrane_normals_from_file_yaml() {
 }
 
 #[test]
+fn test_cg_order_vesicle_membrane_normals_from_file_fail_unmatching_molecules() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_unmatching.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("inconsistent number of molecules specified in the normals structure")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_normals_from_file_fail_missing_molecule_type() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_missing.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("not found in the manual normals structure")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_normals_from_file_fail_empty_molecule_type() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_empty.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("no membrane normals provided for molecule type")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_membrane_normals_from_file_fail_too_many_frames() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_vesicle.yaml")
+        .begin(2600000.0)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("number of frames specified in the normals structure")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_membrane_normals_from_file_fail_nonexistent_file() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_nonexistent.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("could not open the normals file")),
+    }
+}
+
+#[test]
 fn test_cg_order_vesicle_membrane_normals_from_map_yaml() {
     let string = read_to_string("tests/files/normals_vesicle.yaml").unwrap();
     let normals_map: HashMap<String, Vec<Vec<Vector3D>>> = serde_yaml::from_str(&string).unwrap();

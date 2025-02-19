@@ -4577,6 +4577,52 @@ fn test_aa_order_buckled_membrane_normals_from_file_from_map_min_yaml() {
 }
 
 #[test]
+fn test_aa_order_buckled_membrane_normals_from_file_fail_unknown_molecule() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/aa_buckled.tpr")
+        .trajectory("tests/files/aa_buckled.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal("tests/files/normals_aa_buckled_unknown_mol.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("specified in the normals structure not found in the system")),
+    }
+}
+
+#[test]
+fn test_aa_order_buckled_membrane_normals_from_file_fail_missing_frames() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/aa_buckled.tpr")
+        .trajectory("tests/files/aa_buckled.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal("tests/files/normals_aa_buckled_min.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("could not get membrane normals for frame index")),
+    }
+}
+
+#[test]
 fn test_aa_order_fail_dynamic_undefined_ordermap_plane() {
     let analysis = Analysis::builder()
         .structure("tests/files/pcpepg.tpr")
