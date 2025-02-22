@@ -745,11 +745,11 @@ mod tests_yaml {
             MembraneNormal::FromMap(map) => {
                 assert!(map.get("POPC").is_some());
                 assert_relative_eq!(
-                    map.get("POPC").unwrap().get(0).unwrap().get(1).unwrap().y,
+                    map.get("POPC").unwrap().first().unwrap().get(1).unwrap().y,
                     3.0
                 );
                 assert_relative_eq!(
-                    map.get("POPC").unwrap().get(1).unwrap().get(0).unwrap().x,
+                    map.get("POPC").unwrap().get(1).unwrap().first().unwrap().x,
                     2.0
                 );
                 assert_relative_eq!(
@@ -1257,11 +1257,11 @@ mod tests_builder {
             MembraneNormal::FromMap(map) => {
                 assert!(map.get("POPC").is_some());
                 assert_relative_eq!(
-                    map.get("POPC").unwrap().get(0).unwrap().get(1).unwrap().y,
+                    map.get("POPC").unwrap().first().unwrap().get(1).unwrap().y,
                     3.0
                 );
                 assert_relative_eq!(
-                    map.get("POPC").unwrap().get(1).unwrap().get(0).unwrap().x,
+                    map.get("POPC").unwrap().get(1).unwrap().first().unwrap().x,
                     2.0
                 );
                 assert_relative_eq!(

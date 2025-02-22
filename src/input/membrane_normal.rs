@@ -201,11 +201,11 @@ POPC:
             MembraneNormal::FromMap(x) => {
                 assert!(x.get("POPC").is_some());
                 assert_relative_eq!(
-                    x.get("POPC").unwrap().get(0).unwrap().get(1).unwrap().y,
+                    x.get("POPC").unwrap().first().unwrap().get(1).unwrap().y,
                     3.0
                 );
                 assert_relative_eq!(
-                    x.get("POPC").unwrap().get(1).unwrap().get(0).unwrap().x,
+                    x.get("POPC").unwrap().get(1).unwrap().first().unwrap().x,
                     2.0
                 );
                 assert_relative_eq!(
@@ -227,11 +227,11 @@ POPC:
             MembraneNormal::FromMap(x) => {
                 assert!(x.get("POPC").is_some());
                 assert_relative_eq!(
-                    x.get("POPC").unwrap().get(0).unwrap().get(1).unwrap().y,
+                    x.get("POPC").unwrap().first().unwrap().get(1).unwrap().y,
                     3.0
                 );
                 assert_relative_eq!(
-                    x.get("POPC").unwrap().get(1).unwrap().get(0).unwrap().x,
+                    x.get("POPC").unwrap().get(1).unwrap().first().unwrap().x,
                     2.0
                 );
                 assert_relative_eq!(

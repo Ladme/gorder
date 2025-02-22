@@ -274,16 +274,13 @@ impl SystemTopology {
     /// Doesn't do anything if the membrane normals are not provided manually.
     pub(super) fn validate_normals_specification(&self) -> Result<(), ManualNormalError> {
         for molecule in self.molecule_types() {
-            match molecule.membrane_normal() {
-                MoleculeMembraneNormal::Manual(manual) => {
-                    if self.total_frames() != manual.n_frames() {
-                        return Err(ManualNormalError::UnexpectedNumberOfFrames {
-                            used_frames: manual.n_frames(),
-                            analyzed_frames: self.total_frames(),
-                        });
-                    }
+            if let MoleculeMembraneNormal::Manual(manual) = molecule.membrane_normal() {
+                if self.total_frames() != manual.n_frames() {
+                    return Err(ManualNormalError::UnexpectedNumberOfFrames {
+                        used_frames: manual.n_frames(),
+                        analyzed_frames: self.total_frames(),
+                    });
                 }
-                _ => (),
             }
         }
 
