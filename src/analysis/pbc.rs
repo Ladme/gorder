@@ -6,15 +6,14 @@
 use groan_rs::{
     errors::{AtomError, GroupError},
     prelude::{
-        AtomIterable, AtomIteratorWithBox, Cylinder, Dimension, ImmutableAtomIterable, NaiveShape,
-        Shape, SimBox, Vector3D,
+        AtomIterable, AtomIteratorWithBox, CellGrid, CellNeighbors, Cylinder, Dimension, ImmutableAtomIterable, NaiveShape, Shape, SimBox, Vector3D
     },
     system::System,
 };
 
 use crate::{errors::AnalysisError, PANIC_MESSAGE};
 
-use super::geometry::GeometrySelection;
+use super::{common::macros::group_name, geometry::GeometrySelection};
 
 /// Trait implemented by structures that should handle PBC.
 pub(crate) trait PBCHandler {
@@ -30,13 +29,14 @@ pub(crate) trait PBCHandler {
         reference: &Vector3D,
     ) -> Result<Vec<Vector3D>, AnalysisError>;
 
-    /// Take atoms of a group in a specified geometry and calculate their center of geometry.
-    fn group_filter_geometry_get_center<S: Shape + NaiveShape>(
+    /// Calculate the local membrane centers for all lipid molecules.
+    fn calc_local_membrane_centers(
         &self,
         system: &System,
-        group: &str,
-        shape: S,
-    ) -> Result<Vector3D, AtomError>;
+        heads: &[usize],
+        radius: f32,
+        membrane_normal: Dimension,
+    ) -> Result<Vec<Vector3D>, AnalysisError>;
 
     /// Calculate distance between two points in the specified dimensions.
     fn distance(&self, point1: &Vector3D, point2: &Vector3D, dim: Dimension) -> f32;
@@ -88,18 +88,46 @@ impl PBCHandler for NoPBC {
         system.group_get_center_naive(group)
     }
 
-    #[inline(always)]
-    fn group_filter_geometry_get_center<S: Shape + NaiveShape>(
+    fn calc_local_membrane_centers(
         &self,
         system: &System,
-        group: &str,
-        shape: S,
-    ) -> Result<Vector3D, AtomError> {
-        system
-            .group_iter(group)
-            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | NoPBC::group_filter_geometry_get_center | Unknown group `{}`. {}", group, PANIC_MESSAGE))
-            .filter_geometry_naive(shape)
-            .get_center_naive()
+        heads: &[usize],
+        radius: f32,
+        membrane_normal: Dimension,
+    ) -> Result<Vec<Vector3D>, AnalysisError> {
+        let membrane_iterator = system
+            .group_iter(group_name!("Membrane"))
+            .unwrap_or_else(|_| 
+                panic!("FATAL GORDER ERROR | NoPBC::calc_local_membrane_centers | Could not get the `Membrane` group. {}", PANIC_MESSAGE)
+            );
+
+        let mut centers = Vec::with_capacity(heads.len());
+        for &index in heads.iter() {
+            let position = unsafe { system.get_atom_unchecked(index) }
+                .get_position()
+                .ok_or(AnalysisError::UndefinedPosition(index))?;
+
+            let cylinder = self.cylinder_for_local_center(
+                position.x,
+                position.y,
+                radius,
+                membrane_normal,
+            );
+
+            let center = membrane_iterator
+                .clone()
+                .filter_geometry_naive(cylinder)
+                .get_center_naive()
+                .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index))?;
+
+            if center.x.is_nan() || center.y.is_nan() || center.z.is_nan() {
+                return Err(AnalysisError::InvalidLocalMembraneCenter(index));
+            }
+
+            centers.push(center);
+        }
+
+        Ok(centers)
     }
 
     fn group_filter_geometry_get_pos<S: Shape + NaiveShape>(
@@ -196,18 +224,53 @@ impl<'a> PBCHandler for PBC3D<'a> {
         system.group_get_center(group)
     }
 
-    #[inline(always)]
-    fn group_filter_geometry_get_center<S: Shape + NaiveShape>(
+    fn calc_local_membrane_centers(
         &self,
         system: &System,
-        group: &str,
-        shape: S,
-    ) -> Result<Vector3D, AtomError> {
-        system
-            .group_iter(group)
-            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | PBC3D::group_filter_geometry_get_center | Unknown group `{}`. {}", group, PANIC_MESSAGE))
-            .filter_geometry(shape)
-            .get_center()
+        heads: &[usize],
+        radius: f32,
+        membrane_normal: Dimension,
+    ) -> Result<Vec<Vector3D>, AnalysisError> {
+        let cell_grid = CellGrid::new(system, group_name!("Membrane"), radius)
+            .unwrap_or_else(|e| 
+                panic!("FATAL GORDER ERROR | PBC3D::calc_local_membrane_centers | Could not construct a cell grid `{}`. {}", e, PANIC_MESSAGE)
+            );
+        let neighbors = match membrane_normal {
+            Dimension::X => CellNeighbors::new(.., -1..=1, -1..=1),
+            Dimension::Y => CellNeighbors::new(-1..=1, .., -1..=1),
+            Dimension::Z => CellNeighbors::new(-1..=1, -1..=1, ..),
+            x => panic!("FATAL GORDER ERROR | PBC3D::calc_local_membrane_centers | Invalid dimension `{}`. {}", x, PANIC_MESSAGE),
+        };
+
+        let mut centers = Vec::with_capacity(heads.len());
+        for &index in heads.iter() {
+            let position = unsafe { system.get_atom_unchecked(index) }
+                .get_position()
+                .ok_or(AnalysisError::UndefinedPosition(index))?;
+
+            let cylinder = self.cylinder_for_local_center(
+                position.x,
+                position.y,
+                radius,
+                membrane_normal,
+            );
+
+            let membrane_iterator = cell_grid
+                .neighbors_iter(position.clone(), neighbors.clone());
+
+            let center = membrane_iterator
+                .filter_geometry(cylinder)
+                .get_center()
+                .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index))?;
+
+            if center.x.is_nan() || center.y.is_nan() || center.z.is_nan() {
+                return Err(AnalysisError::InvalidLocalMembraneCenter(index));
+            }
+
+            centers.push(center);
+        }
+
+        Ok(centers)
     }
 
     /// Take atoms of a group in a specified geometry and collect their positions.

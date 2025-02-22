@@ -458,33 +458,19 @@ impl LocalClassification {
     }
 
     /// Calculate and set local membrane center of geometry for each molecule.
+    #[inline(always)]
     pub(super) fn set_membrane_center(
         &mut self,
         system: &System,
         pbc_handler: &impl PBCHandler,
         membrane_normal: Dimension,
     ) -> Result<(), AnalysisError> {
-        for (i, &index) in self.heads.iter().enumerate() {
-            let position = unsafe { system.get_atom_unchecked(index) }
-                .get_position()
-                .ok_or(AnalysisError::UndefinedPosition(index))?;
-
-            let cylinder = pbc_handler.cylinder_for_local_center(
-                position.x,
-                position.y,
-                self.radius,
-                membrane_normal,
-            );
-            let center = pbc_handler
-                .group_filter_geometry_get_center(system, group_name!("Membrane"), cylinder)
-                .map_err(|_| AnalysisError::InvalidLocalMembraneCenter(index))?;
-
-            if center.x.is_nan() || center.y.is_nan() || center.z.is_nan() {
-                return Err(AnalysisError::InvalidLocalMembraneCenter(index));
-            }
-
-            self.membrane_center[i] = center;
-        }
+        self.membrane_center = pbc_handler.calc_local_membrane_centers(
+            system,
+            &self.heads,
+            self.radius,
+            membrane_normal,
+        )?;
 
         Ok(())
     }
