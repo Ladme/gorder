@@ -77,7 +77,12 @@ impl SystemTopology {
     }
 
     /// Initialize reading of a new frame.
-    pub(super) fn init_new_frame(&mut self, frame: &System, pbc_handler: &impl PBCHandler) {
+    pub(super) fn init_new_frame<'a>(
+        &mut self,
+        frame: &'a System,
+        pbc_handler: &mut impl PBCHandler<'a>,
+    ) {
+        pbc_handler.init_new_frame();
         self.geometry.init_new_frame(frame, pbc_handler);
 
         self.molecule_types

@@ -165,12 +165,12 @@ pub(super) fn prepare_membrane_normal_calculation(
 
 /// Classifies molecules in the system based on their topology and returns a list of molecule types,
 /// along with information about the atoms that form each molecule.
-pub(super) fn classify_molecules(
-    system: &System,
+pub(super) fn classify_molecules<'a>(
+    system: &'a System,
     group1: &str,
     group2: &str,
     analysis_options: &Analysis,
-    pbc_handler: &impl PBCHandler,
+    pbc_handler: &impl PBCHandler<'a>,
 ) -> Result<Vec<MoleculeType>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
@@ -299,9 +299,9 @@ pub(super) fn analyze_frame(
     if data.handle_pbc() {
         // check the validity of the simulation box
         let simbox = check_box(frame)?;
-        let pbc = PBC3D::new(simbox);
+        let mut pbc = PBC3D::new(simbox);
         // initialize the reading of the next frame
-        data.init_new_frame(frame, &pbc);
+        data.init_new_frame(frame, &mut pbc);
 
         analyze_molecules(
             frame,
@@ -311,9 +311,9 @@ pub(super) fn analyze_frame(
             &pbc,
         )?
     } else {
-        let pbc = NoPBC;
+        let mut pbc = NoPBC;
         // initialize the reading of the next frame
-        data.init_new_frame(frame, &pbc);
+        data.init_new_frame(frame, &mut pbc);
 
         analyze_molecules(
             frame,
@@ -338,12 +338,12 @@ pub(super) fn analyze_frame(
 
 /// Run the analysis for each molecule.
 #[inline]
-fn analyze_molecules(
-    frame: &System,
+fn analyze_molecules<'a>(
+    frame: &'a System,
     molecules: &mut [MoleculeType],
     frame_index: usize,
     geometry: &GeometrySelectionType,
-    pbc_handler: &impl PBCHandler,
+    pbc_handler: &'a impl PBCHandler<'a>,
 ) -> Result<(), AnalysisError> {
     let membrane_center = OnceCell::new(); // used with global classification method
 
@@ -457,7 +457,7 @@ fn select_order_bonds(
 
 /// Create a new molecule type.
 #[allow(clippy::too_many_arguments)]
-fn create_new_molecule_type(
+fn create_new_molecule_type<'a>(
     system: &System,
     molecule_topology: MoleculeTopology,
     residues: &[String],
@@ -470,7 +470,7 @@ fn create_new_molecule_type(
     errors: bool,
     n_threads: usize,
     step_size: usize,
-    pbc_handler: &impl PBCHandler,
+    pbc_handler: &impl PBCHandler<'a>,
 ) -> Result<MoleculeType, TopologyError> {
     // create a name of the molecule
     let name = residues.join("-");

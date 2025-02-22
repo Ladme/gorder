@@ -36,9 +36,9 @@ impl Default for GeometrySelectionType {
 
 impl GeometrySelectionType {
     /// Construct a geometry selection type from the input geometry.
-    pub(super) fn from_geometry(
+    pub(super) fn from_geometry<'a>(
         geometry: Option<&Geometry>,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
     ) -> Self {
         match geometry {
             None => GeometrySelectionType::None(NoSelection::default()),
@@ -106,7 +106,11 @@ center: {}",
 
     /// Initialize the reading of a new frame (calculate and set new reference position if needed).
     #[inline]
-    pub(super) fn init_new_frame(&mut self, system: &System, pbc_handler: &impl PBCHandler) {
+    pub(super) fn init_new_frame<'a>(
+        &mut self,
+        system: &System,
+        pbc_handler: &impl PBCHandler<'a>,
+    ) {
         match self {
             GeometrySelectionType::None(_) => (),
             GeometrySelectionType::Cuboid(x) => x.init_reference(system, pbc_handler),
@@ -122,7 +126,7 @@ pub(crate) trait GeometrySelection: Send + Sync {
     type Properties;
 
     /// Create the structure from the provided properties.
-    fn new(properties: &Self::Properties, pbc_handler: &impl PBCHandler) -> Self;
+    fn new<'a>(properties: &Self::Properties, pbc_handler: &impl PBCHandler<'a>) -> Self;
 
     /// Get the reference point of the geometry selection.
     fn reference(&self) -> &GeomReference;
@@ -137,10 +141,10 @@ pub(crate) trait GeometrySelection: Send + Sync {
     fn set_shape(&mut self, shape: Self::Shape);
 
     /// Construct the inner shape of the geometry selection with the given point being used as reference.
-    fn construct_shape(
+    fn construct_shape<'a>(
         properties: &Self::Properties,
         point: Vector3D,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
     ) -> Self::Shape;
 
     /// Prepare the system for geometry selection, i.e. construct the required groups.
@@ -167,7 +171,7 @@ pub(crate) trait GeometrySelection: Send + Sync {
     }
 
     /// Calculate and set the reference position for this frame.
-    fn init_reference(&mut self, system: &System, pbc_handler: &impl PBCHandler) {
+    fn init_reference<'a>(&mut self, system: &System, pbc_handler: &impl PBCHandler<'a>) {
         let reference_point = match self.reference() {
             GeomReference::Point(_) => return, // nothing to do, reference position is fixed
             GeomReference::Selection(_) => {
@@ -197,7 +201,7 @@ impl GeometrySelection for NoSelection {
     type Properties = (); // arbitrary properties
 
     #[inline(always)]
-    fn new(_geometry: &Self::Properties, _pbc_handler: &impl PBCHandler) -> Self {
+    fn new<'a>(_geometry: &Self::Properties, _pbc_handler: &impl PBCHandler<'a>) -> Self {
         Self {}
     }
 
@@ -229,16 +233,16 @@ impl GeometrySelection for NoSelection {
     fn set_shape(&mut self, _shape: Self::Shape) {}
 
     #[inline(always)]
-    fn construct_shape(
+    fn construct_shape<'a>(
         _properties: &Self::Properties,
         _point: Vector3D,
-        _pbc_handler: &impl PBCHandler,
+        _pbc_handler: &impl PBCHandler<'a>,
     ) -> Self::Shape {
         panic!("FATAL GORDER ERROR | NoSelection::construct_shape | This method should never be called. {}", PANIC_MESSAGE);
     }
 
     #[inline(always)]
-    fn init_reference(&mut self, _system: &System, _pbc_handler: &impl PBCHandler) {}
+    fn init_reference<'a>(&mut self, _system: &System, _pbc_handler: &impl PBCHandler<'a>) {}
 
     #[inline(always)]
     fn inside(&self, _point: &Vector3D, _simbox: &SimBox) -> bool {
@@ -267,7 +271,7 @@ impl GeometrySelection for CuboidAnalysis {
     type Shape = Rectangular;
     type Properties = CuboidSelection;
 
-    fn new(properties: &CuboidSelection, pbc_handler: &impl PBCHandler) -> Self {
+    fn new<'a>(properties: &CuboidSelection, pbc_handler: &impl PBCHandler<'a>) -> Self {
         let reference_point = match properties.reference() {
             // fixed value
             GeomReference::Point(x) => x.clone(),
@@ -298,16 +302,16 @@ impl GeometrySelection for CuboidAnalysis {
         &self.properties
     }
 
-    fn construct_shape(
+    fn construct_shape<'a>(
         properties: &Self::Properties,
         mut point: Vector3D,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
     ) -> Self::Shape {
         #[inline(always)]
-        fn compute_dimension(
+        fn compute_dimension<'a>(
             dim: [f32; 2],
             reference_component: &mut f32,
-            pbc_handler: &impl PBCHandler,
+            pbc_handler: &impl PBCHandler<'a>,
         ) -> f32 {
             match dim {
                 [f32::NEG_INFINITY, f32::INFINITY] => {
@@ -346,7 +350,7 @@ impl GeometrySelection for CylinderAnalysis {
     type Shape = Cylinder;
     type Properties = CylinderSelection;
 
-    fn new(properties: &CylinderSelection, pbc_handler: &impl PBCHandler) -> Self {
+    fn new<'a>(properties: &CylinderSelection, pbc_handler: &impl PBCHandler<'a>) -> Self {
         let reference_point = match properties.reference() {
             // fixed value
             GeomReference::Point(x) => x.clone(),
@@ -382,10 +386,10 @@ impl GeometrySelection for CylinderAnalysis {
         self.properties.reference()
     }
 
-    fn construct_shape(
+    fn construct_shape<'a>(
         properties: &Self::Properties,
         mut point: Vector3D,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
     ) -> Self::Shape {
         let height = match properties.span() {
             [f32::NEG_INFINITY, f32::INFINITY] => match properties.orientation() {
@@ -425,7 +429,7 @@ impl GeometrySelection for SphereAnalysis {
     type Shape = Sphere;
     type Properties = SphereSelection;
 
-    fn new(properties: &Self::Properties, pbc_handler: &impl PBCHandler) -> Self {
+    fn new<'a>(properties: &Self::Properties, pbc_handler: &impl PBCHandler<'a>) -> Self {
         let reference_point = match properties.reference() {
             // fixed value
             GeomReference::Point(x) => x.clone(),
@@ -462,10 +466,10 @@ impl GeometrySelection for SphereAnalysis {
     }
 
     #[inline(always)]
-    fn construct_shape(
+    fn construct_shape<'a>(
         properties: &Self::Properties,
         mut point: Vector3D,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
     ) -> Self::Shape {
         pbc_handler.wrap(&mut point);
         Sphere::new(point, properties.radius())

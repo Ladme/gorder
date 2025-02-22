@@ -5,11 +5,7 @@
 
 use std::fs::read_to_string;
 
-use groan_rs::{
-    prelude::{Sphere, Vector3D},
-    structures::group::Group,
-    system::System,
-};
+use groan_rs::{prelude::Vector3D, structures::group::Group, system::System};
 use hashbrown::HashMap;
 use nalgebra::{DMatrix, SVD};
 use once_cell::sync::OnceCell;
@@ -51,12 +47,12 @@ impl From<&MembraneNormal> for MoleculeMembraneNormal {
 
 impl MoleculeMembraneNormal {
     /// Get membrane normal for the molecule with the target index.
-    pub(super) fn get_normal(
+    pub(super) fn get_normal<'a>(
         &mut self,
         frame_index: usize,
         molecule_index: usize,
-        system: &System,
-        pbc_handler: &impl PBCHandler,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
     ) -> Result<&Vector3D, AnalysisError> {
         match self {
             Self::Static(vector) => Ok(vector),
@@ -111,11 +107,11 @@ impl DynamicMembraneNormal {
 
     /// Get membrane normal calculated for a molecule or calculate it it has not been already calculated.
     #[inline]
-    fn get_normal(
+    fn get_normal<'a>(
         &mut self,
         index: usize,
-        system: &System,
-        pbc: &impl PBCHandler,
+        system: &'a System,
+        pbc: &'a impl PBCHandler<'a>,
     ) -> Result<&Vector3D, AnalysisError> {
         let normal = self.normals.get_mut(index)
             .unwrap_or_else(||
@@ -131,11 +127,11 @@ impl DynamicMembraneNormal {
     /// Calculate local membrane normal for the specified atom.
     // Cold because this function gets called only once per frame and molecule, but `get_normal` gets called many times more often.
     #[cold]
-    fn calculate_normal(
+    fn calculate_normal<'a>(
         head: usize,
-        system: &System,
+        system: &'a System,
         radius: f32,
-        pbc: &impl PBCHandler,
+        pbc: &'a impl PBCHandler<'a>,
     ) -> Result<Vector3D, AnalysisError> {
         let reference = system.get_atom(head)
             .unwrap_or_else(|_|
@@ -146,15 +142,8 @@ impl DynamicMembraneNormal {
             .get_position()
             .ok_or_else(|| AnalysisError::UndefinedPosition(reference.get_index()))?;
 
-        let geometry = Sphere::new(reference_pos.clone(), radius);
-
         // get the cloud of headgroup atoms around the reference atom; this cloud must be whole in the simulation box
-        let positions = pbc.group_filter_geometry_get_pos(
-            system,
-            group_name!("NormalHeads"),
-            geometry,
-            reference_pos,
-        )?;
+        let positions = pbc.get_heads_cloud(system, reference_pos, radius)?;
 
         membrane_normal_from_cloud(&positions).map_err(AnalysisError::DynamicNormalError)
     }

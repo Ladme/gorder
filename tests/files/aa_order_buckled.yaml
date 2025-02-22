@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.5.0-dev.1' using structure file 'tests/files/aa_buckled.tpr' and trajectory file 'tests/files/aa_buckled.xtc'.
+# Order parameters calculated with 'gorder v0.6.0-dev.1' using structure file 'tests/files/aa_buckled.tpr' and trajectory file 'tests/files/aa_buckled.xtc'.
 average order:
   total: 0.1189
 POPC:
@@ -16,7 +16,7 @@ POPC:
       total: -0.0131
       bonds:
         POPC H13A (5):
-          total: -0.0166
+          total: -0.0167
         POPC H13B (6):
           total: -0.0103
         POPC H13C (7):
@@ -165,14 +165,14 @@ POPC:
         POPC H15R (79):
           total: 0.1166
         POPC H15S (80):
-          total: 0.1206
+          total: 0.1205
     POPC C216 (81):
       total: 0.1065
       bonds:
         POPC H16R (82):
           total: 0.1042
         POPC H16S (83):
-          total: 0.1088
+          total: 0.1087
     POPC C217 (84):
       total: 0.0824
       bonds:
@@ -272,7 +272,7 @@ POPC:
         POPC H14X (125):
           total: 0.116
         POPC H14Y (126):
-          total: 0.1145
+          total: 0.1144
     POPC C315 (127):
       total: 0.0873
       bonds:

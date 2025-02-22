@@ -37,9 +37,9 @@ fn from_order_value(value: &OrderValue) -> f32 {
 
 impl Map {
     /// Construct a new ordermap.
-    pub(crate) fn new(
+    pub(crate) fn new<'a>(
         params: OrderMap,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
     ) -> Result<Map, OrderMapConfigError> {
         let binx = params.bin_size_x();
         let biny = params.bin_size_y();

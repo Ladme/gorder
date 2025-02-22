@@ -51,7 +51,7 @@ pub(crate) struct MoleculeType {
 impl MoleculeType {
     /// Create new molecule type.
     #[allow(clippy::too_many_arguments)]
-    pub(super) fn new(
+    pub(super) fn new<'a>(
         system: &System,
         name: String,
         topology: MoleculeTopology,
@@ -61,7 +61,7 @@ impl MoleculeType {
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
         errors: bool,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
         membrane_normal: MoleculeMembraneNormal,
     ) -> Result<Self, TopologyError> {
         Ok(Self {
@@ -107,10 +107,10 @@ impl MoleculeType {
 
     /// Calculate order parameters for bonds of a single molecule type from a single simulation frame.
     #[inline]
-    pub(super) fn analyze_frame<Geom: GeometrySelection>(
+    pub(super) fn analyze_frame<'a, Geom: GeometrySelection>(
         &mut self,
-        frame: &System,
-        pbc_handler: &impl PBCHandler,
+        frame: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
         frame_index: usize,
         geometry: &Geom,
     ) -> Result<(), AnalysisError> {
@@ -221,14 +221,14 @@ impl OrderBonds {
     /// - Panics if the `min_index` is higher than any index inside the `bonds` set.
     /// - Panics if there is a bond connecting the same atom (e.g. 14-14) in the `bonds` set.
     /// - Panics if an index in the `bonds` set does not correspond to an existing atom.
-    pub(super) fn new(
+    pub(super) fn new<'a>(
         system: &System,
         bonds: &HashSet<(usize, usize)>,
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
         errors: bool,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
     ) -> Result<Self, TopologyError> {
         bonds_sanity_check(bonds, min_index);
 
@@ -409,7 +409,7 @@ pub(crate) struct BondType {
 impl BondType {
     /// Create a new bond for the calculation of order parameters.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
+    pub(crate) fn new<'a>(
         abs_index_1: usize,
         atom_1: &Atom,
         abs_index_2: usize,
@@ -417,7 +417,7 @@ impl BondType {
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
         errors: bool,
     ) -> Result<Self, TopologyError> {
         let bond_topology = BondTopology::new(
@@ -522,11 +522,11 @@ impl BondType {
     }
 
     /// Calculate the current order parameter for this bond type.
-    fn analyze_frame<Geom: GeometrySelection>(
+    fn analyze_frame<'a, Geom: GeometrySelection>(
         &mut self,
-        frame: &System,
+        frame: &'a System,
         leaflet_classification: &mut Option<MoleculeLeafletClassification>,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &'a impl PBCHandler<'a>,
         membrane_normal: &mut MoleculeMembraneNormal,
         frame_index: usize,
         geometry: &Geom,

@@ -253,10 +253,10 @@ impl MoleculeLeafletClassification {
     /// Identify leaflet in which the molecule with the specified index is located.
     #[inline(always)]
     #[allow(unused)]
-    fn identify_leaflet(
+    fn identify_leaflet<'a>(
         &mut self,
         system: &System,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -290,10 +290,10 @@ impl MoleculeLeafletClassification {
     }
 
     /// Assign all lipids into their respective leaflets.
-    pub(super) fn assign_lipids(
+    pub(super) fn assign_lipids<'a>(
         &mut self,
-        system: &System,
-        pbc_handler: &impl PBCHandler,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
         current_frame: usize,
         membrane_center: &OnceCell<Vector3D>, // only used for the `global` classification method
     ) -> Result<(), AnalysisError> {
@@ -364,10 +364,10 @@ impl MoleculeLeafletClassification {
 /// Trait implemented by all leaflet classification methods.
 trait LeafletClassifier {
     /// Caclulate membrane leaflet the specified molecule belongs to.
-    fn identify_leaflet(
+    fn identify_leaflet<'a>(
         &mut self,
         system: &System,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError>;
@@ -405,10 +405,10 @@ impl GlobalClassification {
 
 impl LeafletClassifier for GlobalClassification {
     #[inline(always)]
-    fn identify_leaflet(
+    fn identify_leaflet<'a>(
         &mut self,
         system: &System,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -459,10 +459,10 @@ impl LocalClassification {
 
     /// Calculate and set local membrane center of geometry for each molecule.
     #[inline(always)]
-    pub(super) fn set_membrane_center(
+    pub(super) fn set_membrane_center<'a>(
         &mut self,
-        system: &System,
-        pbc_handler: &impl PBCHandler,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
         membrane_normal: Dimension,
     ) -> Result<(), AnalysisError> {
         self.membrane_center = pbc_handler.calc_local_membrane_centers(
@@ -478,10 +478,10 @@ impl LocalClassification {
 
 impl LeafletClassifier for LocalClassification {
     #[inline(always)]
-    fn identify_leaflet(
+    fn identify_leaflet<'a>(
         &mut self,
         system: &System,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -504,11 +504,11 @@ impl LeafletClassifier for LocalClassification {
 }
 
 /// Handles classification of lipid into a membrane leaflet for the Global and Local classification.
-fn common_identify_leaflet(
+fn common_identify_leaflet<'a>(
     heads: &[usize],
     molecule_index: usize,
     system: &System,
-    pbc_handler: &impl PBCHandler,
+    pbc_handler: &impl PBCHandler<'a>,
     membrane_center: &Vector3D,
     membrane_normal: Dimension,
 ) -> Result<Leaflet, AnalysisError> {
@@ -568,10 +568,10 @@ impl IndividualClassification {
 }
 
 impl LeafletClassifier for IndividualClassification {
-    fn identify_leaflet(
+    fn identify_leaflet<'a>(
         &mut self,
         system: &System,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -611,10 +611,10 @@ pub(crate) struct ManualClassification {
 }
 
 impl LeafletClassifier for ManualClassification {
-    fn identify_leaflet(
+    fn identify_leaflet<'a>(
         &mut self,
         _system: &System,
-        _pbc_handler: &impl PBCHandler,
+        _pbc_handler: &impl PBCHandler<'a>,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -958,10 +958,10 @@ impl LeafletClassifier for NdxClassification {
         self.heads.len()
     }
 
-    fn identify_leaflet(
+    fn identify_leaflet<'a>(
         &mut self,
         system: &System,
-        _pbc_handler: &impl PBCHandler,
+        _pbc_handler: &impl PBCHandler<'a>,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -1026,10 +1026,10 @@ impl AssignedLeaflets {
     }
 
     /// Assign all lipids into membrane leaflets.
-    fn assign_lipids(
+    fn assign_lipids<'a>(
         &mut self,
         system: &System,
-        pbc_handler: &impl PBCHandler,
+        pbc_handler: &impl PBCHandler<'a>,
         classifier: &mut impl LeafletClassifier,
         current_frame: usize,
     ) -> Result<(), AnalysisError> {
