@@ -1,5 +1,6 @@
 ## Version 0.6.0
 - **Manual membrane normals:** Membrane normals can be now assigned manually for each lipid molecule in each trajectory frame. See the [manual](https://ladme.github.io/gorder-manual/manual_normals.html) for more information.
+- **Optimizations:** Local leaflet classification method and dynamic local membrane normal calculation are now much faster, especially for very large systems, through using cell lists. **Warning:** The changes may cause small differences in the calculated order parameters compared to version 0.5, especially for very short trajectories. These differences should be on the order of 0.0001 arb. u. or lower.
 
 ## Version 0.5.0
 - **Dynamic membrane normal calculation:** Membrane normals can be now calculated dynamically from actual membrane shape which allows the calculation of order parameters for vesicles and similar systems (see the [manual](https://ladme.github.io/gorder-manual/membrane_normal.html)).
