@@ -95,3 +95,9 @@ impl From<&str> for Axis {
         }
     }
 }
+
+impl From<&String> for Axis {
+    fn from(value: &String) -> Self {
+        Axis::from(value.as_str())
+    }
+}
