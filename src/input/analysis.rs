@@ -41,7 +41,7 @@ impl AnalysisType {
     /// - `hydrogens` - specification of hydrogens to be used in the analysis (only atoms connected to heavy atoms will be used)
     ///
     /// ## Notes
-    /// - To specify the atoms, use the [groan selection language](https://docs.rs/groan_rs/latest/groan_rs/#groan-selection-language).
+    /// - To specify the atoms, use the [groan selection language](https://ladme.github.io/gsl-guide).
     /// - Order parameters will be calculated for bonds between the `heavy_atoms` and `hydrogens`. These bonds are detected automatically.
     /// - Order parameters for heavy atoms are then calculated by averaging the order parameters of the relevant bonds.
     pub fn aaorder(heavy_atoms: &str, hydrogens: &str) -> Self {
@@ -57,7 +57,7 @@ impl AnalysisType {
     /// - `beads` - specification of coarse-grained beads
     ///
     /// ## Notes
-    /// - To specify the beads, use the [groan selection language](https://docs.rs/groan_rs/latest/groan_rs/#groan-selection-language).
+    /// - To specify the beads, use the [groan selection language](https://ladme.github.io/gsl-guide).
     /// - Order parameters will be calculated for bonds between the individual `beads`. These bonds are detected automatically.
     pub fn cgorder(beads: &str) -> Self {
         Self::CGOrder {

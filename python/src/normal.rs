@@ -46,20 +46,23 @@ impl<'source> FromPyObject<'source> for MembraneNormal {
     }
 }
 
-/// Structure describing properties of the dynamic local membrane normal calculation.
+/// Request a dynamic local membrane normal calculation.
+///
+/// Attributes
+/// ----------
+/// heads : str
+///     Selection query specifying reference atoms representing lipid headgroups
+///     (typically phosphorus atoms or phosphate beads).
+///     There must be exactly one such atom/bead per lipid molecule.
+/// radius : float
+///     Radius of the sphere used to select nearby lipids for membrane normal estimation.
+///     The recommended value is half the membrane thickness.
 #[pyclass]
 #[derive(Clone)]
 pub struct DynamicNormal(RsDynamic);
 
 #[pymethods]
 impl DynamicNormal {
-    /// Request a dynamic local membrane normal calculation.
-    ///
-    /// ## Parameters
-    /// - `heads`: reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
-    ///    there must only be one such atom/bead per lipid molecule
-    /// - `radius`: radius of the sphere for selecting nearby lipids for membrane normal estimation;
-    ///    the recommended value is half the membrane thickness
     #[new]
     pub fn new(heads: &str, radius: f32) -> PyResult<Self> {
         Ok(Self(

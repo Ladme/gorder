@@ -34,22 +34,27 @@ impl<'source> FromPyObject<'source> for Geometry {
     }
 }
 
+/// Calculate order parameters inside a cuboid.
+///
+/// Returns an error if any of the dimensions are invalid.
+///
+/// Attributes
+/// ----------
+/// xdim : Optional[List[float]]
+///     Span of the cuboid along the x-axis. Defaults to infinite if not specified.
+/// ydim : Optional[List[float]]
+///     Span of the cuboid along the y-axis. Defaults to infinite if not specified.
+/// zdim : Optional[List[float]]
+///     Span of the cuboid along the z-axis. Defaults to infinite if not specified.
+/// reference : Optional[List[float]]
+///     Reference point relative to which the position of the cuboid is specified.
+///     Defaults to the origin of the simulation box ([0.0, 0.0, 0.0]) if not specified.
 #[pyclass]
 #[derive(Clone)]
 pub struct Cuboid(RsGeometry);
 
 #[pymethods]
 impl Cuboid {
-    /// Construct a cuboid.
-    /// Returns an error in case any of the dimensions is invalid.
-    ///
-    /// ## Parameters
-    /// - `xdim` (optional) - span of the cuboid along the x-axis; infinite if not specified
-    /// - `ydim` (optional) - span of the cuboid along the y-axis; infinite if not specified
-    /// - `zdim` (optional) - span of the cuboid along the z-axis; infinite if not specified
-    /// - `reference` (optional)
-    ///    - reference point relative to which the position of the cuboid is specified
-    ///    - if not specified, the origin of the simulation box ([0, 0, 0]) is used
     #[new]
     #[pyo3(signature = (
         xdim = [f32::NEG_INFINITY, f32::INFINITY], 
@@ -69,22 +74,27 @@ impl Cuboid {
     }
 }
 
+/// Calculate order parameters inside a cylinder.
+///
+/// Returns an error if the radius is negative or the span is invalid.
+///
+/// Attributes
+/// ----------
+/// radius : float
+///     Radius of the cylinder.
+/// orientation : str
+///     Orientation of the main axis of the cylinder.
+/// span : Optional[List[float]]
+///     Span of the cylinder along its main axis. Defaults to infinite if not specified.
+/// reference : Optional[List[float]]
+///     Reference point relative to which the position and size of the cylinder are specified.
+///     Defaults to the origin of the simulation box ([0.0, 0.0, 0.0]) if not specified.
 #[pyclass]
 #[derive(Clone)]
 pub struct Cylinder(RsGeometry);
 
 #[pymethods]
 impl Cylinder {
-    /// Construct a cylinder.
-    /// Returns an error in case the radius is negative or the span is invalid.
-    ///
-    /// ## Parameters
-    /// - `radius` - radius of the cylinder
-    /// - `orientation` - orientation of the main axis of the cylinder
-    /// - `span` (optional) - span of the cylinder along its main axis; infinite if not specified
-    /// - `reference` (optional)
-    ///    - reference point relative to which the position and size of the cylinder is specified
-    ///    - if not specified, the origin of the simulation box ([0, 0, 0]) is used
     #[new]
     #[pyo3(signature = (
         radius,
@@ -104,20 +114,23 @@ impl Cylinder {
     }
 }
 
+/// Calculate order parameters inside a sphere.
+///
+/// Returns an error if the radius is negative.
+///
+/// Attributes
+/// ----------
+/// radius : float
+///     Radius of the sphere.
+/// reference : Optional[List[float]]
+///     Center of the sphere.
+///     Defaults to the origin of the simulation box ([0.0, 0.0, 0.0]) if not specified.
 #[pyclass]
 #[derive(Clone)]
 pub struct Sphere(RsGeometry);
 
 #[pymethods]
 impl Sphere {
-    /// Construct a sphere.
-    /// Returns an error in case the radius is negative.
-    ///
-    /// ## Parameters
-    /// - `radius` - radius of the sphere
-    /// - `reference` 
-    ///    - center of the sphere
-    ///    - if not specified, the origin of the simulation box ([0, 0, 0]) is used
     #[new]
     #[pyo3(signature = (
         radius,

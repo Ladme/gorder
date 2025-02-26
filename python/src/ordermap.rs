@@ -9,13 +9,35 @@ use pyo3::prelude::*;
 use crate::string2plane;
 use crate::ConfigError;
 
+/// Represents the parameters for generating ordermaps.
+///
+/// Attributes
+/// ----------
+/// output_directory : Optional[str]
+///     Directory where the output files containing individual order maps will be saved.
+/// min_samples : Optional[int]
+///     Minimum number of samples required in a grid tile to calculate the order parameter.
+///     Default is `1`.
+/// dim : Optional[List[Union[str, List[float]]]]
+///     Span of the grid along the axes.
+///     - The first span corresponds to the x-axis (if the map is in the xy or xz plane) or the z-axis (if the map is in the yz plane).
+///     - The second span corresponds to the y-axis (if the map is in the xy or yz plane) or the z-axis (if the map is in the xz plane).
+///     If not specified, the span is derived from the simulation box size of the input structure.
+/// bin_size : Optional[List[float]]
+///     Size of the grid bin along the axes.
+///     - The first bin dimension corresponds to the x-axis (if the map is in the xy or xz plane) or the z-axis (if the map is in the yz plane).
+///     - The second bin dimension corresponds to the y-axis (if the map is in the xy or yz plane) or the z-axis (if the map is in the xz plane).
+///     Defaults to `[0.1, 0.1]` nm if not specified.
+/// plane : Optional[str]
+///     Plane in which the order maps should be constructed.
+///     Allowed values are `xy`, `xz`, or `yz`.
+///     If not specified, the plane is assumed to be perpendicular to the membrane normal.
 #[pyclass]
 #[derive(Clone)]
 pub struct OrderMap(pub(crate) RsMap);
 
 #[pymethods]
 impl OrderMap {
-    // TODO: documentation
     #[pyo3(signature = (
         output_directory = None, 
         min_samples = 1, 

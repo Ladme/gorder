@@ -68,23 +68,29 @@ impl Frequency {
     }
 }
 
-/// Classify lipids based on the global membrane center of geometry.
+/// Assign lipids into leaflets based on the global membrane center of geometry.
+///
+/// Generally reliable and fast. The best option for analyzing disrupted membranes.
+///
+/// Attributes
+/// ----------
+/// membrane : str
+///     Selection query specifying all lipids forming the membrane.
+/// heads : str
+///     Selection query specifying reference atoms representing lipid headgroups
+///     (typically phosphorus atoms or phosphate beads).
+///     There must be exactly one such atom/bead per lipid molecule.
+/// frequency : Optional[Frequency]
+///     Frequency of classification. Defaults to every frame.
+/// membrane_normal : Optional[str]
+///     Membrane normal used for leaflet classification. Defaults to the membrane normal
+///     specified for the entire Analysis.
 #[pyclass]
 #[derive(Clone)]
 pub struct GlobalClassification(RsLeafletClassification);
 
 #[pymethods]
 impl GlobalClassification {
-    /// Classify lipids based on the global membrane center of geometry.
-    /// Generally reliable and fast. The best option when working with disrupted membranes.
-    ///
-    /// ## Parameters
-    /// - `membrane` - selection of all lipids forming the membrane
-    /// - `heads` - reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
-    ///    there must only be one such atom/bead per lipid molecule.
-    /// - `frequency` (optional) - frequency of classification; defaults to every frame
-    /// - `membrane_normal` (optional) - membrane normal for leaflet classification; defaults to
-    ///    membrane normal specified at the global level
     #[new]
     #[pyo3(signature = (membrane, heads, frequency = None, membrane_normal = None))]
     pub fn new(
@@ -102,24 +108,32 @@ impl GlobalClassification {
     }
 }
 
-/// Classify lipids based on the local membrane center of geometry.
+/// Assign lipids into leaflets based on the local membrane center of geometry.
+///
+/// Useful for curved membranes but computationally slow.
+///
+/// Attributes
+/// ----------
+/// membrane : str
+///     Selection query specifying all lipids forming the membrane.
+/// heads : str
+///     Selection query specifying reference atoms representing lipid headgroups
+///     (typically phosphorus atoms or phosphate beads).
+///     There must be exactly one such atom/bead per lipid molecule.
+/// radius : float
+///     Radius of a cylinder used to calculate the local membrane center of geometry (in nm).
+/// frequency : Optional[Frequency]
+///     Frequency of classification. Defaults to every frame.
+/// membrane_normal : Optional[str]
+///     Membrane normal used for leaflet classification. Defaults to the membrane normal
+///     specified for the entire Analysis.
+
 #[pyclass]
 #[derive(Clone)]
 pub struct LocalClassification(RsLeafletClassification);
 
 #[pymethods]
 impl LocalClassification {
-    /// Classify lipids based on the local membrane center of geometry.
-    /// Useful for curved membranes, very slow.
-    ///
-    /// ## Parameters
-    /// - `membrane` - selection of all lipids forming the membrane
-    /// - `heads` - reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
-    ///    there must only be one such atom/bead per lipid molecule.
-    /// - `radius` - radius of a cylinder for the calculation of local membrane center of geometry (in nm)
-    /// - `frequency` (optional) - frequency of classification; defaults to every frame
-    /// - `membrane_normal` (optional) - membrane normal for leaflet classification; defaults to
-    ///    membrane normal specified at the global level
     #[new]
     #[pyo3(signature = (membrane, heads, radius, frequency = None, membrane_normal = None))]
     pub fn new(
@@ -148,24 +162,30 @@ impl LocalClassification {
     }
 }
 
-/// Classify lipids based on the orientation of acyl chains.
+/// Assign lipids into leaflets based on the orientation of acyl chains.
+///
+/// Less reliable but computationally fast.
+///
+/// Attributes
+/// ----------
+/// heads : str
+///     Selection query specifying reference atoms representing lipid headgroups
+///     (typically phosphorus atoms or phosphate beads).
+///     There must be exactly one such atom/bead per lipid molecule.
+/// methyls : str
+///     Selection query specifying reference atoms representing methyl groups at the ends of lipid tails.
+///     There should be exactly one such atom/bead per acyl chain (e.g., two for lipids with two acyl chains).
+/// frequency : Optional[Frequency]
+///     Frequency of classification. Defaults to every frame.
+/// membrane_normal : Optional[str]
+///     Membrane normal used for leaflet classification. Defaults to the membrane normal
+///     specified for the entire Analysis.
 #[pyclass]
 #[derive(Clone)]
 pub struct IndividualClassification(RsLeafletClassification);
 
 #[pymethods]
 impl IndividualClassification {
-    /// Classify lipids based on the orientation of acyl chains.
-    /// Less reliable but fast.
-    ///
-    /// ## Parameters
-    /// - `heads`: reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead);
-    ///    there must only be one such atom/bead per lipid molecule.
-    /// - `methyls`: reference atoms identifying methyl groups of lipid tails, i.e., the ends of lipid tails;
-    ///    there should be only one such atom/bead per one acyl chain in the molecule (e.g., two for lipids with two acyl chains).
-    /// - `frequency` (optional) - frequency of classification; defaults to every frame
-    /// - `membrane_normal` (optional) - membrane normal for leaflet classification; defaults to
-    ///    membrane normal specified at the global level
     #[new]
     #[pyo3(signature = (heads, methyls, frequency = None, membrane_normal = None))]
     pub fn new(
@@ -186,18 +206,21 @@ impl IndividualClassification {
     }
 }
 
+/// Get leaflet assignment from an external YAML file or a dictionary.
+///
+/// Attributes
+/// ----------
+/// input : Union[str, dict]
+///     Path to the input YAML file containing the leaflet assignment
+///     or a dictionary specifying the leaflet assignment.
+/// frequency : Optional[Frequency]
+///     Frequency of classification. Defaults to every frame.
 #[pyclass]
 #[derive(Clone)]
 pub struct ManualClassification(RsLeafletClassification);
 
 #[pymethods]
 impl ManualClassification {
-    /// Read leaflet assignment from an external yaml file or from a dictionary.
-    ///
-    /// ## Parameters
-    /// - `input`: path to the input yaml file containing the leaflet assignment
-    ///    or a dictionary containing the leaflet assignment.
-    /// - `frequency` (optional) - frequency of classification; defaults to every frame
     #[new]
     #[pyo3(signature = (input, frequency = None))]
     pub fn new<'source>(
@@ -219,24 +242,32 @@ impl ManualClassification {
     }
 }
 
-/// Get leaflet assignment using NDX file(s).
+/// Get leaflet assignment from NDX file(s).
+///
+/// Attributes
+/// ----------
+/// ndx : List[str]
+///     A list of NDX files to read.
+/// heads : str
+///     Selection query specifying reference atoms representing lipid headgroups
+///     (typically phosphorus atoms or phosphate beads).
+///     There must be exactly one such atom/bead per lipid molecule.
+/// upper_leaflet : str
+///     Name of the group in the NDX file(s) specifying the atoms of the upper leaflet.
+/// lower_leaflet : str
+///     Name of the group in the NDX file(s) specifying the atoms of the lower leaflet.
+/// frequency : Optional[Frequency]
+///     Frequency of classification. Defaults to every frame.
+///
+/// Notes
+/// -----
+/// - No glob expansion is performed for the NDX files.
 #[pyclass]
 #[derive(Clone)]
 pub struct NdxClassification(RsLeafletClassification);
 
 #[pymethods]
 impl NdxClassification {
-    /// Get leaflet assignment using NDX file(s).
-    ///
-    /// ## Parameters
-    /// - `ndx`: a list of NDX files to read
-    /// - `heads`: GSL query specifying the atoms to use as head identifiers of molecules
-    /// - `upper_leaflet`: name of the group in the NDX file(s) specifying the atoms of the upper leaflet
-    /// - `lower_leaflet`: name of the group in the NDX file(s) specifying the atoms of the lower leaflet
-    /// - `frequency` (optional) - frequency of classification; defaults to every frame
-    ///
-    /// ## Notes
-    /// - No glob expansion is performed for the NDX files.
     #[new]
     #[pyo3(signature = (ndx, heads, upper_leaflet, lower_leaflet, frequency = None))]
     pub fn new(

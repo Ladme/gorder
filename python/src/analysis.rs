@@ -14,44 +14,49 @@ use crate::ordermap::OrderMap;
 use crate::results::AnalysisResults;
 use crate::{AnalysisError, ConfigError};
 
-/// Structure describing the calculation of atomistic order paramters.
+/// Request the calculation of atomistic order parameters.
+///
+/// Attributes
+/// ----------
+/// heavy_atoms : str
+///     Selection query specifying the heavy atoms to be used in the analysis (typically carbon atoms in lipid tails).
+/// hydrogens : str 
+///     Selection query specifiying the hydrogen atoms to be used in the analysis (only those bonded to heavy atoms will be considered).
+///
+/// Notes
+/// ------
+/// - Atoms should be specified using the `groan selection language <https://ladme.github.io/gsl-guide>`_.
+/// - Order parameters are calculated for bonds between `heavy_atoms` and `hydrogens`. These bonds are detected automatically.
+/// - The order parameters for heavy atoms are determined by averaging the order parameters of the corresponding bonds.
 #[pyclass]
 #[derive(Clone)]
 pub struct AAOrder(RsAnalysisType);
 
 #[pymethods]
 impl AAOrder {
-    /// Request calculation of atomistic order parameters.
-    ///
-    /// ## Arguments
-    /// - `heavy_atoms` - specification of heavy atoms to be used in the analysis (usually carbon atoms of lipid tails)
-    /// - `hydrogens` - specification of hydrogens to be used in the analysis (only atoms connected to heavy atoms will be used)
-    ///
-    /// ## Notes
-    /// - To specify the atoms, use the [groan selection language](https://docs.rs/groan_rs/latest/groan_rs/#groan-selection-language).
-    /// - Order parameters will be calculated for bonds between the `heavy_atoms` and `hydrogens`. These bonds are detected automatically.
-    /// - Order parameters for heavy atoms are then calculated by averaging the order parameters of the relevant bonds.
     #[new]
     pub fn new(heavy_atoms: &str, hydrogens: &str) -> Self {
         Self(RsAnalysisType::aaorder(heavy_atoms, hydrogens))
     }
 }
 
-/// Structure describing the calculation of coarse-grained order paramters.
+/// Request the calculation of coarse-grained order parameters.
+///
+/// Attributes
+/// ----------
+/// beads : str
+///     Selection query specifying the coarse-grained beads to be used in the analysis.
+///
+/// Notes
+/// -----
+/// - Beads should be specified using the `groan selection language <https://ladme.github.io/gsl-guide>`_.
+/// - Order parameters are calculated for bonds between individual `beads`. These bonds are detected automatically.
 #[pyclass]
 #[derive(Clone)]
 pub struct CGOrder(RsAnalysisType);
 
 #[pymethods]
 impl CGOrder {
-    /// Request calculation of coarse-grained order parameters.
-    ///
-    /// ## Arguments
-    /// - `beads` - specification of coarse-grained beads
-    ///
-    /// ## Notes
-    /// - To specify the beads, use the [groan selection language](https://docs.rs/groan_rs/latest/groan_rs/#groan-selection-language).
-    /// - Order parameters will be calculated for bonds between the individual `beads`. These bonds are detected automatically.
     #[new]
     pub fn new(beads: &str) -> Self {
         Self(RsAnalysisType::cgorder(beads))
@@ -77,13 +82,61 @@ impl<'source> FromPyObject<'source> for AnalysisType {
     }
 }
 
-/// Structure holding all the information necessary to perform the analysis.
+/// Class describing all the parameters of the analysis.
+///
+/// Attributes
+/// ----------
+/// structure : str
+///     Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure and topology of the system.
+/// trajectory : str
+///     Path to an XTC (recommened), TRR, GRO, PDB, Amber NetCDF, DCD, or LAMMPSTRJ trajectory file to be analyzed.
+/// analysis_type : Union[AAOrder, CGOrder]
+///     Type of analysis to perform (e.g., AAOrder or CGOrder).
+/// bonds : Optional[str], default=None
+///     Path to a file containing bonding information. If specified, this overrides bonds from the structure file.
+/// index : Optional[str], default=None
+///     Path to an NDX file specifying groups in the system.
+/// output_yaml : Optional[str], default=None
+///     Path to an output YAML file containing the full analysis results.
+/// output_tab : Optional[str], default=None
+///     Path to an output TABLE file with human-readable results.
+/// output_xvg : Optional[str], default=None
+///     Filename pattern for output XVG files storing results. Each molecule type gets a separate file.
+/// output_csv : Optional[str], default=None
+///     Path to an output CSV file containing analysis results.
+/// membrane_normal : Optional[Union[str, dict, DynamicNormal]], default=None
+///     Direction of the membrane normal. 
+///     Allowed values are `x`, `y`, `z`, path to file, dictionary specifying manual membrane normals or an instance of `DynamicNormal`.
+///     Defaults to the z-axis if not specified.
+/// begin : Optional[float], default=None
+///     Starting time of the trajectory analysis in picoseconds (ps). Defaults to the beginning of the trajectory.
+/// end : Optional[float], default=None
+///     Ending time of the trajectory analysis in picoseconds (ps). Defaults to the end of the trajectory.
+/// step : Optional[int], default=None
+///     Step size for analysis. Every Nth frame will be analyzed. Defaults to 1.
+/// min_samples : Optional[int], default=None
+///     Minimum number of samples required for each heavy atom or bond type to compute its order parameter. Defaults to 1.
+/// n_threads : Optional[int], default=None
+///     Number of threads to use for analysis. Defaults to 1.
+/// leaflets : Optional[Union[GlobalClassification, LocalClassification, IndividualClassification, ManualClassification, NdxClassification]], default=None
+///     Defines how lipids are assigned to membrane leaflets. If provided, order parameters are calculated per leaflet.
+/// ordermap : Optional[OrderMap], default=None
+///     Specifies parameters for ordermap calculations. If not provided, ordermaps are not generated.
+/// estimate_error : Optional[EstimateError], default=None
+///     Enables error estimation for each bond if specified.
+/// geometry : Optional[Union[Cuboid, Cylinder, Sphere]], default=None
+///     Defines a specific region in the simulation box for order parameter calculations. Defaults to the entire system.
+/// handle_pbc : Optional[bool], default=True
+///     If False, ignores periodic boundary conditions (PBC). Defaults to True.
+/// silent : Optional[bool], default=False
+///     If True, suppresses standard output messages during analysis.
+/// overwrite : Optional[bool], default=False
+///     If True, overwrites existing output files and directories without backups.
 #[pyclass]
 pub struct Analysis(RsAnalysis);
 
 #[pymethods]
 impl Analysis {
-    // TODO: documentation
     #[new]
     #[pyo3(signature = (
         structure, 
