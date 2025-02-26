@@ -5,6 +5,8 @@ use gorder_core::input::{Axis, Plane};
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
+use std::process;
+use std::sync::Once;
 
 create_exception!(gorder, AnalysisError, PyException);
 create_exception!(gorder, WriteError, PyException);
@@ -62,8 +64,21 @@ fn string2plane(string: impl AsRef<str>) -> PyResult<Plane> {
     }
 }
 
+static INIT: Once = Once::new();
+
 #[pymodule]
 fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    INIT.call_once(|| {
+        // initialize logging
+        colog::init();
+
+        // set up Ctrl+C handler
+        ctrlc::set_handler(|| {
+            process::exit(1);
+        })
+        .unwrap_or_else(|e| panic!("FATAL GORDER ERROR | python::analysis::Analysis | Could not set up the CTRL-C handler: {}.", e));
+    });
+
     // exceptions
     m.add("ConfigError", m.py().get_type::<ConfigError>())?;
     m.add("AnalysisError", m.py().get_type::<AnalysisError>())?;

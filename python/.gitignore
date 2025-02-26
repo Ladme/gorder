@@ -1,0 +1,66 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment (venv, pipenv, poetry, uv)
+.venv/
+venv/
+.env/
+.pdm/
+.uv/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.manifest
+*.spec
+
+# Testing
+.tox/
+.nox/
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+
+# PyInstaller
+*.spec
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Logs
+logs/
+*.log
+*.out
+*.err
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+
+# Pytest
+.pytest_cache/
+
+# VSCode settings
+.vscode/
+*.code-workspace
+
+# PyCharm settings
+.idea/
+
+# JetBrains
+*.iml
+*.iws
+out/
+.idea/

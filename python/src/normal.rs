@@ -41,7 +41,7 @@ impl<'source> FromPyObject<'source> for MembraneNormal {
         }
 
         Err(ConfigError::new_err(
-            "invalid type for MembraneNormal constructor: expected an Axis, DynamicNormal, str, or dict",
+            "invalid type for MembraneNormal constructor: expected a str, DynamicNormal, or dict",
         ))
     }
 }

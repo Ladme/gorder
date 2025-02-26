@@ -1,8 +1,6 @@
 // Released under MIT License.
 // Copyright (c) 2024-2025 Ladislav Bartos
 
-use std::process;
-
 use gorder_core::input::AnalysisType as RsAnalysisType;
 use gorder_core::prelude::Analysis as RsAnalysis;
 use gorder_core::prelude::AnalysisBuilder as RsAnalysisBuilder;
@@ -181,16 +179,9 @@ impl Analysis {
 
     /// Perform the analysis.
     pub fn run(&mut self) -> PyResult<AnalysisResults> {
-        colog::init();
         if self.0.silent() {
             log::set_max_level(log::LevelFilter::Error);
         }
-
-        // register a Ctrl-C handler
-        ctrlc::set_handler(|| {
-            process::exit(1);
-        })
-        .unwrap_or_else(|e| panic!("FATAL GORDER ERROR | python::analysis::Analysis | Could not set up the CTRL-C handler: {}.", e));
 
         match self.0.clone().run() {
             Err(e) => Err(AnalysisError::new_err(e.to_string())),
