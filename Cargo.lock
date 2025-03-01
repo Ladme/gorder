@@ -546,7 +546,7 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "gorder"
-version = "0.6.0-dev.1"
+version = "0.6.0-dev.2"
 dependencies = [
  "approx",
  "assert_cmd",
@@ -1116,6 +1116,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pygorder"
+version = "0.6.0-dev.2"
+dependencies = [
+ "colog",
+ "ctrlc",
+ "gorder",
+ "hashbrown",
+ "log",
+ "numpy",
+ "pyo3",
+]
+
+[[package]]
 name = "pyo3"
 version = "0.23.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1176,19 +1189,6 @@ dependencies = [
  "pyo3-build-config",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "python"
-version = "0.6.0-dev.1"
-dependencies = [
- "colog",
- "ctrlc",
- "gorder",
- "hashbrown",
- "log",
- "numpy",
- "pyo3",
 ]
 
 [[package]]

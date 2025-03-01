@@ -418,6 +418,7 @@ pub mod prelude {
     pub use super::presentation::{
         aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults},
         cgresults::{CGMoleculeResults, CGOrderResults},
+        convergence::Convergence,
         AnalysisResults, BondResults, GridMapF32, Order, OrderCollection, OrderMapsCollection,
         PublicMoleculeResults, PublicOrderResults,
     };

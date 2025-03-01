@@ -1,6 +1,8 @@
 // Released under MIT License.
 // Copyright (c) 2024-2025 Ladislav Bartos
 
+use std::sync::Arc;
+
 use gorder_core::input::AnalysisType as RsAnalysisType;
 use gorder_core::prelude::Analysis as RsAnalysis;
 use gorder_core::prelude::AnalysisBuilder as RsAnalysisBuilder;
@@ -238,7 +240,7 @@ impl Analysis {
 
         match self.0.clone().run() {
             Err(e) => Err(AnalysisError::new_err(e.to_string())),
-            Ok(x) => Ok(AnalysisResults(x)),
+            Ok(x) => Ok(AnalysisResults(Arc::new(x))),
         }
     }
 }

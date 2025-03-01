@@ -18,6 +18,8 @@ Welcome to gorder's Python API documentation!
    estimate_error
    geometry
    membrane_normal
+   results
+   exceptions
 
 Indices and tables
 ==================

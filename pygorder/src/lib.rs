@@ -2,15 +2,37 @@
 // Copyright (c) 2024-2025 Ladislav Bartos
 
 use gorder_core::input::{Axis, Plane};
+use gorder_core::prelude::AtomType as RsAtomType;
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use std::process;
 use std::sync::Once;
 
-create_exception!(gorder, AnalysisError, PyException);
-create_exception!(gorder, WriteError, PyException);
-create_exception!(gorder, ConfigError, PyException);
+create_exception!(
+    exceptions,
+    AnalysisError,
+    PyException,
+    "Exception that can be raised when analyzing the trajectory."
+);
+create_exception!(
+    exceptions,
+    WriteError,
+    PyException,
+    "Exception that can be raised when writing the results into output files."
+);
+create_exception!(
+    exceptions,
+    ConfigError,
+    PyException,
+    "Exception that can be raised when constructing the config Analysis class."
+);
+create_exception!(
+    exceptions,
+    APIError,
+    PyException,
+    "Exception that can be raised when accessing the results programmatically."
+);
 
 #[macro_export]
 macro_rules! apply_if_some {
@@ -64,6 +86,28 @@ fn string2plane(string: impl AsRef<str>) -> PyResult<Plane> {
     }
 }
 
+/// Type of an atom specific to a molecule.
+#[pyclass]
+pub struct AtomType(pub(crate) RsAtomType);
+
+#[pymethods]
+impl AtomType {
+    /// Get the name of the atom type.
+    pub fn atom_name(&self) -> String {
+        self.0.atom_name().clone()
+    }
+
+    /// Get the relative index of the atom type in the molecule type.
+    pub fn relative_index(&self) -> usize {
+        self.0.relative_index()
+    }
+
+    /// Get the name of the residue this atom type is part of.
+    pub fn residue_name(&self) -> String {
+        self.0.residue_name().clone()
+    }
+}
+
 static INIT: Once = Once::new();
 
 #[pymodule]
@@ -79,15 +123,10 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
         .unwrap_or_else(|e| panic!("FATAL GORDER ERROR | python::analysis::Analysis | Could not set up the CTRL-C handler: {}.", e));
     });
 
-    // exceptions
-    m.add("ConfigError", m.py().get_type::<ConfigError>())?;
-    m.add("AnalysisError", m.py().get_type::<AnalysisError>())?;
-    m.add("WriteError", m.py().get_type::<WriteError>())?;
-
     // global classes
     m.add_class::<analysis::Analysis>()?;
     m.add_class::<leaflets::Frequency>()?;
-    m.add_class::<results::AnalysisResults>()?;
+    m.add_class::<AtomType>()?;
 
     // module: analysis_types
     let analysis_types = PyModule::new(m.py(), "analysis_types")?;
@@ -125,6 +164,27 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let ordermap = PyModule::new(m.py(), "ordermap")?;
     ordermap.add_class::<ordermap::OrderMap>()?;
     m.add_submodule(&ordermap)?;
+
+    // module: results
+    let results = PyModule::new(m.py(), "results")?;
+    results.add_class::<results::AnalysisResults>()?;
+    results.add_class::<results::MoleculeResults>()?;
+    results.add_class::<results::AtomResults>()?;
+    results.add_class::<results::BondResults>()?;
+    results.add_class::<results::OrderCollection>()?;
+    results.add_class::<results::OrderMapsCollection>()?;
+    results.add_class::<results::Order>()?;
+    results.add_class::<results::Map>()?;
+    results.add_class::<results::Convergence>()?;
+    m.add_submodule(&results)?;
+
+    // module: exceptions
+    let exceptions = PyModule::new(m.py(), "exceptions")?;
+    exceptions.add("ConfigError", m.py().get_type::<ConfigError>())?;
+    exceptions.add("AnalysisError", m.py().get_type::<AnalysisError>())?;
+    exceptions.add("WriteError", m.py().get_type::<WriteError>())?;
+    exceptions.add("APIError", m.py().get_type::<APIError>())?;
+    m.add_submodule(&exceptions)?;
 
     Ok(())
 }

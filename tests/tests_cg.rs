@@ -4303,6 +4303,11 @@ fn test_cg_order_ordermaps_rust_api() {
     assert_eq!(results.n_analyzed_frames(), 101);
     assert_eq!(results.molecules().count(), 1);
 
+    // average ordermaps for the entire system
+    assert!(results.average_ordermaps().total().is_some());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
+
     // average ordermaps for the entire molecule
     let molecule = results.get_molecule("POPC").unwrap();
     let map = molecule.average_ordermaps().total().as_ref().unwrap();
