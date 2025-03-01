@@ -401,14 +401,14 @@ impl Leaflet {
     #[inline]
     fn get_order(&self, collection: &RsOrderCollection) -> Option<Order> {
         match self {
-            Self::Upper => collection.upper().map(|x| Order(x.clone())),
-            Self::Lower => collection.lower().map(|x| Order(x.clone())),
-            Self::Total => collection.total().map(|x| Order(x.clone())),
+            Self::Upper => collection.upper().map(Order),
+            Self::Lower => collection.lower().map(Order),
+            Self::Total => collection.total().map(Order),
         }
     }
 
     #[inline]
-    fn get_ordermap<'a, 'b>(&'a self, collection: &'b RsMapsCollection) -> Option<&'b GridMapF32> {
+    fn get_ordermap<'a>(&self, collection: &'a RsMapsCollection) -> Option<&'a GridMapF32> {
         match self {
             Self::Upper => collection.upper().as_ref(),
             Self::Lower => collection.lower().as_ref(),
@@ -446,11 +446,11 @@ impl OrderIdentifier {
     }
 
     #[inline]
-    fn get_ordermap_aa<'a, 'b>(
-        &'a self,
-        mol_results: &'b AAMoleculeResults,
+    fn get_ordermap_aa<'a>(
+        &self,
+        mol_results: &'a AAMoleculeResults,
         leaflet: Leaflet,
-    ) -> Option<&'b GridMapF32> {
+    ) -> Option<&'a GridMapF32> {
         match self {
             Self::Average => leaflet.get_ordermap(mol_results.average_ordermaps()),
             Self::Bond(x, y) => leaflet.get_ordermap(mol_results.get_bond(*x, *y)?.ordermaps()),
@@ -459,11 +459,11 @@ impl OrderIdentifier {
     }
 
     #[inline]
-    fn get_ordermap_cg<'a, 'b>(
-        &'a self,
-        mol_results: &'b CGMoleculeResults,
+    fn get_ordermap_cg<'a>(
+        &self,
+        mol_results: &'a CGMoleculeResults,
         leaflet: Leaflet,
-    ) -> Option<&'b GridMapF32> {
+    ) -> Option<&'a GridMapF32> {
         match self {
             Self::Average => leaflet.get_ordermap(mol_results.average_ordermaps()),
             Self::Bond(x, y) => {
@@ -514,10 +514,10 @@ impl OrderCollection {
             Some(mol) => match self.results.as_ref() {
                 RsResults::AA(results) => self
                     .identifier
-                    .get_order_aa(results.get_molecule(&mol)?, leaflet),
+                    .get_order_aa(results.get_molecule(mol)?, leaflet),
                 RsResults::CG(results) => self
                     .identifier
-                    .get_order_cg(results.get_molecule(&mol)?, leaflet),
+                    .get_order_cg(results.get_molecule(mol)?, leaflet),
             },
         }
     }
@@ -591,10 +591,10 @@ impl OrderMapsCollection {
             Some(mol) => match self.results.as_ref() {
                 RsResults::AA(results) => self
                     .identifier
-                    .get_ordermap_aa(results.get_molecule(&mol)?, leaflet),
+                    .get_ordermap_aa(results.get_molecule(mol)?, leaflet),
                 RsResults::CG(results) => self
                     .identifier
-                    .get_ordermap_cg(results.get_molecule(&mol)?, leaflet),
+                    .get_ordermap_cg(results.get_molecule(mol)?, leaflet),
             },
         }
     }
@@ -642,6 +642,7 @@ impl Map {
     ///     The first array (1D) contains positions of the grid tiles along the x-axis.
     ///     The second array (1D) contains positions of the grid tiles along the y-axis.
     ///     The third array (2D) contains the calculated order parameters.
+    #[allow(clippy::type_complexity)]
     pub fn extract(
         &self,
         py: Python<'_>,

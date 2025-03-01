@@ -66,15 +66,17 @@ Automatically estimates the error of the analysis and indicates how well your an
 - 🌍 [**Analysis of specific membrane regions**](https://ladme.github.io/gorder-manual/geometry.html)  
 Dynamically selects lipids in a specified part of the membrane and calculates order parameters only for them.
 
-- ⚡ **Extremely fast**  
-Is extremely fast (see [below](#benchmarking)) due to its ability to read only the necessary atoms from XTC files and its support for multithreading.
+- ⚡ [**Extremely fast**](#benchmarking)  
+Is extremely fast due to its ability to read only the necessary atoms from XTC files and its support for multithreading.
 
-- 📖 **Extensive manual**  
-Includes a [comprehensive manual](https://ladme.github.io/gorder-manual/introduction.html) detailing how to use the program, along with its strengths and limitations.
+- 👨‍💻 **[Python](https://ladme.github.io/gorder-manual/python_api.html) and [Rust](https://ladme.github.io/gorder-manual/rust_api.html) API**  
+Is also available as a Python package and a Rust crate, allowing seamless integration with Python and/or Rust code.
+
+- 📖 [**Extensive manual**](https://ladme.github.io/gorder-manual/introduction.html)  
+Includes a comprehensive manual detailing how to use the program, along with its strengths and limitations.
 
 ## Planned
 - [ ] United-atom order parameters.
-- [ ] Python API: using `gorder` as a Python library.
 
 ## Validation
 

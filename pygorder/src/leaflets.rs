@@ -223,10 +223,7 @@ pub struct ManualClassification(RsLeafletClassification);
 impl ManualClassification {
     #[new]
     #[pyo3(signature = (input, frequency = None))]
-    pub fn new<'source>(
-        input: &Bound<'source, PyAny>,
-        frequency: Option<Frequency>,
-    ) -> PyResult<Self> {
+    pub fn new(input: &Bound<'_, PyAny>, frequency: Option<Frequency>) -> PyResult<Self> {
         let classification = if let Ok(file) = input.extract::<String>() {
             RsLeafletClassification::from_file(&file)
         } else if let Ok(map) = extract_map(input) {
@@ -317,7 +314,7 @@ fn add_normal(
 
 /// Converts a Python dictionary whose keys are strings and values are 2D numpy arrays
 /// into a hashbrown::HashMap<String, Vec<Vec<u8>>>.
-fn extract_map<'py>(py_obj: &Bound<'py, PyAny>) -> PyResult<HashMap<String, Vec<Vec<u8>>>> {
+fn extract_map(py_obj: &Bound<'_, PyAny>) -> PyResult<HashMap<String, Vec<Vec<u8>>>> {
     let dict = py_obj.downcast::<PyDict>().map_err(|_| {
         ConfigError::new_err(
             "expected a dictionary using molecule types as keys and 2D numpy arrays with shape (n_frames, n_molecules) as values",
@@ -333,7 +330,7 @@ fn extract_map<'py>(py_obj: &Bound<'py, PyAny>) -> PyResult<HashMap<String, Vec<
 }
 
 /// Converts a two-dimensional numpy array into a Vec<Vec<u8>>.
-fn extract_nested_vector<'py>(py_obj: &Bound<'py, PyAny>) -> PyResult<Vec<Vec<u8>>> {
+fn extract_nested_vector(py_obj: &Bound<'_, PyAny>) -> PyResult<Vec<Vec<u8>>> {
     let array = py_obj
         .downcast::<PyArray2<u8>>()
         .map_err(|_| ConfigError::new_err("expected a 2D numpy array for leaflet assignment"))?;

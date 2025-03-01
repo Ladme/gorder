@@ -139,6 +139,7 @@ pub struct Analysis(RsAnalysis);
 
 #[pymethods]
 impl Analysis {
+    #[allow(clippy::too_many_arguments)]
     #[new]
     #[pyo3(signature = (
         structure, 

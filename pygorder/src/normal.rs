@@ -73,7 +73,7 @@ impl DynamicNormal {
 
 /// Converts a three-dimensional numpy array into a Vec<Vec<Vector3D>>.
 /// The numpy array must have shape [outer, inner, 3].
-fn extract_nested_vector<'py>(py_obj: &Bound<'py, PyAny>) -> PyResult<Vec<Vec<Vector3D>>> {
+fn extract_nested_vector(py_obj: &Bound<'_, PyAny>) -> PyResult<Vec<Vec<Vector3D>>> {
     // try to downcast the input to a PyArray3 of f32
     let array = py_obj.downcast::<PyArray3<f32>>().map_err(|_| {
         ConfigError::new_err("expected a 3D numpy array for dynamic membrane normals")
@@ -105,7 +105,7 @@ fn extract_nested_vector<'py>(py_obj: &Bound<'py, PyAny>) -> PyResult<Vec<Vec<Ve
 
 /// Converts a Python dictionary whose keys are strings and values are 3D numpy arrays
 /// into a hashbrown::HashMap<String, Vec<Vec<Vector3D>>>.
-fn extract_map<'py>(py_obj: &Bound<'py, PyAny>) -> PyResult<HashMap<String, Vec<Vec<Vector3D>>>> {
+fn extract_map(py_obj: &Bound<'_, PyAny>) -> PyResult<HashMap<String, Vec<Vec<Vector3D>>>> {
     let dict = py_obj.downcast::<PyDict>().map_err(|_| {
         ConfigError::new_err(
             "expected a dictionary using molecule types as keys and 3D numpy arrays with shape (n_frames, n_molecules, 3) as values",
