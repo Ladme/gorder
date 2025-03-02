@@ -7,7 +7,11 @@ use core::fmt;
 use std::ops::Add;
 
 use getset::{CopyGetters, Getters, MutGetters};
-use groan_rs::{prelude::Atom, structures::group::Group, system::System};
+use groan_rs::{
+    prelude::{Atom, Vector3D},
+    structures::group::Group,
+    system::System,
+};
 use hashbrown::HashSet;
 
 use super::{
@@ -376,6 +380,57 @@ impl OrderAtoms {
     }
 }
 
+/// Trait implemented by `Bond`-like structures such as `BondType` or `VirtualBondType`.
+pub(super) trait BondLike {
+    /// Get mutable reference to the order parameter calculated for the full membrane.
+    fn get_total(&mut self) -> &mut AnalysisOrder<super::timewise::AddExtend>;
+    /// Get mutable reference to the order parameter calculated for the upper leaflet.
+    fn get_upper(&mut self) -> Option<&mut AnalysisOrder<super::timewise::AddExtend>>;
+    /// Get mutable reference to the order parameter calculated for the lower leaflet.
+    fn get_lower(&mut self) -> Option<&mut AnalysisOrder<super::timewise::AddExtend>>;
+
+    /// Get mutable reference to the order parameter map calculated for the full membrane.
+    fn get_total_map(&mut self) -> Option<&mut Map>;
+    /// Get mutable reference to the order parameter map calculated for the upper leaflet.
+    fn get_upper_map(&mut self) -> Option<&mut Map>;
+    /// Get mutable reference to the order parameter map calculated for the lower leaflet.
+    fn get_lower_map(&mut self) -> Option<&mut Map>;
+
+    /// Add the calculated order parameter to the already collected data.
+    fn add_order(
+        &mut self,
+        molecule_index: usize,
+        sch: f32,
+        bond_pos: &Vector3D,
+        leaflet_classification: &mut Option<MoleculeLeafletClassification>,
+        frame_index: usize,
+    ) {
+        *self.get_total() += sch;
+
+        if let Some(map) = self.get_total_map() {
+            map.add_order(sch, bond_pos);
+        }
+
+        // get the assignment of molecule (assignment is performed earlier)
+        if let Some(classifier) = leaflet_classification.as_mut() {
+            match classifier.get_assigned_leaflet(molecule_index, frame_index) {
+                Leaflet::Upper => {
+                    *self.get_upper().expect(PANIC_MESSAGE) += sch;
+                    if let Some(map) = self.get_upper_map() {
+                        map.add_order(sch, bond_pos);
+                    }
+                }
+                Leaflet::Lower => {
+                    *self.get_lower().expect(PANIC_MESSAGE) += sch;
+                    if let Some(map) = self.get_lower_map() {
+                        map.add_order(sch, bond_pos);
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Structure describing a type of bond.
 /// Contains indices of all atoms that are involved in this bond type.
 #[derive(Debug, Clone, CopyGetters, Getters, MutGetters)]
@@ -404,6 +459,38 @@ pub(crate) struct BondType {
     /// Order parameter map of this bond calculated using lipids in the lower leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     lower_map: Option<Map>,
+}
+
+impl BondLike for BondType {
+    #[inline(always)]
+    fn get_total(&mut self) -> &mut AnalysisOrder<super::timewise::AddExtend> {
+        &mut self.total
+    }
+
+    #[inline(always)]
+    fn get_upper(&mut self) -> Option<&mut AnalysisOrder<super::timewise::AddExtend>> {
+        self.upper.as_mut()
+    }
+
+    #[inline(always)]
+    fn get_lower(&mut self) -> Option<&mut AnalysisOrder<super::timewise::AddExtend>> {
+        self.lower.as_mut()
+    }
+
+    #[inline(always)]
+    fn get_total_map(&mut self) -> Option<&mut Map> {
+        self.total_map.as_mut()
+    }
+
+    #[inline(always)]
+    fn get_upper_map(&mut self) -> Option<&mut Map> {
+        self.upper_map.as_mut()
+    }
+
+    #[inline(always)]
+    fn get_lower_map(&mut self) -> Option<&mut Map> {
+        self.lower_map.as_mut()
+    }
 }
 
 impl BondType {
@@ -531,6 +618,8 @@ impl BondType {
         frame_index: usize,
         geometry: &Geom,
     ) -> Result<(), AnalysisError> {
+        let self_ptr = self as *mut Self;
+
         for (molecule_index, (index1, index2)) in self.bonds.iter().enumerate() {
             let atom1 = unsafe { frame.get_atom_unchecked(*index1) };
             let atom2 = unsafe { frame.get_atom_unchecked(*index2) };
@@ -557,29 +646,16 @@ impl BondType {
                 membrane_normal.get_normal(frame_index, molecule_index, frame, pbc_handler)?;
 
             let sch = super::calc_sch(&vec, normal);
-            self.total += sch;
 
-            if let Some(map) = self.total_map.as_mut() {
-                map.add_order(sch, &bond_pos);
-            }
-
-            // get the assignment of molecule (assignment is performed earlier)
-            if let Some(classifier) = leaflet_classification.as_mut() {
-                match classifier.get_assigned_leaflet(molecule_index, frame_index) {
-                    Leaflet::Upper => {
-                        *self.upper.as_mut().expect(PANIC_MESSAGE) += sch;
-                        if let Some(map) = self.upper_map.as_mut() {
-                            map.add_order(sch, &bond_pos);
-                        }
-                    }
-                    Leaflet::Lower => {
-                        *self.lower.as_mut().expect(PANIC_MESSAGE) += sch;
-                        if let Some(map) = self.lower_map.as_mut() {
-                            map.add_order(sch, &bond_pos);
-                        }
-                    }
-                }
-            }
+            // safety: self lives the entire method
+            // we are modifying different part of the structure than is iterated by `bonds.iter()`
+            unsafe { &mut *self_ptr }.add_order(
+                molecule_index,
+                sch,
+                &bond_pos,
+                leaflet_classification,
+                frame_index,
+            )
         }
 
         Ok(())

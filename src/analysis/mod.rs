@@ -25,6 +25,7 @@ mod spinner;
 mod structure;
 pub(crate) mod timewise;
 pub(crate) mod topology;
+mod united;
 
 impl Analysis {
     /// Perform the analysis.
@@ -67,13 +68,10 @@ impl Analysis {
 }
 
 /// Calculate instantenous value of order parameter of a bond defined by a vector going from atom1 to atom2.
-/// Simulation box must be valid and orthogonal.
 #[inline(always)]
 pub(super) fn calc_sch(vector: &Vector3D, membrane_normal: &Vector3D) -> f32 {
     let angle = vector.angle(membrane_normal);
-
     let cos = angle.cos();
-
     (1.5 * cos * cos) - 0.5
 }
 
