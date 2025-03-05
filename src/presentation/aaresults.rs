@@ -8,7 +8,8 @@ use super::{
     AAOrder, BondResults, MoleculeResults, OrderCollection, OrderResults, PublicMoleculeResults,
     PublicOrderResults,
 };
-use crate::analysis::molecule::AtomType;
+use crate::analysis::topology::atom::AtomType;
+use crate::analysis::topology::bond::OrderBonds;
 use crate::input::Analysis;
 use crate::presentation::OrderMapsCollection;
 use getset::Getters;
@@ -74,6 +75,7 @@ impl PublicOrderResults for AAOrderResults {
 
 impl OrderResults for AAOrderResults {
     type OrderType = AAOrder;
+    type MoleculeBased = OrderBonds;
 
     fn empty(analysis: Analysis) -> Self {
         Self {

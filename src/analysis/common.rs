@@ -7,11 +7,12 @@ use std::time::{Duration, Instant};
 
 use super::geometry::{GeometrySelection, GeometrySelectionType};
 use super::leaflets::MoleculeLeafletClassification;
-use super::molecule::{MoleculeTopology, MoleculeType};
 use super::normal::MoleculeMembraneNormal;
 use super::pbc::{NoPBC, PBCHandler, PBC3D};
 use super::spinner::Spinner;
-use super::topology::SystemTopology;
+use super::topology::bond::OrderBonds;
+use super::topology::molecule::{MoleculeTopology, MoleculeType, MoleculeTypes};
+use super::topology::{OrderCalculable, SystemTopology};
 use crate::errors::{AnalysisError, GeometryConfigError};
 use crate::input::{Analysis, Geometry, MembraneNormal};
 use crate::{errors::TopologyError, input::LeafletClassification};
@@ -24,7 +25,6 @@ use groan_rs::prelude::{
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 use hashbrown::{HashMap, HashSet};
 use once_cell::sync::Lazy;
-use once_cell::unsync::OnceCell;
 
 /// A prefix used as an identifier for gorder groups.
 pub(super) const GORDER_GROUP_PREFIX: &str = "xxxGorderReservedxxx-";
@@ -171,12 +171,12 @@ pub(super) fn classify_molecules<'a>(
     group2: &str,
     analysis_options: &Analysis,
     pbc_handler: &impl PBCHandler<'a>,
-) -> Result<Vec<MoleculeType>, TopologyError> {
+) -> Result<Vec<MoleculeType<OrderBonds>>, TopologyError> {
     let group1_name = format!("{}{}", GORDER_GROUP_PREFIX, group1);
     let group2_name = format!("{}{}", GORDER_GROUP_PREFIX, group2);
 
     let mut visited = HashSet::new();
-    let mut molecules: Vec<MoleculeType> = Vec::new();
+    let mut molecules: Vec<MoleculeType<OrderBonds>> = Vec::new();
 
     let start = Instant::now();
     let n_atoms = system.group_get_n_atoms(&group1_name).expect(PANIC_MESSAGE);
@@ -256,7 +256,7 @@ pub(super) fn classify_molecules<'a>(
 }
 
 /// Check whether there are any molecules that can be analyzed.
-pub(super) fn sanity_check_molecules(molecules: &[MoleculeType]) -> bool {
+pub(super) fn sanity_check_molecules<O: OrderCalculable>(molecules: &[MoleculeType<O>]) -> bool {
     // if no molecules are detected, end the analysis
     if molecules.is_empty() {
         log::warn!("No molecules suitable for the analysis detected.");
@@ -265,8 +265,8 @@ pub(super) fn sanity_check_molecules(molecules: &[MoleculeType]) -> bool {
 
     // if only empty molecules are detected, end the analysis
     for mol in molecules.iter() {
-        if mol.order_bonds().bond_types().is_empty() {
-            log::warn!("No bonds suitable for the analysis detected.");
+        if mol.order_structure().is_empty() {
+            log::warn!("No bonds/atoms suitable for the analysis detected.");
             return false;
         }
     }
@@ -294,7 +294,7 @@ pub(super) fn analyze_frame(
     frame: &System,
     data: &mut SystemTopology,
 ) -> Result<(), AnalysisError> {
-    let molecules = data.molecule_types_mut() as *mut Vec<MoleculeType>;
+    let molecules = data.molecule_types_mut() as *mut MoleculeTypes;
 
     if data.handle_pbc() {
         // check the validity of the simulation box
@@ -303,25 +303,15 @@ pub(super) fn analyze_frame(
         // initialize the reading of the next frame
         data.init_new_frame(frame, &mut pbc);
 
-        analyze_molecules(
-            frame,
-            unsafe { &mut *molecules },
-            data.frame(),
-            data.geometry(),
-            &pbc,
-        )?
+        // safety: we are modifying a different part of the `data` structure
+        unsafe { &mut *molecules }.analyze_frame(frame, data.frame(), data.geometry(), &pbc)?
     } else {
         let mut pbc = NoPBC;
         // initialize the reading of the next frame
         data.init_new_frame(frame, &mut pbc);
 
-        analyze_molecules(
-            frame,
-            unsafe { &mut *molecules },
-            data.frame(),
-            data.geometry(),
-            &pbc,
-        )?
+        // safety: we are modifying a different part of the `data` structure
+        unsafe { &mut *molecules }.analyze_frame(frame, data.frame(), data.geometry(), &pbc)?
     };
 
     // print information about leaflet assignment for quick sanity check by the user
@@ -332,43 +322,6 @@ pub(super) fn analyze_frame(
 
     // increase the frame counter
     data.increase_frame_counter();
-
-    Ok(())
-}
-
-/// Run the analysis for each molecule.
-#[inline]
-fn analyze_molecules<'a>(
-    frame: &'a System,
-    molecules: &mut [MoleculeType],
-    frame_index: usize,
-    geometry: &GeometrySelectionType,
-    pbc_handler: &'a impl PBCHandler<'a>,
-) -> Result<(), AnalysisError> {
-    let membrane_center = OnceCell::new(); // used with global classification method
-
-    for molecule in molecules.iter_mut() {
-        // assign molecules to leaflets
-        if let Some(classifier) = molecule.leaflet_classification_mut() {
-            classifier.assign_lipids(frame, pbc_handler, frame_index, &membrane_center)?;
-        }
-
-        // calculate order parameters
-        match geometry {
-            GeometrySelectionType::None(x) => {
-                molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
-            }
-            GeometrySelectionType::Cuboid(x) => {
-                molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
-            }
-            GeometrySelectionType::Cylinder(x) => {
-                molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
-            }
-            GeometrySelectionType::Sphere(x) => {
-                molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
-            }
-        }
-    }
 
     Ok(())
 }
@@ -471,7 +424,7 @@ fn create_new_molecule_type<'a>(
     n_threads: usize,
     step_size: usize,
     pbc_handler: &impl PBCHandler<'a>,
-) -> Result<MoleculeType, TopologyError> {
+) -> Result<MoleculeType<OrderBonds>, TopologyError> {
     // create a name of the molecule
     let name = residues.join("-");
 
@@ -513,7 +466,7 @@ fn create_new_molecule_type<'a>(
 }
 
 /// Rename all molecules that have the same name.
-fn solve_name_conflicts(molecules: &mut [MoleculeType]) {
+fn solve_name_conflicts<O: OrderCalculable>(molecules: &mut [MoleculeType<O>]) {
     let mut counts: HashMap<String, usize> = HashMap::new();
 
     // count the number of individual names
@@ -662,7 +615,10 @@ pub(super) fn get_reference_head(
 mod tests {
 
     use crate::{
-        analysis::molecule::{AtomType, BondTopology, OrderAtoms},
+        analysis::topology::{
+            atom::{AtomType, OrderAtoms},
+            bond::BondTopology,
+        },
         input::AnalysisType,
     };
 
@@ -1448,7 +1404,7 @@ mod tests {
 
     fn string2topology(string: &str) -> MoleculeTopology {
         let bonds = string2bonds(string);
-        MoleculeTopology { bonds }
+        MoleculeTopology::new_raw(bonds)
     }
 
     fn string2bonds(string: &str) -> HashSet<BondTopology> {
@@ -1853,7 +1809,7 @@ mod tests {
         for (i, molecule) in molecules.into_iter().enumerate() {
             assert_eq!(molecule.name(), expected_names[i]);
             assert_eq!(molecule.topology(), &expected_topology[i]);
-            let order_bonds = molecule.order_bonds();
+            let order_bonds = molecule.order_structure();
             let order_bond_topologies: HashSet<BondTopology> = order_bonds
                 .bond_types()
                 .iter()
@@ -1990,12 +1946,8 @@ mod tests {
         .unwrap();
         let expected_names = ["POPE", "POPG"];
         let expected_topology = [
-            MoleculeTopology {
-                bonds: pope_cg_bonds(),
-            },
-            MoleculeTopology {
-                bonds: popg_cg_bonds(),
-            },
+            MoleculeTopology::new_raw(pope_cg_bonds()),
+            MoleculeTopology::new_raw(popg_cg_bonds()),
         ];
         let expected_order_bond_topologies = [pope_cg_bonds(), popg_cg_bonds()];
         let expected_n_instances = [216, 72];
@@ -2622,7 +2574,7 @@ mod tests {
         for (i, molecule) in molecules.into_iter().enumerate() {
             assert_eq!(molecule.name(), expected_names[i]);
             assert_eq!(molecule.topology(), &expected_topology[i]);
-            let order_bonds = molecule.order_bonds();
+            let order_bonds = molecule.order_structure();
             let order_bond_topologies: HashSet<BondTopology> = order_bonds
                 .bond_types()
                 .iter()
@@ -2684,7 +2636,7 @@ mod tests {
             assert_eq!(molecule.name(), expected_names[i]);
 
             for bond_instances in molecule
-                .order_bonds()
+                .order_structure()
                 .bond_types()
                 .iter()
                 .map(|x| x.bonds().clone())
@@ -2722,7 +2674,7 @@ mod tests {
             assert_eq!(molecule.name(), expected_names[i]);
 
             for bond_instances in molecule
-                .order_bonds()
+                .order_structure()
                 .bond_types()
                 .iter()
                 .map(|x| x.bonds().clone())
@@ -2760,7 +2712,7 @@ mod tests {
             assert_eq!(molecule.name(), expected_names[i]);
 
             for bond_instances in molecule
-                .order_bonds()
+                .order_structure()
                 .bond_types()
                 .iter()
                 .map(|x| x.bonds().clone())
@@ -2792,6 +2744,6 @@ mod tests {
         .unwrap();
 
         assert_eq!(molecules.len(), 1);
-        assert_eq!(molecules[0].order_bonds().bond_types().len(), 14);
+        assert_eq!(molecules[0].order_structure().bond_types().len(), 14);
     }
 }

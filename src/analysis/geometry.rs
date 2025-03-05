@@ -572,14 +572,14 @@ mod tests_cuboid {
         let pbc = PBC3D::new(&simbox);
 
         for i in 0..100 {
-            let xmin: f32 = rng.gen_range(0.0..10.0);
-            let xmax = rng.gen_range(0.0..10.0);
+            let xmin: f32 = rng.random_range(0.0..10.0);
+            let xmax = rng.random_range(0.0..10.0);
 
-            let ymin: f32 = rng.gen_range(0.0..10.0);
-            let ymax = rng.gen_range(0.0..10.0);
+            let ymin: f32 = rng.random_range(0.0..10.0);
+            let ymax = rng.random_range(0.0..10.0);
 
-            let zmin: f32 = rng.gen_range(0.0..10.0);
-            let zmax = rng.gen_range(0.0..10.0);
+            let zmin: f32 = rng.random_range(0.0..10.0);
+            let zmax = rng.random_range(0.0..10.0);
 
             let mut xrange = [xmin, xmax];
             xrange.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -607,9 +607,9 @@ mod tests_cuboid {
             let shape = CuboidAnalysis::construct_shape(&cuboid, Vector3D::default(), &pbc);
 
             for _ in 0..1000 {
-                let pos_x = rng.gen_range(0.0..10.0);
-                let pos_y = rng.gen_range(0.0..10.0);
-                let pos_z = rng.gen_range(0.0..10.0);
+                let pos_x = rng.random_range(0.0..10.0);
+                let pos_y = rng.random_range(0.0..10.0);
+                let pos_z = rng.random_range(0.0..10.0);
 
                 let point = Vector3D::new(pos_x, pos_y, pos_z);
 

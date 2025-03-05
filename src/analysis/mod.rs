@@ -16,7 +16,6 @@ mod common;
 pub(crate) mod geometry;
 mod index;
 mod leaflets;
-pub(crate) mod molecule;
 mod normal;
 pub(crate) mod order;
 pub(crate) mod ordermap;
@@ -25,7 +24,7 @@ mod spinner;
 mod structure;
 pub(crate) mod timewise;
 pub(crate) mod topology;
-mod united;
+mod uaorder;
 
 impl Analysis {
     /// Perform the analysis.

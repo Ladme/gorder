@@ -1,0 +1,154 @@
+// Released under MIT License.
+// Copyright (c) 2024-2025 Ladislav Bartos
+
+//! Structures and methods for working with order united-atoms.
+
+use std::ops::Add;
+
+use super::{atom::AtomType, OrderCalculable};
+use crate::{
+    analysis::{
+        geometry::GeometrySelection, leaflets::MoleculeLeafletClassification,
+        normal::MoleculeMembraneNormal, pbc::PBCHandler, uaorder::UAOrderAtomType,
+    },
+    errors::{AnalysisError, TopologyError},
+    input::OrderMap,
+    PANIC_MESSAGE,
+};
+use getset::{Getters, MutGetters};
+use groan_rs::system::System;
+use hashbrown::HashSet;
+
+/// Collection of all united atoms for which the order parameters should be calculated.
+#[derive(Debug, Clone, Getters, MutGetters)]
+pub(crate) struct UAOrderAtoms {
+    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
+    atom_types: Vec<UAOrderAtomType>,
+}
+
+impl OrderCalculable for UAOrderAtoms {
+    type ElementSet = HashSet<usize>;
+
+    fn new<'a>(
+        system: &System,
+        atoms: &HashSet<usize>,
+        min_index: usize,
+        classify_leaflets: bool,
+        ordermap: Option<&OrderMap>,
+        errors: bool,
+        pbc_handler: &impl PBCHandler<'a>,
+    ) -> Result<Self, TopologyError> {
+        let mut order_atoms = Vec::new();
+        let mut sorted_atoms = atoms.iter().cloned().collect::<Vec<_>>();
+        sorted_atoms.sort();
+
+        for &index in sorted_atoms.iter() {
+            let ua_atom = match UAOrderAtomType::new(
+                system,
+                index,
+                min_index,
+                classify_leaflets,
+                ordermap,
+                pbc_handler,
+                errors,
+            )? {
+                Some(x) => x,
+                None => continue,
+            };
+
+            order_atoms.push(ua_atom);
+        }
+
+        Ok(UAOrderAtoms {
+            atom_types: order_atoms,
+        })
+    }
+
+    fn insert(&mut self, system: &System, atoms: &HashSet<usize>, min_index: usize) {
+        for &index in atoms.iter() {
+            // index cannot be lower than `min_index`
+            if index < min_index {
+                panic!(
+                "FATAL GORDER ERROR | UAOrderAtoms::insert | Atom index '{}' is lower than minimum index '{}'. {}",
+                index, min_index, PANIC_MESSAGE
+            );
+            }
+
+            let atom = system
+            .get_atom(index)
+            .unwrap_or_else(|_|
+                panic!("FATAL GORDER ERROR | UAOrderAtoms::insert | Index '{}' does not correspond to an existing atom. {}", index, PANIC_MESSAGE));
+
+            let atom_type = AtomType::new(index - min_index, atom);
+
+            if let Some(order_atom) = self
+                .atom_types
+                .iter_mut()
+                .find(|order_atom| *order_atom.get_type() == atom_type)
+            {
+                order_atom.insert(index);
+            } // ignore if the atom was not found -- it was probably filtered out
+        }
+    }
+
+    #[inline(always)]
+    fn analyze_frame<'a, Geom: GeometrySelection>(
+        &mut self,
+        frame: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
+        frame_index: usize,
+        geometry: &Geom,
+        leaflet: &mut Option<MoleculeLeafletClassification>,
+        normal: &mut MoleculeMembraneNormal,
+    ) -> Result<(), AnalysisError> {
+        for atom in self.atom_types_mut() {
+            atom.analyze_frame(frame, leaflet, pbc_handler, normal, frame_index, geometry)?;
+        }
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn init_new_frame(&mut self) {
+        self.atom_types_mut()
+            .iter_mut()
+            .for_each(|atom| atom.init_new_frame());
+    }
+
+    #[inline(always)]
+    fn n_molecules(&self) -> usize {
+        self.atom_types()
+            .first()
+            .map(|atom_type| atom_type.n_molecules())
+            .unwrap_or(0)
+    }
+
+    #[inline(always)]
+    fn is_empty(&self) -> bool {
+        self.atom_types().first().is_none()
+    }
+
+    #[inline(always)]
+    fn get_timewise_info(&self, n_blocks: usize) -> Option<(usize, usize)> {
+        if let Some(atom) = self.atom_types().first() {
+            atom.get_timewise_info(n_blocks)
+        } else {
+            None
+        }
+    }
+}
+
+impl Add<UAOrderAtoms> for UAOrderAtoms {
+    type Output = Self;
+
+    fn add(self, rhs: UAOrderAtoms) -> Self::Output {
+        UAOrderAtoms {
+            atom_types: self
+                .atom_types
+                .into_iter()
+                .zip(rhs.atom_types)
+                .map(|(a, b)| a + b)
+                .collect::<Vec<UAOrderAtomType>>(),
+        }
+    }
+}

@@ -1,215 +1,33 @@
 // Released under MIT License.
 // Copyright (c) 2024-2025 Ladislav Bartos
 
-//! Structures and methods for constructing and working with topology of a molecule type.
+//! Structures and methods for working with order bonds.
 
-use core::fmt;
 use std::ops::Add;
 
-use getset::{CopyGetters, Getters, MutGetters};
-use groan_rs::{
-    prelude::{Atom, Vector3D},
-    structures::group::Group,
-    system::System,
-};
-use hashbrown::HashSet;
-
-use super::{
-    geometry::GeometrySelection,
-    leaflets::MoleculeLeafletClassification,
-    normal::MoleculeMembraneNormal,
-    ordermap::{merge_option_maps, Map},
-    pbc::PBCHandler,
-};
-use crate::analysis::order::AnalysisOrder;
 use crate::{
+    analysis::{
+        calc_sch,
+        geometry::GeometrySelection,
+        leaflets::MoleculeLeafletClassification,
+        normal::MoleculeMembraneNormal,
+        order::{merge_option_order, AnalysisOrder},
+        ordermap::{merge_option_maps, Map},
+        pbc::PBCHandler,
+        timewise::AddExtend,
+    },
     errors::{AnalysisError, TopologyError},
     input::OrderMap,
     Leaflet, PANIC_MESSAGE,
 };
 
-/// Represents a specific type of molecule with all its atoms and bonds.
-/// Contains indices of all atoms that are part of molecules of this type.
-#[derive(Debug, Clone, Getters, MutGetters)]
-pub(crate) struct MoleculeType {
-    /// Name of the molecule.
-    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
-    name: String,
-    /// Topology of the molecule (set of all bonds).
-    #[getset(get = "pub(super)")]
-    topology: MoleculeTopology,
-    /// List of all bonds for which order parameter should be calculated.
-    #[getset(get = "pub(crate)")]
-    order_bonds: OrderBonds,
-    /// List of all atoms for which order parameter should be calculated (all atoms for CG, heavy atoms for AA).
-    #[getset(get = "pub(crate)")]
-    order_atoms: OrderAtoms,
-    /// Either a statically assigned or dynamically computed membrane normal for all molecules of this type.
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
-    membrane_normal: MoleculeMembraneNormal,
-    /// Method to use to assign this molecule to membrane leaflet.
-    #[getset(get = "pub(super)", get_mut = "pub(super)")]
-    leaflet_classification: Option<MoleculeLeafletClassification>,
-}
-
-impl MoleculeType {
-    /// Create new molecule type.
-    #[allow(clippy::too_many_arguments)]
-    pub(super) fn new<'a>(
-        system: &System,
-        name: String,
-        topology: MoleculeTopology,
-        order_bonds: &HashSet<(usize, usize)>,
-        order_atoms: &[usize],
-        min_index: usize,
-        leaflet_classification: Option<MoleculeLeafletClassification>,
-        ordermap_params: Option<&OrderMap>,
-        errors: bool,
-        pbc_handler: &impl PBCHandler<'a>,
-        membrane_normal: MoleculeMembraneNormal,
-    ) -> Result<Self, TopologyError> {
-        Ok(Self {
-            name,
-            topology,
-            order_bonds: OrderBonds::new(
-                system,
-                order_bonds,
-                min_index,
-                leaflet_classification.is_some(),
-                ordermap_params,
-                errors,
-                pbc_handler,
-            )?,
-            order_atoms: OrderAtoms::new(system, order_atoms, min_index),
-            leaflet_classification,
-            membrane_normal,
-        })
-    }
-
-    /// Insert new bond instances to the molecule.
-    #[inline]
-    pub(super) fn insert(
-        &mut self,
-        system: &System,
-        bonds: &HashSet<(usize, usize)>,
-        atoms: Group,
-    ) -> Result<(), TopologyError> {
-        self.order_bonds.insert(
-            system,
-            bonds,
-            atoms.get_atoms().first().expect(PANIC_MESSAGE),
-        );
-
-        if let Some(classifier) = self.leaflet_classification.as_mut() {
-            classifier.insert(&atoms, system)?;
-        }
-
-        self.membrane_normal.insert(&atoms, system)?;
-
-        Ok(())
-    }
-
-    /// Calculate order parameters for bonds of a single molecule type from a single simulation frame.
-    #[inline]
-    pub(super) fn analyze_frame<'a, Geom: GeometrySelection>(
-        &mut self,
-        frame: &'a System,
-        pbc_handler: &'a impl PBCHandler<'a>,
-        frame_index: usize,
-        geometry: &Geom,
-    ) -> Result<(), AnalysisError> {
-        self.order_bonds
-            .bond_types
-            .iter_mut()
-            .try_for_each(|bond_type| {
-                bond_type.analyze_frame(
-                    frame,
-                    &mut self.leaflet_classification,
-                    pbc_handler,
-                    &mut self.membrane_normal,
-                    frame_index,
-                    geometry,
-                )
-            })?;
-
-        Ok(())
-    }
-
-    /// Initialize reading of a new frame.
-    #[inline(always)]
-    pub(super) fn init_new_frame(&mut self) {
-        self.membrane_normal.init_new_frame();
-
-        self.order_bonds
-            .bond_types
-            .iter_mut()
-            .for_each(|bond| bond.init_new_frame());
-    }
-
-    /// Get the number of molecules of this molecule type.
-    pub(super) fn n_molecules(&self) -> usize {
-        self.order_bonds()
-            .bond_types()
-            .first()
-            .map(|bond_type| bond_type.bonds.len())
-            .unwrap_or(0)
-    }
-}
-
-impl Add<MoleculeType> for MoleculeType {
-    type Output = Self;
-
-    #[inline(always)]
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            name: self.name,
-            topology: self.topology,
-            order_bonds: self.order_bonds + rhs.order_bonds,
-            order_atoms: self.order_atoms,
-            leaflet_classification: self.leaflet_classification,
-            membrane_normal: self.membrane_normal,
-        }
-    }
-}
-
-/// Collection of all bond types in a molecule describing its topology.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) struct MoleculeTopology {
-    pub(super) bonds: HashSet<BondTopology>,
-}
-
-impl MoleculeTopology {
-    /// Create new molecule topology from a set of bonds (absolute indices) and the minimum index in the molecule.
-    ///
-    /// ## Panics
-    /// - Panics if the `min_index` is higher than any index inside the `bonds` set.
-    /// - Panics if there is a bond connecting the same atom (e.g. 14-14) in the `bonds` set.
-    /// - Panics if an index in the `bonds` set does not correspond to an existing atom.
-    pub(super) fn new(
-        system: &System,
-        bonds: &HashSet<(usize, usize)>,
-        min_index: usize,
-    ) -> MoleculeTopology {
-        bonds_sanity_check(bonds, min_index);
-
-        let mut converted_bonds = HashSet::new();
-        for &(index1, index2) in bonds {
-            let (atom1, atom2) = get_atoms_from_bond(system, index1, index2);
-            let bond = BondTopology::new(index1 - min_index, atom1, index2 - min_index, atom2);
-
-            if !converted_bonds.insert(bond) {
-                panic!(
-                    "FATAL GORDER ERROR | MoleculeTopology::new | Bond between atoms '{}' and '{}' defined multiple times. {}",
-                    index1, index2, PANIC_MESSAGE
-                );
-            }
-        }
-
-        MoleculeTopology {
-            bonds: converted_bonds,
-        }
-    }
-}
+use super::{atom::AtomType, bonds_sanity_check, get_atoms_from_bond, OrderCalculable};
+use getset::{CopyGetters, Getters, MutGetters};
+use groan_rs::{
+    prelude::{Atom, Vector3D},
+    system::System,
+};
+use hashbrown::HashSet;
 
 /// Collection of all bonds for which the order parameters should be calculated.
 #[derive(Debug, Clone, Getters, MutGetters)]
@@ -218,14 +36,16 @@ pub(crate) struct OrderBonds {
     bond_types: Vec<BondType>,
 }
 
-impl OrderBonds {
+impl OrderCalculable for OrderBonds {
+    type ElementSet = HashSet<(usize, usize)>;
+
     /// Create a new `OrderBonds` structure from a set of bonds (absolute indices) and the minimum index of the molecule.
     ///
     /// ## Panics
     /// - Panics if the `min_index` is higher than any index inside the `bonds` set.
     /// - Panics if there is a bond connecting the same atom (e.g. 14-14) in the `bonds` set.
     /// - Panics if an index in the `bonds` set does not correspond to an existing atom.
-    pub(super) fn new<'a>(
+    fn new<'a>(
         system: &System,
         bonds: &HashSet<(usize, usize)>,
         min_index: usize,
@@ -266,12 +86,7 @@ impl OrderBonds {
     }
 
     /// Insert new instances of bonds to an already constructed list of order bonds.
-    pub(super) fn insert(
-        &mut self,
-        system: &System,
-        bonds: &HashSet<(usize, usize)>,
-        min_index: usize,
-    ) {
+    fn insert(&mut self, system: &System, bonds: &HashSet<(usize, usize)>, min_index: usize) {
         bonds_sanity_check(bonds, min_index);
 
         for &(index1, index2) in bonds.iter() {
@@ -293,6 +108,56 @@ impl OrderBonds {
             }
         }
     }
+
+    #[inline]
+    fn analyze_frame<'a, Geom: GeometrySelection>(
+        &mut self,
+        frame: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
+        frame_index: usize,
+        geometry: &Geom,
+        leaflet: &mut Option<MoleculeLeafletClassification>,
+        normal: &mut MoleculeMembraneNormal,
+    ) -> Result<(), AnalysisError> {
+        self.bond_types.iter_mut().try_for_each(|bond_type| {
+            bond_type.analyze_frame(frame, leaflet, pbc_handler, normal, frame_index, geometry)
+        })?;
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn init_new_frame(&mut self) {
+        self.bond_types
+            .iter_mut()
+            .for_each(|bond| bond.init_new_frame());
+    }
+
+    #[inline(always)]
+    fn n_molecules(&self) -> usize {
+        self.bond_types
+            .first()
+            .map(|bond_type| bond_type.bonds.len())
+            .unwrap_or(0)
+    }
+
+    #[inline(always)]
+    fn is_empty(&self) -> bool {
+        self.bond_types.first().is_none()
+    }
+
+    #[inline]
+    fn get_timewise_info(&self, n_blocks: usize) -> Option<(usize, usize)> {
+        if let Some(bond) = self.bond_types.first() {
+            if let Some(timewise) = bond.total().timewise() {
+                Some((timewise.block_size(n_blocks), timewise.n_frames()))
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl Add<OrderBonds> for OrderBonds {
@@ -311,83 +176,14 @@ impl Add<OrderBonds> for OrderBonds {
     }
 }
 
-/// Checks that `min_index` is not higher than index of an atom involved in bonding.
-/// Checks that there is no self-bonding.
-/// Panics if any of these checks fails.
-fn bonds_sanity_check(bonds: &HashSet<(usize, usize)>, min_index: usize) {
-    for &(index1, index2) in bonds {
-        for index in [index1, index2] {
-            if index < min_index {
-                panic!(
-                    "FATAL GORDER ERROR | molecule::bonds_sanity_check | Atom index '{}' is lower than minimum index '{}'. {}",
-                    index1, min_index, PANIC_MESSAGE
-                );
-            }
-        }
-
-        if index1 == index2 {
-            panic!(
-                "FATAL GORDER ERROR | molecule::bonds_sanity_check | Bond between the same atom (index: '{}'). {}",
-                index1, PANIC_MESSAGE
-            );
-        }
-    }
-}
-
-/// Get atoms corresponding to the provided absolute indices,
-/// panicking if these indices are out of range.
-fn get_atoms_from_bond(system: &System, index1: usize, index2: usize) -> (&Atom, &Atom) {
-    let atom1 = system
-        .get_atom(index1)
-        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | molecule::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index1, PANIC_MESSAGE));
-
-    let atom2 = system
-        .get_atom(index2)
-        .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | molecule::get_atoms_from_bond | Index '{}' does not correspond to an existing atom. {}", index2, PANIC_MESSAGE));
-
-    (atom1, atom2)
-}
-
-/// Collection of all atom types for which order parameters should be calculated.
-/// In case of coarse-grained order parameters, this involves all specified atoms.
-/// In case of atomistic order parameters, this only involves heavy atoms.
-#[derive(Debug, Clone, PartialEq, Eq, MutGetters, Getters)]
-pub(crate) struct OrderAtoms {
-    /// Ordered by the increasing relative index.
-    #[getset(get = "pub(crate)", get_mut = "pub(super)")]
-    atoms: Vec<AtomType>,
-}
-
-impl OrderAtoms {
-    /// Create a new list of atoms involved in the order calculations.
-    pub(super) fn new(system: &System, atoms: &[usize], minimum_index: usize) -> Self {
-        let mut converted_atoms = atoms
-            .iter()
-            .map(|&x| AtomType::new(x - minimum_index, system.get_atom(x).expect(PANIC_MESSAGE)))
-            .collect::<Vec<AtomType>>();
-
-        converted_atoms.sort_by(|a, b| a.relative_index.cmp(&b.relative_index));
-
-        OrderAtoms {
-            atoms: converted_atoms,
-        }
-    }
-
-    #[allow(unused)]
-    #[inline(always)]
-    pub(super) fn new_raw(atoms: Vec<AtomType>) -> Self {
-        OrderAtoms { atoms }
-    }
-}
-
 /// Trait implemented by `Bond`-like structures such as `BondType` or `VirtualBondType`.
-pub(super) trait BondLike {
+pub(crate) trait BondLike {
     /// Get mutable reference to the order parameter calculated for the full membrane.
-    fn get_total(&mut self) -> &mut AnalysisOrder<super::timewise::AddExtend>;
+    fn get_total(&mut self) -> &mut AnalysisOrder<AddExtend>;
     /// Get mutable reference to the order parameter calculated for the upper leaflet.
-    fn get_upper(&mut self) -> Option<&mut AnalysisOrder<super::timewise::AddExtend>>;
+    fn get_upper(&mut self) -> Option<&mut AnalysisOrder<AddExtend>>;
     /// Get mutable reference to the order parameter calculated for the lower leaflet.
-    fn get_lower(&mut self) -> Option<&mut AnalysisOrder<super::timewise::AddExtend>>;
+    fn get_lower(&mut self) -> Option<&mut AnalysisOrder<AddExtend>>;
 
     /// Get mutable reference to the order parameter map calculated for the full membrane.
     fn get_total_map(&mut self) -> Option<&mut Map>;
@@ -443,13 +239,13 @@ pub(crate) struct BondType {
     bonds: Vec<(usize, usize)>,
     /// Order parameter for this bond type calculated using lipids in the entire membrane.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    total: AnalysisOrder<super::timewise::AddExtend>,
+    total: AnalysisOrder<AddExtend>,
     /// Order parameter for this bond type calculated using lipids in the upper leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    upper: Option<AnalysisOrder<super::timewise::AddExtend>>,
+    upper: Option<AnalysisOrder<AddExtend>>,
     /// Order parameter for this bond type calculated using lipids in the lower leaflet.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
-    lower: Option<AnalysisOrder<super::timewise::AddExtend>>,
+    lower: Option<AnalysisOrder<AddExtend>>,
     /// Order parameter map of this bond calculated using lipids in the entire membrane.
     #[getset(get = "pub(crate)", get_mut = "pub(crate)")]
     total_map: Option<Map>,
@@ -463,17 +259,17 @@ pub(crate) struct BondType {
 
 impl BondLike for BondType {
     #[inline(always)]
-    fn get_total(&mut self) -> &mut AnalysisOrder<super::timewise::AddExtend> {
+    fn get_total(&mut self) -> &mut AnalysisOrder<AddExtend> {
         &mut self.total
     }
 
     #[inline(always)]
-    fn get_upper(&mut self) -> Option<&mut AnalysisOrder<super::timewise::AddExtend>> {
+    fn get_upper(&mut self) -> Option<&mut AnalysisOrder<AddExtend>> {
         self.upper.as_mut()
     }
 
     #[inline(always)]
-    fn get_lower(&mut self) -> Option<&mut AnalysisOrder<super::timewise::AddExtend>> {
+    fn get_lower(&mut self) -> Option<&mut AnalysisOrder<AddExtend>> {
         self.lower.as_mut()
     }
 
@@ -551,7 +347,7 @@ impl BondType {
 
     /// Insert new real bond to the current order bond.
     #[inline(always)]
-    pub(super) fn insert(&mut self, abs_index_1: usize, abs_index_2: usize) {
+    pub(crate) fn insert(&mut self, abs_index_1: usize, abs_index_2: usize) {
         if abs_index_1 < abs_index_2 {
             self.bonds.push((abs_index_1, abs_index_2));
         } else {
@@ -574,13 +370,13 @@ impl BondType {
     /// Get the relative index of the first atom of this bond type.
     #[inline(always)]
     pub(crate) fn atom1_index(&self) -> usize {
-        self.atom1().relative_index
+        self.atom1().relative_index()
     }
 
     /// Get the relative index of the second atom of this bond type.
     #[inline(always)]
     pub(crate) fn atom2_index(&self) -> usize {
-        self.atom2().relative_index
+        self.atom2().relative_index()
     }
 
     /// Does this bond involve a specific atom type?
@@ -645,7 +441,7 @@ impl BondType {
             let normal =
                 membrane_normal.get_normal(frame_index, molecule_index, frame, pbc_handler)?;
 
-            let sch = super::calc_sch(&vec, normal);
+            let sch = calc_sch(&vec, normal);
 
             // safety: self lives the entire method
             // we are modifying different part of the structure than is iterated by `bonds.iter()`
@@ -671,8 +467,8 @@ impl Add<BondType> for BondType {
             bond_topology: self.bond_topology,
             bonds: self.bonds,
             total: self.total + rhs.total,
-            upper: super::order::merge_option_order(self.upper, rhs.upper),
-            lower: super::order::merge_option_order(self.lower, rhs.lower),
+            upper: merge_option_order(self.upper, rhs.upper),
+            lower: merge_option_order(self.lower, rhs.lower),
             total_map: merge_option_maps(self.total_map, rhs.total_map),
             upper_map: merge_option_maps(self.upper_map, rhs.upper_map),
             lower_map: merge_option_maps(self.lower_map, rhs.lower_map),
@@ -743,53 +539,119 @@ impl BondTopology {
     }
 }
 
-/// Type of atom. Specific to a particular molecule.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Getters, MutGetters, CopyGetters)]
-pub struct AtomType {
-    /// Relative index of the atom in a molecule.
-    #[getset(get_copy = "pub", get_mut = "pub(super)")]
-    relative_index: usize,
-    /// Name of the residue of the atom.
-    #[getset(get = "pub", get_mut = "pub(super)")]
-    residue_name: String,
-    /// Name of the atom.
-    #[getset(get = "pub", get_mut = "pub(super)")]
-    atom_name: String,
+/// Order parameters and ordermaps calculated for a single bond between a real atom and a virtual atom.
+#[derive(Debug, Clone)]
+pub(crate) struct VirtualBondType {
+    total: AnalysisOrder<AddExtend>,
+    upper: Option<AnalysisOrder<AddExtend>>,
+    lower: Option<AnalysisOrder<AddExtend>>,
+    total_map: Option<Map>,
+    upper_map: Option<Map>,
+    lower_map: Option<Map>,
 }
 
-impl AtomType {
-    /// Create a new atom type.
+impl VirtualBondType {
+    pub(crate) fn new<'a>(
+        classify_leaflets: bool,
+        ordermap: Option<&OrderMap>,
+        pbc_handler: &impl PBCHandler<'a>,
+        errors: bool,
+    ) -> Result<Self, TopologyError> {
+        let optional_map = if let Some(map_params) = ordermap {
+            Some(
+                Map::new(map_params.to_owned(), pbc_handler)
+                    .map_err(TopologyError::OrderMapError)?,
+            )
+        } else {
+            None
+        };
+
+        let (leaflet_order, leaflet_map) = if classify_leaflets {
+            (
+                Some(AnalysisOrder::new(0.0, 0, errors)),
+                optional_map.clone(),
+            )
+        } else {
+            (None, None)
+        };
+
+        Ok(VirtualBondType {
+            total: AnalysisOrder::new(0.0, 0, errors),
+            upper: leaflet_order.clone(),
+            lower: leaflet_order,
+            total_map: optional_map,
+            upper_map: leaflet_map.clone(),
+            lower_map: leaflet_map,
+        })
+    }
+
+    /// Initialize reading of a new simulation frame.
     #[inline(always)]
-    pub(super) fn new(relative_index: usize, atom: &Atom) -> AtomType {
-        AtomType {
-            relative_index,
-            residue_name: atom.get_residue_name().to_owned(),
-            atom_name: atom.get_atom_name().to_owned(),
+    pub(crate) fn init_new_frame(&mut self) {
+        self.total.init_new_frame();
+        if let Some(x) = self.upper.as_mut() {
+            x.init_new_frame()
+        }
+        if let Some(x) = self.lower.as_mut() {
+            x.init_new_frame()
         }
     }
 
-    /// Create a new atom type from raw parts.
-    #[allow(unused)]
     #[inline(always)]
-    pub(crate) fn new_raw(relative_index: usize, residue_name: &str, atom_name: &str) -> AtomType {
-        AtomType {
-            relative_index,
-            residue_name: residue_name.to_owned(),
-            atom_name: atom_name.to_owned(),
+    pub(crate) fn get_timewise_info(&self, n_blocks: usize) -> Option<(usize, usize)> {
+        if let Some(timewise) = self.total.timewise() {
+            Some((timewise.block_size(n_blocks), timewise.n_frames()))
+        } else {
+            None
         }
     }
 }
 
-impl fmt::Display for AtomType {
+impl BondLike for VirtualBondType {
     #[inline(always)]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}-{}-{}",
-            self.residue_name(),
-            self.atom_name(),
-            self.relative_index()
-        )
+    fn get_total(&mut self) -> &mut AnalysisOrder<AddExtend> {
+        &mut self.total
+    }
+
+    #[inline(always)]
+    fn get_upper(&mut self) -> Option<&mut AnalysisOrder<AddExtend>> {
+        self.upper.as_mut()
+    }
+
+    #[inline(always)]
+    fn get_lower(&mut self) -> Option<&mut AnalysisOrder<AddExtend>> {
+        self.lower.as_mut()
+    }
+
+    #[inline(always)]
+    fn get_total_map(&mut self) -> Option<&mut Map> {
+        self.total_map.as_mut()
+    }
+
+    #[inline(always)]
+    fn get_upper_map(&mut self) -> Option<&mut Map> {
+        self.upper_map.as_mut()
+    }
+
+    #[inline(always)]
+    fn get_lower_map(&mut self) -> Option<&mut Map> {
+        self.lower_map.as_mut()
+    }
+}
+
+impl Add<VirtualBondType> for VirtualBondType {
+    type Output = VirtualBondType;
+
+    #[inline]
+    fn add(self, rhs: VirtualBondType) -> Self::Output {
+        VirtualBondType {
+            total: self.total + rhs.total,
+            upper: merge_option_order(self.upper, rhs.upper),
+            lower: merge_option_order(self.lower, rhs.lower),
+            total_map: merge_option_maps(self.total_map, rhs.total_map),
+            upper_map: merge_option_maps(self.upper_map, rhs.upper_map),
+            lower_map: merge_option_maps(self.lower_map, rhs.lower_map),
+        }
     }
 }
 
@@ -798,8 +660,8 @@ mod tests {
     use groan_rs::prelude::SimBox;
 
     use crate::{
-        analysis::{geometry::NoSelection, pbc::PBC3D, topology::SystemTopology},
-        input::{ordermap::Plane, Analysis, AnalysisType, GridSpan},
+        analysis::{pbc::PBC3D, topology::atom::OrderAtoms},
+        input::{GridSpan, Plane},
     };
 
     use super::*;
@@ -976,7 +838,7 @@ mod tests {
             AtomType::new(38, system.get_atom(163).unwrap()),
         ];
 
-        for (atom, expected) in order_atoms.atoms.iter().zip(expected_atoms.iter()) {
+        for (atom, expected) in order_atoms.atoms().iter().zip(expected_atoms.iter()) {
             assert_eq!(atom, expected);
         }
     }
@@ -1084,109 +946,6 @@ mod tests {
             } else {
                 panic!("Expected bond not found.");
             }
-        }
-    }
-
-    #[test]
-    fn molecule_topology_new() {
-        let system = System::from_file("tests/files/pcpepg.tpr").unwrap();
-        let bonds = [(169, 170), (169, 171), (213, 214), (213, 215), (246, 247)];
-        let bonds_set = HashSet::from(bonds);
-        let topology = MoleculeTopology::new(&system, &bonds_set, 125);
-
-        let expected_bonds = expected_bonds(&system);
-
-        // bonds can be in any order inside `order_bonds`
-        for bond in topology.bonds.iter() {
-            if !expected_bonds.iter().any(|expected| bond == expected) {
-                panic!("Expected bond not found.")
-            }
-        }
-    }
-
-    #[test]
-    fn n_molecules_aa() {
-        let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
-        crate::analysis::common::create_group(
-            &mut system,
-            "HeavyAtoms",
-            "@membrane and element name carbon",
-        )
-        .unwrap();
-        crate::analysis::common::create_group(
-            &mut system,
-            "Hydrogens",
-            "@membrane and element name hydrogen",
-        )
-        .unwrap();
-
-        let analysis = Analysis::builder()
-            .structure("tests/files/pcpepg.tpr")
-            .trajectory("tests/files/pcpepg.xtc")
-            .analysis_type(AnalysisType::aaorder(
-                "@membrane and element name carbon",
-                "@membrane and element name hydrogen",
-            ))
-            .build()
-            .unwrap();
-
-        let molecules = crate::analysis::common::classify_molecules(
-            &system,
-            "HeavyAtoms",
-            "Hydrogens",
-            &analysis,
-            &PBC3D::from_system(&system),
-        )
-        .unwrap();
-
-        let topology = SystemTopology::new(
-            molecules,
-            None,
-            1,
-            1,
-            crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
-            true,
-        );
-
-        let expected = [131, 128, 15];
-        for (i, molecule) in topology.molecule_types().iter().enumerate() {
-            assert_eq!(molecule.n_molecules(), expected[i]);
-        }
-    }
-
-    #[test]
-    fn n_molecules_cg() {
-        let mut system = System::from_file("tests/files/cg.tpr").unwrap();
-        crate::analysis::common::create_group(&mut system, "Beads", "@membrane").unwrap();
-
-        let analysis = Analysis::builder()
-            .structure("tests/files/cg.tpr")
-            .trajectory("tests/files/cg.xtc")
-            .analysis_type(AnalysisType::cgorder("@membrane"))
-            .build()
-            .unwrap();
-
-        let molecules = crate::analysis::common::classify_molecules(
-            &system,
-            "Beads",
-            "Beads",
-            &analysis,
-            &PBC3D::from_system(&system),
-        )
-        .unwrap();
-
-        let topology = SystemTopology::new(
-            molecules,
-            None,
-            1,
-            1,
-            crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
-            true,
-        );
-
-        let expected = [242, 242, 24];
-        for (i, molecule) in topology.molecule_types().iter().enumerate() {
-            assert_eq!(molecule.n_molecules(), expected[i]);
         }
     }
 }

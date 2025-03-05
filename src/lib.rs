@@ -413,7 +413,7 @@ pub mod prelude {
         LeafletClassification, MembraneNormal, OrderMap, Plane,
     };
 
-    pub use super::analysis::molecule::AtomType;
+    pub use super::analysis::topology::atom::AtomType;
 
     pub use super::presentation::{
         aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults},

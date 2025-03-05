@@ -3,6 +3,10 @@
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
+use crate::analysis::topology::atom::AtomType;
+use crate::analysis::topology::bond::BondTopology;
+use crate::analysis::topology::molecule::MoleculeTypes;
+use crate::analysis::topology::OrderCalculable;
 use crate::input::{Frequency, LeafletClassification, Plane};
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::cgresults::CGOrderResults;
@@ -13,13 +17,7 @@ use crate::presentation::tab_presenter::{TabPresenter, TabProperties, TabWrite};
 use crate::presentation::xvg_presenter::{XvgPresenter, XvgProperties, XvgWrite};
 use crate::presentation::yaml_presenter::{YamlPresenter, YamlProperties, YamlWrite};
 use crate::{
-    analysis::{
-        molecule::{AtomType, BondTopology},
-        topology::SystemTopology,
-    },
-    errors::WriteError,
-    input::Analysis,
-    PANIC_MESSAGE,
+    analysis::topology::SystemTopology, errors::WriteError, input::Analysis, PANIC_MESSAGE,
 };
 use colored::Colorize;
 use convergence::{ConvPresenter, ConvProperties, Convergence};
@@ -115,6 +113,7 @@ pub(crate) trait OrderResults:
     Debug + Clone + CsvWrite + TabWrite + YamlWrite + PublicOrderResults
 {
     type OrderType: OrderType;
+    type MoleculeBased: OrderCalculable;
 
     /// Create an empty `OrderResults` structure (i.e., without any molecules).
     fn empty(analysis: Analysis) -> Self;
@@ -699,25 +698,42 @@ impl SystemTopology {
         write!(
             string,
             "Detected {} relevant molecule type(s):",
-            self.molecule_types().len().to_string().cyan()
+            self.molecule_types().n_molecule_types().to_string().cyan()
         )?;
 
-        for molecule in self.molecule_types().iter() {
-            write!(
-                string,
-                "\n  Molecule type {}: {} order bonds, {} molecules.",
-                molecule.name().cyan(),
-                molecule.order_bonds().bond_types().len().to_string().cyan(),
-                molecule
-                    .order_bonds()
-                    .bond_types()
-                    .first()
-                    .expect(PANIC_MESSAGE)
-                    .bonds()
-                    .len()
-                    .to_string()
-                    .cyan(),
-            )?
+        match self.molecule_types() {
+            MoleculeTypes::BondBased(x) => {
+                for molecule in x.iter() {
+                    write!(
+                        string,
+                        "\n  Molecule type {}: {} order bonds, {} molecules.",
+                        molecule.name().cyan(),
+                        molecule
+                            .order_structure()
+                            .bond_types()
+                            .len()
+                            .to_string()
+                            .cyan(),
+                        molecule.order_structure().n_molecules().to_string().cyan(),
+                    )?
+                }
+            }
+            MoleculeTypes::AtomBased(x) => {
+                for molecule in x.iter() {
+                    write!(
+                        string,
+                        "\n  Molecule type {}: {} order atoms, {} molecules.",
+                        molecule.name().cyan(),
+                        molecule
+                            .order_structure()
+                            .atom_types()
+                            .len()
+                            .to_string()
+                            .cyan(),
+                        molecule.order_structure().n_molecules().to_string().cyan(),
+                    )?
+                }
+            }
         }
 
         log::info!("{}", string);

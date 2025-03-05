@@ -18,6 +18,7 @@ use super::{
     topology::SystemTopology,
 };
 use crate::{
+    analysis::topology::molecule::handle_moltypes,
     errors::{
         AnalysisError, ConfigError, ManualLeafletClassificationError,
         NdxLeafletClassificationError, TopologyError,
@@ -99,7 +100,8 @@ fn get_reference_methyls(molecule: &Group, system: &System) -> Result<Vec<usize>
 
 /// Type of leaflet classification method used for a molecule.
 #[derive(Debug, Clone)]
-pub(super) enum MoleculeLeafletClassification {
+#[allow(private_interfaces)]
+pub(crate) enum MoleculeLeafletClassification {
     Global(GlobalClassification, AssignedLeaflets),
     Local(LocalClassification, AssignedLeaflets),
     Individual(IndividualClassification, AssignedLeaflets),
@@ -672,41 +674,43 @@ impl SystemTopology {
 
         let mut molecule_names = Vec::new();
 
-        for molecule in self.molecule_types_mut() {
-            let assignment = classification.get(molecule.name()).ok_or_else(|| {
-                ManualLeafletClassificationError::MoleculeTypeNotFound(molecule.name().to_owned())
-            })?;
+        handle_moltypes!(self.molecule_types_mut(), x => {
+            for molecule in x.iter_mut() {
+                let assignment = classification.get(molecule.name()).ok_or_else(|| {
+                    ManualLeafletClassificationError::MoleculeTypeNotFound(molecule.name().to_owned())
+                })?;
 
-            // perform sanity checks
-            // at least one frame must be provided
-            if assignment.is_empty() {
-                return Err(ManualLeafletClassificationError::EmptyAssignment(
-                    molecule.name().to_owned(),
-                ));
-            }
-
-            // number of molecules must be consistent and match the system
-            for (i, frame) in assignment.iter().enumerate() {
-                let n_molecules = molecule.n_molecules();
-                if frame.len() != n_molecules {
-                    return Err(
-                        ManualLeafletClassificationError::InconsistentNumberOfMolecules {
-                            expected: n_molecules,
-                            molecule: molecule.name().to_owned(),
-                            got: frame.len(),
-                            frame: i,
-                        },
-                    );
+                // perform sanity checks
+                // at least one frame must be provided
+                if assignment.is_empty() {
+                    return Err(ManualLeafletClassificationError::EmptyAssignment(
+                        molecule.name().to_owned(),
+                    ));
                 }
-            }
 
-            match molecule.leaflet_classification_mut() {
-                Some(MoleculeLeafletClassification::Manual(x, _)) => x.assignment = Some(assignment.clone()),
-                _ => panic!("FATAL GORDER ERROR | SystemTopology::finalize_manual_leaflet_classification | Unexpected MoleculeLeafletClassification. Expected Manual."),
-            }
+                // number of molecules must be consistent and match the system
+                for (i, frame) in assignment.iter().enumerate() {
+                    let n_molecules = molecule.n_molecules();
+                    if frame.len() != n_molecules {
+                        return Err(
+                            ManualLeafletClassificationError::InconsistentNumberOfMolecules {
+                                expected: n_molecules,
+                                molecule: molecule.name().to_owned(),
+                                got: frame.len(),
+                                frame: i,
+                            },
+                        );
+                    }
+                }
 
-            molecule_names.push(molecule.name().to_owned());
-        }
+                match molecule.leaflet_classification_mut() {
+                    Some(MoleculeLeafletClassification::Manual(x, _)) => x.assignment = Some(assignment.clone()),
+                    _ => panic!("FATAL GORDER ERROR | SystemTopology::finalize_manual_leaflet_classification | Unexpected MoleculeLeafletClassification. Expected Manual."),
+                }
+
+                molecule_names.push(molecule.name().to_owned());
+            }
+        });
 
         // check that there is no additional molecule in the leaflet classification structure
         for molecule_name in classification.keys() {
@@ -728,16 +732,18 @@ impl SystemTopology {
         &self,
         step: usize,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        for molecule in self.molecule_types() {
-            match molecule.leaflet_classification().as_ref() {
-                None => continue,
-                Some(classification) => Self::validate_molecule_leaflet_classification(
-                    classification,
-                    step,
-                    self.total_frames(),
-                )?,
+        handle_moltypes!(self.molecule_types(), x => {
+            for molecule in x.iter() {
+                match molecule.leaflet_classification().as_ref() {
+                    None => continue,
+                    Some(classification) => Self::validate_molecule_leaflet_classification(
+                        classification,
+                        step,
+                        self.total_frames(),
+                    )?,
+                }
             }
-        }
+        });
 
         Ok(())
     }

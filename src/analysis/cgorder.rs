@@ -79,7 +79,7 @@ pub(super) fn analyze_coarse_grained(
     }
 
     let mut data = SystemTopology::new(
-        molecules,
+        molecules.into(),
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
@@ -133,7 +133,8 @@ mod tests {
         analysis::{
             common::analyze_frame,
             geometry::GeometrySelectionType,
-            molecule::{BondType, MoleculeType},
+            topology::bond::{BondType, OrderBonds},
+            topology::molecule::{MoleculeType, MoleculeTypes},
         },
         input::{AnalysisType, LeafletClassification},
     };
@@ -176,7 +177,7 @@ mod tests {
         (
             system,
             SystemTopology::new(
-                molecules,
+                molecules.into(),
                 None,
                 1,
                 1,
@@ -244,17 +245,22 @@ mod tests {
         analyze_frame(&system, &mut data).unwrap();
         let expected_total_orders = expected_total_orders();
 
-        for (m, molecule) in data.molecule_types().iter().enumerate() {
-            let n_instances = molecule.order_bonds().bond_types()[0].bonds().len();
+        let molecule_types = match data.molecule_types() {
+            MoleculeTypes::AtomBased(_) => panic!("Molecule types should be bond-based."),
+            MoleculeTypes::BondBased(x) => x,
+        };
+
+        for (m, molecule) in molecule_types.iter().enumerate() {
+            let n_instances = molecule.order_structure().bond_types()[0].bonds().len();
             let orders = molecule
-                .order_bonds()
+                .order_structure()
                 .bond_types()
                 .iter()
                 .map(|b| b.total().order().into())
                 .collect::<Vec<f32>>();
 
             let samples = molecule
-                .order_bonds()
+                .order_structure()
                 .bond_types()
                 .iter()
                 .map(|b| b.total().n_samples())
@@ -271,12 +277,12 @@ mod tests {
         }
     }
 
-    fn collect_bond_data<T, F>(molecule: &MoleculeType, func: F) -> Vec<T>
+    fn collect_bond_data<T, F>(molecule: &MoleculeType<OrderBonds>, func: F) -> Vec<T>
     where
         F: Fn(&BondType) -> T,
     {
         molecule
-            .order_bonds()
+            .order_structure()
             .bond_types()
             .iter()
             .map(func)
@@ -297,7 +303,12 @@ mod tests {
         let expected_upper_samples = [121, 121, 12];
         let expected_lower_samples = [121, 121, 12];
 
-        for (m, molecule) in data.molecule_types().iter().enumerate() {
+        let molecule_types = match data.molecule_types() {
+            MoleculeTypes::AtomBased(_) => panic!("Molecule types should be bond-based."),
+            MoleculeTypes::BondBased(x) => x,
+        };
+
+        for (m, molecule) in molecule_types.iter().enumerate() {
             let total_orders: Vec<f32> = collect_bond_data(molecule, |b| b.total().order().into());
             let upper_orders =
                 collect_bond_data(molecule, |b| b.upper().as_ref().unwrap().order().into());

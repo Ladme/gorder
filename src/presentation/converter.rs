@@ -3,10 +3,12 @@
 
 //! Structures and methods for converting between system topology and formatted results.
 
-use crate::analysis::molecule::{AtomType, BondType, MoleculeType};
 use crate::analysis::order::{add_option_order, AnalysisOrder};
 use crate::analysis::ordermap::{add_option_map, Map};
 use crate::analysis::timewise::{AddSum, TimeWiseAddTreatment};
+use crate::analysis::topology::atom::AtomType;
+use crate::analysis::topology::bond::{BondType, OrderBonds};
+use crate::analysis::topology::molecule::{MoleculeType, MoleculeTypes};
 use crate::analysis::topology::SystemTopology;
 use crate::input::Analysis;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
@@ -42,9 +44,9 @@ impl<O: MolConvert> ResultsConverter<O> {
 
     /// Convert topology with raw calculated order parameters into a presentable structure.
     pub(crate) fn convert_topology(self, topology: SystemTopology) -> O {
-        let molnames = topology.molecule_types().iter().map(|x| x.name().clone());
-        let (molecule_results, order_summers): (Vec<_>, Vec<_>) = topology
-            .molecule_types()
+        let moltypes = O::unpack_moltypes(topology.molecule_types());
+        let molnames = moltypes.iter().map(|x| x.name().clone());
+        let (molecule_results, order_summers): (Vec<_>, Vec<_>) = moltypes
             .iter()
             .map(|mol| O::convert_molecule(mol, &self))
             .unzip();
@@ -202,14 +204,19 @@ impl<O: MolConvert> ResultsConverter<O> {
 pub(crate) trait MolConvert: OrderResults {
     /// Convert a molecule type with raw calculated order parameters into a presentable structure.
     fn convert_molecule(
-        molecule_type: &MoleculeType,
+        molecule_type: &MoleculeType<Self::MoleculeBased>,
         converter: &ResultsConverter<Self>,
     ) -> (Self::MoleculeResults, OrderSummer);
+
+    /// Unpack `MoleculeTypes` structure and convert it to the appropriate one or panic if invalid structure was provided.
+    fn unpack_moltypes<'a>(
+        molecule_types: &'a MoleculeTypes,
+    ) -> &Vec<MoleculeType<Self::MoleculeBased>>;
 }
 
 impl MolConvert for AAOrderResults {
     fn convert_molecule(
-        molecule_type: &MoleculeType,
+        molecule_type: &MoleculeType<OrderBonds>,
         converter: &ResultsConverter<Self>,
     ) -> (Self::MoleculeResults, OrderSummer) {
         let mut order = IndexMap::new();
@@ -218,7 +225,7 @@ impl MolConvert for AAOrderResults {
         for heavy_atom in molecule_type.order_atoms().atoms() {
             let mut relevant_bonds = Vec::new();
 
-            for bond in molecule_type.order_bonds().bond_types() {
+            for bond in molecule_type.order_structure().bond_types() {
                 if bond.contains(heavy_atom) {
                     relevant_bonds.push(bond);
                     summer += bond;
@@ -245,6 +252,14 @@ impl MolConvert for AAOrderResults {
             AAMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence),
             summer,
         )
+    }
+
+    fn unpack_moltypes<'a>(molecule_types: &'a MoleculeTypes) -> &Vec<MoleculeType<OrderBonds>> {
+        match molecule_types {
+            MoleculeTypes::AtomBased(_) => panic!(
+                "FATAL GORDER ERROR | AAOrderResults::unpack_moltypes | Invalid `atom-based` moltypes detected. {}", PANIC_MESSAGE),
+            MoleculeTypes::BondBased(x) => x,
+        }
     }
 }
 
@@ -290,13 +305,13 @@ impl AAOrderResults {
 
 impl MolConvert for CGOrderResults {
     fn convert_molecule(
-        molecule_type: &MoleculeType,
+        molecule_type: &MoleculeType<OrderBonds>,
         converter: &ResultsConverter<Self>,
     ) -> (Self::MoleculeResults, OrderSummer) {
         let mut order = IndexMap::new();
         let mut summer = OrderSummer::default();
 
-        for bond in molecule_type.order_bonds().bond_types() {
+        for bond in molecule_type.order_structure().bond_types() {
             summer += bond;
             let results = converter.convert_bond(bond, molecule_type.name());
             order.insert(bond.bond_topology().clone(), results);
@@ -314,6 +329,14 @@ impl MolConvert for CGOrderResults {
             CGMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence),
             summer,
         )
+    }
+
+    fn unpack_moltypes<'a>(molecule_types: &'a MoleculeTypes) -> &Vec<MoleculeType<OrderBonds>> {
+        match molecule_types {
+            MoleculeTypes::AtomBased(_) => panic!(
+                "FATAL GORDER ERROR | CGOrderResults::unpack_moltypes | Invalid `atom-based` moltypes detected. {}", PANIC_MESSAGE),
+            MoleculeTypes::BondBased(x) => x,
+        }
     }
 }
 

@@ -11,6 +11,7 @@ use nalgebra::{DMatrix, SVD};
 use once_cell::sync::OnceCell;
 
 use crate::{
+    analysis::topology::molecule::handle_moltypes,
     errors::{AnalysisError, DynamicNormalError, ManualNormalError, TopologyError},
     input::MembraneNormal,
     PANIC_MESSAGE,
@@ -23,7 +24,8 @@ use super::{
 };
 
 #[derive(Debug, Clone)]
-pub(super) enum MoleculeMembraneNormal {
+#[allow(private_interfaces)]
+pub(crate) enum MoleculeMembraneNormal {
     Static(Vector3D),
     Dynamic(DynamicMembraneNormal),
     Manual(ManualMembraneNormal),
@@ -241,20 +243,22 @@ impl SystemTopology {
 
         let mut molecule_names = Vec::new();
 
-        for molecule in self.molecule_types_mut() {
-            let normals_for_molecule = ManualMembraneNormal::get_normals_for_molecule(
-                &normals,
-                molecule.name(),
-                molecule.n_molecules(),
-            )?;
+        handle_moltypes!(self.molecule_types_mut(), x => {
+            for molecule in x.iter_mut() {
+                let normals_for_molecule = ManualMembraneNormal::get_normals_for_molecule(
+                    &normals,
+                    molecule.name(),
+                    molecule.n_molecules(),
+                )?;
 
-            match molecule.membrane_normal_mut() {
-                MoleculeMembraneNormal::Manual(x) => x.0 = Some(normals_for_molecule),
-                _ => panic!("FATAL GORDER ERROR | SystemTopology::finalize_manual_membrane_normals | Unexpected MoleculeMembraneNormal. Expected Manual."),
+                match molecule.membrane_normal_mut() {
+                    MoleculeMembraneNormal::Manual(x) => x.0 = Some(normals_for_molecule),
+                    _ => panic!("FATAL GORDER ERROR | SystemTopology::finalize_manual_membrane_normals | Unexpected MoleculeMembraneNormal. Expected Manual."),
+                }
+
+                molecule_names.push(molecule.name().to_owned());
             }
-
-            molecule_names.push(molecule.name().to_owned());
-        }
+        });
 
         // check that there is no additional molecule in the normals structure
         for molecule_name in normals.keys() {
@@ -273,16 +277,18 @@ impl SystemTopology {
     /// Checks that the number of analyzed frames matches the number of frames specified in the manual normals specification.
     /// Doesn't do anything if the membrane normals are not provided manually.
     pub(super) fn validate_normals_specification(&self) -> Result<(), ManualNormalError> {
-        for molecule in self.molecule_types() {
-            if let MoleculeMembraneNormal::Manual(manual) = molecule.membrane_normal() {
-                if self.total_frames() != manual.n_frames() {
-                    return Err(ManualNormalError::UnexpectedNumberOfFrames {
-                        used_frames: manual.n_frames(),
-                        analyzed_frames: self.total_frames(),
-                    });
+        handle_moltypes!(self.molecule_types(), x => {
+            for molecule in x.iter() {
+                if let MoleculeMembraneNormal::Manual(manual) = molecule.membrane_normal() {
+                    if self.total_frames() != manual.n_frames() {
+                        return Err(ManualNormalError::UnexpectedNumberOfFrames {
+                            used_frames: manual.n_frames(),
+                            analyzed_frames: self.total_frames(),
+                        });
+                    }
                 }
             }
-        }
+        });
 
         Ok(())
     }
