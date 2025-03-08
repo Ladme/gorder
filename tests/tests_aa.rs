@@ -324,40 +324,43 @@ fn test_aa_order_leaflets_yaml() {
 #[test]
 fn test_aa_order_leaflets_yaml_alt_traj() {
     for traj in ["tests/files/pcpepg.nc", "tests/files/pcpepg.dcd"] {
-        let output = NamedTempFile::new().unwrap();
-        let path_to_output = output.path().to_str().unwrap();
+        for n_threads in [1, 3, 8] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::builder()
-            .structure("tests/files/pcpepg.tpr")
-            .trajectory(traj)
-            .output(path_to_output)
-            .analysis_type(AnalysisType::aaorder(
-                "@membrane and element name carbon",
-                "@membrane and element name hydrogen",
-            ))
-            .leaflets(
-                LeafletClassification::individual("name P", "name C218 C316")
-                    .with_frequency(Frequency::once()),
-            )
-            .silent()
-            .overwrite()
-            .build()
-            .unwrap();
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory(traj)
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(
+                    LeafletClassification::individual("name P", "name C218 C316")
+                        .with_frequency(Frequency::once()),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
 
-        analysis.run().unwrap().write().unwrap();
+            analysis.run().unwrap().write().unwrap();
 
-        if traj == "tests/files/pcpepg.lammpstrj" {
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/aa_order_leaflets_lammps.yaml",
-                1
-            ));
-        } else {
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/aa_order_leaflets.yaml",
-                1
-            ));
+            if traj == "tests/files/pcpepg.lammpstrj" {
+                assert!(diff_files_ignore_first(
+                    path_to_output,
+                    "tests/files/aa_order_leaflets_lammps.yaml",
+                    1
+                ));
+            } else {
+                assert!(diff_files_ignore_first(
+                    path_to_output,
+                    "tests/files/aa_order_leaflets.yaml",
+                    1
+                ));
+            }
         }
     }
 }

@@ -222,30 +222,33 @@ fn test_cg_order_leaflets_yaml_alt_traj() {
         "tests/files/cg.dcd",
         "tests/files/cg.lammpstrj",
     ] {
-        let output = NamedTempFile::new().unwrap();
-        let path_to_output = output.path().to_str().unwrap();
+        for n_threads in [1, 3, 8] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
 
-        let analysis = Analysis::builder()
-            .structure("tests/files/cg.tpr")
-            .trajectory(trajectory)
-            .output(path_to_output)
-            .analysis_type(AnalysisType::cgorder("@membrane"))
-            .leaflets(
-                LeafletClassification::individual("name PO4", "name C4A C4B")
-                    .with_frequency(Frequency::once()),
-            )
-            .silent()
-            .overwrite()
-            .build()
-            .unwrap();
+            let analysis = Analysis::builder()
+                .structure("tests/files/cg.tpr")
+                .trajectory(trajectory)
+                .output(path_to_output)
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .leaflets(
+                    LeafletClassification::individual("name PO4", "name C4A C4B")
+                        .with_frequency(Frequency::once()),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
 
-        analysis.run().unwrap().write().unwrap();
+            analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/cg_order_leaflets.yaml",
+                1
+            ));
+        }
     }
 }
 
