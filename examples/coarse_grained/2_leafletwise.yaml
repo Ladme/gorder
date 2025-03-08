@@ -1,0 +1,48 @@
+###########################################
+# Leaflet-wise calculation of coarse-     #
+# grained lipid order parameters.         #
+# Global method, all output formats.      #
+# Analysis performed using 4 threads.     #
+# Manual: ladme.github.io/gorder-manual   # 
+###########################################
+
+### Input Gromacs binary run file.
+structure: system.tpr
+
+### Input Gromacs compressed trajectory file.
+trajectory: traj.xtc
+
+### Calculate coarse-grained order parameters.
+analysis_type: !CGOrder
+
+  ### Analyze all bonds between particles of the membrane.
+  beads: "@membrane"
+
+### Assign lipids into leaflets based on the global center of geometry of the membrane.
+leaflets: !Global
+
+  ### All particles of the membrane for center of geometry calculation.
+  membrane: "@membrane"
+
+  ### Phosphate beads of membrane lipids identifying lipid heads. Only one phosphate bead per molecule!
+  heads: "name PO4"
+
+  ### Perform the leaflet assignment only for the first trajectory frame and 
+  ### then use the same assignment for all the following frames.
+  ### DELETE if lipids are able to flip-flop in your membrane!
+  frequency: !Once
+
+### Path to the output yaml file. Contains full results of the analysis.
+output_yaml: order.yaml
+
+### Path to the output "table" file. Simple to read.
+output_tab: order.tab
+
+### Path to the output xvg file. Can be plotted using `xmgrace`.
+output_xvg: order.xvg
+
+### Path to the output csv file. Open with a spreadsheet software or read with Pandas/Polars.
+output_csv: order.csv
+
+### Perform the analysis using 4 threads.
+n_threads: 4
