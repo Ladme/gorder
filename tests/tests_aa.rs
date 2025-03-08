@@ -59,6 +59,42 @@ fn test_aa_order_basic_yaml() {
 }
 
 #[test]
+fn test_aa_order_basic_concatenated_yaml_multiple_threads() {
+    for n_threads in [1, 2, 3, 8, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ])
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_basic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_aa_order_basic_ndx_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -922,8 +958,8 @@ fn test_aa_order_begin_end_step_yaml() {
             "@membrane and element name carbon",
             "@membrane and element name hydrogen",
         ))
-        .begin(450_000.0)
-        .end(450_200.0)
+        .begin(450_200.0)
+        .end(450_400.0)
         .step(3)
         .leaflets(LeafletClassification::global("@membrane", "name P"))
         .silent()
@@ -956,8 +992,44 @@ fn test_aa_order_begin_end_step_yaml_multiple_threads() {
                 "@membrane and element name carbon",
                 "@membrane and element name hydrogen",
             ))
-            .begin(450_000.0)
-            .end(450_200.0)
+            .begin(450_200.0)
+            .end(450_400.0)
+            .step(3)
+            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        let results = analysis.run().unwrap();
+        assert_eq!(results.n_analyzed_frames(), 4);
+        results.write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/aa_order_begin_end_step.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_aa_order_concatenated_begin_end_step_yaml_multiple_threads() {
+    for n_threads in [1, 2, 3, 8, 16, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/split/pcpepg?.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .begin(450_200.0)
+            .end(450_400.0)
             .step(3)
             .leaflets(LeafletClassification::global("@membrane", "name P"))
             .n_threads(n_threads)
@@ -1049,8 +1121,8 @@ fn test_aa_order_begin_end_step_yaml_leaflets_multiple_threads_various_frequenci
                         "@membrane and element name carbon",
                         "@membrane and element name hydrogen",
                     ))
-                    .begin(450_000.0)
-                    .end(450_200.0)
+                    .begin(450_200.0)
+                    .end(450_400.0)
                     .step(3)
                     .leaflets(method.clone().with_frequency(freq))
                     .n_threads(n_threads)
@@ -1086,8 +1158,8 @@ fn test_aa_order_begin_end_yaml() {
             "@membrane and element name carbon",
             "@membrane and element name hydrogen",
         ))
-        .begin(450_000.0)
-        .end(450_200.0)
+        .begin(450_200.0)
+        .end(450_400.0)
         .leaflets(LeafletClassification::global("@membrane", "name P"))
         .silent()
         .overwrite()
@@ -1119,8 +1191,8 @@ fn test_aa_order_begin_end_yaml_multiple_threads() {
                 "@membrane and element name carbon",
                 "@membrane and element name hydrogen",
             ))
-            .begin(450_000.0)
-            .end(450_200.0)
+            .begin(450_200.0)
+            .end(450_400.0)
             .leaflets(LeafletClassification::global("@membrane", "name P"))
             .n_threads(n_threads)
             .silent()
@@ -3575,8 +3647,8 @@ fn test_aa_order_leaflets_from_file_every_begin_end_step_multiple_threads() {
                 "tests/files/inputs/leaflets_files/pcpepg_every_begin_end_step.yaml",
             ))
             .n_threads(n_threads)
-            .begin(450_000.0)
-            .end(450_200.0)
+            .begin(450_200.0)
+            .end(450_400.0)
             .step(3)
             .silent()
             .overwrite()

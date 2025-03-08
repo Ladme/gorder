@@ -1,0 +1,6 @@
+structure: tests/files/pcpepg.tpr
+trajectory: ["tests/files/pcpepg.gro", "tests/files/pcpepg.gro"]
+type: !AAOrder
+  heavy_atoms: "@membrane and element name carbon"
+  hydrogens: "@membrane and element name hydrogen"
+output_yaml: unsupported_cat_will_not_be_created.yaml

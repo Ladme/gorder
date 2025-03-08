@@ -56,6 +56,33 @@ fn test_cg_order_basic_yaml() {
 }
 
 #[test]
+fn test_cg_order_basic_concatenated_yaml_multiple_threads() {
+    for n_threads in [1, 2, 3, 8, 64, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/split/cg*.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_basic.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_cg_order_basic_ndx_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -249,6 +276,37 @@ fn test_cg_order_leaflets_yaml_alt_traj() {
                 1
             ));
         }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_trr_concatenated() {
+    for n_threads in [1, 3, 8] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/split/cg*.trr")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(
+                LeafletClassification::individual("name PO4", "name C4A C4B")
+                    .with_frequency(Frequency::once()),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
     }
 }
 
@@ -690,8 +748,8 @@ fn test_cg_order_begin_end_step_yaml() {
         .trajectory("tests/files/cg.xtc")
         .output(path_to_output)
         .analysis_type(AnalysisType::cgorder("@membrane"))
-        .begin(350_000.0)
-        .end(356_000.0)
+        .begin(352_000.0)
+        .end(358_000.0)
         .step(5)
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
         .silent()
@@ -721,8 +779,47 @@ fn test_cg_order_begin_end_step_yaml_multiple_threads() {
             .trajectory("tests/files/cg.xtc")
             .output(path_to_output)
             .analysis_type(AnalysisType::cgorder("@membrane"))
-            .begin(350_000.0)
-            .end(356_000.0)
+            .begin(352_000.0)
+            .end(358_000.0)
+            .step(5)
+            .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        let results = analysis.run().unwrap();
+        assert_eq!(results.n_analyzed_frames(), 13);
+        results.write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_begin_end_step.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_begin_end_step_concatenated_yaml_multiple_threads() {
+    for n_threads in [1, 2, 3, 8, 64, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory(vec![
+                "tests/files/split/cg1.xtc",
+                "tests/files/split/cg2.xtc",
+                "tests/files/split/cg3.xtc",
+                "tests/files/split/cg4.xtc",
+                "tests/files/split/cg5.xtc",
+            ])
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .begin(352_000.0)
+            .end(358_000.0)
             .step(5)
             .leaflets(LeafletClassification::global("@membrane", "name PO4"))
             .n_threads(n_threads)
@@ -764,8 +861,8 @@ fn test_cg_order_begin_end_step_yaml_leaflets_multiple_threads_various_frequenci
                     .trajectory("tests/files/cg.xtc")
                     .output(path_to_output)
                     .analysis_type(AnalysisType::cgorder("@membrane"))
-                    .begin(350_000.0)
-                    .end(356_000.0)
+                    .begin(352_000.0)
+                    .end(358_000.0)
                     .step(5)
                     .leaflets(method.clone().with_frequency(freq))
                     .n_threads(n_threads)
@@ -798,8 +895,8 @@ fn test_cg_order_begin_end_yaml() {
         .trajectory("tests/files/cg.xtc")
         .output(path_to_output)
         .analysis_type(AnalysisType::cgorder("@membrane"))
-        .begin(350_000.0)
-        .end(356_000.0)
+        .begin(352_000.0)
+        .end(358_000.0)
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
         .silent()
         .overwrite()
@@ -828,8 +925,8 @@ fn test_cg_order_begin_end_yaml_multiple_threads() {
             .trajectory("tests/files/cg.xtc")
             .output(path_to_output)
             .analysis_type(AnalysisType::cgorder("@membrane"))
-            .begin(350_000.0)
-            .end(356_000.0)
+            .begin(352_000.0)
+            .end(358_000.0)
             .leaflets(LeafletClassification::global("@membrane", "name PO4"))
             .n_threads(n_threads)
             .silent()

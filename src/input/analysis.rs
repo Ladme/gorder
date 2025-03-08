@@ -329,9 +329,9 @@ fn validate_trajectory_format(files: &[String]) -> Result<(), ConfigError> {
                     unwrapped_name.clone(),
                 ));
             }
-
-            last = Some((file_type, file))
         }
+
+        last = Some((file_type, file));
     }
 
     Ok(())
@@ -1133,6 +1133,88 @@ mod tests_yaml {
             Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
+
+    #[test]
+    fn analysis_yaml_pass_multiple_trajectories_list() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/multiple_trajectories_list.yaml").unwrap();
+
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(
+            analysis.trajectory(),
+            &vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ]
+        );
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+    }
+
+    #[test]
+    fn analysis_yaml_pass_multiple_trajectories_glob() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/multiple_trajectories_glob.yaml").unwrap();
+
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(
+            analysis.trajectory(),
+            &vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ]
+        );
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+    }
+
+    #[test]
+    fn analysis_yaml_fail_no_trajectories() {
+        match Analysis::from_file("tests/files/inputs/no_trajectories.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::NoTrajectoryFile) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_inconsistent_trajectory_formats() {
+        match Analysis::from_file("tests/files/inputs/inconsistent_trajectories.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InconsistentTrajectoryFormat(x, y)) => {
+                assert_eq!(y, String::from("tests/files/split/pcpepg2.xtc"));
+                assert_eq!(x, String::from("tests/files/pcpepg.trr"));
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_unsupported_concatenation() {
+        match Analysis::from_file("tests/files/inputs/unsupported_cat.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::TrajCatNotSupported) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1545,6 +1627,135 @@ mod tests_builder {
             Ok(_) => panic!("Should have failed, but succeeded."),
             Err(AnalysisBuilderError::ValidationError(_)) => (),
             Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_pass_multiple_trajectories_list() {
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ])
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+            .unwrap();
+
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(
+            analysis.trajectory(),
+            &vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ]
+        );
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+    }
+
+    #[test]
+    fn analysis_builder_pass_multiple_trajectories_glob() {
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/split/pcpepg?.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+            .unwrap();
+
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(
+            analysis.trajectory(),
+            &vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ]
+        );
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+    }
+
+    #[test]
+    fn analysis_builder_fail_no_trajectories() {
+        let no_trajectories: Vec<&str> = vec![];
+
+        match Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(no_trajectories)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_inconsistent_trajectory_formats() {
+        match Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/pcpepg.trr",
+            ])
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_unsupported_concatenation() {
+        match Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(vec!["tests/files/pcpepg.gro", "tests/files/pcpepg.gro"])
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
 }
