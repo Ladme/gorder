@@ -136,6 +136,41 @@ fn test_bin_estimate_error() {
 }
 
 #[test]
+fn test_bin_concatenate_estimate_error() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/concatenate_estimate_error_cg.yaml",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_cat_ee.yaml",
+        "tests/files/cg_order_error.yaml",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_cat_ee.tab",
+        "tests/files/cg_order_error.tab",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_cat_ee.csv",
+        "tests/files/cg_order_error.csv",
+        0
+    ));
+
+    std::fs::remove_file("temp_cg_cat_ee.yaml").unwrap();
+    std::fs::remove_file("temp_cg_cat_ee.tab").unwrap();
+    std::fs::remove_file("temp_cg_cat_ee.csv").unwrap();
+}
+
+#[test]
 fn test_bin_cg_order_maps_export_config() {
     Command::cargo_bin("gorder")
         .unwrap()
