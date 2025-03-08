@@ -28,8 +28,8 @@ pub(super) struct XvgPresenter<'a, R: OrderResults> {
 pub(crate) struct XvgProperties {
     /// Name of the input structure file.
     structure: String,
-    /// Name of the input trajectory file.
-    trajectory: String,
+    /// Names of the input trajectory files.
+    trajectory: Vec<String>,
     /// Are results for individual leaflets available?
     leaflets: bool,
 }
@@ -51,10 +51,10 @@ impl PresenterProperties for XvgProperties {
 }
 
 impl XvgProperties {
-    pub(super) fn new(structure: &str, trajectory: &str, leaflets: bool) -> Self {
+    pub(super) fn new(structure: &str, trajectory: &[String], leaflets: bool) -> Self {
         Self {
             structure: structure.to_owned(),
-            trajectory: trajectory.to_owned(),
+            trajectory: trajectory.iter().map(|x| x.clone()).collect(),
             leaflets,
         }
     }

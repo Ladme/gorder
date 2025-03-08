@@ -1,5 +1,5 @@
-structure: system.tpr
-trajectory: md.tpr
+structure: tests/files/pcpepg.tpr
+trajectory: tests/files/pcpepg.tpr
 type: !AAOrder
   heavy_atoms: "@membrane and element name carbon"
   hydrogens: "@membrane and element name hydrogen"

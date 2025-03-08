@@ -24,8 +24,8 @@ pub(super) struct YamlPresenter<'a, R: OrderResults> {
 pub(crate) struct YamlProperties {
     /// Name of the input structure file.
     structure: String,
-    /// Name of the input trajectory file.
-    trajectory: String,
+    /// Names of the input trajectory files.
+    trajectory: Vec<String>,
 }
 
 /// Trait implemented by all structures that can be written in yaml format.
@@ -47,10 +47,10 @@ impl PresenterProperties for YamlProperties {
 
 impl YamlProperties {
     /// Create new structure capturing properties of the yaml format.
-    pub(super) fn new(structure: &str, trajectory: &str) -> Self {
+    pub(super) fn new(structure: &str, trajectory: &[String]) -> Self {
         Self {
             structure: structure.to_owned(),
-            trajectory: trajectory.to_owned(),
+            trajectory: trajectory.iter().map(|x| x.clone()).collect(),
         }
     }
 }

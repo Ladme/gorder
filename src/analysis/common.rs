@@ -500,14 +500,18 @@ fn solve_name_conflicts<O: OrderCalculable>(molecules: &mut [MoleculeType<O>]) {
 pub(super) fn read_trajectory(
     system: &System,
     topology: SystemTopology,
-    trajectory: &str,
+    trajectory: &[String],
     n_threads: usize,
     begin: f32,
     end: f32,
     step: usize,
     silent: bool,
 ) -> Result<SystemTopology, Box<dyn std::error::Error + Send + Sync>> {
-    let format = FileType::from_name(trajectory);
+    // get the format of the trajectory files from the first file;
+    // this assumes that it has been validated before that all trajectories have the same format
+    let format = FileType::from_name(trajectory.get(0).unwrap_or_else(|| 
+        panic!("FATAL GORDER ERROR | common::read_trajectory | At least one trajectory file should have been provided. {}", PANIC_MESSAGE))
+    );
 
     let progress_printer = if silent {
         None
@@ -515,19 +519,40 @@ pub(super) fn read_trajectory(
         Some(ProgressPrinter::new().with_print_freq(100 / n_threads))
     };
 
-    colog_info!(
-        "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
-        trajectory,
-        begin,
-        end,
-        step
-    );
+    if trajectory.len() == 1 {
+        colog_info!(
+            "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
+            trajectory.get(0).expect(PANIC_MESSAGE),
+            begin,
+            end,
+            step
+        );
+    } else {
+        colog_info!(
+            "Will read trajectory files '{}' (start: {} ps, end: {} ps, step: {}).",
+            trajectory.join(" "),
+            begin,
+            end,
+            step,
+        )
+    }
 
     colog_info!("Performing the analysis using {} thread(s)...", n_threads);
 
     match format {
-        FileType::XTC => system
-            .traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
+        FileType::XTC => if trajectory.len() == 1 {
+            system.traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
+                trajectory.get(0).expect(PANIC_MESSAGE),
+                n_threads,
+                analyze_frame,
+                topology,
+                Some(group_name!("Master")),
+                Some(begin),
+                Some(end),
+                Some(step),
+                progress_printer,
+            )} else {
+            system.traj_iter_cat_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
                 trajectory,
                 n_threads,
                 analyze_frame,
@@ -537,22 +562,33 @@ pub(super) fn read_trajectory(
                 Some(end),
                 Some(step),
                 progress_printer,
-            ),
-        FileType::TRR => system
-        .traj_iter_map_reduce::<TrrReader, SystemTopology, AnalysisError>(
-            trajectory,
-            n_threads,
-            analyze_frame,
-            topology,
-            None,
-            Some(begin),
-            Some(end),
-            Some(step),
-            progress_printer,
-        ),
+            )}
+        FileType::TRR => if trajectory.len() == 1 {
+            system.traj_iter_map_reduce::<TrrReader, SystemTopology, AnalysisError>(
+                trajectory.get(0).expect(PANIC_MESSAGE),
+                n_threads,
+                analyze_frame,
+                topology,
+                None,
+                Some(begin),
+                Some(end),
+                Some(step),
+                progress_printer,
+            )} else {
+            system.traj_iter_cat_map_reduce::<TrrReader, SystemTopology, AnalysisError>(
+                trajectory,
+                n_threads,
+                analyze_frame,
+                topology,
+                None,
+                Some(begin),
+                Some(end),
+                Some(step),
+                progress_printer,
+            )}
         FileType::GRO => system
             .traj_iter_map_reduce::<GroReader, SystemTopology, AnalysisError>(
-                trajectory,
+                trajectory.get(0).expect(PANIC_MESSAGE),
                 n_threads,
                 analyze_frame,
                 topology,
@@ -564,7 +600,7 @@ pub(super) fn read_trajectory(
             ),
         FileType::PDB | FileType::NC | FileType::DCD | FileType::LAMMPSTRJ | FileType::TNG => system
             .traj_iter_map_reduce::<ChemfilesReader, SystemTopology, AnalysisError>(
-                trajectory,
+                trajectory.get(0).expect(PANIC_MESSAGE),
                 n_threads,
                 analyze_frame,
                 topology,

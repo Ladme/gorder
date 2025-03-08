@@ -30,8 +30,8 @@ pub(super) struct TabPresenter<'a, R: OrderResults> {
 pub(crate) struct TabProperties {
     /// Name of the input structure file.
     structure: String,
-    /// Name of the input trajectory file.
-    trajectory: String,
+    /// Names of the input trajectory files.
+    trajectory: Vec<String>,
     /// Are errors calculated?
     errors: bool,
     /// Are results for individual leaflets available?
@@ -61,7 +61,7 @@ impl TabProperties {
     pub(super) fn new(
         results: &impl OrderResults,
         structure: &str,
-        trajectory: &str,
+        trajectory: &[String],
         errors: bool,
         leaflets: bool,
     ) -> Self {
@@ -73,7 +73,7 @@ impl TabProperties {
 
         Self {
             structure: structure.to_owned(),
-            trajectory: trajectory.to_owned(),
+            trajectory: trajectory.iter().map(|x| x.clone()).collect(),
             errors,
             leaflets,
             max_bonds,

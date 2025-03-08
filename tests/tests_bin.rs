@@ -384,6 +384,23 @@ fn test_bin_cg_inline_manual_normals() {
 }
 
 #[test]
+fn test_bin_cg_leaflets_fail_nonexistent_traj() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/cg_fail_nonexistent_traj.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .failure()
+        .stdout("")
+        .stderr(
+            "[E] error: file 'cg.xtc' was not found or could not be read as a trajectory file\n",
+        );
+}
+
+#[test]
 fn test_bin_aa_leaflets_fail_no_ndx() {
     Command::cargo_bin("gorder")
         .unwrap()
@@ -395,7 +412,7 @@ fn test_bin_aa_leaflets_fail_no_ndx() {
         .assert()
         .failure()
         .stdout("")
-        .stderr("[E] error: could not understand the contents of the configuration file 'tests/files/inputs/leaflets_ndx_fail.yaml' (leaflets.ndx: no match for tests/files/nonexistent*.ndx at line 9 column 8)\n");
+        .stderr("[E] error: file \'tests/files/nonexistent*.ndx\' was not found\n");
 }
 
 #[test]

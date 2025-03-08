@@ -1,0 +1,6 @@
+# Test file for binary application.
+structure: tests/files/cg.tpr
+trajectory: cg.xtc
+type: !CGOrder
+  beads: "@membrane"
+output_yaml: cg_nonexistent_xtc_this_file_will_not_be_created.yaml

@@ -373,10 +373,15 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
     fn write_header(
         writer: &mut impl Write,
         structure: &str,
-        trajectory: &str,
+        trajectory: &[String],
     ) -> Result<(), WriteError> {
-        write_result!(writer, "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.\n",
-        crate::GORDER_VERSION, structure, trajectory);
+        if trajectory.len() == 1 {
+            write_result!(writer, "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.\n",
+            crate::GORDER_VERSION, structure, trajectory.get(0).expect(PANIC_MESSAGE));
+        } else {
+            write_result!(writer, "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory files '{}'.\n",
+            crate::GORDER_VERSION, structure, trajectory.join(" "));
+        }
 
         Ok(())
     }

@@ -1,5 +1,5 @@
-structure: system.tpr
-trajectory: md.xtc
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
 output: order.yaml
 analysis_type: !CGOrder
   beads: "@membrane"

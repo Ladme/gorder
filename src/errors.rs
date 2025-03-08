@@ -314,6 +314,15 @@ pub enum ConfigError {
     #[error("{} the provided trajectory file '{}' has an unknown, invalid, or unsupported format", "error:".red().bold(), .0.yellow())]
     InvalidTrajectoryFormat(String),
 
+    #[error("{} the provided trajectory files '{}' and '{}' have inconsistent file format", "error:".red().bold(), .0.yellow(), .1.yellow())]
+    InconsistentTrajectoryFormat(String, String),
+
+    #[error("{} trajectory concatenation is only supported for XTC and TRR files; please provide only one trajectory file", "error:".red().bold())]
+    TrajCatNotSupported,
+
+    #[error("{} no trajectory file has been provided", "error:".red().bold())]
+    NoTrajectoryFile,
+
     #[error("{} static global membrane normal is not used but leaflet classification requires it
 ({} add '{}' to the '{}' section of your input configuration file or, if analyzing a vesicle, assign the lipids into leaflets manually)", 
     "error:".red().bold(), "hint:".blue().bold(), "membrane_normal".bright_blue(), "leaflets".bright_blue())]
