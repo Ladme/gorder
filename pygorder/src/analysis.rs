@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use gorder_core::input::analysis::TrajectoryInput as RsTrajectoryInput;
 use gorder_core::input::AnalysisType as RsAnalysisType;
 use gorder_core::prelude::Analysis as RsAnalysis;
 use gorder_core::prelude::AnalysisBuilder as RsAnalysisBuilder;
@@ -84,14 +85,32 @@ impl<'source> FromPyObject<'source> for AnalysisType {
     }
 }
 
+#[derive(Clone)]
+pub struct TrajectoryInput(RsTrajectoryInput);
+
+impl<'source> FromPyObject<'source> for TrajectoryInput {
+    fn extract_bound(obj: &Bound<'source, PyAny>) -> PyResult<Self> {
+        if let Ok(string) = obj.extract::<String>() {
+            return Ok(TrajectoryInput(string.into()));
+        }
+
+        if let Ok(list) = obj.extract::<Vec<String>>() {
+            return Ok(TrajectoryInput(list.into()));
+        }
+
+        Err(ConfigError::new_err("expected a string or a list of strings"))
+    }
+}
+
 /// Class describing all the parameters of the analysis.
 ///
 /// Attributes
 /// ----------
 /// structure : str
 ///     Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure and topology of the system.
-/// trajectory : str
+/// trajectory : Union[str, list[str]]
 ///     Path to an XTC (recommened), TRR, GRO, PDB, Amber NetCDF, DCD, or LAMMPSTRJ trajectory file to be analyzed.
+///     You can provide multiple XTC or TRR trajectories and these will be seamlessly concatenated.
 /// analysis_type : Union[AAOrder, CGOrder]
 ///     Type of analysis to perform (e.g., AAOrder or CGOrder).
 /// bonds : Optional[str], default=None
@@ -166,7 +185,7 @@ impl Analysis {
         overwrite=None))]
     pub fn new(
         structure: &str,
-        trajectory: &str,
+        trajectory: TrajectoryInput,
         analysis_type: AnalysisType,
         bonds: Option<&str>,
         index: Option<&str>,
@@ -191,7 +210,7 @@ impl Analysis {
         let mut builder: RsAnalysisBuilder = RsAnalysis::builder();
         builder
             .structure(structure)
-            .trajectory(trajectory)
+            .trajectory(trajectory.0)
             .analysis_type(analysis_type.0);
 
         apply_if_some!(

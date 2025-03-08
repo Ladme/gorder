@@ -87,6 +87,34 @@ def test_aa_order_basic_yaml():
         finally:
             shutil.rmtree(temp_file_path, ignore_errors=True)
 
+def test_aa_order_basic_concatenated_yaml():
+    for trajectory in [
+        "../tests/files/split/pcpepg?.xtc", 
+        ["../tests/files/split/pcpepg1.xtc",
+         "../tests/files/split/pcpepg2.xtc",
+         "../tests/files/split/pcpepg3.xtc",
+         "../tests/files/split/pcpepg4.xtc",
+         "../tests/files/split/pcpepg5.xtc"]
+    ]:
+        with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+            temp_file_path = temp_file.name
+
+        analysis = gorder.Analysis(
+            structure = "../tests/files/pcpepg.tpr",
+            trajectory = trajectory,
+            analysis_type = gorder.analysis_types.AAOrder("@membrane and element name carbon", "@membrane and element name hydrogen"),
+            output_yaml = temp_file_path,
+            silent = True,
+            overwrite = True,
+        )
+
+        analysis.run().write()
+
+        try:
+            assert diff_files_ignore_first(temp_file_path, "../tests/files/aa_order_basic.yaml", 1), "Files do not match!"
+        finally:
+            shutil.rmtree(temp_file_path, ignore_errors=True)
+
 def test_all_outputs():
     with tempfile.NamedTemporaryFile(delete = False) as temp_file_yaml:
         yaml_path = temp_file_yaml.name
@@ -353,8 +381,8 @@ def test_begin_end_step():
         trajectory = "../tests/files/pcpepg.xtc",
         analysis_type = gorder.analysis_types.AAOrder("@membrane and element name carbon", "@membrane and element name hydrogen"),
         leaflets = gorder.leaflets.GlobalClassification("@membrane", "name P", frequency = gorder.Frequency.once()),
-        begin = 450000.0,
-        end = 450200.0,
+        begin = 450200.0,
+        end = 450400.0,
         step = 3,
         output_yaml = temp_file_path,
         silent = True,
