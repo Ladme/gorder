@@ -7,8 +7,9 @@ use crate::analysis::order::{add_option_order, AnalysisOrder};
 use crate::analysis::ordermap::{add_option_map, Map};
 use crate::analysis::timewise::{AddSum, TimeWiseAddTreatment};
 use crate::analysis::topology::atom::AtomType;
-use crate::analysis::topology::bond::{BondType, OrderBonds};
+use crate::analysis::topology::bond::{BondType, OrderBonds, VirtualBondType};
 use crate::analysis::topology::molecule::{MoleculeType, MoleculeTypes};
+use crate::analysis::topology::uatom::UAOrderAtoms;
 use crate::analysis::topology::SystemTopology;
 use crate::input::Analysis;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
@@ -25,6 +26,7 @@ use std::num::NonZeroUsize;
 use std::ops::AddAssign;
 
 use super::convergence::Convergence;
+use super::uaresults::{UAAtomResults, UABondResults, UAMoleculeResults, UAOrderResults};
 
 /// Structure converting from system topology to formatted results.
 #[derive(Debug, Clone)]
@@ -106,6 +108,31 @@ impl<O: MolConvert> ResultsConverter<O> {
 
         BondResults::new(
             bond_type.bond_topology(),
+            molecule,
+            OrderCollection::new(Some(total), upper, lower),
+            OrderMapsCollection::new(total_ordermap, upper_ordermap, lower_ordermap),
+        )
+    }
+
+    fn convert_virtual_bond(&self, bond_type: &VirtualBondType, molecule: &str) -> UABondResults {
+        let total = self.convert_order(bond_type.total());
+        let upper = bond_type.upper().as_ref().map(|x| self.convert_order(x));
+        let lower = bond_type.lower().as_ref().map(|x| self.convert_order(x));
+
+        let total_ordermap = bond_type
+            .total_map()
+            .as_ref()
+            .map(|x| Self::convert_ordermap(x));
+        let upper_ordermap = bond_type
+            .upper_map()
+            .as_ref()
+            .map(|x| Self::convert_ordermap(x));
+        let lower_ordermap = bond_type
+            .lower_map()
+            .as_ref()
+            .map(|x| Self::convert_ordermap(x));
+
+        UABondResults::new(
             molecule,
             OrderCollection::new(Some(total), upper, lower),
             OrderMapsCollection::new(total_ordermap, upper_ordermap, lower_ordermap),
@@ -340,6 +367,67 @@ impl MolConvert for CGOrderResults {
     }
 }
 
+impl MolConvert for UAOrderResults {
+    fn convert_molecule(
+        molecule_type: &MoleculeType<UAOrderAtoms>,
+        converter: &ResultsConverter<Self>,
+    ) -> (Self::MoleculeResults, OrderSummer) {
+        let mut results = IndexMap::new();
+        let mut molecule_summer = OrderSummer::default();
+
+        for atom in molecule_type.order_structure().atom_types() {
+            let mut atom_summer = OrderSummer::default();
+
+            let converted_bonds = atom
+                .extract_bonds()
+                .into_iter()
+                .map(|b| {
+                    atom_summer += &b;
+                    converter.convert_virtual_bond(&b, molecule_type.name())
+                })
+                .collect::<Vec<UABondResults>>();
+
+            let (average, ordermaps) = converter.convert_order_summer(&atom_summer);
+            let atom_results = UAAtomResults::new(
+                atom.get_type().clone(),
+                molecule_type.name(),
+                average,
+                ordermaps,
+                converted_bonds,
+            );
+
+            molecule_summer += atom_summer;
+            results.insert(atom.get_type().clone(), atom_results);
+        }
+
+        let (average, ordermaps) = converter.convert_order_summer(&molecule_summer);
+        let convergence = if converter.analysis.estimate_error().is_some() {
+            Some(converter.convert_order_summer_to_convergence(&molecule_summer))
+        } else {
+            None
+        };
+
+        (
+            UAMoleculeResults::new(
+                molecule_type.name(),
+                average,
+                ordermaps,
+                results,
+                convergence,
+            ),
+            molecule_summer,
+        )
+    }
+
+    fn unpack_moltypes<'a>(molecule_types: &'a MoleculeTypes) -> &Vec<MoleculeType<UAOrderAtoms>> {
+        match molecule_types {
+            MoleculeTypes::AtomBased(x) => x,
+            MoleculeTypes::BondBased(_) => panic!(
+                "FATAL GORDER ERROR | UAOrderResults::unpack_moltypes | Invalid `bond-based` moltypes detected. {}", PANIC_MESSAGE),
+        }
+    }
+}
+
 /// Helper struct for summing order parameters and ordermaps.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct OrderSummer {
@@ -354,6 +442,19 @@ pub(crate) struct OrderSummer {
 impl AddAssign<&BondType> for OrderSummer {
     #[inline(always)]
     fn add_assign(&mut self, rhs: &BondType) {
+        add_option_order(&mut self.total, Some(rhs.total().clone()));
+        add_option_order(&mut self.upper, rhs.upper().clone());
+        add_option_order(&mut self.lower, rhs.lower().clone());
+
+        add_option_map(&mut self.ordermap_total, rhs.total_map().clone());
+        add_option_map(&mut self.ordermap_upper, rhs.upper_map().clone());
+        add_option_map(&mut self.ordermap_lower, rhs.lower_map().clone());
+    }
+}
+
+impl AddAssign<&VirtualBondType> for OrderSummer {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: &VirtualBondType) {
         add_option_order(&mut self.total, Some(rhs.total().clone()));
         add_option_order(&mut self.upper, rhs.upper().clone());
         add_option_order(&mut self.lower, rhs.lower().clone());

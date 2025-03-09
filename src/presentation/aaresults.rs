@@ -41,10 +41,10 @@ impl Serialize for AAOrderResults {
     {
         let mut map = serializer.serialize_map(Some(self.molecules.len() + 1))?;
 
-        // Serialize "average order" field
+        // serialize "average order" field
         map.serialize_entry("average order", &self.average_order)?;
 
-        // Serialize individual molecules
+        // serialize individual molecules
         for (key, value) in &self.molecules {
             map.serialize_entry(key, value)?;
         }

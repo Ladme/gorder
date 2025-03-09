@@ -14,6 +14,8 @@ use crate::PANIC_MESSAGE;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use super::uaresults::{UAAtomResults, UABondResults, UAMoleculeResults};
+
 /// Structure handling the writing of an xvg output.
 #[derive(Debug, Clone)]
 pub(super) struct XvgPresenter<'a, R: OrderResults> {
@@ -190,6 +192,18 @@ impl XvgWrite for BondResults {
     }
 }
 
+impl XvgWrite for UABondResults {
+    /// Write xvg data for a single united-atom bond.
+    #[inline(always)]
+    fn write_xvg(
+        &self,
+        writer: &mut impl Write,
+        properties: &XvgProperties,
+    ) -> Result<(), WriteError> {
+        self.order().write_xvg(writer, properties)
+    }
+}
+
 impl XvgWrite for AAMoleculeResults {
     /// Write xvg data for a single atomistic molecule.
     fn write_xvg(
@@ -197,23 +211,7 @@ impl XvgWrite for AAMoleculeResults {
         writer: &mut impl Write,
         properties: &XvgProperties,
     ) -> Result<(), WriteError> {
-        write_result!(
-            writer,
-            "@    title \"Atomistic order parameters for molecule type {}\"\n",
-            self.molecule()
-        );
-        write_result!(
-            writer,
-            "@    xaxis label \"Atom\"\n@    yaxis label \"-Sch\"\n"
-        );
-
-        write_result!(writer, "@    s0 legend \"Full membrane\"\n");
-        if properties.leaflets {
-            write_result!(writer, "@    s1 legend \"Upper leaflet\"\n");
-            write_result!(writer, "@    s2 legend \"Lower leaflet\"\n");
-        }
-
-        write_result!(writer, "@TYPE xy\n");
+        write_aa_ua_header(writer, properties, "Atomistic", self.molecule())?;
 
         for (i, atom) in self.order().values().enumerate() {
             write_result!(writer, "# Atom {}:\n", atom.atom().atom_name());
@@ -278,4 +276,65 @@ impl XvgWrite for CGMoleculeResults {
 
         Ok(())
     }
+}
+
+impl XvgWrite for UAMoleculeResults {
+    /// Write xvg data for a single united-atom molecule.
+    fn write_xvg(
+        &self,
+        writer: &mut impl Write,
+        properties: &XvgProperties,
+    ) -> Result<(), WriteError> {
+        write_aa_ua_header(writer, properties, "United-atom", self.molecule())?;
+
+        for (i, atom) in self.order().values().enumerate() {
+            write_result!(writer, "# Atom {}:\n", atom.atom().atom_name());
+            write_result!(writer, "{:<4} ", i + 1);
+            atom.write_xvg(writer, properties)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl XvgWrite for UAAtomResults {
+    /// Write xvg data for a single united-atom.
+    #[inline(always)]
+    fn write_xvg(
+        &self,
+        writer: &mut impl Write,
+        properties: &XvgProperties,
+    ) -> Result<(), WriteError> {
+        self.order().write_xvg(writer, properties)?;
+        write_result!(writer, "\n");
+        Ok(())
+    }
+}
+
+fn write_aa_ua_header(
+    writer: &mut impl Write,
+    properties: &XvgProperties,
+    order_type: &str,
+    molecule_name: &str,
+) -> Result<(), WriteError> {
+    write_result!(
+        writer,
+        "@    title \"{} order parameters for molecule type {}\"\n",
+        order_type,
+        molecule_name,
+    );
+    write_result!(
+        writer,
+        "@    xaxis label \"Atom\"\n@    yaxis label \"-Sch\"\n"
+    );
+
+    write_result!(writer, "@    s0 legend \"Full membrane\"\n");
+    if properties.leaflets {
+        write_result!(writer, "@    s1 legend \"Upper leaflet\"\n");
+        write_result!(writer, "@    s2 legend \"Lower leaflet\"\n");
+    }
+
+    write_result!(writer, "@TYPE xy\n");
+
+    Ok(())
 }

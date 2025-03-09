@@ -57,6 +57,13 @@ impl AnalysisResults {
                     name: x.molecule().to_owned(),
                 })
                 .collect::<Vec<MoleculeResults>>(),
+            RsResults::UA(x) => x
+                .molecules()
+                .map(|x| MoleculeResults {
+                    results: self.0.clone(),
+                    name: x.molecule().to_owned(),
+                })
+                .collect::<Vec<MoleculeResults>>(),
         }
     }
 
@@ -72,6 +79,13 @@ impl AnalysisResults {
                     name: x.molecule().to_owned(),
                 }),
             RsResults::CG(x) => x
+                .get_molecule(name)
+                .ok_or_else(|| APIError::new_err("molecule with the given name does not exist"))
+                .map(|x| MoleculeResults {
+                    results: self.0.clone(),
+                    name: x.molecule().to_owned(),
+                }),
+            RsResults::UA(x) => x
                 .get_molecule(name)
                 .ok_or_else(|| APIError::new_err("molecule with the given name does not exist"))
                 .map(|x| MoleculeResults {
@@ -144,6 +158,14 @@ impl MoleculeResults {
                 })
                 .collect())
             }
+            RsResults::UA(x) => {
+                Ok(x.get_molecule(&self.name).unwrap().atoms().map(|atom| AtomResults {
+                    results: self.results.clone(),
+                    molecule: self.name.clone(),
+                    atom: atom.atom().relative_index(),
+                })
+                .collect())
+            }
             RsResults::CG(_) => Err(APIError::new_err(
                 "results for individual atoms are not available for coarse-grained order parameters; you want `bonds`",
             )),
@@ -166,6 +188,7 @@ impl MoleculeResults {
                 .bonds()
                 .map(|bond| BondResults::new(self.results.clone(), bond, self.name.clone()))
                 .collect(),
+            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
         }
     }
 
@@ -185,6 +208,7 @@ impl MoleculeResults {
                     molecule: self.name.clone(),
                     atom: atom.atom().relative_index(),
                 }),
+            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
             RsResults::CG(_) => Err(APIError::new_err(
                 "results for individual atoms are not available for coarse-grained order parameters; you want `get_bond`"
             ))
@@ -215,6 +239,9 @@ impl MoleculeResults {
                     APIError::new_err("bond specified by the given relative indices does not exist")
                 })
                 .map(|bond| BondResults::new(self.results.clone(), bond, self.name.clone())),
+            RsResults::UA(_) => Err(APIError::new_err(
+                "united-atom results for individual bonds cannot be accesed by using relative indices because the hydrogen atoms are virtual and do not have assigned indices",
+            )),
         }
     }
 
@@ -232,6 +259,15 @@ impl MoleculeResults {
                     })
             }
             RsResults::CG(x) => {
+                x.get_molecule(&self.name)
+                    .unwrap()
+                    .convergence()
+                    .map(|_| Convergence {
+                        results: self.results.clone(),
+                        molecule: self.name.clone(),
+                    })
+            }
+            RsResults::UA(x) => {
                 x.get_molecule(&self.name)
                     .unwrap()
                     .convergence()
@@ -312,8 +348,9 @@ impl AtomResults {
                 .unwrap()
                 .get_atom(self.atom)
                 .unwrap(),
+            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
             RsResults::CG(_) => unreachable!(
-                "FATAL GORDER ERROR | AtomResults::bonds | Results should be atomistic."
+                "FATAL GORDER ERROR | AtomResults::bonds | Results should not be coarse-grained."
             ),
         }
     }
@@ -385,6 +422,7 @@ impl BondResults {
                 .unwrap()
                 .get_bond(self.bond.0, self.bond.1)
                 .unwrap(),
+            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
         }
     }
 }
@@ -510,6 +548,7 @@ impl OrderCollection {
             None => match self.results.as_ref() {
                 RsResults::AA(results) => leaflet.get_order(results.average_order()),
                 RsResults::CG(results) => leaflet.get_order(results.average_order()),
+                RsResults::UA(results) => leaflet.get_order(results.average_order()),
             },
             Some(mol) => match self.results.as_ref() {
                 RsResults::AA(results) => self
@@ -518,6 +557,7 @@ impl OrderCollection {
                 RsResults::CG(results) => self
                     .identifier
                     .get_order_cg(results.get_molecule(mol)?, leaflet),
+                RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
             },
         }
     }
@@ -587,6 +627,7 @@ impl OrderMapsCollection {
             None => match self.results.as_ref() {
                 RsResults::AA(results) => leaflet.get_ordermap(results.average_ordermaps()),
                 RsResults::CG(results) => leaflet.get_ordermap(results.average_ordermaps()),
+                RsResults::UA(results) => leaflet.get_ordermap(results.average_ordermaps()),
             },
             Some(mol) => match self.results.as_ref() {
                 RsResults::AA(results) => self
@@ -595,6 +636,7 @@ impl OrderMapsCollection {
                 RsResults::CG(results) => self
                     .identifier
                     .get_ordermap_cg(results.get_molecule(mol)?, leaflet),
+                RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
             },
         }
     }
@@ -753,6 +795,7 @@ impl Convergence {
                 .unwrap()
                 .convergence()
                 .unwrap(),
+            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
         }
     }
 }

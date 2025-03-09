@@ -22,6 +22,7 @@ use std::ops::Add;
 
 pub(crate) mod atom;
 pub(crate) mod bond;
+pub(crate) mod classify;
 pub(crate) mod molecule;
 pub(crate) mod uatom;
 
@@ -256,7 +257,8 @@ pub(crate) trait OrderCalculable: Sized + Add<Output = Self> {
     ) -> Result<Self, TopologyError>;
 
     /// Insert new instances of the elements into the structure.
-    fn insert(&mut self, system: &System, elements: &Self::ElementSet, min_index: usize);
+    /// Only requires `min_index` and the elements are then reconstructed based on the reference structure.
+    fn insert(&mut self, min_index: usize);
 
     /// Perform the analysis for a single frame.
     fn analyze_frame<'a, Geom: GeometrySelection>(

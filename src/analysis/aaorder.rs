@@ -6,17 +6,14 @@
 use super::{common::macros::group_name, topology::SystemTopology};
 use crate::analysis::common::{
     prepare_geometry_selection, prepare_membrane_normal_calculation, read_trajectory,
-    sanity_check_molecules,
 };
 use crate::analysis::index::read_ndx_file;
 use crate::analysis::pbc::{NoPBC, PBC3D};
 use crate::analysis::structure;
-use crate::errors::TopologyError;
+use crate::analysis::topology::classify::MoleculesClassifier;
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::{AnalysisResults, OrderResults};
 use crate::{input::Analysis, PANIC_MESSAGE};
-
-use groan_rs::prelude::OrderedAtomIterator;
 
 /// Calculate the atomistic order parameters.
 pub(super) fn analyze_atomistic(
@@ -58,25 +55,14 @@ pub(super) fn analyze_atomistic(
         analysis.hydrogens().as_ref().expect(PANIC_MESSAGE)
     );
 
-    // check that heavy_atoms and hydrogens do not overlap
-    let n_overlapping = system
-        .group_iter(group_name!("HeavyAtoms"))
-        .expect(PANIC_MESSAGE)
-        .intersection(
-            system
-                .group_iter(group_name!("Hydrogens"))
-                .expect(PANIC_MESSAGE),
-        )
-        .count();
-    if n_overlapping > 0 {
-        return Err(Box::from(TopologyError::AtomsOverlap {
-            n_overlapping,
-            name1: "HeavyAtoms".to_owned(),
-            query1: analysis.heavy_atoms().expect(PANIC_MESSAGE).clone(),
-            name2: "Hydrogens".to_owned(),
-            query2: analysis.hydrogens().expect(PANIC_MESSAGE).clone(),
-        }));
-    }
+    super::common::check_groups_overlap(
+        &system,
+        "HeavyAtoms",
+        analysis.heavy_atoms().expect(PANIC_MESSAGE),
+        "Hydrogens",
+        analysis.hydrogens().expect(PANIC_MESSAGE),
+    )?;
+
     // prepare system for leaflet classification
     if let Some(leaflet) = analysis.leaflets() {
         leaflet.prepare_system(&mut system)?;
@@ -96,7 +82,7 @@ pub(super) fn analyze_atomistic(
     // get the relevant molecules
     macro_rules! classify_molecules_with_pbc {
         ($pbc:expr) => {
-            super::common::classify_molecules(&system, "HeavyAtoms", "Hydrogens", &analysis, $pbc)
+            MoleculesClassifier::classify(&system, &analysis, $pbc)
         };
     }
 
@@ -105,7 +91,8 @@ pub(super) fn analyze_atomistic(
         false => classify_molecules_with_pbc!(&NoPBC)?,
     };
 
-    if !sanity_check_molecules(&molecules) {
+    // check that there are molecules to analyze
+    if molecules.n_molecule_types() == 0 {
         return Ok(AnalysisResults::AA(AAOrderResults::empty(analysis)));
     }
 
@@ -215,19 +202,14 @@ mod tests {
                 .unwrap()
         };
 
-        let molecules = super::super::common::classify_molecules(
-            &system,
-            "HeavyAtoms",
-            "Hydrogens",
-            &analysis,
-            &PBC3D::from_system(&system),
-        )
-        .unwrap();
+        let molecules =
+            MoleculesClassifier::classify(&system, &analysis, &PBC3D::from_system(&system))
+                .unwrap();
 
         (
             system,
             SystemTopology::new(
-                molecules.into(),
+                molecules,
                 None,
                 1,
                 1,

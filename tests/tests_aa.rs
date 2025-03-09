@@ -2661,8 +2661,8 @@ fn test_aa_order_leaflets_asymmetric_ordermaps_multiple_threads() {
             .unwrap();
 
         let result = match analysis.run().unwrap() {
-            AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
             AnalysisResults::AA(x) => x,
+            _ => panic!("Incorrect results type returned."),
         };
 
         for molecule in result.molecules() {
@@ -3244,12 +3244,12 @@ fn test_aa_order_geometry_cuboid_z() {
 
     let results_geometry = match results_geometry {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Invalid results."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     let results_leaflets = match results_leaflets {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Invalid results."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     for (mol, mol2) in results_geometry
@@ -3319,12 +3319,12 @@ fn test_aa_order_geometry_cylinder_z() {
 
     let results_geometry = match results_geometry {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Invalid results."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     let results_leaflets = match results_leaflets {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Invalid results."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     for (mol, mol2) in results_geometry
@@ -5054,7 +5054,7 @@ fn test_aa_order_basic_rust_api() {
 
     let results = match analysis.run().unwrap() {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 51);
@@ -5204,7 +5204,7 @@ fn test_aa_order_error_rust_api() {
 
     let results = match analysis.run().unwrap() {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 51);
@@ -5397,7 +5397,7 @@ fn test_aa_order_leaflets_rust_api() {
 
     let results = match analysis.run().unwrap() {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 51);
@@ -5588,7 +5588,7 @@ fn test_aa_order_error_leaflets_rust_api() {
 
     let results = match analysis.run().unwrap() {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 51);
@@ -5755,7 +5755,7 @@ fn test_aa_order_ordermaps_rust_api() {
 
     let results = match analysis.run().unwrap() {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 51);
@@ -5864,7 +5864,7 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
 
     let results = match analysis.run().unwrap() {
         AnalysisResults::AA(x) => x,
-        AnalysisResults::CG(_) => panic!("Incorrect results type returned."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 51);

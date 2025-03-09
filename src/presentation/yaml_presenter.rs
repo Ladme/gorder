@@ -10,6 +10,8 @@ use crate::presentation::{OrderResults, OutputFormat, Presenter, PresenterProper
 use crate::PANIC_MESSAGE;
 use std::io::Write;
 
+use super::uaresults::UAOrderResults;
+
 /// Structure handling the writing of a yaml output.
 #[derive(Debug, Clone)]
 pub(super) struct YamlPresenter<'a, R: OrderResults> {
@@ -83,7 +85,7 @@ impl<'a, R: OrderResults> Presenter<'a, R> for YamlPresenter<'a, R> {
 }
 
 impl YamlWrite for AAOrderResults {
-    /// Write yaml data for atomistic order parameters.
+    /// Write atomistic order parameters in yaml format.
     fn write_yaml(
         &self,
         writer: &mut impl Write,
@@ -100,13 +102,30 @@ impl YamlWrite for AAOrderResults {
 }
 
 impl YamlWrite for CGOrderResults {
-    /// Write yaml data for coarse-grained order parameters.
+    /// Write coarse-grained order parameters in yaml format.
     fn write_yaml(
         &self,
         writer: &mut impl Write,
         properties: &YamlProperties,
     ) -> Result<(), WriteError> {
         YamlPresenter::<CGOrderResults>::write_header(
+            writer,
+            &properties.structure,
+            &properties.trajectory,
+        )?;
+
+        serde_yaml::to_writer(writer, self).map_err(WriteError::CouldNotWriteYaml)
+    }
+}
+
+impl YamlWrite for UAOrderResults {
+    /// Write united-atom order parameters in yaml format.
+    fn write_yaml(
+        &self,
+        writer: &mut impl Write,
+        properties: &YamlProperties,
+    ) -> Result<(), WriteError> {
+        YamlPresenter::<UAOrderResults>::write_header(
             writer,
             &properties.structure,
             &properties.trajectory,

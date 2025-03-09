@@ -206,6 +206,15 @@ fn should_guess_elements(analysis: &Analysis) -> bool {
             hydrogens: y,
         } => has_element(x) || has_element(y),
         AnalysisType::CGOrder { beads: x } => has_element(x),
+        AnalysisType::UAOrder {
+            saturated: x,
+            unsaturated: y,
+            ignore: z,
+        } => {
+            x.as_ref().map(|a| has_element(&a)).unwrap_or(false)
+                || y.as_ref().map(|a| has_element(&a)).unwrap_or(false)
+                || z.as_ref().map(|a| has_element(&a)).unwrap_or(false)
+        }
     } || match analysis.leaflets() {
         None => false,
         Some(LeafletClassification::Global(x)) => {

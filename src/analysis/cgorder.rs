@@ -3,16 +3,14 @@
 
 //! Contains the implementation of the calculation of the coarse-grained order parameters.
 
+use crate::analysis::topology::classify::MoleculesClassifier;
 use crate::{
     analysis::{common::prepare_geometry_selection, index::read_ndx_file, structure},
     presentation::{AnalysisResults, OrderResults},
 };
 use crate::{
     analysis::{
-        common::{
-            macros::group_name, prepare_membrane_normal_calculation, read_trajectory,
-            sanity_check_molecules,
-        },
+        common::{macros::group_name, prepare_membrane_normal_calculation, read_trajectory},
         pbc::{NoPBC, PBC3D},
         topology::SystemTopology,
     },
@@ -65,7 +63,7 @@ pub(super) fn analyze_coarse_grained(
     // get the relevant molecules
     macro_rules! classify_molecules_with_pbc {
         ($pbc:expr) => {
-            super::common::classify_molecules(&system, "Beads", "Beads", &analysis, $pbc)
+            MoleculesClassifier::classify(&system, &analysis, $pbc)
         };
     }
 
@@ -74,7 +72,8 @@ pub(super) fn analyze_coarse_grained(
         false => classify_molecules_with_pbc!(&NoPBC)?,
     };
 
-    if !sanity_check_molecules(&molecules) {
+    // check that there are molecules to analyze
+    if molecules.n_molecule_types() == 0 {
         return Ok(AnalysisResults::CG(CGOrderResults::empty(analysis)));
     }
 
@@ -166,18 +165,13 @@ mod tests {
                 .unwrap()
         };
 
-        let molecules = super::super::common::classify_molecules(
-            &system,
-            "Beads",
-            "Beads",
-            &analysis,
-            &PBC3D::from_system(&system),
-        )
-        .unwrap();
+        let molecules =
+            MoleculesClassifier::classify(&system, &analysis, &PBC3D::from_system(&system))
+                .unwrap();
         (
             system,
             SystemTopology::new(
-                molecules.into(),
+                molecules,
                 None,
                 1,
                 1,

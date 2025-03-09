@@ -100,6 +100,9 @@ pub enum TopologyError {
     #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
     ZeroBox,
 
+    #[error("{} no carbons for the calculation of united-atom order parameters were specified", "error:".red().bold())]
+    NoUACarbons,
+
     #[error("{}", .0)]
     OrderMapError(OrderMapConfigError),
 

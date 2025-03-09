@@ -5,7 +5,7 @@
 
 use std::ops::Add;
 
-use super::{atom::AtomType, OrderCalculable};
+use super::OrderCalculable;
 use crate::{
     analysis::{
         geometry::GeometrySelection, leaflets::MoleculeLeafletClassification,
@@ -13,11 +13,9 @@ use crate::{
     },
     errors::{AnalysisError, TopologyError},
     input::OrderMap,
-    PANIC_MESSAGE,
 };
 use getset::{Getters, MutGetters};
 use groan_rs::system::System;
-use hashbrown::HashSet;
 
 /// Collection of all united atoms for which the order parameters should be calculated.
 #[derive(Debug, Clone, Getters, MutGetters)]
@@ -27,11 +25,11 @@ pub(crate) struct UAOrderAtoms {
 }
 
 impl OrderCalculable for UAOrderAtoms {
-    type ElementSet = HashSet<usize>;
+    type ElementSet = Vec<usize>;
 
     fn new<'a>(
         system: &System,
-        atoms: &HashSet<usize>,
+        atoms: &Vec<usize>,
         min_index: usize,
         classify_leaflets: bool,
         ordermap: Option<&OrderMap>,
@@ -39,7 +37,7 @@ impl OrderCalculable for UAOrderAtoms {
         pbc_handler: &impl PBCHandler<'a>,
     ) -> Result<Self, TopologyError> {
         let mut order_atoms = Vec::new();
-        let mut sorted_atoms = atoms.iter().cloned().collect::<Vec<_>>();
+        let mut sorted_atoms = atoms.clone();
         sorted_atoms.sort();
 
         for &index in sorted_atoms.iter() {
@@ -64,30 +62,10 @@ impl OrderCalculable for UAOrderAtoms {
         })
     }
 
-    fn insert(&mut self, system: &System, atoms: &HashSet<usize>, min_index: usize) {
-        for &index in atoms.iter() {
-            // index cannot be lower than `min_index`
-            if index < min_index {
-                panic!(
-                "FATAL GORDER ERROR | UAOrderAtoms::insert | Atom index '{}' is lower than minimum index '{}'. {}",
-                index, min_index, PANIC_MESSAGE
-            );
-            }
-
-            let atom = system
-            .get_atom(index)
-            .unwrap_or_else(|_|
-                panic!("FATAL GORDER ERROR | UAOrderAtoms::insert | Index '{}' does not correspond to an existing atom. {}", index, PANIC_MESSAGE));
-
-            let atom_type = AtomType::new(index - min_index, atom);
-
-            if let Some(order_atom) = self
-                .atom_types
-                .iter_mut()
-                .find(|order_atom| *order_atom.get_type() == atom_type)
-            {
-                order_atom.insert(index);
-            } // ignore if the atom was not found -- it was probably filtered out
+    fn insert(&mut self, min_index: usize) {
+        for atom in self.atom_types.iter_mut() {
+            let relative_index = atom.get_relative_index();
+            atom.insert(relative_index + min_index);
         }
     }
 

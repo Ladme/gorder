@@ -6,6 +6,7 @@
 use crate::errors::WriteError;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
 use crate::presentation::cgresults::{CGMoleculeResults, CGOrderResults};
+use crate::presentation::uaresults::UAOrderResults;
 use crate::presentation::{
     BondResults, MoleculeResults, Order, OrderCollection, OrderResults, OutputFormat, Presenter,
     PresenterProperties, PublicMoleculeResults,
@@ -14,6 +15,7 @@ use crate::PANIC_MESSAGE;
 use hashbrown::HashMap;
 use std::io::Write;
 
+use super::uaresults::{UAAtomResults, UABondResults, UAMoleculeResults};
 use super::PublicOrderResults;
 
 /// Structure handling the writing of a table output.
@@ -180,6 +182,18 @@ impl TabWrite for BondResults {
     }
 }
 
+impl TabWrite for UABondResults {
+    /// Write tab data for a single united-atom bond.
+    #[inline(always)]
+    fn write_tab(
+        &self,
+        writer: &mut impl Write,
+        properties: &TabProperties,
+    ) -> Result<(), WriteError> {
+        self.order().write_tab(writer, properties)
+    }
+}
+
 impl TabWrite for AAOrderResults {
     /// Write table data for atomistic order parameters.
     fn write_tab(
@@ -196,23 +210,7 @@ impl TabWrite for AAOrderResults {
         self.molecules()
             .try_for_each(|mol| mol.write_tab(writer, properties))?;
 
-        write_result!(writer, "\nAll molecule types\n");
-        write_result!(writer, "         ");
-        if properties.leaflets {
-            if properties.errors {
-                write_result!(
-                    writer,
-                    "        FULL              UPPER              LOWER       |\n"
-                );
-            } else {
-                write_result!(writer, "   FULL     UPPER     LOWER   |\n");
-            }
-        } else if properties.errors {
-            write_result!(writer, " {: ^17} |\n", "TOTAL");
-        } else {
-            write_result!(writer, " {: ^8} |\n", "TOTAL");
-        }
-        write_result!(writer, "AVERAGE  ");
+        write_aa_ua_full_header(writer, properties)?;
         self.average_order().write_tab(writer, properties)?;
         write_result!(writer, "|\n");
         Ok(())
@@ -226,43 +224,7 @@ impl TabWrite for AAMoleculeResults {
         writer: &mut impl Write,
         properties: &TabProperties,
     ) -> Result<(), WriteError> {
-        write_result!(writer, "\nMolecule type {}\n", self.molecule());
-        write_result!(writer, "{:9}", " ");
-        let width = match (properties.leaflets, properties.errors) {
-            (true, true) => 55,
-            (true, false) => 28,
-            (false, true) => 17,
-            (false, false) => 8,
-        };
-
-        let max_bonds = properties.max_bonds_for_molecule(self.molecule());
-
-        write_result!(writer, " {: ^width$} |", "TOTAL", width = width);
-        for i in 1..=max_bonds {
-            let hydrogen = if properties.leaflets || properties.errors {
-                format!("HYDROGEN #{}", i)
-            } else {
-                format!("H #{}", i)
-            };
-
-            write_result!(writer, " {: ^width$} |", hydrogen, width = width);
-        }
-        write_result!(writer, "\n");
-
-        if properties.leaflets {
-            write_result!(writer, "         ");
-            for _ in 0..=max_bonds {
-                if properties.errors {
-                    write_result!(
-                        writer,
-                        "        FULL              UPPER              LOWER       |"
-                    );
-                } else {
-                    write_result!(writer, "   FULL     UPPER     LOWER   |");
-                }
-            }
-            write_result!(writer, "\n");
-        }
+        write_aa_ua_molecule_header(writer, properties, self.molecule())?;
 
         self.order()
             .values()
@@ -359,6 +321,78 @@ impl TabWrite for CGMoleculeResults {
     }
 }
 
+impl TabWrite for UAOrderResults {
+    /// Write table data for atomistic order parameters.
+    fn write_tab(
+        &self,
+        writer: &mut impl Write,
+        properties: &TabProperties,
+    ) -> Result<(), WriteError> {
+        TabPresenter::<UAOrderResults>::write_header(
+            writer,
+            &properties.structure,
+            &properties.trajectory,
+        )?;
+
+        self.molecules()
+            .try_for_each(|mol| mol.write_tab(writer, properties))?;
+
+        write_aa_ua_full_header(writer, properties)?;
+        self.average_order().write_tab(writer, properties)?;
+        write_result!(writer, "|\n");
+        Ok(())
+    }
+}
+
+impl TabWrite for UAMoleculeResults {
+    /// Write table data for a single united-atom molecule.
+    fn write_tab(
+        &self,
+        writer: &mut impl Write,
+        properties: &TabProperties,
+    ) -> Result<(), WriteError> {
+        write_aa_ua_molecule_header(writer, properties, self.molecule())?;
+
+        self.order()
+            .values()
+            .try_for_each(|atom| atom.write_tab(writer, properties))?;
+
+        write_result!(writer, "AVERAGE  ");
+        self.average_order().write_tab(writer, properties)?;
+        write_result!(writer, "|\n");
+
+        Ok(())
+    }
+}
+
+impl TabWrite for UAAtomResults {
+    /// Write tab data for a single united-atom.
+    fn write_tab(
+        &self,
+        writer: &mut impl Write,
+        properties: &TabProperties,
+    ) -> Result<(), WriteError> {
+        write_result!(writer, "{:<8} ", self.atom().atom_name());
+        self.order().write_tab(writer, properties)?;
+        write_result!(writer, "|");
+
+        let max_bonds = properties.max_bonds_for_molecule(self.molecule());
+        let mut bonds = self.bonds();
+        for _ in 0..max_bonds {
+            match bonds.next() {
+                Some(bond) => bond.write_tab(writer, properties)?,
+                None => {
+                    TabPresenter::<AAOrderResults>::write_empty_bond_collection(writer, properties)?
+                }
+            }
+            write_result!(writer, "|");
+        }
+        write_result!(writer, "\n");
+
+        Ok(())
+    }
+}
+
 fn write_cg_molecule_header(
     writer: &mut impl Write,
     properties: &TabProperties,
@@ -377,5 +411,75 @@ fn write_cg_molecule_header(
         (false, false) => write_result!(writer, "                   FULL   |\n"),
     }
 
+    Ok(())
+}
+
+fn write_aa_ua_molecule_header(
+    writer: &mut impl Write,
+    properties: &TabProperties,
+    molecule_name: &str,
+) -> Result<(), WriteError> {
+    write_result!(writer, "\nMolecule type {}\n", molecule_name);
+    write_result!(writer, "{:9}", " ");
+    let width = match (properties.leaflets, properties.errors) {
+        (true, true) => 55,
+        (true, false) => 28,
+        (false, true) => 17,
+        (false, false) => 8,
+    };
+
+    let max_bonds = properties.max_bonds_for_molecule(molecule_name);
+
+    write_result!(writer, " {: ^width$} |", "TOTAL", width = width);
+    for i in 1..=max_bonds {
+        let hydrogen = if properties.leaflets || properties.errors {
+            format!("HYDROGEN #{}", i)
+        } else {
+            format!("H #{}", i)
+        };
+
+        write_result!(writer, " {: ^width$} |", hydrogen, width = width);
+    }
+    write_result!(writer, "\n");
+
+    if properties.leaflets {
+        write_result!(writer, "         ");
+        for _ in 0..=max_bonds {
+            if properties.errors {
+                write_result!(
+                    writer,
+                    "        FULL              UPPER              LOWER       |"
+                );
+            } else {
+                write_result!(writer, "   FULL     UPPER     LOWER   |");
+            }
+        }
+        write_result!(writer, "\n");
+    }
+
+    Ok(())
+}
+
+fn write_aa_ua_full_header(
+    writer: &mut impl Write,
+    properties: &TabProperties,
+) -> Result<(), WriteError> {
+    write_result!(writer, "\nAll molecule types\n");
+    write_result!(writer, "         ");
+    if properties.leaflets {
+        if properties.errors {
+            write_result!(
+                writer,
+                "        FULL              UPPER              LOWER       |\n"
+            );
+        } else {
+            write_result!(writer, "   FULL     UPPER     LOWER   |\n");
+        }
+    } else if properties.errors {
+        write_result!(writer, " {: ^17} |\n", "TOTAL");
+    } else {
+        write_result!(writer, " {: ^8} |\n", "TOTAL");
+    }
+    write_result!(writer, "AVERAGE  ");
     Ok(())
 }

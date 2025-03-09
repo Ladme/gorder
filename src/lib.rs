@@ -336,7 +336,7 @@
 //! # let results = analysis.run()?;
 //! let aa_results = match results {
 //!     AnalysisResults::AA(aa_results) => aa_results,
-//!     AnalysisResults::CG(_) => panic!("Expected atomistic results."),
+//!     _ => panic!("Expected atomistic results."),
 //! };
 //! # Ok(())
 //! # }

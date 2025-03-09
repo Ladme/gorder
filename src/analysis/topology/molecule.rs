@@ -146,6 +146,9 @@ pub(crate) struct MoleculeType<O: OrderCalculable> {
     /// Topology of the molecule (set of all bonds).
     #[getset(get = "pub(crate)")]
     topology: MoleculeTopology,
+    /// Relative indices of all atoms of the molecule
+    #[getset(get = "pub(crate)")]
+    reference_atoms: Vec<usize>,
     /// List of all bonds or united-atom atoms for which order parameter should be calculated.
     #[getset(get = "pub(crate)")]
     order_structure: O,
@@ -209,17 +212,43 @@ impl<O: OrderCalculable> MoleculeType<O> {
 
         Ok(false) // only perform the logging for a single molecule
     }
+
+    /// Insert new elements into the molecule.
+    /// We only need to provide the minimum index of the new molecule and the rest will be constructed
+    /// using the previously stored information.
+    pub(crate) fn insert(
+        &mut self,
+        system: &System,
+        min_index: usize,
+    ) -> Result<(), TopologyError> {
+        self.order_structure.insert(min_index);
+
+        // reconstruct all atoms of the molecule
+        let molecule = Group::from_indices(
+            self.reference_atoms.iter().map(|a| a + min_index).collect(),
+            usize::MAX,
+        );
+
+        if let Some(classifier) = self.leaflet_classification.as_mut() {
+            classifier.insert(&molecule, system)?;
+        }
+
+        self.membrane_normal.insert(&molecule, system)?;
+
+        Ok(())
+    }
 }
 
 impl MoleculeType<OrderBonds> {
     /// Create new molecule type for AA or CG order calculation.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new<'a>(
+    pub(crate) fn new_bond_based<'a>(
         system: &System,
         name: String,
-        topology: MoleculeTopology,
+        topology: &MoleculeTopology,
+        reference_atoms: &Vec<usize>,
         order_bonds: &HashSet<(usize, usize)>,
-        order_atoms: &[usize],
+        order_atoms: &Vec<usize>,
         min_index: usize,
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
@@ -229,7 +258,7 @@ impl MoleculeType<OrderBonds> {
     ) -> Result<Self, TopologyError> {
         Ok(Self {
             name,
-            topology,
+            topology: topology.clone(),
             order_structure: OrderBonds::new(
                 system,
                 order_bonds,
@@ -240,32 +269,11 @@ impl MoleculeType<OrderBonds> {
                 pbc_handler,
             )?
             .into(),
+            reference_atoms: reference_atoms.clone(),
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
             membrane_normal,
         })
-    }
-
-    /// Insert new bond instances to the molecule.
-    pub(crate) fn insert(
-        &mut self,
-        system: &System,
-        bonds: &HashSet<(usize, usize)>,
-        atoms: Group,
-    ) -> Result<(), TopologyError> {
-        self.order_structure.insert(
-            system,
-            bonds,
-            atoms.get_atoms().first().expect(PANIC_MESSAGE),
-        );
-
-        if let Some(classifier) = self.leaflet_classification.as_mut() {
-            classifier.insert(&atoms, system)?;
-        }
-
-        self.membrane_normal.insert(&atoms, system)?;
-
-        Ok(())
     }
 
     /// Calculate order parameters for bonds of a single molecule type from a single simulation frame.
@@ -289,6 +297,41 @@ impl MoleculeType<OrderBonds> {
 }
 
 impl MoleculeType<UAOrderAtoms> {
+    /// Create new molecule type for UA order calculation.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn new_atom_based<'a>(
+        system: &System,
+        name: String,
+        topology: &MoleculeTopology,
+        reference_atoms: &Vec<usize>,
+        order_atoms: &Vec<usize>,
+        min_index: usize,
+        leaflet_classification: Option<MoleculeLeafletClassification>,
+        ordermap_params: Option<&OrderMap>,
+        errors: bool,
+        pbc_handler: &impl PBCHandler<'a>,
+        membrane_normal: MoleculeMembraneNormal,
+    ) -> Result<Self, TopologyError> {
+        Ok(Self {
+            name,
+            topology: topology.clone(),
+            order_structure: UAOrderAtoms::new(
+                system,
+                order_atoms,
+                min_index,
+                leaflet_classification.is_some(),
+                ordermap_params,
+                errors,
+                pbc_handler,
+            )?
+            .into(),
+            reference_atoms: reference_atoms.clone(),
+            order_atoms: OrderAtoms::new(system, order_atoms, min_index),
+            leaflet_classification,
+            membrane_normal,
+        })
+    }
+
     /// Calculate order parameters for atoms of a single molecule type from a single simulation frame.
     #[inline(always)]
     pub(super) fn analyze_frame<'a, Geom: GeometrySelection>(
@@ -318,6 +361,7 @@ impl<O: OrderCalculable> Add<MoleculeType<O>> for MoleculeType<O> {
             name: self.name,
             topology: self.topology,
             order_structure: self.order_structure + rhs.order_structure,
+            reference_atoms: self.reference_atoms,
             order_atoms: self.order_atoms,
             leaflet_classification: self.leaflet_classification,
             membrane_normal: self.membrane_normal,
@@ -375,7 +419,7 @@ mod tests {
         analysis::{
             geometry::NoSelection,
             pbc::PBC3D,
-            topology::{MoleculeTypes, SystemTopology},
+            topology::{classify::MoleculesClassifier, MoleculeTypes, SystemTopology},
         },
         input::{Analysis, AnalysisType},
     };
@@ -460,17 +504,12 @@ mod tests {
             .build()
             .unwrap();
 
-        let molecules = crate::analysis::common::classify_molecules(
-            &system,
-            "HeavyAtoms",
-            "Hydrogens",
-            &analysis,
-            &PBC3D::from_system(&system),
-        )
-        .unwrap();
+        let molecules =
+            MoleculesClassifier::classify(&system, &analysis, &PBC3D::from_system(&system))
+                .unwrap();
 
         let topology = SystemTopology::new(
-            molecules.into(),
+            molecules,
             None,
             1,
             1,
@@ -500,17 +539,12 @@ mod tests {
             .build()
             .unwrap();
 
-        let molecules = crate::analysis::common::classify_molecules(
-            &system,
-            "Beads",
-            "Beads",
-            &analysis,
-            &PBC3D::from_system(&system),
-        )
-        .unwrap();
+        let molecules =
+            MoleculesClassifier::classify(&system, &analysis, &PBC3D::from_system(&system))
+                .unwrap();
 
         let topology = SystemTopology::new(
-            molecules.into(),
+            molecules,
             None,
             1,
             1,

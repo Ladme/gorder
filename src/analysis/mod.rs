@@ -38,6 +38,11 @@ impl Analysis {
                 hydrogens: _,
             } => aaorder::analyze_atomistic(self),
             AnalysisType::CGOrder { beads: _ } => cgorder::analyze_coarse_grained(self),
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => uaorder::analyze_united(self),
         }
     }
 

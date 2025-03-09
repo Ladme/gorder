@@ -7,13 +7,25 @@ use std::ops::Add;
 use std::{f32::consts::PI, ops::Deref};
 
 use super::common::macros::group_name;
+use super::common::GORDER_GROUP_PREFIX;
 use super::{
     calc_sch, geometry::GeometrySelection, leaflets::MoleculeLeafletClassification,
     normal::MoleculeMembraneNormal, pbc::PBCHandler, topology::bond::VirtualBondType,
 };
+use crate::analysis::common::{
+    prepare_geometry_selection, prepare_membrane_normal_calculation, read_trajectory,
+};
+use crate::analysis::index::read_ndx_file;
+use crate::analysis::pbc::{NoPBC, PBC3D};
+use crate::analysis::structure;
 use crate::analysis::topology::bond::BondLike;
+use crate::analysis::topology::classify::MoleculesClassifier;
+use crate::analysis::topology::SystemTopology;
 use crate::errors::TopologyError;
-use crate::input::OrderMap;
+use crate::input::{Analysis, OrderMap};
+use crate::prelude::AnalysisResults;
+use crate::presentation::uaresults::UAOrderResults;
+use crate::presentation::OrderResults;
 use crate::{errors::AnalysisError, prelude::AtomType, PANIC_MESSAGE};
 use groan_rs::prelude::Atom;
 use groan_rs::{prelude::Vector3D, system::System};
@@ -27,6 +39,180 @@ const TETRAHEDRAL_ANGLE_HALF: f32 = 0.9553165;
 const BOND_LENGTH: f32 = 0.109;
 /// Rotation angle used for predicting hydrogens in the CH3 group.
 const CH3_ANGLE: f32 = 2.0943952;
+
+/// Calculate the united-atom order parameters.
+pub(super) fn analyze_united(
+    analysis: Analysis,
+) -> Result<AnalysisResults, Box<dyn std::error::Error + Send + Sync>> {
+    let mut system = structure::read_structure_and_topology(&analysis)?;
+
+    if let Some(ndx) = analysis.index() {
+        read_ndx_file(&mut system, ndx)?;
+    }
+
+    prepare_groups(&mut system, &analysis)?;
+
+    // prepare system for leaflet classification
+    if let Some(leaflet) = analysis.leaflets() {
+        leaflet.prepare_system(&mut system)?;
+    }
+
+    // prepare system for dynamic normal calculation, if needed
+    prepare_membrane_normal_calculation(analysis.membrane_normal(), &mut system)?;
+
+    // prepare system for geometry selection
+    let geom = prepare_geometry_selection(
+        analysis.geometry().as_ref(),
+        &mut system,
+        analysis.handle_pbc(),
+    )?;
+    geom.info();
+
+    // get the relevant molecules
+    macro_rules! classify_molecules_with_pbc {
+        ($pbc:expr) => {
+            MoleculesClassifier::classify(&system, &analysis, $pbc)
+        };
+    }
+
+    let molecules = match analysis.handle_pbc() {
+        true => classify_molecules_with_pbc!(&PBC3D::from_system(&system))?,
+        false => classify_molecules_with_pbc!(&NoPBC)?,
+    };
+
+    // check that there are molecules to analyze
+    if molecules.n_molecule_types() == 0 {
+        return Ok(AnalysisResults::UA(UAOrderResults::empty(analysis)));
+    }
+
+    let mut data = SystemTopology::new(
+        molecules.into(),
+        analysis.estimate_error().clone(),
+        analysis.step(),
+        analysis.n_threads(),
+        geom,
+        analysis.handle_pbc(),
+    );
+
+    data.info()?;
+
+    // finalize the manual leaflet classification
+    if let Some(classification) = analysis.leaflets() {
+        data.finalize_manual_leaflet_classification(classification)?;
+    }
+
+    // finalize the membrane normal specification
+    data.finalize_manual_membrane_normals(analysis.membrane_normal())?;
+
+    if let Some(error_estimation) = analysis.estimate_error() {
+        error_estimation.info();
+    }
+
+    let result = read_trajectory(
+        &system,
+        data,
+        analysis.trajectory(),
+        analysis.n_threads(),
+        analysis.begin(),
+        analysis.end(),
+        analysis.step(),
+        analysis.silent(),
+    )?;
+
+    result.validate_run(analysis.step())?;
+    result.log_total_analyzed_frames();
+
+    // print basic info about error estimation
+    result.error_info()?;
+
+    Ok(AnalysisResults::UA(
+        result.convert::<UAOrderResults>(analysis),
+    ))
+}
+
+/// Prepare groups for UA analysis.
+fn prepare_groups(system: &mut System, analysis: &Analysis) -> Result<(), TopologyError> {
+    // create groups
+    if let Some(saturated) = analysis.saturated() {
+        super::common::create_group(system, "Saturated", saturated)?;
+
+        colog_info!(
+            "Detected {} saturated carbons using a query '{}'.",
+            system
+                .group_get_n_atoms(group_name!("Saturated"))
+                .expect(PANIC_MESSAGE),
+            saturated,
+        );
+    }
+
+    if let Some(unsaturated) = analysis.unsaturated() {
+        super::common::create_group(system, "Unsaturated", unsaturated)?;
+
+        colog_info!(
+            "Detected {} unsaturated carbons using a query '{}'.",
+            system
+                .group_get_n_atoms(group_name!("Unsaturated"))
+                .expect(PANIC_MESSAGE),
+            unsaturated,
+        );
+
+        // check for overlap
+        if let Some(sat) = analysis.saturated() {
+            super::common::check_groups_overlap(
+                system,
+                "Saturated",
+                sat,
+                "Unsaturated",
+                unsaturated,
+            )?;
+        }
+    }
+
+    // create a merged saturated-unsaturated group
+    match (
+        analysis.saturated().is_some(),
+        analysis.unsaturated().is_some(),
+    ) {
+        (true, true) => super::common::create_group(
+            system,
+            "SatUnsat",
+            &format!(
+                "{}Saturated {}Unsaturated",
+                GORDER_GROUP_PREFIX, GORDER_GROUP_PREFIX
+            ),
+        )?,
+        (true, false) => {
+            super::common::create_group(system, "SatUnsat", &group_name!("Saturated"))?
+        }
+        (false, true) => {
+            super::common::create_group(system, "SatUnsat", &group_name!("Unsaturated"))?
+        }
+        (false, false) => return Err(TopologyError::NoUACarbons),
+    }
+
+    if let Some(ignore) = analysis.ignore() {
+        super::common::create_group(system, "Ignore", ignore)?;
+
+        colog_info!(
+            "Detected {} atoms to ignore using a query '{}'.",
+            system
+                .group_get_n_atoms(group_name!("Ignore"))
+                .expect(PANIC_MESSAGE),
+            ignore,
+        );
+
+        // check for overlap
+        if let Some(sat) = analysis.saturated() {
+            super::common::check_groups_overlap(system, "Satured", sat, "Ignore", ignore)?;
+        }
+
+        if let Some(unsat) = analysis.unsaturated() {
+            super::common::check_groups_overlap(system, "Unsaturated", unsat, "Ignore", ignore)?;
+        }
+    }
+
+    Ok(())
+}
 
 /// Enum representing a type of united atom.
 /// Contains indices of all atoms of this type and its helper atoms.
@@ -113,6 +299,7 @@ impl UAOrderAtomType {
         }
     }
 
+    /// Get basic information about timewise analysis.
     #[inline(always)]
     pub(crate) fn get_timewise_info(&self, n_blocks: usize) -> Option<(usize, usize)> {
         match self {
@@ -120,6 +307,16 @@ impl UAOrderAtomType {
             Self::CH2(x) => x.bonds[0].get_timewise_info(n_blocks),
             Self::CH1Saturated(x) => x.bond.get_timewise_info(n_blocks),
             Self::CH1Unsaturated(x) => x.bond.get_timewise_info(n_blocks),
+        }
+    }
+
+    /// Copy the virtual bonds of the atom into a vector.
+    pub(crate) fn extract_bonds(&self) -> Vec<VirtualBondType> {
+        match self {
+            Self::CH3(x) => x.bonds.iter().cloned().collect(),
+            Self::CH2(x) => x.bonds.iter().cloned().collect(),
+            Self::CH1Saturated(x) => vec![x.bond.clone()],
+            Self::CH1Unsaturated(x) => vec![x.bond.clone()],
         }
     }
 }
@@ -140,27 +337,6 @@ impl Add<UAOrderAtomType> for UAOrderAtomType {
         }
     }
 }
-
-/*
-impl Add<BondType> for BondType {
-    type Output = BondType;
-
-    #[inline]
-    fn add(self, rhs: BondType) -> Self::Output {
-        BondType {
-            bond_topology: self.bond_topology,
-            bonds: self.bonds,
-            total: self.total + rhs.total,
-            upper: merge_option_order(self.upper, rhs.upper),
-            lower: merge_option_order(self.lower, rhs.lower),
-            total_map: merge_option_maps(self.total_map, rhs.total_map),
-            upper_map: merge_option_maps(self.upper_map, rhs.upper_map),
-            lower_map: merge_option_maps(self.lower_map, rhs.lower_map),
-        }
-    }
-}
-
-*/
 
 trait UAAtom<const HYDROGENS: usize, const INDICES: usize> {
     type Indices: AtomIndices<INDICES>;
@@ -314,6 +490,17 @@ impl UAOrderAtomType {
                 }))),
             },
             None => Ok(None),
+        }
+    }
+
+    /// Get the relative index of this atom type.
+    #[inline(always)]
+    pub(crate) fn get_relative_index(&self) -> usize {
+        match self {
+            UAOrderAtomType::CH3(x) => x.atom_type.relative_index(),
+            UAOrderAtomType::CH2(x) => x.atom_type.relative_index(),
+            UAOrderAtomType::CH1Unsaturated(x) => x.atom_type.relative_index(),
+            UAOrderAtomType::CH1Saturated(x) => x.atom_type.relative_index(),
         }
     }
 

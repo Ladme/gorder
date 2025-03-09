@@ -33,6 +33,11 @@ pub enum AnalysisType {
         #[serde(alias = "atoms")]
         beads: String,
     },
+    UAOrder {
+        saturated: Option<String>,
+        unsaturated: Option<String>,
+        ignore: Option<String>,
+    },
 }
 
 impl AnalysisType {
@@ -67,14 +72,46 @@ impl AnalysisType {
         }
     }
 
+    /// Request calculation of united-atom order parameters.
+    ///
+    /// ## Arguments
+    /// - `saturated` - specification of saturated carbons, i.e., carbons with (4 - N_bonds) hydrogens bonded to them
+    /// - `unsaturated` - specification of unsaturated carbons, i.e., carbons with one hydrogen bonded to them
+    /// - `ignore` - specification of atoms to ignore when calculating the number of bonds to carbons
+    ///
+    /// ## Notes
+    /// - To specify atoms, use the [groan selection language](https://ladme.github.io/gsl-guide).
+    /// - The positions of hydrogens will be predicted for the respective carbons and order parameters will be calculated
+    ///   for the individual carbon-hydrogen bonds.
+    /// - Only carbons are supported. If you need to predict hydrogens for other elements, look elsewhere!
+    /// - When calculating the number of bonds, `gorder` does not distinguish between single and double bonds.
+    ///   This means it will attempt to add one hydrogen to a carboxyl atom if specified.
+    ///   A simple solution to this issue is to exclude such atoms from the analysis.
+    pub fn uaorder(
+        saturated: Option<&str>,
+        unsaturated: Option<&str>,
+        ignore: Option<&str>,
+    ) -> Self {
+        Self::UAOrder {
+            saturated: saturated.map(|x| x.to_owned()),
+            unsaturated: unsaturated.map(|x| x.to_owned()),
+            ignore: ignore.map(|x| x.to_owned()),
+        }
+    }
+
     /// Get the type of analysis as a string.
     pub fn name(&self) -> &str {
         match self {
             Self::AAOrder {
                 heavy_atoms: _,
                 hydrogens: _,
-            } => "all-atom order parameters",
+            } => "atomistic order parameters",
             Self::CGOrder { beads: _ } => "coarse-grained order parameters",
+            Self::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => "united-atom order parameters",
         }
     }
 }
@@ -136,7 +173,7 @@ pub struct Analysis {
     #[getset(get = "pub")]
     output_csv: Option<String>,
 
-    /// Type of analysis to be performed (AAOrder or CGOrder).
+    /// Type of analysis to be performed (AAOrder, CGOrder, or UAOrder).
     #[getset(get = "pub")]
     #[serde(alias = "type")]
     analysis_type: AnalysisType,
@@ -490,7 +527,7 @@ impl Analysis {
     }
 
     /// Get the heavy atoms specified for the analysis.
-    /// If the calculation of coarse-grained order parameters is requested, returns None.
+    /// If the calculation of coarse-grained or united-atom order parameters is requested, returns None.
     pub fn heavy_atoms(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads: _ } => None,
@@ -498,11 +535,16 @@ impl Analysis {
                 heavy_atoms,
                 hydrogens: _,
             } => Some(heavy_atoms),
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => None,
         }
     }
 
     /// Get the hydrogens specified for the analysis.
-    /// If the calculation of coarse-grained order parameters is requested, returns None.
+    /// If the calculation of coarse-grained or united-atom order parameters is requested, returns None.
     pub fn hydrogens(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads: _ } => None,
@@ -510,11 +552,16 @@ impl Analysis {
                 heavy_atoms: _,
                 hydrogens,
             } => Some(hydrogens),
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => None,
         }
     }
 
     /// Get the beads specified for the analysis.
-    /// If the calculation of atomistic order parameters is requested, returns None.
+    /// If the calculation of atomistic or united-atom order parameters is requested, returns None.
     pub fn beads(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads } => Some(beads),
@@ -522,6 +569,65 @@ impl Analysis {
                 heavy_atoms: _,
                 hydrogens: _,
             } => None,
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => None,
+        }
+    }
+
+    /// Get the saturated carbons specified for the analysis.
+    /// If the calculation of atomistic or coarse-grained order parameters is requested, returns None.
+    /// Also returns None, if no saturated carbons have been specified.
+    pub fn saturated(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { beads: _ } => None,
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => None,
+            AnalysisType::UAOrder {
+                saturated,
+                unsaturated: _,
+                ignore: _,
+            } => saturated.as_ref(),
+        }
+    }
+
+    /// Get the unsaturated carbons specified for the analysis.
+    /// If the calculation of atomistic or coarse-grained order parameters is requested, returns None.
+    /// Also returns None, if no unsaturated carbons have been specified.
+    pub fn unsaturated(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { beads: _ } => None,
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => None,
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated,
+                ignore: _,
+            } => unsaturated.as_ref(),
+        }
+    }
+
+    /// Get the atoms to be ignored during the analysis.
+    /// If the calculation of atomistic or coarse-grained order parameters is requested, returns None.
+    /// Also returns None, if no atoms to ignore have been specified.
+    pub fn ignore(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { beads: _ } => None,
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => None,
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore,
+            } => ignore.as_ref(),
         }
     }
 

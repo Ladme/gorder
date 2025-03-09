@@ -86,26 +86,16 @@ impl OrderCalculable for OrderBonds {
     }
 
     /// Insert new instances of bonds to an already constructed list of order bonds.
-    fn insert(&mut self, system: &System, bonds: &HashSet<(usize, usize)>, min_index: usize) {
-        bonds_sanity_check(bonds, min_index);
+    fn insert(&mut self, min_index: usize) {
+        for bond in self.bond_types.iter_mut() {
+            let reference_topology = bond.bond_topology();
+            let (atom_type_1, atom_type_2) =
+                (reference_topology.atom1(), reference_topology.atom2());
 
-        for &(index1, index2) in bonds.iter() {
-            let (atom1, atom2) = get_atoms_from_bond(system, index1, index2);
-            let bond_topology =
-                BondTopology::new(index1 - min_index, atom1, index2 - min_index, atom2);
+            let abs_index_1 = atom_type_1.relative_index() + min_index;
+            let abs_index_2 = atom_type_2.relative_index() + min_index;
 
-            if let Some(order_bond) = self
-                .bond_types
-                .iter_mut()
-                .find(|order_bond| order_bond.bond_topology == bond_topology)
-            {
-                order_bond.insert(index1, index2);
-            } else {
-                panic!(
-                    "FATAL GORDER ERROR | OrderBonds::insert | Could not find corresponding bond type for bond between atoms '{}' and '{}'. {}",
-                    index1, index2, PANIC_MESSAGE
-                );
-            }
+            bond.insert(abs_index_1, abs_index_2);
         }
     }
 
@@ -540,13 +530,19 @@ impl BondTopology {
 }
 
 /// Order parameters and ordermaps calculated for a single bond between a real atom and a virtual atom.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters)]
 pub(crate) struct VirtualBondType {
+    #[getset(get = "pub(crate)")]
     total: AnalysisOrder<AddExtend>,
+    #[getset(get = "pub(crate)")]
     upper: Option<AnalysisOrder<AddExtend>>,
+    #[getset(get = "pub(crate)")]
     lower: Option<AnalysisOrder<AddExtend>>,
+    #[getset(get = "pub(crate)")]
     total_map: Option<Map>,
+    #[getset(get = "pub(crate)")]
     upper_map: Option<Map>,
+    #[getset(get = "pub(crate)")]
     lower_map: Option<Map>,
 }
 
@@ -929,8 +925,7 @@ mod tests {
         .unwrap();
 
         let new_bonds = [(919, 920), (919, 921), (963, 964), (963, 965), (996, 997)];
-        let new_bonds_set = HashSet::from(new_bonds);
-        order_bonds.insert(&system, &new_bonds_set, 875);
+        order_bonds.insert(875);
 
         let expected_bonds = expected_bonds(&system);
         for bond in order_bonds.bond_types.iter() {
