@@ -93,7 +93,7 @@ impl MoleculeTypes {
     #[inline(always)]
     pub(crate) fn n_molecule_types(&self) -> usize {
         match self {
-            Self::AtomBased(_) => todo!("Not yet implemented."),
+            Self::AtomBased(x) => x.len(),
             Self::BondBased(x) => x.len(),
         }
     }

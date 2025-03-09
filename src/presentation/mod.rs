@@ -616,7 +616,7 @@ impl OrderType for UAOrder {
     #[inline(always)]
     fn convert(order: f32, error: Option<f32>) -> Order {
         Order {
-            value: order,
+            value: -order,
             error,
         }
     }

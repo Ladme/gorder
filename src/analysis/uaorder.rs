@@ -203,7 +203,7 @@ fn prepare_groups(system: &mut System, analysis: &Analysis) -> Result<(), Topolo
 
         // check for overlap
         if let Some(sat) = analysis.saturated() {
-            super::common::check_groups_overlap(system, "Satured", sat, "Ignore", ignore)?;
+            super::common::check_groups_overlap(system, "Saturated", sat, "Ignore", ignore)?;
         }
 
         if let Some(unsat) = analysis.unsaturated() {
@@ -364,19 +364,19 @@ trait UAAtom<const HYDROGENS: usize, const INDICES: usize> {
         normal: &Vector3D,
         geometry: &Geom,
     ) -> ([Option<f32>; HYDROGENS], [Vector3D; HYDROGENS]) {
-        let bond_positions = hydrogens.clone().map(|h| {
-            let vec = pbc.vector_to(target, &h);
-            h + (&vec / 2.0)
+        let results: [(Option<f32>, Vector3D); HYDROGENS] = std::array::from_fn(|i| {
+            let hydrogen = &hydrogens[i];
+            let vec = pbc.vector_to(target, hydrogen);
+            let bond_pos = hydrogen + (&vec / 2.0);
+            let sch_value = pbc
+                .inside(&bond_pos, geometry)
+                .then(|| calc_sch(&vec, normal));
+
+            (sch_value, bond_pos)
         });
 
-        let mut sch = [None; HYDROGENS];
-        for (i, (h, b)) in hydrogens.iter().zip(bond_positions.iter()).enumerate() {
-            sch[i] = if pbc.inside(b, geometry) {
-                Some(calc_sch(h, normal))
-            } else {
-                None
-            };
-        }
+        let sch = std::array::from_fn(|i| results[i].0);
+        let bond_positions = std::array::from_fn(|i| results[i].1.clone());
 
         (sch, bond_positions)
     }
@@ -568,9 +568,9 @@ impl UAOrderAtomType {
         let bonded_atoms = atom.get_bonded()
             .iter()
             .filter(|&a| !system
-                .group_isin(group_name!("UAIgnore"), a)
+                .group_isin(group_name!("Ignore"), a)
                 .unwrap_or_else(|_| panic!(
-                    "FATAL GORDER ERROR | UAOrderAtomType::get_atom_type | UAIgnore group should exist. {}", 
+                    "FATAL GORDER ERROR | UAOrderAtomType::get_atom_type | Ignore group should exist. {}", 
                     PANIC_MESSAGE
                 ))
             )
@@ -650,11 +650,11 @@ impl UAOrderAtomType {
 
     /// Get the type of carbon (saturated, unsaturated) for `index`.
     fn classify_carbon(system: &System, index: usize) -> CarbonKind {
-        let saturated = system.group_isin(group_name!("UASaturated"), index)
-            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | UAOrderAtomType::classify_carbon | UASatured group should exist. {}", PANIC_MESSAGE));
+        let saturated = system.group_isin(group_name!("Saturated"), index)
+            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | UAOrderAtomType::classify_carbon | Satured group should exist. {}", PANIC_MESSAGE));
 
-        let unsaturated = system.group_isin(group_name!("UAUnsaturated"), index)
-            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | UAOrderAtomType::classify_carbon | UAUnsaturated group should exist. {}", PANIC_MESSAGE));
+        let unsaturated = system.group_isin(group_name!("Unsaturated"), index)
+            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | UAOrderAtomType::classify_carbon | Unsaturated group should exist. {}", PANIC_MESSAGE));
 
         match (saturated, unsaturated) {
             (true, false) => CarbonKind::Saturated,
