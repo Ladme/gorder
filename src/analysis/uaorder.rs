@@ -211,6 +211,20 @@ fn prepare_groups(system: &mut System, analysis: &Analysis) -> Result<(), Topolo
         }
     }
 
+    // helper group that includes all atoms that are part of the same molecule as any saturated or unsatured carbon
+    // but Ignore atoms are still ignored
+    // we need to include these atoms in the Master group so that positions of helper atoms are updated as well
+    let query = if analysis.ignore().is_some() {
+        format!(
+            "(molwith {}SatUnsat) and not {}Ignore",
+            GORDER_GROUP_PREFIX, GORDER_GROUP_PREFIX
+        )
+    } else {
+        format!("molwith {}SatUnsat", GORDER_GROUP_PREFIX)
+    };
+
+    super::common::create_group(system, "Helper", &query)?;
+
     Ok(())
 }
 
