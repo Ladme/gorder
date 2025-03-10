@@ -610,7 +610,12 @@ impl UAOrderAtomType {
             (CarbonKind::Saturated, 3) => {
                 let helper1 = bonded_atoms[0];
                 let helper1_atom = system.get_atom(helper1).expect(PANIC_MESSAGE);
-                let helper2 = match helper1_atom.get_bonded().first() {
+                let helper2 = match helper1_atom
+                    .get_bonded()
+                    .iter()
+                    .filter(|&i| i != atom.get_index()) // filter out `target`
+                    .next()
+                {
                     Some(x) => x,
                     None => {
                         colog_warn!(
