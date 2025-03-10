@@ -579,15 +579,10 @@ impl UAOrderAtomType {
     fn get_atom_type(system: &System, atom: &Atom) -> Option<UAType> {
         let carbon = Self::classify_carbon(system, atom.get_index());
 
-        let bonded_atoms = atom.get_bonded()
+        let bonded_atoms = atom
+            .get_bonded()
             .iter()
-            .filter(|&a| !system
-                .group_isin(group_name!("Ignore"), a)
-                .unwrap_or_else(|_| panic!(
-                    "FATAL GORDER ERROR | UAOrderAtomType::get_atom_type | Ignore group should exist. {}", 
-                    PANIC_MESSAGE
-                ))
-            )
+            .filter(|&a| !system.group_isin(group_name!("Ignore"), a).unwrap_or(false))
             .collect::<Vec<usize>>();
 
         if bonded_atoms.len() > 4 {
