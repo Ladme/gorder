@@ -1,7 +1,7 @@
 # gorder: Everything you will ever need for lipid order calculations
 [![DOI](https://zenodo.org/badge/848864524.svg)](https://doi.org/10.5281/zenodo.14391305) ![Crates.io Version](https://img.shields.io/crates/v/gorder)![Crates.io Downloads](https://img.shields.io/crates/d/gorder)![Crates.io License](https://img.shields.io/crates/l/gorder)
 
-Command line tool for calculating atomistic and coarse-grained lipid order parameters from Gromacs simulations.
+Command line tool for calculating lipid order parameters from Gromacs simulations.
 
 ## Installation
 
@@ -36,8 +36,8 @@ $ gorder YOUR_INPUT_YAML_FILE
 **See the [gorder manual](https://ladme.github.io/gorder-manual/) for more information about using this program.**
 
 ## Features
-- ⚛️ **[Atomistic](https://ladme.github.io/gorder-manual/aaorder_basics.html) and [coarse-grained](https://ladme.github.io/gorder-manual/cgorder_basics.html) systems**   
-Calculates atomistic and coarse-grained order parameters for individual bonds of individual lipid types.
+- ⚛️ **[Atomistic](https://ladme.github.io/gorder-manual/aaorder_basics.html), [coarse-grained](https://ladme.github.io/gorder-manual/cgorder_basics.html), and [united-atom](https://ladme.github.io/gorder-manual/uaorder_basics.html) systems**   
+Calculates order parameters for individual bonds of individual lipid types in atomistic, coarse-grained, and united-atom systems.
 
 - 🔠 [**Powerful selection language**](https://ladme.github.io/gsl-guide/)  
 Allows for simple yet powerful atom selection using a VMD-like selection language, supporting regular expressions and groups from NDX files.
@@ -49,7 +49,7 @@ Automatically recognizes bonds and classifies molecule types based on their topo
 Outputs results in YAML, XVG, CSV, and custom "table" format.
 
 - 🏗️ **Any model and force-field**  
-Is completely force-field agnostic. Martini? CHARMM? Slipids? Your own toy force-field? As long as your lipids have bonds, it will work.
+Is completely force-field agnostic. Martini? CHARMM? Slipids? Berger lipids? Your own toy force-field? As long as your lipids have bonds, it will work.
 
 - 🍃 [**Leaflet-wise analysis**](https://ladme.github.io/gorder-manual/leaflets.html)  
 Performs scrambling-safe assignment of lipids to membrane leaflets using three different methods, and then calculates lipid order parameters for individual leaflets.
@@ -74,9 +74,6 @@ Is also available as a Python package and a Rust crate, allowing seamless integr
 
 - 📖 [**Extensive manual**](https://ladme.github.io/gorder-manual/introduction.html)  
 Includes a comprehensive manual detailing how to use the program, along with its strengths and limitations.
-
-## Planned
-- [ ] United-atom order parameters.
 
 ## Validation
 
@@ -122,11 +119,11 @@ Run time of the analyses performed in the Validation section by various programs
 
 <sup>b</sup> Note that the `lipyphilic` library is not able to calculate order parameters for the individual bonds simultaneously, requiring the analysis to be run multiple times. If you are only interested in average order parameters for one entire lipid tail, `lipyphilic` is quite fast (though still slower than `gorder`). Additionally, in this run, `lipyphilic` calculated order parameters only for the entire membrane, not for individual leaflets. In contrast, both `order` and `gorder` were run with this capability enabled.
 
-## Rust API
-`gorder` is also available as a Rust crate. See the [gorder manual](https://ladme.github.io/gorder-manual/) and the corresponding [docs.rs](https://docs.rs/gorder/latest/gorder) page for more information.
+## Python and Rust API
+`gorder` is also available as a Python package and a Rust crate. For more information, see the [gorder manual](https://ladme.github.io/gorder-manual/), the Python API documentation, or the [Rust API documentation](https://docs.rs/gorder/latest/gorder).
 
 ## License
-The command line tool and the crate are both released under the MIT License.
+The command line tool, the Python package, and the Rust crate are all released under the MIT License.
 
 ## Limitations
 - `gorder` does not fully support simulation boxes that are **not** orthogonal. [You can still use them but it requires some additional effort.](https://ladme.github.io/gorder-manual/no_pbc.html)
