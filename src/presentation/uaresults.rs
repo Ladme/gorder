@@ -18,7 +18,7 @@ use super::{
     PublicOrderResults, UAOrder,
 };
 
-/// Results of the atomistic order parameters calculation.
+/// Results of the united-atom order parameters calculation.
 #[derive(Debug, Clone, Getters)]
 pub struct UAOrderResults {
     /// Results for individual molecules of the system.
@@ -200,7 +200,7 @@ impl UAMoleculeResults {
     }
 }
 
-/// Atomistic order parameters calculated for a single atom type and for involved bond types.
+/// United-atom order parameters calculated for a single atom type and for involved virtual bond types.
 #[derive(Debug, Clone, Serialize, Getters)]
 pub struct UAAtomResults {
     /// Name of the atom type.
@@ -247,7 +247,7 @@ impl UAAtomResults {
     }
 }
 
-/// Order parameters calculated for a single united-atom bond.
+/// Order parameters calculated for a single united-atom C-H bond.
 #[derive(Debug, Clone, Serialize, Getters)]
 pub struct UABondResults {
     /// Name of the molecule this bond belongs to.

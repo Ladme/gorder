@@ -309,12 +309,12 @@ impl UABondResults {
             "ordermap_{}--{}-H{}-{}",
             atom,
             atom.residue_name(),
-            index,
+            index + 1,
             atom.relative_index()
         );
 
         let comment = format!("# Map of average order parameters calculated for bonds between an atom type {} and a virtual hydrogen #{} of molecule type {}.\n# Calculated with 'gorder v{}'.",
-                              atom, index, molecule_name, GORDER_VERSION);
+                              atom, index + 1, molecule_name, GORDER_VERSION);
 
         self.ordermaps()
             .write_maps::<O>(&directory, &name, properties.plane, &comment)

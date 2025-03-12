@@ -438,6 +438,8 @@ use serde::{Deserialize, Serialize};
 
 /// This module contains re-exported public structures of the `gorder` crate.
 pub mod prelude {
+    pub use crate::Leaflet;
+
     pub use super::input::{
         analysis::AnalysisBuilder, ordermap::OrderMapBuilder, Analysis, AnalysisType, Axis,
         DynamicNormal, EstimateError, Frequency, GeomReference, Geometry, GridSpan,

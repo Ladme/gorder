@@ -10,7 +10,7 @@ use std::{
 };
 
 use approx::assert_relative_eq;
-use gorder::{input::DynamicNormal, prelude::*, Leaflet};
+use gorder::prelude::*;
 use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
