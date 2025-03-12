@@ -619,8 +619,8 @@ impl UAOrderAtomType {
                     Some(x) => x,
                     None => {
                         colog_warn!(
-                            "Atom number {} was identified as being a {} carbon. However, it is in an isolated chain of {} carbons and hydrogens therefore cannot be predicted for it. Ignoring.", 
-                            atom.get_index(), "methyl", 2);
+                            "Atom {} of residue {} was identified as being a {} carbon. However, it is in an isolated chain of {} carbons and hydrogens therefore cannot be predicted for it. Ignoring.", 
+                            atom.get_atom_name(), atom.get_residue_name(), "methyl", 2);
                         return None;
                     }
                 };
@@ -634,8 +634,9 @@ impl UAOrderAtomType {
 
             (CarbonKind::Saturated, x) => {
                 colog_warn!(
-                    "Atom number {} is a {} carbon and has {} missing hydrogens. This is unsupported. Ignoring.",
-                    atom.get_index(),
+                    "Atom {} of residue {} is a {} carbon and has {} missing hydrogens. This is unsupported. Ignoring.",
+                    atom.get_atom_name(),
+                    atom.get_residue_name(),
                     "saturated",
                     x
                 );
@@ -651,10 +652,11 @@ impl UAOrderAtomType {
 
             (CarbonKind::Unsaturated, x) => {
                 colog_warn!(
-                    "Atom number {} is an {} carbon and has {} missing hydrogens. This is unsupported. Ignoring.",
-                    atom.get_index(),
+                    "Atom {} of residue {} is an {} carbon and has {} missing hydrogens. This is unsupported. Ignoring.",
+                    atom.get_atom_name(),
+                    atom.get_residue_name(),
                     "unsaturated",
-                    x,
+                    x - 1,
                 );
 
                 return None;
@@ -1103,7 +1105,7 @@ impl AtomQuadruplet {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests_predict {
     use approx::assert_relative_eq;
 
     use super::*;
@@ -1121,9 +1123,6 @@ mod tests {
 
         let [h1, h2] = triplet.predict_hydrogens_ch2(&system, &pbc).unwrap();
 
-        println!("{} {}", h1, h2);
-
-        // [2.343559, 2.1503806, 2.1272225] [2.358576, 2.3045511, 2.0395377]
         assert_relative_eq!(h1.x, 2.3435528);
         assert_relative_eq!(h1.y, 2.1503785);
         assert_relative_eq!(h1.z, 2.1272178);
@@ -1198,5 +1197,134 @@ mod tests {
         assert_relative_eq!(h.x, 1.5022101);
         assert_relative_eq!(h.y, 2.6938448);
         assert_relative_eq!(h.z, 1.7839708);
+    }
+}
+
+#[cfg(test)]
+mod tests_groups {
+    use crate::input::AnalysisType;
+
+    use super::*;
+
+    #[test]
+    fn test_fail_saturated_unsaturated_overlap() {
+        let mut system = System::from_file("tests/files/ua.tpr").unwrap();
+        let analysis = Analysis::builder()
+            .structure("tests/files/ua.tpr")
+            .trajectory("tests/files/ua.xtc")
+            .analysis_type(AnalysisType::uaorder(
+                Some("(resname POPC and name r'^C' and not name C15 C34) or (resname POPS and name r'^C' and not name C6 C18 C39)"),
+                Some("(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+                None
+            ))
+            .build()
+            .unwrap();
+
+        match prepare_groups(&mut system, &analysis) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(TopologyError::AtomsOverlap {
+                n_overlapping,
+                name1,
+                query1,
+                name2,
+                query2,
+            }) => {
+                assert_eq!(n_overlapping, 256);
+                assert_eq!(name1, "Saturated");
+                assert_eq!(query1, "(resname POPC and name r'^C' and not name C15 C34) or (resname POPS and name r'^C' and not name C6 C18 C39)");
+                assert_eq!(name2, "Unsaturated");
+                assert_eq!(
+                    query2,
+                    "(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"
+                );
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_fail_saturated_ignore_overlap() {
+        let mut system = System::from_file("tests/files/ua.tpr").unwrap();
+        let analysis = Analysis::builder()
+            .structure("tests/files/ua.tpr")
+            .trajectory("tests/files/ua.xtc")
+            .analysis_type(AnalysisType::uaorder(
+                Some("(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)"),
+                None,
+                Some("resname POPC"),
+            ))
+            .build()
+            .unwrap();
+
+        match prepare_groups(&mut system, &analysis) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(TopologyError::AtomsOverlap {
+                n_overlapping,
+                name1,
+                query1,
+                name2,
+                query2,
+            }) => {
+                assert_eq!(n_overlapping, 3876);
+                assert_eq!(name1, "Saturated");
+                assert_eq!(query1, "(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)");
+                assert_eq!(name2, "Ignore");
+                assert_eq!(query2, "resname POPC");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_fail_unsaturated_ignore_overlap() {
+        let mut system = System::from_file("tests/files/ua.tpr").unwrap();
+        let analysis = Analysis::builder()
+            .structure("tests/files/ua.tpr")
+            .trajectory("tests/files/ua.xtc")
+            .analysis_type(AnalysisType::uaorder(
+                None,
+                Some("(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+                Some("name C24"),
+            ))
+            .build()
+            .unwrap();
+
+        match prepare_groups(&mut system, &analysis) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(TopologyError::AtomsOverlap {
+                n_overlapping,
+                name1,
+                query1,
+                name2,
+                query2,
+            }) => {
+                assert_eq!(n_overlapping, 102);
+                assert_eq!(name1, "Unsaturated");
+                assert_eq!(
+                    query1,
+                    "(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"
+                );
+                assert_eq!(name2, "Ignore");
+                assert_eq!(query2, "name C24");
+            }
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+    }
+
+    #[test]
+    fn test_fail_missing_saturated_unsaturated() {
+        let mut system = System::from_file("tests/files/ua.tpr").unwrap();
+        let analysis = Analysis::builder()
+            .structure("tests/files/ua.tpr")
+            .trajectory("tests/files/ua.xtc")
+            .analysis_type(AnalysisType::uaorder(None, None, Some("resname SOL")))
+            .build()
+            .unwrap();
+
+        match prepare_groups(&mut system, &analysis) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(TopologyError::NoUACarbons) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
     }
 }
