@@ -714,6 +714,8 @@ where
 }
 
 impl AnalysisBuilder {
+    /// Path to an XTC (recommended), TRR, GRO, PDB, NC, DCD, or LAMMPSTRJ containing the trajectory to be analyzed.
+    /// Multiple XTC or TRR trajectories can be provided and these will be concatenated.
     pub fn trajectory(&mut self, trajectory: impl Into<TrajectoryInput>) -> &mut Self {
         match trajectory.into() {
             TrajectoryInput::Single(x) => self.trajectory = Some(vec![x]),
