@@ -949,10 +949,10 @@ impl AtomTriplet {
     ) -> Result<[Vector3D; 3], AnalysisError> {
         let [helper1, target, helper2] = self.unpack2pos(system)?;
 
-        let th1 = pbc.vector_to(&target, &helper1).to_unit();
-        let th2 = pbc.vector_to(&target, &helper2).to_unit();
+        let th1 = pbc.vector_to(&target, &helper1);
+        let th2 = pbc.vector_to(&target, &helper2);
 
-        let rot_axis = th2.cross(&th1).normalize();
+        let rot_axis = th2.cross(&th1);
         let rotation1 =
             Rotation3::from_axis_angle(&Unit::new_normalize(rot_axis.clone()), TETRAHEDRAL_ANGLE);
 
@@ -989,9 +989,9 @@ impl AtomTriplet {
 
         let th1 = pbc.vector_to(&target, &helper1).to_unit();
         let th2 = pbc.vector_to(&target, &helper2).to_unit();
-        let plane_normal = th2.cross(&th1).normalize();
+        let plane_normal = th2.cross(&th1);
         let rot_axis = (th1 - th2).to_unit();
-        let rot_vec = Vector3D::from(plane_normal.cross(&rot_axis).normalize());
+        let rot_vec = Vector3D::from(plane_normal.cross(&rot_axis));
 
         let rotation_positive = Rotation3::from_axis_angle(
             &Unit::new_normalize(rot_axis.deref().clone()),
@@ -1026,10 +1026,10 @@ impl AtomTriplet {
     ) -> Result<[Vector3D; 1], AnalysisError> {
         let [helper1, target, helper2] = self.unpack2pos(system)?;
 
-        let th1 = pbc.vector_to(&target, &helper1).to_unit();
-        let th2 = pbc.vector_to(&target, &helper2).to_unit();
+        let th1 = pbc.vector_to(&target, &helper1);
+        let th2 = pbc.vector_to(&target, &helper2);
         let gamma = th1.angle(&th2);
-        let rot_axis = th1.cross(&th2).normalize();
+        let rot_axis = th1.cross(&th2);
 
         let rotation =
             Rotation3::from_axis_angle(&Unit::new_normalize(rot_axis.clone()), PI - (gamma / 2.0));
@@ -1093,11 +1093,110 @@ impl AtomQuadruplet {
         let th2 = pbc.vector_to(t, h2).to_unit();
         let th3 = pbc.vector_to(t, h3).to_unit();
 
-        let hydrogen_vec = (th1 + th2 + th3).to_unit().invert();
+        let hydrogen_vec = (th1 + th2 + th3).invert();
         let mut hydrogen = t.clone();
         hydrogen.shift(hydrogen_vec, BOND_LENGTH);
         pbc.wrap(&mut hydrogen);
 
         Ok([hydrogen])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use approx::assert_relative_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_predict_ch2() {
+        let system = System::from_file("tests/files/ua.tpr").unwrap();
+        let pbc = PBC3D::from_system(&system);
+
+        let triplet = AtomTriplet {
+            helper1: 38,
+            target: 39,
+            helper2: 40,
+        };
+
+        let [h1, h2] = triplet.predict_hydrogens_ch2(&system, &pbc).unwrap();
+
+        println!("{} {}", h1, h2);
+
+        // [2.343559, 2.1503806, 2.1272225] [2.358576, 2.3045511, 2.0395377]
+        assert_relative_eq!(h1.x, 2.3435528);
+        assert_relative_eq!(h1.y, 2.1503785);
+        assert_relative_eq!(h1.z, 2.1272178);
+
+        assert_relative_eq!(h2.x, 2.35857);
+        assert_relative_eq!(h2.y, 2.3045487);
+        assert_relative_eq!(h2.z, 2.039533);
+    }
+
+    #[test]
+    fn test_predict_ch3() {
+        let system = System::from_file("tests/files/ua.tpr").unwrap();
+        let pbc = PBC3D::from_system(&system);
+
+        let triplet = AtomTriplet {
+            helper1: 48,
+            target: 49,
+            helper2: 47,
+        };
+
+        let [h1, h2, h3] = triplet.predict_hydrogens_ch3(&system, &pbc).unwrap();
+
+        assert_relative_eq!(h1.x, 3.3708375);
+        assert_relative_eq!(h1.y, 2.7527616);
+        assert_relative_eq!(h1.z, 2.257202);
+
+        assert_relative_eq!(h2.x, 3.254057);
+        assert_relative_eq!(h2.y, 2.8633823);
+        assert_relative_eq!(h2.z, 2.3334126);
+
+        assert_relative_eq!(h3.x, 3.3182635);
+        assert_relative_eq!(h3.y, 2.8995805);
+        assert_relative_eq!(h3.z, 2.1713943);
+    }
+
+    #[test]
+    fn test_predict_unsat_ch1() {
+        let system = System::from_file("tests/files/ua.tpr").unwrap();
+        let pbc = PBC3D::from_system(&system);
+
+        let triplet = AtomTriplet {
+            helper1: 22,
+            target: 23,
+            helper2: 24,
+        };
+
+        let [h] = triplet
+            .predict_hydrogen_ch1_unsaturated(&system, &pbc)
+            .unwrap();
+
+        assert_relative_eq!(h.x, 1.0985602);
+        assert_relative_eq!(h.y, 2.994375);
+        assert_relative_eq!(h.z, 2.7727659);
+    }
+
+    #[test]
+    fn test_predict_sat_ch1() {
+        let system = System::from_file("tests/files/ua.tpr").unwrap();
+        let pbc = PBC3D::from_system(&system);
+
+        let quadruplet = AtomQuadruplet {
+            helper1: 11,
+            helper2: 31,
+            helper3: 13,
+            target: 12,
+        };
+
+        let [h] = quadruplet
+            .predict_hydrogen_ch1_saturated(&system, &pbc)
+            .unwrap();
+
+        assert_relative_eq!(h.x, 1.5022101);
+        assert_relative_eq!(h.y, 2.6938448);
+        assert_relative_eq!(h.z, 1.7839708);
     }
 }
