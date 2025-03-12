@@ -492,7 +492,7 @@ mod tests {
 
     fn prepare_converter_aa() -> ResultsConverter<AAOrderResults> {
         let analysis = Analysis::builder()
-            .structure("system.gro")
+            .structure("system.tpr")
             .trajectory("md.xtc")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -509,9 +509,27 @@ mod tests {
 
     fn prepare_converter_cg() -> ResultsConverter<CGOrderResults> {
         let analysis = Analysis::builder()
-            .structure("system.gro")
+            .structure("system.tpr")
             .trajectory("md.xtc")
             .analysis_type(AnalysisType::cgorder("@membrane"))
+            .output("order.yaml")
+            .min_samples(50)
+            .estimate_error(EstimateError::default())
+            .build()
+            .unwrap();
+
+        ResultsConverter::new(analysis)
+    }
+
+    fn prepare_converter_ua() -> ResultsConverter<UAOrderResults> {
+        let analysis = Analysis::builder()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .analysis_type(AnalysisType::uaorder(
+                Some("@membrane and element name carbon and not name C29 C210"),
+                Some("@membrane and name C29 C210"),
+                None,
+            ))
             .output("order.yaml")
             .min_samples(50)
             .estimate_error(EstimateError::default())
@@ -684,6 +702,84 @@ mod tests {
             .bin_size([1.0, 1.0])
             .build()
             .unwrap()
+    }
+
+    #[test]
+    fn convert_order_simple_ua() {
+        let analysis_order = AnalysisOrder::<AddExtend>::new(45.32, 56, false);
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert_relative_eq!(order.value(), -0.8092857, epsilon = 1e-4);
+        assert!(order.error().is_none());
+
+        let analysis_order = AnalysisOrder::<AddSum>::new(45.32, 56, false);
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert_relative_eq!(order.value(), -0.8092857, epsilon = 1e-4);
+        assert!(order.error().is_none());
+    }
+
+    #[test]
+    fn convert_order_simple_limit_ua() {
+        let analysis_order = AnalysisOrder::<AddExtend>::new(45.32, 48, false);
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert!(order.value().is_nan());
+        assert!(order.error().is_none());
+
+        let analysis_order = AnalysisOrder::<AddSum>::new(45.32, 48, false);
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert!(order.value().is_nan());
+        assert!(order.error().is_none());
+    }
+
+    #[test]
+    fn convert_order_with_error_ua() {
+        let mut analysis_order = AnalysisOrder::<AddExtend>::new(45.32, 60, true);
+        // we add more values, but since the average is always the same, it does not matter
+        analysis_order.init_new_frame();
+        analysis_order += 0.812;
+        analysis_order.init_new_frame();
+        analysis_order += 0.684;
+        analysis_order.init_new_frame();
+        analysis_order += 0.692;
+        analysis_order.init_new_frame();
+        analysis_order += 0.766;
+        analysis_order.init_new_frame();
+        analysis_order += 0.802;
+        // this frame will be unused in the error analysis
+        analysis_order.init_new_frame();
+        analysis_order += 0.776;
+
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert_relative_eq!(order.value(), -0.755333, epsilon = 1e-4);
+        assert_relative_eq!(order.error().unwrap(), 0.0602428, epsilon = 1e-4);
+    }
+
+    #[test]
+    fn convert_order_with_error_limit_ua() {
+        let mut analysis_order = AnalysisOrder::<AddExtend>::new(45.32, 43, true);
+        // we add more values, but since the average is always the same, it does not matter
+        analysis_order.init_new_frame();
+        analysis_order += 0.812;
+        analysis_order.init_new_frame();
+        analysis_order += 0.684;
+        analysis_order.init_new_frame();
+        analysis_order += 0.692;
+        analysis_order.init_new_frame();
+        analysis_order += 0.766;
+        analysis_order.init_new_frame();
+        analysis_order += 0.802;
+        // this frame will be unused in the error analysis
+        analysis_order.init_new_frame();
+        analysis_order += 0.776;
+
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert!(order.value().is_nan());
+        assert!(order.error().unwrap().is_nan());
     }
 
     #[test]
