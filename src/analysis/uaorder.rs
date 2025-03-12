@@ -664,11 +664,13 @@ impl UAOrderAtomType {
 
     /// Get the type of carbon (saturated, unsaturated) for `index`.
     fn classify_carbon(system: &System, index: usize) -> CarbonKind {
-        let saturated = system.group_isin(group_name!("Saturated"), index)
-            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | UAOrderAtomType::classify_carbon | Satured group should exist. {}", PANIC_MESSAGE));
+        let saturated = system
+            .group_isin(group_name!("Saturated"), index)
+            .unwrap_or(false);
 
-        let unsaturated = system.group_isin(group_name!("Unsaturated"), index)
-            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | UAOrderAtomType::classify_carbon | Unsaturated group should exist. {}", PANIC_MESSAGE));
+        let unsaturated = system
+            .group_isin(group_name!("Unsaturated"), index)
+            .unwrap_or(false);
 
         match (saturated, unsaturated) {
             (true, false) => CarbonKind::Saturated,
