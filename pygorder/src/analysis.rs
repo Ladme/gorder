@@ -66,6 +66,42 @@ impl CGOrder {
     }
 }
 
+/// Request the calculation of united-atom order parameters.
+///
+/// Attributes
+/// ----------
+/// saturated : Optional[str], default=None
+///     Selection query specifying saturated carbons which order parameters should be calculated.
+/// unsaturated : Optional[str], default=None
+///     Selection query specifying unsaturated carbons which order parameters should be calculated.
+/// ignore : Optional[str], default=None
+///     Selection query specifying atoms to be completely ignored when performing the analysis.
+/// 
+/// Notes
+/// -----
+/// - To specify atoms, use the `groan selection language <https://ladme.github.io/gsl-guide>`_.
+/// - The positions of hydrogens will be predicted for the respective carbons and order parameters will be calculated
+///   for the individual carbon-hydrogen bonds.
+/// - Only carbons are supported. If you need to predict hydrogens for other elements, look elsewhere!
+/// - When calculating the number of bonds, `gorder` does not distinguish between single and double bonds.
+///   This means it will attempt to add one hydrogen to a carboxyl atom if specified.
+///   A simple solution to this issue is to exclude such atoms from the analysis.
+#[pyclass]
+#[derive(Clone)]
+pub struct UAOrder(RsAnalysisType);
+
+#[pymethods]
+impl UAOrder {
+    #[new]
+    #[pyo3(signature = (
+        saturated = None,
+        unsaturated = None,
+        ignore = None))]
+    pub fn new(saturated: Option<&str>, unsaturated: Option<&str>, ignore: Option<&str>) -> Self {
+        Self(RsAnalysisType::uaorder(saturated, unsaturated, ignore))
+    }
+}
+
 #[derive(Clone)]
 pub struct AnalysisType(RsAnalysisType);
 
@@ -79,8 +115,12 @@ impl<'source> FromPyObject<'source> for AnalysisType {
             return Ok(AnalysisType(analysis_type.0));
         }
 
+        if let Ok(analysis_type) = obj.extract::<UAOrder>() {
+            return Ok(AnalysisType(analysis_type.0));
+        }
+
         Err(ConfigError::new_err(
-            "expected an instance of AAOrder or CGOrder as AnalysisType",
+            "expected an instance of AAOrder, CGOrder, or UAOrder as AnalysisType",
         ))
     }
 }

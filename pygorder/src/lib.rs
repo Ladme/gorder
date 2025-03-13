@@ -132,6 +132,7 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let analysis_types = PyModule::new(m.py(), "analysis_types")?;
     analysis_types.add_class::<analysis::AAOrder>()?;
     analysis_types.add_class::<analysis::CGOrder>()?;
+    analysis_types.add_class::<analysis::UAOrder>()?;
     m.add_submodule(&analysis_types)?;
 
     // module: membrane_normal

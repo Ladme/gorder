@@ -3,7 +3,7 @@ Released under MIT License.
 Copyright (c) 2024-2025 Ladislav Bartos
 """
 
-import gorder, tempfile, shutil, os, yaml
+import gorder, tempfile, shutil, os, yaml, pytest
 import numpy as np
 
 def read_file_without_first_lines(file_path: str, skip: int) -> list[str]:
@@ -84,6 +84,30 @@ def test_aa_order_basic_yaml():
 
         try:
             assert diff_files_ignore_first(temp_file_path, "../tests/files/aa_order_basic.yaml", 1), "Files do not match!"
+        finally:
+            shutil.rmtree(temp_file_path, ignore_errors=True)
+
+def test_ua_order_basic_yaml():
+    for n_threads in [1, 2, 3, 4, 8, 32]:
+        with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+            temp_file_path = temp_file.name
+
+        analysis = gorder.Analysis(
+            structure = "../tests/files/ua.tpr",
+            trajectory = "../tests/files/ua.xtc",
+            analysis_type = gorder.analysis_types.UAOrder(
+                saturated = "(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)", 
+                unsaturated = "(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+            output_yaml = temp_file_path,
+            silent = True,
+            overwrite = True,
+            n_threads = n_threads,
+        )
+
+        analysis.run().write()
+
+        try:
+            assert diff_files_ignore_first(temp_file_path, "../tests/files/ua_order_basic.yaml", 1), "Files do not match!"
         finally:
             shutil.rmtree(temp_file_path, ignore_errors=True)
 
@@ -184,6 +208,29 @@ def test_leaflets():
             assert diff_files_ignore_first(temp_file_path, "../tests/files/cg_order_leaflets.yaml", 1), "Files do not match!"
         finally:
             shutil.rmtree(temp_file_path, ignore_errors=True)
+
+def test_ua_leaflets():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/ua.tpr",
+        trajectory = "../tests/files/ua.xtc",
+        analysis_type = gorder.analysis_types.UAOrder(
+            saturated = "(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)", 
+            unsaturated = "(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+        leaflets = gorder.leaflets.GlobalClassification("@membrane", "name r'^P'"),
+        output_yaml = temp_file_path,
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/ua_order_leaflets.yaml", 1), "Files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
 
 def test_scrambling_leaflets():
     files = [
@@ -438,6 +485,30 @@ def test_estimate_error():
     finally:
         shutil.rmtree(temp_file_path, ignore_errors=True)
 
+def test_ua_estimate_error_leaflets():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/ua.tpr",
+        trajectory = "../tests/files/ua.xtc",
+        analysis_type = gorder.analysis_types.UAOrder(
+            saturated = "(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)", 
+            unsaturated = "(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+        estimate_error = gorder.estimate_error.EstimateError(),
+        leaflets = gorder.leaflets.LocalClassification("@membrane", "name r'^P'", 2.5),
+        output_yaml = temp_file_path,
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/ua_order_leaflets_error.yaml", 1), "Files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
+
 def test_convergence():
     with tempfile.NamedTemporaryFile(delete = False) as temp_file:
         temp_file_path = temp_file.name
@@ -497,6 +568,29 @@ def test_geometry_cylinder():
 
     try:
         assert diff_files_ignore_first(temp_file_path, "../tests/files/aa_order_cylinder.yaml", 1), "Files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
+
+def test_ua_geometry_cylinder_center():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/ua.tpr",
+        trajectory = "../tests/files/ua.xtc",
+        analysis_type = gorder.analysis_types.UAOrder(
+            saturated = "(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)", 
+            unsaturated = "(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+        geometry = gorder.geometry.Cylinder(reference = "center", radius = 2.5, orientation = "z"),
+        output_yaml = temp_file_path,
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/ua_order_cylinder_center.yaml", 1), "Files do not match!"
     finally:
         shutil.rmtree(temp_file_path, ignore_errors=True)
 
@@ -607,3 +701,88 @@ def test_ordermaps_leaflets_nopbc_manual_everything():
         
     finally:
         shutil.rmtree(dir_path, ignore_errors=True)
+
+def test_ua_order_satured_only():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/ua.tpr",
+        trajectory = "../tests/files/ua.xtc",
+        analysis_type = gorder.analysis_types.UAOrder(
+            saturated = "(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)"
+        ),
+        output_yaml = temp_file_path,
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/ua_order_basic_saturated.yaml", 1), "Files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
+
+def test_ua_order_unsatured_only():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/ua.tpr",
+        trajectory = "../tests/files/ua.xtc",
+        analysis_type = gorder.analysis_types.UAOrder(
+            unsaturated = "(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"
+        ),
+        output_yaml = temp_file_path,
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/ua_order_basic_unsaturated.yaml", 1), "Files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
+
+def test_ua_order_from_aa():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/pcpepg.tpr",
+        trajectory = "../tests/files/pcpepg.xtc",
+        analysis_type = gorder.analysis_types.UAOrder(
+            saturated = "@membrane and element name carbon and not name C29 C210 C21 C31",
+            unsaturated = "@membrane and name C29 C210",
+            ignore = "element name hydrogen",
+        ),
+        output_yaml = temp_file_path,
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/ua_order_from_aa.yaml", 1), "Files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
+
+def test_ua_order_fail_no_carbons():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/ua.tpr",
+        trajectory = "../tests/files/ua.xtc",
+        analysis_type = gorder.analysis_types.UAOrder(),
+        output_yaml = temp_file_path,
+        silent = True,
+        overwrite = True,
+    )
+
+    with pytest.raises(gorder.exceptions.AnalysisError) as excinfo:
+        analysis.run()
+    assert "no carbons for the calculation of united-atom order parameters were specified" in str(excinfo.value)
