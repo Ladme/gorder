@@ -151,7 +151,7 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 /// trajectory : Union[str, list[str]]
 ///     Path to an XTC (recommended), TRR, GRO, PDB, Amber NetCDF, DCD, or LAMMPSTRJ trajectory file to be analyzed.
 ///     You can provide multiple XTC or TRR trajectories and these will be seamlessly concatenated.
-/// analysis_type : Union[AAOrder, CGOrder]
+/// analysis_type : Union[AAOrder, CGOrder, UAOrder]
 ///     Type of analysis to perform (e.g., AAOrder or CGOrder).
 /// bonds : Optional[str], default=None
 ///     Path to a file containing bonding information. If specified, this overrides bonds from the structure file.
