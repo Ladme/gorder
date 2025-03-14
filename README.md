@@ -120,7 +120,7 @@ Run time of the analyses performed in the Validation section by various programs
 <sup>b</sup> Note that the `lipyphilic` library is not able to calculate order parameters for the individual bonds simultaneously, requiring the analysis to be run multiple times. If you are only interested in average order parameters for one entire lipid tail, `lipyphilic` is quite fast (though still slower than `gorder`). Additionally, in this run, `lipyphilic` calculated order parameters only for the entire membrane, not for individual leaflets. In contrast, both `order` and `gorder` were run with this capability enabled.
 
 ## Python and Rust API
-`gorder` is also available as a Python package and a Rust crate. For more information, see the [gorder manual](https://ladme.github.io/gorder-manual/), the Python API documentation, or the [Rust API documentation](https://docs.rs/gorder/latest/gorder).
+`gorder` is also available as a Python package and a Rust crate. For more information, see the [gorder manual](https://ladme.github.io/gorder-manual/), the [Python API documentation](https://ladme.github.io/pygorder-docs), or the [Rust API documentation](https://docs.rs/gorder/latest/gorder).
 
 ## License
 The command line tool, the Python package, and the Rust crate are all released under the MIT License.

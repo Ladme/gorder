@@ -1,4 +1,5 @@
 ## Version 0.6.0
+- **United-atom order parameters:** `gorder` is now able to calculate order parameters in united-atom systems. See the [manual](https://ladme.github.io/gorder-manual/uaorder_basics.html) for more information.
 - **Python API:** `gorder` is now available as a Python package. See the [manual](https://ladme.github.io/gorder-manual/python_api.html) for more information.
 - **Trajectory concatenation:** You can now provide multiple trajectory files which will be all joined into one trajectory and analyzed. In case there are duplicate frames at trajectory boundaries, `gorder` will analyze only one of the duplicate frames. This feature is currently only supported for XTC and TRR files. See the [manual](https://ladme.github.io/gorder-manual/multiple_trajectories.html) for more information.
 - **Manual membrane normals:** Membrane normals can be now assigned manually for each lipid molecule in each trajectory frame. See the [manual](https://ladme.github.io/gorder-manual/manual_normals.html) for more information.
