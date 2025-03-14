@@ -1,9 +1,9 @@
-# Basic calculation of atomistic lipid order parameters.
+# Basic calculation of coarse-grained lipid order parameters.
 # Only full membrane, all output formats.
 # Analysis performed using 4 threads.
 # Manual: ladme.github.io/gorder-manual
 
-# Run using `uv`: `uv run 1_basic_atomistic.py`.
+# Run using `uv`: `uv run 2_basic_coarse_grained.py`.
 
 # /// script
 # requires-python = ">=3.10"
@@ -19,13 +19,10 @@ analysis = gorder.Analysis(
     structure = "system.tpr",
     # Input Gromacs compressed trajectory file.
     trajectory = "traj.xtc",
-    # Calculate atomistic order parameters.
-    analysis_type = gorder.analysis_types.AAOrder(
-        # Calculate order parameters for carbons of the palmitoyl and oleoyl chains.
-        "@membrane and name r'C3.+|C2.+'",
-        # These are the hydrogens of the lipids in the membrane. 
-        # `gorder` will search for bonds between the specified heavy atoms and hydrogens.
-        "@membrane and element name hydrogen"
+    # Calculate coarse-grained order parameters.
+    analysis_type = gorder.analysis_types.CGOrder(
+        # Analyze all bonds between particles of the membrane.
+        "@membrane",
     ),
     # Path to the output yaml file. Contains full results of the analysis.
     output_yaml = "order.yaml",
@@ -48,5 +45,5 @@ results.write()
 # Or access the results manually.
 for molecule in results.molecules():
     print(f"Molecule type '{molecule.molecule()}':")
-    for atom in molecule.atoms():
-        print(f"   Atom type '{atom.atom().atom_name()}': {atom.order().total().value():.4f}")
+    for bond in molecule.bonds():
+        print(f"   Bond type '{bond.atoms()[0].atom_name()}-{bond.atoms()[1].atom_name()}': {bond.order().total().value():.4f}")
