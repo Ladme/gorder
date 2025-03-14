@@ -75,7 +75,7 @@ impl TabProperties {
 
         Self {
             structure: structure.to_owned(),
-            trajectory: trajectory.iter().map(|x| x.clone()).collect(),
+            trajectory: trajectory.to_vec(),
             errors,
             leaflets,
             max_bonds,

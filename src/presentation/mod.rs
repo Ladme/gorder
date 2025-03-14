@@ -383,7 +383,7 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
     ) -> Result<(), WriteError> {
         if trajectory.len() == 1 {
             write_result!(writer, "# Order parameters calculated with 'gorder v{}' using a structure file '{}' and a trajectory file '{}'.\n",
-            crate::GORDER_VERSION, structure, trajectory.get(0).expect(PANIC_MESSAGE));
+            crate::GORDER_VERSION, structure, trajectory.first().expect(PANIC_MESSAGE));
         } else {
             write_result!(writer, "# Order parameters calculated with 'gorder v{}' using a structure file '{}' and trajectory files '{}'.\n",
             crate::GORDER_VERSION, structure, trajectory.join(" "));

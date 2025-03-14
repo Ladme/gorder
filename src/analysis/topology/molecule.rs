@@ -119,14 +119,14 @@ impl Add<MoleculeTypes> for MoleculeTypes {
             (Self::AtomBased(x), Self::AtomBased(y)) => MoleculeTypes::AtomBased(
                 x
                     .into_iter()
-                    .zip(y.into_iter())
+                    .zip(y)
                     .map(|(a, b)| a + b)
                     .collect::<Vec<MoleculeType<UAOrderAtoms>>>()
             ),
             (Self::BondBased(x), Self::BondBased(y)) => MoleculeTypes::BondBased(
                 x
                     .into_iter()
-                    .zip(y.into_iter())
+                    .zip(y)
                     .map(|(a, b)| a + b)
                     .collect::<Vec<MoleculeType<OrderBonds>>>()
             ),
@@ -246,9 +246,9 @@ impl MoleculeType<OrderBonds> {
         system: &System,
         name: String,
         topology: &MoleculeTopology,
-        reference_atoms: &Vec<usize>,
+        reference_atoms: &[usize],
         order_bonds: &HashSet<(usize, usize)>,
-        order_atoms: &Vec<usize>,
+        order_atoms: &[usize],
         min_index: usize,
         leaflet_classification: Option<MoleculeLeafletClassification>,
         ordermap_params: Option<&OrderMap>,
@@ -267,9 +267,8 @@ impl MoleculeType<OrderBonds> {
                 ordermap_params,
                 errors,
                 pbc_handler,
-            )?
-            .into(),
-            reference_atoms: reference_atoms.clone(),
+            )?,
+            reference_atoms: reference_atoms.to_owned(),
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
             membrane_normal,
@@ -298,12 +297,12 @@ impl MoleculeType<OrderBonds> {
 
 impl MoleculeType<UAOrderAtoms> {
     /// Create new molecule type for UA order calculation.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, clippy::ptr_arg)]
     pub(crate) fn new_atom_based<'a>(
         system: &System,
         name: String,
         topology: &MoleculeTopology,
-        reference_atoms: &Vec<usize>,
+        reference_atoms: &[usize],
         order_atoms: &Vec<usize>,
         min_index: usize,
         leaflet_classification: Option<MoleculeLeafletClassification>,
@@ -323,9 +322,8 @@ impl MoleculeType<UAOrderAtoms> {
                 ordermap_params,
                 errors,
                 pbc_handler,
-            )?
-            .into(),
-            reference_atoms: reference_atoms.clone(),
+            )?,
+            reference_atoms: reference_atoms.to_owned(),
             order_atoms: OrderAtoms::new(system, order_atoms, min_index),
             leaflet_classification,
             membrane_normal,

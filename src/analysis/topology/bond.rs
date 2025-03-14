@@ -139,11 +139,7 @@ impl OrderCalculable for OrderBonds {
     #[inline]
     fn get_timewise_info(&self, n_blocks: usize) -> Option<(usize, usize)> {
         if let Some(bond) = self.bond_types.first() {
-            if let Some(timewise) = bond.total().timewise() {
-                Some((timewise.block_size(n_blocks), timewise.n_frames()))
-            } else {
-                None
-            }
+            bond.total().timewise().map(|timewise| (timewise.block_size(n_blocks), timewise.n_frames()))
         } else {
             None
         }
@@ -595,11 +591,7 @@ impl VirtualBondType {
 
     #[inline(always)]
     pub(crate) fn get_timewise_info(&self, n_blocks: usize) -> Option<(usize, usize)> {
-        if let Some(timewise) = self.total.timewise() {
-            Some((timewise.block_size(n_blocks), timewise.n_frames()))
-        } else {
-            None
-        }
+        self.total.timewise().map(|timewise| (timewise.block_size(n_blocks), timewise.n_frames()))
     }
 }
 

@@ -123,6 +123,7 @@ trait MoleculesClassify: Sized {
     ) -> Self::MolConstructor;
 
     /// Create a new molecule type.
+    #[allow(clippy::too_many_arguments)]
     fn molecule_from_constructor<'a>(
         &self,
         system: &System,
@@ -383,7 +384,7 @@ impl MoleculesClassify for BondBasedClassifier {
             }
 
             // collect order bonds
-            if (system
+            if ((system
                 .group_isin(self.order_group_1, a1_index)
                 .expect(PANIC_MESSAGE)
                 && system
@@ -394,14 +395,13 @@ impl MoleculesClassify for BondBasedClassifier {
                     .expect(PANIC_MESSAGE)
                     && system
                         .group_isin(self.order_group_1, a2_index)
-                        .expect(PANIC_MESSAGE))
+                        .expect(PANIC_MESSAGE)))
+                && !order_bonds.insert((a1_index, a2_index))
             {
-                if !order_bonds.insert((a1_index, a2_index)) {
-                    panic!(
-                        "FATAL GORDER ERROR | BondBasedConstructor::from_topology | Order bond between '{}' and '{}' encountered multiple times in a molecule. {}",
-                        a1_index, a2_index, PANIC_MESSAGE
-                    );
-                }
+                panic!(
+                    "FATAL GORDER ERROR | BondBasedConstructor::from_topology | Order bond between '{}' and '{}' encountered multiple times in a molecule. {}",
+                    a1_index, a2_index, PANIC_MESSAGE
+                );
             }
         }
 
@@ -445,7 +445,7 @@ impl MoleculesClassify for BondBasedClassifier {
                 .get_atoms()
                 .iter()
                 .map(|a| a - constructor.min_index)
-                .collect(),
+                .collect::<Vec<usize>>(),
             &constructor.order_bonds,
             &constructor.order_atoms,
             constructor.min_index,
@@ -565,7 +565,7 @@ impl MoleculesClassify for AtomBasedClassifier {
                 .get_atoms()
                 .iter()
                 .map(|a| a - constructor.min_index)
-                .collect(),
+                .collect::<Vec<usize>>(),
             &constructor.order_atoms,
             constructor.min_index,
             leaflet_classification,

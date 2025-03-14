@@ -340,7 +340,7 @@ fn validate_structure_format(file: &str) -> Result<(), ConfigError> {
 }
 
 fn validate_trajectory_format(files: &[String]) -> Result<(), ConfigError> {
-    if files.len() == 0 {
+    if files.is_empty() {
         return Err(ConfigError::NoTrajectoryFile);
     }
 

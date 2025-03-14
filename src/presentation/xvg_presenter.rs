@@ -56,7 +56,7 @@ impl XvgProperties {
     pub(super) fn new(structure: &str, trajectory: &[String], leaflets: bool) -> Self {
         Self {
             structure: structure.to_owned(),
-            trajectory: trajectory.iter().map(|x| x.clone()).collect(),
+            trajectory: trajectory.to_vec(),
             leaflets,
         }
     }

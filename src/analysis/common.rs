@@ -247,7 +247,7 @@ pub(super) fn read_trajectory(
 ) -> Result<SystemTopology, Box<dyn std::error::Error + Send + Sync>> {
     // get the format of the trajectory files from the first file;
     // this assumes that it has been validated before that all trajectories have the same format
-    let format = FileType::from_name(trajectory.get(0).unwrap_or_else(|| 
+    let format = FileType::from_name(trajectory.first().unwrap_or_else(|| 
         panic!("FATAL GORDER ERROR | common::read_trajectory | At least one trajectory file should have been provided. {}", PANIC_MESSAGE))
     );
 
@@ -260,7 +260,7 @@ pub(super) fn read_trajectory(
     if trajectory.len() == 1 {
         colog_info!(
             "Will read trajectory file '{}' (start: {} ps, end: {} ps, step: {}).",
-            trajectory.get(0).expect(PANIC_MESSAGE),
+            trajectory.first().expect(PANIC_MESSAGE),
             begin,
             end,
             step
@@ -280,7 +280,7 @@ pub(super) fn read_trajectory(
     match format {
         FileType::XTC => if trajectory.len() == 1 {
             system.traj_iter_map_reduce::<GroupXtcReader, SystemTopology, AnalysisError>(
-                trajectory.get(0).expect(PANIC_MESSAGE),
+                trajectory.first().expect(PANIC_MESSAGE),
                 n_threads,
                 analyze_frame,
                 topology,
@@ -303,7 +303,7 @@ pub(super) fn read_trajectory(
             )}
         FileType::TRR => if trajectory.len() == 1 {
             system.traj_iter_map_reduce::<TrrReader, SystemTopology, AnalysisError>(
-                trajectory.get(0).expect(PANIC_MESSAGE),
+                trajectory.first().expect(PANIC_MESSAGE),
                 n_threads,
                 analyze_frame,
                 topology,
@@ -326,7 +326,7 @@ pub(super) fn read_trajectory(
             )}
         FileType::GRO => system
             .traj_iter_map_reduce::<GroReader, SystemTopology, AnalysisError>(
-                trajectory.get(0).expect(PANIC_MESSAGE),
+                trajectory.first().expect(PANIC_MESSAGE),
                 n_threads,
                 analyze_frame,
                 topology,
@@ -338,7 +338,7 @@ pub(super) fn read_trajectory(
             ),
         FileType::PDB | FileType::NC | FileType::DCD | FileType::LAMMPSTRJ | FileType::TNG => system
             .traj_iter_map_reduce::<ChemfilesReader, SystemTopology, AnalysisError>(
-                trajectory.get(0).expect(PANIC_MESSAGE),
+                trajectory.first().expect(PANIC_MESSAGE),
                 n_threads,
                 analyze_frame,
                 topology,

@@ -86,7 +86,7 @@ pub(super) fn analyze_united(
     }
 
     let mut data = SystemTopology::new(
-        molecules.into(),
+        molecules,
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
@@ -181,11 +181,9 @@ fn prepare_groups(system: &mut System, analysis: &Analysis) -> Result<(), Topolo
                 GORDER_GROUP_PREFIX, GORDER_GROUP_PREFIX
             ),
         )?,
-        (true, false) => {
-            super::common::create_group(system, "SatUnsat", &group_name!("Saturated"))?
-        }
+        (true, false) => super::common::create_group(system, "SatUnsat", group_name!("Saturated"))?,
         (false, true) => {
-            super::common::create_group(system, "SatUnsat", &group_name!("Unsaturated"))?
+            super::common::create_group(system, "SatUnsat", group_name!("Unsaturated"))?
         }
         (false, false) => return Err(TopologyError::NoUACarbons),
     }
@@ -232,6 +230,7 @@ fn prepare_groups(system: &mut System, analysis: &Analysis) -> Result<(), Topolo
 /// Contains indices of all atoms of this type and its helper atoms.
 #[derive(Debug, Clone)]
 #[allow(private_interfaces)]
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum UAOrderAtomType {
     CH3(CH3Atom),
     CH2(CH2Atom),
@@ -327,8 +326,8 @@ impl UAOrderAtomType {
     /// Copy the virtual bonds of the atom into a vector.
     pub(crate) fn extract_bonds(&self) -> Vec<VirtualBondType> {
         match self {
-            Self::CH3(x) => x.bonds.iter().cloned().collect(),
-            Self::CH2(x) => x.bonds.iter().cloned().collect(),
+            Self::CH3(x) => x.bonds.to_vec(),
+            Self::CH2(x) => x.bonds.to_vec(),
             Self::CH1Saturated(x) => vec![x.bond.clone()],
             Self::CH1Unsaturated(x) => vec![x.bond.clone()],
         }
@@ -613,8 +612,7 @@ impl UAOrderAtomType {
                 let helper2 = match helper1_atom
                     .get_bonded()
                     .iter()
-                    .filter(|&i| i != atom.get_index()) // filter out `target`
-                    .next()
+                    .find(|&i| i != atom.get_index())
                 {
                     Some(x) => x,
                     None => {
@@ -628,7 +626,7 @@ impl UAOrderAtomType {
                 Some(UAType::CH3(AtomTriplet {
                     helper1: bonded_atoms[0],
                     target: atom.get_index(),
-                    helper2: helper2,
+                    helper2,
                 }))
             }
 
@@ -641,7 +639,7 @@ impl UAOrderAtomType {
                     x
                 );
 
-                return None;
+                None
             }
 
             (CarbonKind::Unsaturated, 2) => Some(UAType::CH1Unsat(AtomTriplet {
@@ -659,7 +657,7 @@ impl UAOrderAtomType {
                     x - 1,
                 );
 
-                return None;
+                None
             }
         }
     }
@@ -951,19 +949,19 @@ impl AtomTriplet {
     ) -> Result<[Vector3D; 3], AnalysisError> {
         let [helper1, target, helper2] = self.unpack2pos(system)?;
 
-        let th1 = pbc.vector_to(&target, &helper1);
-        let th2 = pbc.vector_to(&target, &helper2);
+        let th1 = pbc.vector_to(target, helper1);
+        let th2 = pbc.vector_to(target, helper2);
 
         let rot_axis = th2.cross(&th1);
         let rotation1 =
-            Rotation3::from_axis_angle(&Unit::new_normalize(rot_axis.clone()), TETRAHEDRAL_ANGLE);
+            Rotation3::from_axis_angle(&Unit::new_normalize(rot_axis), TETRAHEDRAL_ANGLE);
 
         let hydrogen1_vec = th1.clone().rotate(&rotation1.into());
         let mut hydrogen1 = target.clone();
         hydrogen1.shift(hydrogen1_vec.clone(), BOND_LENGTH);
         pbc.wrap(&mut hydrogen1);
 
-        let normalized_th1 = Unit::new_normalize(th1.deref().clone());
+        let normalized_th1 = Unit::new_normalize(*th1.deref());
 
         let rotation2 = Rotation3::from_axis_angle(&normalized_th1, CH3_ANGLE);
         let hydrogen2_vec = hydrogen1_vec.clone().rotate(&rotation2.into());
@@ -989,19 +987,19 @@ impl AtomTriplet {
     ) -> Result<[Vector3D; 2], AnalysisError> {
         let [helper1, target, helper2] = self.unpack2pos(system)?;
 
-        let th1 = pbc.vector_to(&target, &helper1).to_unit();
-        let th2 = pbc.vector_to(&target, &helper2).to_unit();
+        let th1 = pbc.vector_to(target, helper1).to_unit();
+        let th2 = pbc.vector_to(target, helper2).to_unit();
         let plane_normal = th2.cross(&th1);
         let rot_axis = (th1 - th2).to_unit();
         let rot_vec = Vector3D::from(plane_normal.cross(&rot_axis));
 
         let rotation_positive = Rotation3::from_axis_angle(
-            &Unit::new_normalize(rot_axis.deref().clone()),
+            &Unit::new_normalize(*rot_axis.deref()),
             TETRAHEDRAL_ANGLE_HALF,
         );
 
         let rotation_negative = Rotation3::from_axis_angle(
-            &Unit::new_normalize(rot_axis.deref().clone()),
+            &Unit::new_normalize(*rot_axis.deref()),
             -TETRAHEDRAL_ANGLE_HALF,
         );
 
@@ -1028,13 +1026,13 @@ impl AtomTriplet {
     ) -> Result<[Vector3D; 1], AnalysisError> {
         let [helper1, target, helper2] = self.unpack2pos(system)?;
 
-        let th1 = pbc.vector_to(&target, &helper1);
-        let th2 = pbc.vector_to(&target, &helper2);
+        let th1 = pbc.vector_to(target, helper1);
+        let th2 = pbc.vector_to(target, helper2);
         let gamma = th1.angle(&th2);
         let rot_axis = th1.cross(&th2);
 
         let rotation =
-            Rotation3::from_axis_angle(&Unit::new_normalize(rot_axis.clone()), PI - (gamma / 2.0));
+            Rotation3::from_axis_angle(&Unit::new_normalize(rot_axis), PI - (gamma / 2.0));
 
         let hydrogen_vec = th2.clone().rotate(&rotation.into());
         let mut hydrogen = target.clone();

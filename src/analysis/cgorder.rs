@@ -78,7 +78,7 @@ pub(super) fn analyze_coarse_grained(
     }
 
     let mut data = SystemTopology::new(
-        molecules.into(),
+        molecules,
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),

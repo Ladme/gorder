@@ -236,8 +236,8 @@ pub(crate) trait MolConvert: OrderResults {
     ) -> (Self::MoleculeResults, OrderSummer);
 
     /// Unpack `MoleculeTypes` structure and convert it to the appropriate one or panic if invalid structure was provided.
-    fn unpack_moltypes<'a>(
-        molecule_types: &'a MoleculeTypes,
+    fn unpack_moltypes(
+        molecule_types: &MoleculeTypes,
     ) -> &Vec<MoleculeType<Self::MoleculeBased>>;
 }
 
@@ -281,7 +281,7 @@ impl MolConvert for AAOrderResults {
         )
     }
 
-    fn unpack_moltypes<'a>(molecule_types: &'a MoleculeTypes) -> &Vec<MoleculeType<OrderBonds>> {
+    fn unpack_moltypes(molecule_types: &MoleculeTypes) -> &Vec<MoleculeType<OrderBonds>> {
         match molecule_types {
             MoleculeTypes::AtomBased(_) => panic!(
                 "FATAL GORDER ERROR | AAOrderResults::unpack_moltypes | Invalid `atom-based` moltypes detected. {}", PANIC_MESSAGE),
@@ -358,7 +358,7 @@ impl MolConvert for CGOrderResults {
         )
     }
 
-    fn unpack_moltypes<'a>(molecule_types: &'a MoleculeTypes) -> &Vec<MoleculeType<OrderBonds>> {
+    fn unpack_moltypes(molecule_types: &MoleculeTypes) -> &Vec<MoleculeType<OrderBonds>> {
         match molecule_types {
             MoleculeTypes::AtomBased(_) => panic!(
                 "FATAL GORDER ERROR | CGOrderResults::unpack_moltypes | Invalid `atom-based` moltypes detected. {}", PANIC_MESSAGE),
@@ -419,7 +419,7 @@ impl MolConvert for UAOrderResults {
         )
     }
 
-    fn unpack_moltypes<'a>(molecule_types: &'a MoleculeTypes) -> &Vec<MoleculeType<UAOrderAtoms>> {
+    fn unpack_moltypes(molecule_types: &MoleculeTypes) -> &Vec<MoleculeType<UAOrderAtoms>> {
         match molecule_types {
             MoleculeTypes::AtomBased(x) => x,
             MoleculeTypes::BondBased(_) => panic!(

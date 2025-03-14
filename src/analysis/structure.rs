@@ -211,9 +211,9 @@ fn should_guess_elements(analysis: &Analysis) -> bool {
             unsaturated: y,
             ignore: z,
         } => {
-            x.as_ref().map(|a| has_element(&a)).unwrap_or(false)
-                || y.as_ref().map(|a| has_element(&a)).unwrap_or(false)
-                || z.as_ref().map(|a| has_element(&a)).unwrap_or(false)
+            x.as_ref().map(|a| has_element(a)).unwrap_or(false)
+                || y.as_ref().map(|a| has_element(a)).unwrap_or(false)
+                || z.as_ref().map(|a| has_element(a)).unwrap_or(false)
         }
     } || match analysis.leaflets() {
         None => false,
