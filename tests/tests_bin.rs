@@ -47,6 +47,50 @@ fn test_bin_aa_order_basic_yaml() {
 }
 
 #[test]
+fn test_bin_ua_order_basic_yaml() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/basic_ua.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_ua_order.yaml",
+        "tests/files/ua_order_basic.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_ua_order.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_ua_order_from_aa_yaml() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/ua_from_aa.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_ua_order_from_aa.yaml",
+        "tests/files/ua_order_from_aa.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_ua_order_from_aa.yaml").unwrap();
+}
+
+#[test]
 fn test_bin_cg_order_leaflets_yaml_tab() {
     Command::cargo_bin("gorder")
         .unwrap()
@@ -328,6 +372,28 @@ fn test_bin_cg_vesicle_dynamic() {
     std::fs::remove_file("temp_cg_order_vesicle_dynamic_membrane_normal.yaml").unwrap();
 }
 
+#[test]
+fn test_bin_ua_order_dynamic_yaml() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/ua_dynamic.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_ua_order_dynamic.yaml",
+        "tests/files/ua_order_dynamic_normals.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_ua_order_dynamic.yaml").unwrap();
+}
+
 // testing single NDX file
 #[test]
 fn test_bin_aa_leaflets_once_ndx() {
@@ -538,4 +604,19 @@ fn test_bin_output_config_writing_fails() {
     ));
 
     std::fs::remove_file("temp_aa_order_config_fails.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_ua_no_carbons() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/ua_no_carbons.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .failure()
+        .stdout("")
+        .stderr("[E] error: no carbons for the calculation of united-atom order parameters were specified\n");
 }
