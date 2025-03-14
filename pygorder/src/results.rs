@@ -11,6 +11,8 @@ use gorder_core::prelude::Order as RsOrder;
 use gorder_core::prelude::OrderCollection as RsOrderCollection;
 use gorder_core::prelude::OrderMapsCollection as RsMapsCollection;
 use gorder_core::prelude::PublicMoleculeResults;
+use gorder_core::prelude::UAAtomResults as RsUAAtomResults;
+use gorder_core::prelude::UAMoleculeResults;
 use gorder_core::prelude::{
     AAMoleculeResults, AnalysisResults as RsResults, CGMoleculeResults, PublicOrderResults,
 };
@@ -188,7 +190,21 @@ impl MoleculeResults {
                 .bonds()
                 .map(|bond| BondResults::new(self.results.clone(), bond, self.name.clone()))
                 .collect(),
-            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
+            RsResults::UA(x) => x
+                .get_molecule(&self.name)
+                .unwrap()
+                .atoms()
+                .flat_map(|atom| {
+                    atom.bonds().enumerate().map(|(hydrogen, _)| {
+                        BondResults::new_ua(
+                            self.results.clone(),
+                            atom.atom().relative_index(),
+                            hydrogen,
+                            self.name.clone(),
+                        )
+                    })
+                })
+                .collect(),
         }
     }
 
@@ -208,7 +224,18 @@ impl MoleculeResults {
                     molecule: self.name.clone(),
                     atom: atom.atom().relative_index(),
                 }),
-            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
+            RsResults::UA(x) => x
+                .get_molecule(&self.name)
+                .unwrap()
+                .get_atom(relative_index)
+                .ok_or_else(|| {
+                    APIError::new_err("atom with the given relative index does not exist")
+                })
+                .map(|atom| AtomResults {
+                    results: self.results.clone(),
+                    molecule: self.name.clone(),
+                    atom: atom.atom().relative_index(),
+                }),
             RsResults::CG(_) => Err(APIError::new_err(
                 "results for individual atoms are not available for coarse-grained order parameters; you want `get_bond`"
             ))
@@ -217,6 +244,7 @@ impl MoleculeResults {
 
     /// Get the results for a bond involving atoms with the specified relative indices.
     /// The order of the atom indices does not matter.
+    /// Not available for united-atom order parameters.
     pub fn get_bond(
         &self,
         relative_index_1: usize,
@@ -292,7 +320,13 @@ pub struct AtomResults {
 impl AtomResults {
     /// Get the type of the atom for which these results were calculated.
     pub fn atom(&self) -> AtomType {
-        AtomType(self.get_atom_results().atom().clone())
+        match self.results.as_ref() {
+            RsResults::AA(_) => AtomType(self.get_atom_aa_results().atom().clone()),
+            RsResults::UA(_) => AtomType(self.get_atom_ua_results().atom().clone()),
+            RsResults::CG(_) => unreachable!(
+                "FATAL GORDER ERROR | AtomResults::atom | AtomResults should not exist for CG."
+            ),
+        }
     }
 
     /// Get the name of the molecule type for which these results were calculated.
@@ -302,22 +336,63 @@ impl AtomResults {
 
     /// Get the results for each bond of the atom.
     pub fn bonds(&self) -> Vec<BondResults> {
-        self.get_atom_results()
-            .bonds()
-            .map(|bond| BondResults::new(self.results.clone(), bond, self.molecule.clone()))
-            .collect()
+        match self.results.as_ref() {
+            RsResults::AA(_) => self
+                .get_atom_aa_results()
+                .bonds()
+                .map(|bond| BondResults::new(self.results.clone(), bond, self.molecule.clone()))
+                .collect(),
+            RsResults::UA(_) => self
+                .get_atom_ua_results()
+                .bonds()
+                .enumerate()
+                .map(|(hydrogen, _)| {
+                    BondResults::new_ua(
+                        self.results.clone(),
+                        self.atom,
+                        hydrogen,
+                        self.molecule.clone(),
+                    )
+                })
+                .collect(),
+            RsResults::CG(_) => unreachable!(
+                "FATAL GORDER ERROR | AtomResults::bonds | AtomResults should not exist for CG."
+            ),
+        }
     }
 
-    /// Get the results for a bond between this heavy atom and the hydrogen atom with the specified relative index.
+    /// Get the results for a bond between this heavy atom and the hydrogen atom with the specified relative index (AA) or
+    /// get the results for a bond between this heavy atom and the virtual hydrogen atom with the specified index (UA).
     pub fn get_bond(&self, relative_index: usize) -> PyResult<BondResults> {
-        self.get_atom_results()
-            .get_bond(relative_index)
-            .ok_or_else(|| {
-                APIError::new_err(
-                    "heavy atom is not bonded to hydrogen with the given relative index",
-                )
-            })
-            .map(|bond| BondResults::new(self.results.clone(), bond, self.molecule.clone()))
+        match self.results.as_ref() {
+            RsResults::AA(_) => self
+                .get_atom_aa_results()
+                .get_bond(relative_index)
+                .ok_or_else(|| {
+                    APIError::new_err(
+                        "heavy atom is not bonded to hydrogen with the given relative index",
+                    )
+                })
+                .map(|bond| BondResults::new(self.results.clone(), bond, self.molecule.clone())),
+            RsResults::UA(_) => self
+                .get_atom_ua_results()
+                .bonds()
+                .nth(relative_index)
+                .ok_or_else(|| {
+                    APIError::new_err("carbon does not have a virtual hydrogen with this index")
+                })
+                .map(|_| {
+                    BondResults::new_ua(
+                        self.results.clone(),
+                        self.atom,
+                        relative_index,
+                        self.molecule.clone(),
+                    )
+                }),
+            RsResults::CG(_) => unreachable!(
+                "FATAL GORDER ERROR | AtomResults::get_bond | AtomResults should not exist for CG."
+            ),
+        }
     }
 
     /// Get the order parameters calculated for this atom.
@@ -340,18 +415,25 @@ impl AtomResults {
 }
 
 impl AtomResults {
-    /// Helper method for obtaining reference to the results for this atom.
-    fn get_atom_results(&self) -> &RsAtomResults {
+    /// Helper method for obtaining reference to the results for this AA atom.
+    fn get_atom_aa_results(&self) -> &RsAtomResults {
         match self.results.as_ref() {
             RsResults::AA(x) => x
                 .get_molecule(&self.molecule)
                 .unwrap()
                 .get_atom(self.atom)
                 .unwrap(),
-            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
-            RsResults::CG(_) => unreachable!(
-                "FATAL GORDER ERROR | AtomResults::bonds | Results should not be coarse-grained."
+            RsResults::CG(_) | RsResults::UA(_) => unreachable!(
+                "FATAL GORDER ERROR | AtomResults::get_atom_results | Results should be atomistic."
             ),
+        }
+    }
+
+    /// Helper method for obtaining reference to the results for this UA atom.
+    fn get_atom_ua_results(&self) -> &RsUAAtomResults {
+        match self.results.as_ref() {
+            RsResults::AA(_) | RsResults::CG(_) => unreachable!("FATAL GORDER ERROR | AtomResults::get_atom_ua_results | Results should be united-atom."),
+            RsResults::UA(x) => x.get_molecule(&self.molecule).unwrap().get_atom(self.atom).unwrap(),
         }
     }
 }
@@ -361,6 +443,8 @@ impl AtomResults {
 pub struct BondResults {
     results: Arc<RsResults>,
     molecule: String,
+    // Relative indices of the involved atoms (CG, AA) OR
+    // relative index of the involved atom and the bond index (UA).
     bond: (usize, usize),
 }
 
@@ -372,26 +456,42 @@ impl BondResults {
     }
 
     /// Get the atom types involved in this bond type.
-    pub fn atoms(&self) -> (AtomType, AtomType) {
-        let atoms = self.get_bond_results().atoms();
-        (AtomType(atoms.0.clone()), AtomType(atoms.1.clone()))
+    pub fn atoms(&self) -> Result<(AtomType, AtomType), PyErr> {
+        match self.results.as_ref() {
+            RsResults::AA(_) | RsResults::CG(_) => {
+                let atoms = self.get_bond_results().atoms();
+                Ok((AtomType(atoms.0.clone()), AtomType(atoms.1.clone())))
+            }
+            RsResults::UA(_) => Err(APIError::new_err(
+                "cannot access information about atoms in a virtual united-atom bond; the bond only involves one real atom"))
+        }
     }
 
     /// Get the order parameters calculated for this bond.
     pub fn order(&self) -> OrderCollection {
+        let identifier = match self.results.as_ref() {
+            RsResults::AA(_) | RsResults::CG(_) => OrderIdentifier::Bond(self.bond.0, self.bond.1),
+            RsResults::UA(_) => OrderIdentifier::VirtualBond(self.bond.0, self.bond.1),
+        };
+
         OrderCollection {
             results: self.results.clone(),
             molecule: Some(self.molecule.clone()),
-            identifier: OrderIdentifier::Bond(self.bond.0, self.bond.1),
+            identifier: identifier,
         }
     }
 
     /// Get the maps of order parameters calculated for this bond.
     pub fn ordermaps(&self) -> OrderMapsCollection {
+        let identifier = match self.results.as_ref() {
+            RsResults::AA(_) | RsResults::CG(_) => OrderIdentifier::Bond(self.bond.0, self.bond.1),
+            RsResults::UA(_) => OrderIdentifier::VirtualBond(self.bond.0, self.bond.1),
+        };
+
         OrderMapsCollection {
             results: self.results.clone(),
             molecule: Some(self.molecule.clone()),
-            identifier: OrderIdentifier::Bond(self.bond.0, self.bond.1),
+            identifier: identifier,
         }
     }
 }
@@ -409,7 +509,22 @@ impl BondResults {
         }
     }
 
+    /// Create a new BondResults wrapper for the united-atom bond.
+    fn new_ua(
+        all_results: Arc<RsResults>,
+        carbon_index: usize,
+        hydrogen_index: usize,
+        molecule: String,
+    ) -> Self {
+        BondResults {
+            results: all_results,
+            molecule,
+            bond: (carbon_index, hydrogen_index),
+        }
+    }
+
     /// Helper method for obtaining reference to the results for this bond.
+    /// Panics, if used for UA BondResults.
     fn get_bond_results(&self) -> &RsBondResults {
         match self.results.as_ref() {
             RsResults::AA(x) => x
@@ -422,7 +537,7 @@ impl BondResults {
                 .unwrap()
                 .get_bond(self.bond.0, self.bond.1)
                 .unwrap(),
-            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
+            RsResults::UA(_) => unreachable!("FATAL GORDER ERROR | BondResults::get_bond_results | This method cannot be used for united-atom results."),
         }
     }
 }
@@ -462,6 +577,7 @@ enum OrderIdentifier {
     Average,
     Bond(usize, usize),
     Atom(usize),
+    VirtualBond(usize, usize),
 }
 
 impl OrderIdentifier {
@@ -471,6 +587,7 @@ impl OrderIdentifier {
             Self::Average => leaflet.get_order(mol_results.average_order()),
             Self::Bond(x, y) => leaflet.get_order(mol_results.get_bond(*x, *y)?.order()),
             Self::Atom(x) => leaflet.get_order(mol_results.get_atom(*x)?.order()),
+            Self::VirtualBond(_, _) => unreachable!("FATAL GORDER ERROR | OrderIdentifier::get_order_aa | Virtual bond identifier cannot be used for AA."),
         }
     }
 
@@ -479,7 +596,18 @@ impl OrderIdentifier {
         match self {
             Self::Average => leaflet.get_order(mol_results.average_order()),
             Self::Bond(x, y) => leaflet.get_order(mol_results.get_bond(*x, *y)?.order()),
-            Self::Atom(_) => panic!("FATAL GORDER ERROR | OrderIdentifier::get_order_cg | Atom identifier cannot be used for CG."),
+            Self::Atom(_) => unreachable!("FATAL GORDER ERROR | OrderIdentifier::get_order_cg | Atom identifier cannot be used for CG."),
+            Self::VirtualBond(_, _) => unreachable!("FATAL GORDER ERROR | OrderIdentifier::get_order_cg | Virtual bond identifier cannot be used for CG."),
+        }
+    }
+
+    #[inline]
+    fn get_order_ua(&self, mol_results: &UAMoleculeResults, leaflet: Leaflet) -> Option<Order> {
+        match self {
+            Self::Average => leaflet.get_order(mol_results.average_order()),
+            Self::Bond(_, _) => unreachable!("FATAL GORDER ERROR | OrderIdentifier::get_order_ua | Bond identifier cannot be used for UA."),
+            Self::Atom(x) => leaflet.get_order(mol_results.get_atom(*x)?.order()),
+            Self::VirtualBond(x, y) => leaflet.get_order(mol_results.get_atom(*x)?.bonds().nth(*y)?.order()),
         }
     }
 
@@ -493,6 +621,9 @@ impl OrderIdentifier {
             Self::Average => leaflet.get_ordermap(mol_results.average_ordermaps()),
             Self::Bond(x, y) => leaflet.get_ordermap(mol_results.get_bond(*x, *y)?.ordermaps()),
             Self::Atom(x) => leaflet.get_ordermap(mol_results.get_atom(*x)?.ordermaps()),
+            Self::VirtualBond(_, _) => {
+                unreachable!("FATAL GORDER ERROR | OrderIdentifier::get_ordermap_aa | Virtual bond identifier cannot be used for AA.")
+            }
         }
     }
 
@@ -507,7 +638,24 @@ impl OrderIdentifier {
             Self::Bond(x, y) => {
                 leaflet.get_ordermap(mol_results.get_bond(*x, *y)?.ordermaps())
             }
-            Self::Atom(_) => panic!("FATAL GORDER ERROR | OrderIdentifier::get_ordermap_cg | Atom identifier cannot be used for  CG.")
+            Self::Atom(_) => panic!("FATAL GORDER ERROR | OrderIdentifier::get_ordermap_cg | Atom identifier cannot be used for  CG."),
+            Self::VirtualBond(_, _) => {
+                unreachable!("FATAL GORDER ERROR | OrderIdentifier::get_ordermap_cg | Virtual bond identifier cannot be used for CG.")
+            }
+        }
+    }
+
+    #[inline]
+    fn get_ordermap_ua<'a>(
+        &self,
+        mol_results: &'a UAMoleculeResults,
+        leaflet: Leaflet,
+    ) -> Option<&'a GridMapF32> {
+        match self {
+            Self::Average => leaflet.get_ordermap(mol_results.average_ordermaps()),
+            Self::Bond(_, _) => unreachable!("FATAL GORDER ERROR | OrderIdentifier::get_ordermap_ua | Bond identifier cannot be used for UA."),
+            Self::Atom(x) => leaflet.get_ordermap(mol_results.get_atom(*x)?.ordermaps()),
+            Self::VirtualBond(x, y) => leaflet.get_ordermap(mol_results.get_atom(*x)?.bonds().nth(*y)?.ordermaps()),
         }
     }
 }
@@ -557,7 +705,9 @@ impl OrderCollection {
                 RsResults::CG(results) => self
                     .identifier
                     .get_order_cg(results.get_molecule(mol)?, leaflet),
-                RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
+                RsResults::UA(results) => self
+                    .identifier
+                    .get_order_ua(results.get_molecule(mol)?, leaflet),
             },
         }
     }
@@ -636,7 +786,9 @@ impl OrderMapsCollection {
                 RsResults::CG(results) => self
                     .identifier
                     .get_ordermap_cg(results.get_molecule(mol)?, leaflet),
-                RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
+                RsResults::UA(results) => self
+                    .identifier
+                    .get_ordermap_ua(results.get_molecule(mol)?, leaflet),
             },
         }
     }
@@ -795,7 +947,11 @@ impl Convergence {
                 .unwrap()
                 .convergence()
                 .unwrap(),
-            RsResults::UA(_) => todo!("NOT IMPLEMENTED"),
+            RsResults::UA(results) => results
+                .get_molecule(&self.molecule)
+                .unwrap()
+                .convergence()
+                .unwrap(),
         }
     }
 }
