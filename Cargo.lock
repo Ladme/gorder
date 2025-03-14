@@ -586,6 +586,7 @@ dependencies = [
 [[package]]
 name = "groan_rs"
 version = "0.10.0-dev.4"
+source = "git+https://github.com/Ladme/groan_rs.git?branch=v0.10#922e598e1d2f3fbdeaed251b27b1ffffd8a1a7c4"
 dependencies = [
  "cc",
  "chemfiles",

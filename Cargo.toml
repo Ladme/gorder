@@ -12,7 +12,7 @@ exclude = ["/tests", "/validation", "/pygorder", "/examples"]
 
 [dependencies]
 backitup = "0.1.1"
-groan_rs = { path = "../groan_rs", features = [
+groan_rs = { git = "https://github.com/Ladme/groan_rs.git", branch = "v0.10", features = [
     "parallel",
     "chemfiles",
     "serde",
