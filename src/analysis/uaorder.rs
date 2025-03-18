@@ -815,7 +815,7 @@ impl UAAtom<1, 3> for CH1UnsaturatedAtom {
     fn get_bond(&mut self, index: usize) -> &mut VirtualBondType {
         if index != 0 {
             panic!(
-                "FATAL GORDER ERROR | CH1Atom::get_bond | Bond index `{}` out of range. {}",
+                "FATAL GORDER ERROR | CH1UnsaturatedAtom::get_bond | Bond index `{}` out of range. {}",
                 index, PANIC_MESSAGE
             )
         }
@@ -865,7 +865,7 @@ impl UAAtom<1, 4> for CH1SaturatedAtom {
     fn get_bond(&mut self, index: usize) -> &mut VirtualBondType {
         if index != 0 {
             panic!(
-                "FATAL GORDER ERROR | CH1Atom::get_bond | Bond index `{}` out of range. {}",
+                "FATAL GORDER ERROR | CH1SaturatedAtom::get_bond | Bond index `{}` out of range. {}",
                 index, PANIC_MESSAGE
             )
         }

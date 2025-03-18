@@ -117,7 +117,7 @@ impl DynamicMembraneNormal {
     ) -> Result<&Vector3D, AnalysisError> {
         let normal = self.normals.get_mut(index)
             .unwrap_or_else(||
-                panic!("FATAL GORDER ERROR | DynamicMembraneNormal::get_normal (1) | Molecule not found. Molecule with internal `gorder` index `{}` should exist. {}", 
+                panic!("FATAL GORDER ERROR | DynamicMembraneNormal::get_normal | Molecule not found. Molecule with internal `gorder` index `{}` should exist. {}", 
                     index, PANIC_MESSAGE))
             .get_or_try_init(|| {
                 Self::calculate_normal(*self.heads.get(index).expect(PANIC_MESSAGE), system, self.radius, pbc)

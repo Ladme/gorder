@@ -399,7 +399,7 @@ impl MoleculesClassify for BondBasedClassifier {
                 && !order_bonds.insert((a1_index, a2_index))
             {
                 panic!(
-                    "FATAL GORDER ERROR | BondBasedConstructor::from_topology | Order bond between '{}' and '{}' encountered multiple times in a molecule. {}",
+                    "FATAL GORDER ERROR | BondBasedClassifier::constructor_from_topology | Order bond between '{}' and '{}' encountered multiple times in a molecule. {}",
                     a1_index, a2_index, PANIC_MESSAGE
                 );
             }

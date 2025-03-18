@@ -166,8 +166,7 @@ impl<O: MolConvert> ResultsConverter<O> {
         )
         .unwrap_or_else(|e| {
             panic!(
-                "FATAL GORDER ERROR | ResultsConverter::convert_ordermap | \
-            Could not convert Map to GridMapF32 ({}). {}",
+                "FATAL GORDER ERROR | ResultsConverter::convert_ordermap | Could not convert Map to GridMapF32 ({}). {}",
                 e, PANIC_MESSAGE
             )
         })
@@ -236,9 +235,7 @@ pub(crate) trait MolConvert: OrderResults {
     ) -> (Self::MoleculeResults, OrderSummer);
 
     /// Unpack `MoleculeTypes` structure and convert it to the appropriate one or panic if invalid structure was provided.
-    fn unpack_moltypes(
-        molecule_types: &MoleculeTypes,
-    ) -> &Vec<MoleculeType<Self::MoleculeBased>>;
+    fn unpack_moltypes(molecule_types: &MoleculeTypes) -> &Vec<MoleculeType<Self::MoleculeBased>>;
 }
 
 impl MolConvert for AAOrderResults {
