@@ -1,0 +1,31 @@
+# This file was created Wed Mar 19 14:15:41 2025
+# Created by:
+#                      :-) GROMACS - gmx order, 2024.4 (-:
+# 
+# Executable:   /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo/bin/gmx_mpi
+# Data prefix:  /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo
+# Working dir:  /home/ladme/Documents/Programming/Rust/gorder-article/validation/ua_berger/gmx_order_palmitoyl
+# Command line:
+#   gmx_mpi order -s ../files/system.tpr -f ../files/traj.xtc -n index_palmitoyl.ndx -od order_palmitoyl.xvg
+# gmx order is part of G R O M A C S:
+#
+# S  C  A  M  O  R  G
+#
+@    title "Order tensor diagonal elements"
+@    xaxis  label "Atom"
+@    yaxis  label "S"
+@TYPE xy
+           1      -0.192806      -0.143901       0.336707
+           2       -0.21715      -0.162744       0.379893
+           3      -0.203468      -0.179036       0.382504
+           4       -0.21557      -0.171734       0.387304
+           5      -0.210273      -0.172441       0.382714
+           6      -0.213347      -0.162046       0.375393
+           7      -0.200773      -0.155225       0.355998
+           8      -0.196262      -0.143125       0.339387
+           9      -0.177419      -0.131943       0.309362
+          10       -0.16768      -0.116444       0.284124
+          11      -0.145888      -0.102816       0.248704
+          12      -0.133355     -0.0866311       0.219986
+          13      -0.109033     -0.0712432       0.180276
+          14     -0.0928879     -0.0514744       0.144363

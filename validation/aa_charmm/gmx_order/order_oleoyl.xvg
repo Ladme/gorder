@@ -1,0 +1,33 @@
+# This file was created Wed Mar 19 10:03:15 2025
+# Created by:
+#                      :-) GROMACS - gmx order, 2024.4 (-:
+# 
+# Executable:   /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo/bin/gmx_mpi
+# Data prefix:  /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo
+# Working dir:  /home/ladme/Documents/Programming/Rust/gorder-article/validation/aa_charmm/gmx_order
+# Command line:
+#   gmx_mpi order -s ../files/system.tpr -f ../files/traj.xtc -n index_oleoyl.ndx -od order_oleoyl.xvg
+# gmx order is part of G R O M A C S:
+#
+# GROwing Monsters And Cloning Shrimps
+#
+@    title "Deuterium order parameters"
+@    xaxis  label "Atom"
+@    yaxis  label "Scd"
+@TYPE xy
+           1      0.0929617
+           2       0.201888
+           3       0.197297
+           4       0.207426
+           5       0.184071
+           6       0.176169
+           7      0.0938156
+           8       0.104504
+           9       0.100987
+          10      0.0693433
+          11       0.117934
+          12       0.122785
+          13       0.127227
+          14       0.114472
+          15       0.104218
+          16      0.0803462

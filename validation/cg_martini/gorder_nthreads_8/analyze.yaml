@@ -1,0 +1,7 @@
+structure: ../files/system.tpr
+trajectory: ../files/traj.xtc
+analysis_type: !CGOrder
+  beads: "resname POPC"
+output: order.yaml
+n_threads: 8
+overwrite: true

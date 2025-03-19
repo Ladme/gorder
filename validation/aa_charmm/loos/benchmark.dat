@@ -1,0 +1,2 @@
+Benchmark 1: order_params ../files/system.psf ../files/traj.xtc "resname == \"POPC\" && name =~ \"^C2[1-9][0-9]?\"" 2 18 --1 && order_params ../files/system.psf ../files/traj.xtc "resname == \"POPC\" && name =~ \"^C3[1-9][0-9]?\"" 2 16 --1
+  Time (abs ≡):        60.686 s               [User: 61.043 s, System: 0.967 s]

@@ -1,0 +1,18 @@
+# order_params '../files/system.psf' '../files/traj.xtc' 'resname == "POPC" && name =~ "^C3[1-9][0-9]?"' '2' '16' - ladme (Wed Mar 19 15:53:25 2025) {/home/ladme/Documents/Programming/Rust/gorder-article/validation/aa_charmm/loos} [LOOS 4.1.0 BUILT ON 20250216 05:18:28]
+# guessing there is 1 residue per lipid
+# Carbon  S_cd   +/-
+2	 0.21650 0.01356
+3	 0.16800 0.01531
+4	 0.20067 0.01467
+5	 0.20068 0.01525
+6	 0.21274 0.01482
+7	 0.20302 0.01509
+8	 0.20235 0.01539
+9	 0.18626 0.01567
+10	 0.17837 0.01607
+11	 0.15942 0.01660
+12	 0.14790 0.01687
+13	 0.12754 0.01748
+14	 0.11088 0.01745
+15	 0.08325 0.01728
+16	 0.02789 0.00985

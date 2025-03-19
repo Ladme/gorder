@@ -1,0 +1,2 @@
+Benchmark 1: uv run calc_order.py
+  Time (abs ≡):        1854.721 s               [User: 1854.098 s, System: 2.232 s]

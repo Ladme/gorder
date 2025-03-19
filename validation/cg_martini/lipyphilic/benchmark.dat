@@ -1,0 +1,2 @@
+Benchmark 1: uv run analyze.py
+  Time (abs ≡):        86.300 s               [User: 85.083 s, System: 2.572 s]

@@ -12,6 +12,8 @@ Command line tool for calculating lipid order parameters from Gromacs simulation
 $ cargo install gorder
 ```
 
+(*You need to have `cmake` version 3 or higher installed on your system.*)
+
 ## Usage
 
 1) Prepare a yaml file describing the parameters of your analysis. It's as simple as:
@@ -58,13 +60,16 @@ Performs scrambling-safe assignment of lipids to membrane leaflets using three d
 Dynamically calculates membrane normals based on the membrane's shape, enabling the calculation of order parameters for highly curved systems such as micelles, tubes, and vesicles.
 
 - 🗺️ [**Order parameter maps**](https://ladme.github.io/gorder-manual/ordermaps.html)  
-Constructs 2D maps of order parameters, so you know what parts of the membrane are ordered and disordered.
+Constructs 2D projections of order parameters, so you know what parts of the membrane are ordered and disordered.
 
 - 📉 [**Error estimation**](https://ladme.github.io/gorder-manual/errors.html)  
 Automatically estimates the error of the analysis and indicates how well your analysis has converged.
 
 - 🌍 [**Analysis of specific membrane regions**](https://ladme.github.io/gorder-manual/geometry.html)  
 Dynamically selects lipids in a specified part of the membrane and calculates order parameters only for them.
+
+- 🔗 [**Trajectory concatenation**](https://ladme.github.io/gorder-manual/multiple_trajectories.html)  
+Seamlessly concatenates multiple XTC trajectories during the analysis, in most cases eliminating the need for data preprocessing.
 
 - ⚡ [**Extremely fast**](#benchmarking)  
 Is extremely fast due to its ability to read only the necessary atoms from XTC files and its support for multithreading.
@@ -78,46 +83,61 @@ Includes a comprehensive manual detailing how to use the program, along with its
 ## Validation
 
 ### Atomistic order parameters
-A CHARMM36m simulation of a membrane consisting of 256 lipids was used to validate the calculation of atomistic order parameters by the `gorder` program. In total, the system contained ~64,500 atoms. The trajectory was 200 ns long and consisted of 10,000 frames. The following programs were used for validation:
+A CHARMM36m simulation of a membrane consisting of 256 lipids was used to validate the calculation of atomistic order parameters. In total, the system contained ~64,500 atoms. The trajectory was 200 ns long and consisted of 10,000 frames. The following tools were used for validation:
 - [`OrderParameter.py` by NMR Lipids](https://github.com/NMRLipids/Databank/blob/6a91be2270e89ec7bb9c75006c2f2a2507c24a01/Scripts/BuildDatabank/OrderParameter.py)
 - [VMD's `calc_op.tcl` script](https://www.ks.uiuc.edu/Research/vmd/mailing_list/vmd-l/att-14731/calc_op.tcl)
+- [`order_params` tool provided as a part of `LOOS`](https://github.com/GrossfieldLab/loos)
 
-We also present a comparison of the calculated order parameters with the results from [`gmx order`](https://manual.gromacs.org/2021.4/onlinehelp/gmx-order.html) (version 2021.4). Note that `gmx order` actually calculates united atom order parameters, so it is not suitable for atomistic systems. (However, many users still utilize it.)
+![Two charts. In each chart, there are four completely overlapping curves.](validation/aaorder_validation.png)
 
-![Three completely overlapping curves, appearing as a single curve, and an additional dashed curve corresponding to `gmx order`.](validation/aaorder_validation.png)
-
-*All programs, except for `gmx order`, produce the same results. Minor variations due to different calculation approaches are too small to be visible in the chart. `gmx order` returns slightly different values (and no value for carbon #16) because it calculates united atom, not atomistic, order parameters.*
+*Left chart shows the results for the palmitoyl tail of POPC, the right chart for the oleoyl tail. All tools return the same results.*
 
 ### Coarse-grained order parameters
-A Martini 3 simulation of a membrane consisting of 512 POPC lipids was used to validate the calculation of CG order parameters by the `gorder` program. In total, the system contained ~16,800 beads. The trajectory had a length of 1 μs and consisted of 10,000 frames. The following programs/libraries were used for validation:
+A Martini 3 simulation of a membrane consisting of 512 POPC lipids was used to validate the calculation of CG order parameters. In total, the system contained ~16,800 beads. The trajectory had a length of 1 μs and consisted of 10,000 frames. The following tools were used for validation:
 - [Martini's `do-order` script](https://cgmartini.nl/docs/downloads/tools/other-tools.html#do-order)
 - [`lipyphilic` library](https://lipyphilic.readthedocs.io/en/stable/index.html)
 - [Ladme's `order` program](https://doi.org/10.5281/zenodo.8369479)
 
-![Four completely overlapping curves, appearing as a single curve.](validation/cgorder_validation.png)
+![Four completely overlapping curves.](validation/cgorder_validation.png)
 
 *All programs produce the same results. Minor variations due to the employed calculation approaches are too small to be visible in the chart.*
 
+### United-atom order parameters
+A Berger lipids simulation of a membrane obtained from the NMR Lipids DataBank [[link to archive](https://zenodo.org/records/1402417)] consisting of 256 POPC lipids was used to validate the calculation of UA order parameters. In total, the system contained ~44,300 atoms. The trajectory had a length of 300 ns and consisted of 3,000 frames. The following tools were used for validation:
+- [`buildH` tool](https://github.com/patrickfuchs/buildH)
+- [`g_lomepro` program](https://github.com/vgapsys/g_lomepro/)
+- [`gmx order`](https://manual.gromacs.org/2024.4/onlinehelp/gmx-order.html) (saturated carbons only)
+
+![Two charts. In the left chart, four curves completely overlap. In the right chart, three curves completely overlap and one deviates in the central region.](validation/uaorder_validation.png)
+
+*Left chart shows the results for the palmitoyl tail of POPC, the right chart for the oleoyl tail. `buildH` and `gorder` generate identical output. `g_lomepro` also produces the same output, except for the methyl carbon, for which no order parameter is reported. `gmx order` behaves the same as `g_lomepro` for the palmitoyl tail, but, as reported previously [[link to article](https://doi.org/10.1021/acs.jctc.7b00643)], returns incorrect order parameters for unsaturated carbons of the oleoyl tail.*
+
 ## Benchmarking
 ### Atomistic order parameters
-Run time of the analyses performed in the Validation section by various programs:
+Run times of the analyses performed in the Validation section by various tools. We also show the performance of `gmx order`, even though it actually calculates united-atom order parameters, because it is (unfortunately) commonly used for analyses of all-atom systems as well:
 ![Bar chart showing the run time of various programs.](validation/aaorder_benchmark.png)
 
-*Benchmarks were conducted on Debian 12 with an 8-core Intel Core i7-10700 CPU and SK Hynix BC511 HFM512GDJTNI SSD. Benchmarking of `gmx order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). The `NMR lipids` script and `calc_op.tcl` were dramatically slower, so only approximate values obtained using GNU's `time` are reported.*
+*Benchmarks were conducted using `gorder` version 0.6 on GNU/Linux Mint 20.2 with an 8-core Intel Core i7-11700 CPU and Samsung 870 EVO SSD. The benchmarks were run with a cold cache using [`hyperfine`](https://github.com/sharkdp/hyperfine). Both `gorder` and `gmx order` were run 5 times each, while `calc_order`, `calc_op.tcl`, and `order_params` were slower so only 1 run for each was performed.*
 
-<sup>a</sup> Note that, unlike `calc_op.tcl` and `gmx order`, the `OrderParameter.py` script provides information about the order of individual C-H bonds. `gorder` also provides this information.
+<sup>*</sup> Note that `order_params` requires the analysis to be run twice to obtain full order parameters for both chains. The reported time is for both runs.
 
-<sup>b</sup> Note that `gmx order` calculates united atom order parameters, not atomistic order parameters. For saturated tails, this calculation is reasonably accurate; however, for unsaturated tails, it is **very** inaccurate [[1]](https://doi.org/10.1021/acs.jctc.7b00643). Additionally, it is slower and more tedious to use than `gorder`, so there is little justification for using it for atomistic systems.
+<sup>#</sup> Note that `gmx order` requires the analysis to be run twice to obtain full order parameters for both chains. More importantly, note that `gmx order` does not calculate the order parameters correctly. **You should not use it for an atomistic system!** Even if you only want to calculate lipid order parameters for a single (saturated) chain, `gmx order` is still much slower than `gorder` run using a single thread (20.70 seconds vs 11.40 seconds).
 
 ### Coarse-grained order parameters
-Run time of the analyses performed in the Validation section by various programs:
+Run times of the analyses performed in the Validation section by various tools:
 ![Bar chart showing the run time of various programs.](validation/cgorder_benchmark.png)
 
-*Benchmarks were conducted on Debian 12 with with an 8-core Intel Core i7-10700 CPU and SK Hynix BC511 HFM512GDJTNI SSD. Benchmarking of `order` and `gorder` was performed using [`hyperfine`](https://github.com/sharkdp/hyperfine). `do-order` and `lipyphilic` were dramatically slower, so only an approximate value obtained using GNU's `time` is reported.*
+*Benchmarks were conducted using `gorder` version 0.6 on GNU/Linux Mint 20.2 with an 8-core Intel Core i7-11700 CPU and Samsung 870 EVO SSD. The benchmarks were run with a cold cache using [`hyperfine`](https://github.com/sharkdp/hyperfine). Both `gorder` and `order` were run 5 times each, while `do-order` and `lipyphilic` were dramatically slower so only 1 run for each was performed.*
 
-<sup>a</sup> Note that the `do-order` script is not able to calculate order parameters for individual leaflets in the same run. In contrast, both `order` and `gorder` were run with this capability enabled.
+<sup>*</sup> Note that the `lipyphilic` library is not able to calculate order parameters for the individual bonds simultaneously, requiring the analysis to be run multiple times. The reported time is the sum of all runs. If you are only interested in average order parameters for one entire lipid tail, `lipyphilic` is quite fast (though still slower than `gorder`).
 
-<sup>b</sup> Note that the `lipyphilic` library is not able to calculate order parameters for the individual bonds simultaneously, requiring the analysis to be run multiple times. If you are only interested in average order parameters for one entire lipid tail, `lipyphilic` is quite fast (though still slower than `gorder`). Additionally, in this run, `lipyphilic` calculated order parameters only for the entire membrane, not for individual leaflets. In contrast, both `order` and `gorder` were run with this capability enabled.
+### United-atom order parameters
+Run times of the analyses perform in the Validation section by various tools:
+![Bar chart showing the run time of various programs.](validation/uaorder_benchmark.png)
+
+*Benchmarks were conducted using `gorder` version 0.6 on GNU/Linux Mint 20.2 with an 8-core Intel Core i7-11700 CPU and Samsung 870 EVO SSD. The benchmarks were run with a cold cache using [`hyperfine`](https://github.com/sharkdp/hyperfine). `gorder`, `g_lomepro`, and `gmx order` were run 5 times each, while `buildH` was dramatically slower so only 1 run was performed for it. `g_lomepro` was run using 8 threads.*
+
+<sup>*</sup> Note that `g_lomepro` and `gmx order` require the analysis to be run twice to obtain full order parameters for both chains. The reported times are for both runs. Even if you only want to calculate lipid order parameters for a single (saturated) chain, `gmx order` is still slightly slower than `gorder` run using a single thread (4.75 seconds vs 4.16 seconds).
 
 ## Python and Rust API
 `gorder` is also available as a Python package and a Rust crate. For more information, see the [gorder manual](https://ladme.github.io/gorder-manual/), the [Python API documentation](https://ladme.github.io/pygorder-docs), or the [Rust API documentation](https://docs.rs/gorder/latest/gorder).

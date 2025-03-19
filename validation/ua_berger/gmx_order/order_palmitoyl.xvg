@@ -1,0 +1,31 @@
+# This file was created Wed Mar 19 10:12:25 2025
+# Created by:
+#                      :-) GROMACS - gmx order, 2024.4 (-:
+# 
+# Executable:   /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo/bin/gmx_mpi
+# Data prefix:  /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo
+# Working dir:  /home/ladme/Documents/Programming/Rust/gorder-article/validation/ua_berger/gmx_order
+# Command line:
+#   gmx_mpi order -s ../files/system.tpr -f ../files/traj.xtc -n index_palmitoyl.ndx -od order_palmitoyl.xvg
+# gmx order is part of G R O M A C S:
+#
+# Glycine aRginine prOline Methionine Alanine Cystine Serine
+#
+@    title "Deuterium order parameters"
+@    xaxis  label "Atom"
+@    yaxis  label "Scd"
+@TYPE xy
+           1       0.176505
+           2       0.199015
+           3       0.195324
+           4       0.200958
+           5       0.197662
+           6       0.196247
+           7        0.18559
+           8        0.17855
+           9        0.16226
+          10       0.150601
+          11       0.131531
+          12        0.11778
+          13      0.0964362
+          14      0.0790834

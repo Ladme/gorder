@@ -1,0 +1,31 @@
+# This file was created Wed Mar 19 16:37:38 2025
+# Created by:
+#                      :-) GROMACS - gmx order, 2024.4 (-:
+# 
+# Executable:   /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo/bin/gmx_mpi
+# Data prefix:  /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo
+# Working dir:  /home/ladme/Documents/Programming/Rust/gorder-article/validation/aa_charmm/gmx_order_palmitoyl
+# Command line:
+#   gmx_mpi order -s ../files/system.tpr -f ../files/traj.xtc -n index_palmitoyl.ndx -od order_palmitoyl.xvg
+# gmx order is part of G R O M A C S:
+#
+# GROningen MAchine for Chemical Simulation
+#
+@    title "Order tensor diagonal elements"
+@    xaxis  label "Atom"
+@    yaxis  label "S"
+@TYPE xy
+           1       -0.24331      -0.161173       0.404482
+           2      -0.163496      -0.166099       0.329595
+           3      -0.210309      -0.189314       0.399624
+           4      -0.208255      -0.191175        0.39943
+           5      -0.225552      -0.196139       0.421692
+           6      -0.210437      -0.194581       0.405018
+           7      -0.213146      -0.188726       0.401873
+           8      -0.192299      -0.179815       0.372113
+           9       -0.18757      -0.166916       0.354485
+          10      -0.164526      -0.153817       0.318343
+          11      -0.155326      -0.138472       0.293797
+          12       -0.13156      -0.123169       0.254729
+          13       -0.11701      -0.103416       0.220426
+          14     -0.0861631     -0.0798668        0.16603

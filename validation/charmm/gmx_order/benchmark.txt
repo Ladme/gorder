@@ -1,3 +1,0 @@
-Benchmark 1: gmx order -s ../files/system.tpr -f ../files/traj.xtc
-  Time (mean ± σ):     37.464 s ±  0.155 s    [User: 37.003 s, System: 0.381 s]
-  Range (min … max):   37.294 s … 37.638 s    5 runs

@@ -1,0 +1,83 @@
+# Order parameters calculated with 'gorder v0.6.0' using a structure file '../files/system.tpr' and a trajectory file '../files/traj.xtc'.
+average order:
+  total: 0.1479
+POPC:
+  average order:
+    total: 0.1479
+  order parameters:
+    POPC C36 (35):
+      total: 0.1765
+      bonds:
+      - total: 0.174
+      - total: 0.179
+    POPC C37 (36):
+      total: 0.199
+      bonds:
+      - total: 0.1969
+      - total: 0.2011
+    POPC C38 (37):
+      total: 0.1953
+      bonds:
+      - total: 0.1906
+      - total: 0.2001
+    POPC C39 (38):
+      total: 0.201
+      bonds:
+      - total: 0.1983
+      - total: 0.2036
+    POPC C40 (39):
+      total: 0.1977
+      bonds:
+      - total: 0.1955
+      - total: 0.1998
+    POPC C41 (40):
+      total: 0.1962
+      bonds:
+      - total: 0.1961
+      - total: 0.1964
+    POPC C42 (41):
+      total: 0.1856
+      bonds:
+      - total: 0.1853
+      - total: 0.1859
+    POPC C43 (42):
+      total: 0.1786
+      bonds:
+      - total: 0.1784
+      - total: 0.1787
+    POPC C44 (43):
+      total: 0.1623
+      bonds:
+      - total: 0.162
+      - total: 0.1625
+    POPC C45 (44):
+      total: 0.1506
+      bonds:
+      - total: 0.1502
+      - total: 0.151
+    POPC C46 (45):
+      total: 0.1315
+      bonds:
+      - total: 0.1317
+      - total: 0.1314
+    POPC C47 (46):
+      total: 0.1178
+      bonds:
+      - total: 0.1175
+      - total: 0.118
+    POPC C48 (47):
+      total: 0.0964
+      bonds:
+      - total: 0.0966
+      - total: 0.0963
+    POPC C49 (48):
+      total: 0.0791
+      bonds:
+      - total: 0.0789
+      - total: 0.0793
+    POPC C50 (49):
+      total: 0.0161
+      bonds:
+      - total: -0.1098
+      - total: 0.0793
+      - total: 0.0789
