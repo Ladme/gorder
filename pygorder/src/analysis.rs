@@ -303,4 +303,11 @@ impl Analysis {
             Ok(x) => Ok(AnalysisResults(Arc::new(x))),
         }
     }
+
+    /// Read the options for the analysis from a config YAML file.
+    #[staticmethod]
+    pub fn from_file(file: String) -> PyResult<Self> {
+        let analysis = RsAnalysis::from_file(file).map_err(|e| ConfigError::new_err(e.to_string()))?;
+        Ok(Analysis(analysis))
+    }
 }

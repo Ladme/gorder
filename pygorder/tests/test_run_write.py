@@ -87,6 +87,20 @@ def test_aa_order_basic_yaml():
         finally:
             shutil.rmtree(temp_file_path, ignore_errors=True)
 
+def test_aa_order_basic_from_file_yaml():
+    analysis = gorder.Analysis.from_file("../tests/files/inputs/basic_aa_for_python.yaml")
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first("temp_aa_order_py.yaml", "../tests/files/aa_order_basic.yaml", 1), "Files do not match!"
+    finally:
+        os.remove("temp_aa_order_py.yaml")
+
+def test_from_file_fail():
+    with pytest.raises(gorder.exceptions.ConfigError) as excinfo:
+        gorder.Analysis.from_file("../tests/files/inputs/cylinder_negative_radius.yaml")
+    assert "error the specified radius for the geometry selection is" in str(excinfo.value)
+
 def test_ua_order_basic_yaml():
     for n_threads in [1, 2, 3, 4, 8, 32]:
         with tempfile.NamedTemporaryFile(delete = False) as temp_file:
