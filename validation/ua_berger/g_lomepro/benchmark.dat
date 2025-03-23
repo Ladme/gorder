@@ -1,0 +1,3 @@
+Benchmark 1: yes 3 0 1 2 | ./g_lomepro_static -s ../files/system.gro -f ../files/traj.xtc -n index_for_lomepro.ndx -order results_unsat/order.dat -lip_num 256 -unsat 1 -nt 8 && yes 3 0 1 | ./g_lomepro_static -s ../files/system.gro -f ../files/traj.xtc -n index_for_lomepro.ndx -order results_sat/order.dat -lip_num 256 -unsat 0 -nt 8
+  Time (mean ± σ):     27.221 s ±  0.188 s    [User: 215.349 s, System: 0.944 s]
+  Range (min … max):   27.007 s … 27.491 s    5 runs

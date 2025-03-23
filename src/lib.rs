@@ -4,7 +4,7 @@
 //! # gorder: Everything you will ever need for lipid order calculations
 //!
 //! A crate for calculating lipid order parameters from Gromacs simulations.
-//! `gorder` can analyze both coarse-grained and atomistic lipid order parameters.
+//! `gorder` can calculate atomistic, coarse-grained, as well as united-atom lipid order parameters.
 //!
 //! **It is recommended to first read the [gorder manual](https://ladme.github.io/gorder-manual/) to understand the capabilities
 //! of `gorder` and then refer to this documentation for details about the Rust API.**
@@ -73,6 +73,36 @@
 //!         .output("order.yaml")                      // Output YAML file
 //!         .analysis_type(AnalysisType::cgorder(      // Type of analysis to perform
 //!             "@membrane",                           // Selection of beads
+//!         ))
+//!         .build()?;                                 // Build the analysis
+//!
+//!     // Activate colog for logging (requires the `colog` crate)
+//!     colog::init();
+//!
+//!     // Run the analysis and write the output
+//!     analysis.run()?.write()?;
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ***
+//!
+//! Basic analysis of united-atom lipid order parameters:
+//!
+//! ```no_run
+//! use gorder::prelude::*;
+//!
+//! fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+//!     // Construct the analysis
+//!     let analysis = Analysis::builder()
+//!         .structure("system.tpr")                   // Structure file
+//!         .trajectory("md.xtc")                      // Trajectory file to analyze
+//!         .output("order.yaml")                      // Output YAML file
+//!         .analysis_type(AnalysisType::uaorder(      // Type of analysis to perform
+//!             Some("element name carbon and not name C15 C34 C24 C25"),  // Selection of satured carbons
+//!             Some("name C24 C25"),                  // Selection of unsaturated carbons
+//!             None,                                  // Selection of atoms to ignore
 //!         ))
 //!         .build()?;                                 // Build the analysis
 //!
@@ -336,7 +366,7 @@
 //! # let results = analysis.run()?;
 //! let aa_results = match results {
 //!     AnalysisResults::AA(aa_results) => aa_results,
-//!     AnalysisResults::CG(_) => panic!("Expected atomistic results."),
+//!     _ => panic!("Expected atomistic results."),
 //! };
 //! # Ok(())
 //! # }
@@ -345,6 +375,7 @@
 //! Then, inspect the results as needed. Refer to:
 //! 1. [`AAOrderResults`](crate::prelude::AAOrderResults) for atomistic results.
 //! 2. [`CGOrderResults`](crate::prelude::CGOrderResults) for coarse-grained results.
+//! 3. [`UAOrderResults`](crate::prelude::UAOrderResults) for united-atom results.
 
 /// Version of the `gorder` crate.
 pub const GORDER_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -407,17 +438,21 @@ use serde::{Deserialize, Serialize};
 
 /// This module contains re-exported public structures of the `gorder` crate.
 pub mod prelude {
+    pub use crate::Leaflet;
+
     pub use super::input::{
         analysis::AnalysisBuilder, ordermap::OrderMapBuilder, Analysis, AnalysisType, Axis,
         DynamicNormal, EstimateError, Frequency, GeomReference, Geometry, GridSpan,
         LeafletClassification, MembraneNormal, OrderMap, Plane,
     };
 
-    pub use super::analysis::molecule::AtomType;
+    pub use super::analysis::topology::atom::AtomType;
 
     pub use super::presentation::{
         aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults},
         cgresults::{CGMoleculeResults, CGOrderResults},
+        convergence::Convergence,
+        uaresults::{UAAtomResults, UABondResults, UAMoleculeResults, UAOrderResults},
         AnalysisResults, BondResults, GridMapF32, Order, OrderCollection, OrderMapsCollection,
         PublicMoleculeResults, PublicOrderResults,
     };

@@ -1,0 +1,43 @@
+###########################################
+# Basic calculation of united-atom order  #
+# parameters in a vesicle (Berger POPC).  #
+# Only full membrane, all output formats. #
+# Analysis performed using 4 threads.     #
+# Manual: ladme.github.io/gorder-manual   # 
+###########################################
+
+### Input Gromacs binary run file.
+structure: system.tpr
+
+### Input Gromacs compressed trajectory file.
+trajectory: traj.xtc
+
+### Calculate united-atom order parameters.
+analysis_type: !UAOrder
+
+  ### Calculate order parameters for saturated carbons of the palmitoyl and oleoyl chains.
+  saturated: "resname POPC and name r'C(1[7-9]|2[0-36-9]|3[0-16-9]|4[0-9]|50|A[1-2])'"
+
+  ### Calculate order parameters for unsaturated carbons of the oleoyl chain.
+  unsaturated: "resname POPC and name C24 C25"
+
+### Calculate membrane normal for each lipid molecule dynamically, based on the shape of the vesicle.
+membrane_normal: !Dynamic
+
+  ### Phosphorus atoms of membrane lipids identifying lipid heads. Only one such atom per molecule!
+  heads: "name r'^P'"
+
+### Path to the output yaml file. Contains full results of the analysis.
+output_yaml: order.yaml
+
+### Path to the output "table" file. Simple to read.
+output_tab: order.tab
+
+### Path to the output xvg file. Can be plotted using `xmgrace`.
+output_xvg: order.xvg
+
+### Path to the output csv file. Open with a spreadsheet software or read with Pandas/Polars.
+output_csv: order.csv
+
+### Perform the analysis using 4 threads.
+n_threads: 4

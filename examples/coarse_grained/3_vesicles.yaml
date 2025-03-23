@@ -1,0 +1,40 @@
+###########################################
+# Calculation of coarse-grained lipid     #
+# order parameters in a vesicle.          #
+# Only full membrane, all output formats. #
+# Analysis performed using 4 threads.     #
+# Manual: ladme.github.io/gorder-manual   # 
+###########################################
+
+### Input Gromacs binary run file.
+structure: system.tpr
+
+### Input Gromacs compressed trajectory file.
+trajectory: traj.xtc
+
+### Calculate coarse-grained order parameters.
+analysis_type: !CGOrder
+
+  ### Analyze all bonds between particles of the vesicle.
+  beads: "@membrane"
+
+### Calculate membrane normal for each lipid molecule dynamically, based on the shape of the vesicle.
+membrane_normal: !Dynamic
+
+  ### Phosphate beads of membrane lipids identifying lipid heads. Only one phosphate bead per molecule!
+  heads: "name PO4"
+
+### Path to the output yaml file. Contains full results of the analysis.
+output_yaml: order.yaml
+
+### Path to the output "table" file. Simple to read.
+output_tab: order.tab
+
+### Path to the output xvg file. Can be plotted using `xmgrace`.
+output_xvg: order.xvg
+
+### Path to the output csv file. Open with a spreadsheet software or read with Pandas/Polars.
+output_csv: order.csv
+
+### Perform the analysis using 4 threads.
+n_threads: 4

@@ -3,6 +3,7 @@
 
 //! Contains the implementation of the main `Analysis` structure and its methods.
 
+use std::fmt;
 use std::fs::read_to_string;
 use std::path::Path;
 
@@ -10,6 +11,7 @@ use derive_builder::Builder;
 use getset::{CopyGetters, Getters};
 use getset::{MutGetters, Setters};
 use groan_rs::files::FileType;
+use serde::de::{self, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::errors::ConfigError;
@@ -31,6 +33,11 @@ pub enum AnalysisType {
         #[serde(alias = "atoms")]
         beads: String,
     },
+    UAOrder {
+        saturated: Option<String>,
+        unsaturated: Option<String>,
+        ignore: Option<String>,
+    },
 }
 
 impl AnalysisType {
@@ -41,7 +48,7 @@ impl AnalysisType {
     /// - `hydrogens` - specification of hydrogens to be used in the analysis (only atoms connected to heavy atoms will be used)
     ///
     /// ## Notes
-    /// - To specify the atoms, use the [groan selection language](https://docs.rs/groan_rs/latest/groan_rs/#groan-selection-language).
+    /// - To specify the atoms, use the [groan selection language](https://ladme.github.io/gsl-guide).
     /// - Order parameters will be calculated for bonds between the `heavy_atoms` and `hydrogens`. These bonds are detected automatically.
     /// - Order parameters for heavy atoms are then calculated by averaging the order parameters of the relevant bonds.
     pub fn aaorder(heavy_atoms: &str, hydrogens: &str) -> Self {
@@ -57,11 +64,38 @@ impl AnalysisType {
     /// - `beads` - specification of coarse-grained beads
     ///
     /// ## Notes
-    /// - To specify the beads, use the [groan selection language](https://docs.rs/groan_rs/latest/groan_rs/#groan-selection-language).
+    /// - To specify the beads, use the [groan selection language](https://ladme.github.io/gsl-guide).
     /// - Order parameters will be calculated for bonds between the individual `beads`. These bonds are detected automatically.
     pub fn cgorder(beads: &str) -> Self {
         Self::CGOrder {
             beads: beads.to_owned(),
+        }
+    }
+
+    /// Request calculation of united-atom order parameters.
+    ///
+    /// ## Arguments
+    /// - `saturated` - specification of saturated carbons, i.e., carbons with (4 - N_bonds) hydrogens bonded to them
+    /// - `unsaturated` - specification of unsaturated carbons, i.e., carbons with one hydrogen bonded to them
+    /// - `ignore` - specification of atoms to ignore when calculating the number of bonds to carbons
+    ///
+    /// ## Notes
+    /// - To specify atoms, use the [groan selection language](https://ladme.github.io/gsl-guide).
+    /// - The positions of hydrogens will be predicted for the respective carbons and order parameters will be calculated
+    ///   for the individual carbon-hydrogen bonds.
+    /// - Only carbons are supported. If you need to predict hydrogens for other elements, look elsewhere!
+    /// - When calculating the number of bonds, `gorder` does not distinguish between single and double bonds.
+    ///   This means it will attempt to add one hydrogen to a carboxyl atom if specified.
+    ///   A simple solution to this issue is to exclude such atoms from the analysis.
+    pub fn uaorder(
+        saturated: Option<&str>,
+        unsaturated: Option<&str>,
+        ignore: Option<&str>,
+    ) -> Self {
+        Self::UAOrder {
+            saturated: saturated.map(|x| x.to_owned()),
+            unsaturated: unsaturated.map(|x| x.to_owned()),
+            ignore: ignore.map(|x| x.to_owned()),
         }
     }
 
@@ -71,8 +105,13 @@ impl AnalysisType {
             Self::AAOrder {
                 heavy_atoms: _,
                 hydrogens: _,
-            } => "all-atom order parameters",
+            } => "atomistic order parameters",
             Self::CGOrder { beads: _ } => "coarse-grained order parameters",
+            Self::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => "united-atom order parameters",
         }
     }
 }
@@ -95,10 +134,12 @@ pub struct Analysis {
     #[getset(get = "pub")]
     bonds: Option<String>,
 
-    /// Path to a XTC trajectory file containing the trajectory to be analyzed.
-    #[builder(setter(into))]
+    /// Path to an XTC (recommended), TRR, GRO, PDB, NC, DCD, or LAMMPSTRJ containing the trajectory to be analyzed.
+    /// Multiple XTC or TRR trajectories can be provided and these will be concatenated.
     #[getset(get = "pub")]
-    trajectory: String,
+    #[serde(deserialize_with = "deserialize_string_or_vec")]
+    #[builder(setter(custom))]
+    trajectory: Vec<String>,
 
     /// Optional path to an NDX file containing the groups associated with the system.
     #[builder(setter(into, strip_option), default)]
@@ -132,7 +173,7 @@ pub struct Analysis {
     #[getset(get = "pub")]
     output_csv: Option<String>,
 
-    /// Type of analysis to be performed (AAOrder or CGOrder).
+    /// Type of analysis to be performed (AAOrder, CGOrder, or UAOrder).
     #[getset(get = "pub")]
     #[serde(alias = "type")]
     analysis_type: AnalysisType,
@@ -298,17 +339,84 @@ fn validate_structure_format(file: &str) -> Result<(), ConfigError> {
     }
 }
 
-fn validate_trajectory_format(file: &str) -> Result<(), ConfigError> {
-    match FileType::from_name(file) {
-        FileType::XTC
-        | FileType::TRR
-        | FileType::GRO
-        | FileType::PDB
-        | FileType::NC
-        | FileType::DCD
-        | FileType::LAMMPSTRJ => Ok(()),
-        _ => Err(ConfigError::InvalidTrajectoryFormat(file.to_owned())),
+fn validate_trajectory_format(files: &[String]) -> Result<(), ConfigError> {
+    if files.is_empty() {
+        return Err(ConfigError::NoTrajectoryFile);
     }
+
+    let mut last: Option<(FileType, &String)> = None;
+    for file in files {
+        let file_type = FileType::from_name(file);
+        match file_type {
+            FileType::XTC | FileType::TRR => (),
+            FileType::GRO | FileType::PDB | FileType::NC | FileType::DCD | FileType::LAMMPSTRJ => {
+                // trajectory concatenation is not supported for these formats
+                if files.len() > 1 {
+                    return Err(ConfigError::TrajCatNotSupported);
+                }
+            }
+            _ => return Err(ConfigError::InvalidTrajectoryFormat(file.to_owned())),
+        }
+
+        // check that all the trajectory files have the same format
+        if let Some((unwrapped_type, unwrapped_name)) = last {
+            if file_type != unwrapped_type {
+                return Err(ConfigError::InconsistentTrajectoryFormat(
+                    file.clone(),
+                    unwrapped_name.clone(),
+                ));
+            }
+        }
+
+        last = Some((file_type, file));
+    }
+
+    Ok(())
+}
+
+pub fn deserialize_string_or_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct StringOrVecVisitor;
+
+    impl<'de> Visitor<'de> for StringOrVecVisitor {
+        type Value = Vec<String>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a string or a sequence of strings")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            match glob::glob(value) {
+                Ok(paths) => {
+                    let files: Vec<_> = paths
+                        .filter_map(Result::ok)
+                        .map(|path| path.to_string_lossy().into_owned())
+                        .collect();
+
+                    if files.is_empty() {
+                        Ok(vec![value.to_owned()])
+                    } else {
+                        Ok(files)
+                    }
+                }
+                Err(e) => Err(de::Error::custom(e.to_string())),
+            }
+        }
+
+        fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
+        where
+            A: SeqAccess<'de>,
+        {
+            Deserialize::deserialize(de::value::SeqAccessDeserializer::new(seq))
+        }
+    }
+
+    deserializer.deserialize_any(StringOrVecVisitor)
 }
 
 fn deserialize_membrane_normal<'de, D>(deserializer: D) -> Result<MembraneNormal, D::Error>
@@ -419,7 +527,7 @@ impl Analysis {
     }
 
     /// Get the heavy atoms specified for the analysis.
-    /// If the calculation of coarse-grained order parameters is requested, returns None.
+    /// If the calculation of coarse-grained or united-atom order parameters is requested, returns None.
     pub fn heavy_atoms(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads: _ } => None,
@@ -427,11 +535,16 @@ impl Analysis {
                 heavy_atoms,
                 hydrogens: _,
             } => Some(heavy_atoms),
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => None,
         }
     }
 
     /// Get the hydrogens specified for the analysis.
-    /// If the calculation of coarse-grained order parameters is requested, returns None.
+    /// If the calculation of coarse-grained or united-atom order parameters is requested, returns None.
     pub fn hydrogens(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads: _ } => None,
@@ -439,11 +552,16 @@ impl Analysis {
                 heavy_atoms: _,
                 hydrogens,
             } => Some(hydrogens),
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => None,
         }
     }
 
     /// Get the beads specified for the analysis.
-    /// If the calculation of atomistic order parameters is requested, returns None.
+    /// If the calculation of atomistic or united-atom order parameters is requested, returns None.
     pub fn beads(&self) -> Option<&String> {
         match &self.analysis_type {
             AnalysisType::CGOrder { beads } => Some(beads),
@@ -451,6 +569,65 @@ impl Analysis {
                 heavy_atoms: _,
                 hydrogens: _,
             } => None,
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => None,
+        }
+    }
+
+    /// Get the saturated carbons specified for the analysis.
+    /// If the calculation of atomistic or coarse-grained order parameters is requested, returns None.
+    /// Also returns None, if no saturated carbons have been specified.
+    pub fn saturated(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { beads: _ } => None,
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => None,
+            AnalysisType::UAOrder {
+                saturated,
+                unsaturated: _,
+                ignore: _,
+            } => saturated.as_ref(),
+        }
+    }
+
+    /// Get the unsaturated carbons specified for the analysis.
+    /// If the calculation of atomistic or coarse-grained order parameters is requested, returns None.
+    /// Also returns None, if no unsaturated carbons have been specified.
+    pub fn unsaturated(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { beads: _ } => None,
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => None,
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated,
+                ignore: _,
+            } => unsaturated.as_ref(),
+        }
+    }
+
+    /// Get the atoms to be ignored during the analysis.
+    /// If the calculation of atomistic or coarse-grained order parameters is requested, returns None.
+    /// Also returns None, if no atoms to ignore have been specified.
+    pub fn ignore(&self) -> Option<&String> {
+        match &self.analysis_type {
+            AnalysisType::CGOrder { beads: _ } => None,
+            AnalysisType::AAOrder {
+                heavy_atoms: _,
+                hydrogens: _,
+            } => None,
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore,
+            } => ignore.as_ref(),
         }
     }
 
@@ -467,7 +644,86 @@ impl Analysis {
     }
 }
 
+/// Helper enum for providing input trajectory file(s).
+#[derive(Debug, Clone)]
+pub enum TrajectoryInput {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+impl TrajectoryInput {
+    fn expand<T>(value: T) -> Self
+    where
+        T: Into<String>,
+    {
+        let string_pattern = value.into();
+        match glob::glob(&string_pattern) {
+            Ok(paths) => {
+                let files: Vec<_> = paths
+                    .filter_map(Result::ok)
+                    .map(|path| path.to_string_lossy().into_owned())
+                    .collect();
+
+                // if there is no match, just use the original pattern
+                if files.is_empty() {
+                    Self::Single(string_pattern)
+                } else {
+                    Self::Multiple(files)
+                }
+            }
+            Err(e) => panic!(
+                "FATAL GORDER ERROR | TrajectoryInput::expand | Trajectory glob pattern is invalid. Error: {}. (This may be your fault.)", e)
+        }
+    }
+}
+
+impl From<&str> for TrajectoryInput {
+    fn from(value: &str) -> Self {
+        Self::expand(value)
+    }
+}
+
+impl From<String> for TrajectoryInput {
+    fn from(value: String) -> Self {
+        Self::expand(value)
+    }
+}
+
+impl From<&String> for TrajectoryInput {
+    fn from(value: &String) -> Self {
+        Self::expand(value)
+    }
+}
+
+impl<T> From<Vec<T>> for TrajectoryInput
+where
+    T: Into<String>,
+{
+    fn from(value: Vec<T>) -> Self {
+        Self::Multiple(value.into_iter().map(|x| x.into()).collect())
+    }
+}
+
+impl<T> From<&[T]> for TrajectoryInput
+where
+    T: Into<String> + Clone,
+{
+    fn from(value: &[T]) -> Self {
+        Self::Multiple(value.iter().cloned().map(|x| x.into()).collect())
+    }
+}
+
 impl AnalysisBuilder {
+    /// Path to an XTC (recommended), TRR, GRO, PDB, NC, DCD, or LAMMPSTRJ containing the trajectory to be analyzed.
+    /// Multiple XTC or TRR trajectories can be provided and these will be concatenated.
+    pub fn trajectory(&mut self, trajectory: impl Into<TrajectoryInput>) -> &mut Self {
+        match trajectory.into() {
+            TrajectoryInput::Single(x) => self.trajectory = Some(vec![x]),
+            TrajectoryInput::Multiple(x) => self.trajectory = Some(x),
+        }
+        self
+    }
+
     /// Be silent. Print nothing to the standard output during the analysis.
     #[inline(always)]
     pub fn silent(&mut self) -> &mut Self {
@@ -557,8 +813,8 @@ mod tests_yaml {
     fn analysis_yaml_pass_basic() {
         let analysis = Analysis::from_file("tests/files/inputs/basic.yaml").unwrap();
 
-        assert_eq!(analysis.structure(), "system.tpr");
-        assert_eq!(analysis.trajectory(), "md.xtc");
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(analysis.trajectory(), &vec!["tests/files/pcpepg.xtc"]);
         assert!(analysis.index().is_none());
         assert!(analysis.output().is_none());
         assert!(analysis.output_tab().is_none());
@@ -594,8 +850,8 @@ mod tests_yaml {
     fn analysis_yaml_pass_full() {
         let analysis = Analysis::from_file("tests/files/inputs/full.yaml").unwrap();
 
-        assert_eq!(analysis.structure(), "system.tpr");
-        assert_eq!(analysis.trajectory(), "md.xtc");
+        assert_eq!(analysis.structure(), "tests/files/cg.tpr");
+        assert_eq!(analysis.trajectory(), &["tests/files/cg.xtc"]);
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
         assert_eq!(analysis.output().as_ref().unwrap(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
@@ -713,11 +969,51 @@ mod tests_yaml {
             Analysis::from_file("tests/files/inputs/dynamic_membrane_normal.yaml").unwrap();
 
         match analysis.membrane_normal() {
-            MembraneNormal::Static(_) => panic!("Invalid membrane normal returned."),
             MembraneNormal::Dynamic(dynamic) => {
                 assert_eq!(dynamic.heads(), "name PO4");
                 assert_relative_eq!(dynamic.radius(), 2.5);
             }
+            _ => {
+                panic!("Invalid membrane normal returned.")
+            }
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_pass_membrane_normal_from_file() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/membrane_normal_from_file.yaml").unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::FromFile(file) => {
+                assert_eq!(file, "normals.yaml");
+            }
+            _ => panic!("Invalid membrane normal returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_pass_membrane_normal_inline() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/membrane_normal_inline.yaml").unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::FromMap(map) => {
+                assert!(map.get("POPC").is_some());
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().first().unwrap().get(1).unwrap().y,
+                    3.0
+                );
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(1).unwrap().first().unwrap().x,
+                    2.0
+                );
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(1).unwrap().get(2).unwrap().z,
+                    8.0
+                );
+            }
+            _ => panic!("Invalid membrane normal returned."),
         }
     }
 
@@ -945,12 +1241,96 @@ mod tests_yaml {
             Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
+
+    #[test]
+    fn analysis_yaml_pass_multiple_trajectories_list() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/multiple_trajectories_list.yaml").unwrap();
+
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(
+            analysis.trajectory(),
+            &vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ]
+        );
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+    }
+
+    #[test]
+    fn analysis_yaml_pass_multiple_trajectories_glob() {
+        let analysis =
+            Analysis::from_file("tests/files/inputs/multiple_trajectories_glob.yaml").unwrap();
+
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(
+            analysis.trajectory(),
+            &vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ]
+        );
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+    }
+
+    #[test]
+    fn analysis_yaml_fail_no_trajectories() {
+        match Analysis::from_file("tests/files/inputs/no_trajectories.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::NoTrajectoryFile) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_inconsistent_trajectory_formats() {
+        match Analysis::from_file("tests/files/inputs/inconsistent_trajectories.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InconsistentTrajectoryFormat(x, y)) => {
+                assert_eq!(y, String::from("tests/files/split/pcpepg2.xtc"));
+                assert_eq!(x, String::from("tests/files/pcpepg.trr"));
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_yaml_fail_unsupported_concatenation() {
+        match Analysis::from_file("tests/files/inputs/unsupported_cat.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::TrajCatNotSupported) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests_builder {
 
     use approx::assert_relative_eq;
+    use groan_rs::prelude::Vector3D;
+    use hashbrown::HashMap;
 
     use crate::input::geometry::GeomReference;
     use crate::input::ordermap::Plane;
@@ -962,8 +1342,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_pass_basic() {
         let analysis = Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
                 "@membrane and element name hydrogen",
@@ -971,8 +1351,8 @@ mod tests_builder {
             .build()
             .unwrap();
 
-        assert_eq!(analysis.structure(), "system.tpr");
-        assert_eq!(analysis.trajectory(), "md.xtc");
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(analysis.trajectory(), &["tests/files/pcpepg.xtc"]);
         assert!(analysis.index().is_none());
         assert!(analysis.output().is_none());
         assert!(analysis.output_tab().is_none());
@@ -1007,8 +1387,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_pass_full() {
         let analysis = Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
             .index("index.ndx")
             .output("order.yaml")
             .output_tab("order.dat")
@@ -1049,8 +1429,8 @@ mod tests_builder {
             .build()
             .unwrap();
 
-        assert_eq!(analysis.structure(), "system.tpr");
-        assert_eq!(analysis.trajectory(), "md.xtc");
+        assert_eq!(analysis.structure(), "tests/files/cg.tpr");
+        assert_eq!(analysis.trajectory(), &["tests/files/cg.xtc"]);
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
         assert_eq!(analysis.output().as_ref().unwrap(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
@@ -1122,8 +1502,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_pass_default_ordermap() {
         let analysis = Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
             .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -1145,8 +1525,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_pass_dynamic_membrane_normal() {
         let analysis = Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
             .output("order.yaml")
             .analysis_type(AnalysisType::cgorder("@membrane"))
             .membrane_normal(DynamicNormal::new("name PO4", 2.5).unwrap())
@@ -1154,19 +1534,88 @@ mod tests_builder {
             .unwrap();
 
         match analysis.membrane_normal() {
-            MembraneNormal::Static(_) => panic!("Invalid membrane normal returned."),
             MembraneNormal::Dynamic(dynamic) => {
                 assert_eq!(dynamic.heads(), "name PO4");
                 assert_relative_eq!(dynamic.radius(), 2.5);
             }
+            _ => {
+                panic!("Invalid membrane normal returned.")
+            }
+        }
+    }
+
+    #[test]
+    fn analysis_builder_pass_membrane_normal_from_file() {
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .membrane_normal("normals.yaml")
+            .build()
+            .unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::FromFile(file) => {
+                assert_eq!(file, "normals.yaml");
+            }
+            _ => panic!("Invalid membrane normal returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_pass_membrane_normal_from_map() {
+        let mut map = HashMap::new();
+        map.insert(
+            "POPC".to_owned(),
+            vec![
+                vec![
+                    Vector3D::new(1.0, 2.0, 3.0),
+                    Vector3D::new(2.0, 3.0, 4.0),
+                    Vector3D::new(5.0, 6.0, 7.0),
+                ],
+                vec![
+                    Vector3D::new(2.0, 3.0, 4.0),
+                    Vector3D::new(3.0, 4.0, 5.0),
+                    Vector3D::new(6.0, 7.0, 8.0),
+                ],
+            ],
+        );
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output("order.yaml")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .membrane_normal(map)
+            .build()
+            .unwrap();
+
+        match analysis.membrane_normal() {
+            MembraneNormal::FromMap(map) => {
+                assert!(map.get("POPC").is_some());
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().first().unwrap().get(1).unwrap().y,
+                    3.0
+                );
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(1).unwrap().first().unwrap().x,
+                    2.0
+                );
+                assert_relative_eq!(
+                    map.get("POPC").unwrap().get(1).unwrap().get(2).unwrap().z,
+                    8.0
+                );
+            }
+            _ => panic!("Invalid membrane normal returned."),
         }
     }
 
     #[test]
     fn analysis_builder_fail_incomplete() {
         match Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
             .output("order.yaml")
             .build()
         {
@@ -1179,8 +1628,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_fail_zero_step() {
         match Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
             .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -1198,8 +1647,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_fail_zero_min_samples() {
         match Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
             .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -1217,8 +1666,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_fail_zero_threads() {
         match Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
             .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -1236,8 +1685,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_fail_start_higher_than_end() {
         match Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xtc")
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
             .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -1256,8 +1705,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_fail_invalid_structure_format() {
         match Analysis::builder()
-            .structure("system.ndx")
-            .trajectory("md.xtc")
+            .structure("tests/files/pcpepg.ndx")
+            .trajectory("tests/files/pcpepg.xtc")
             .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -1274,8 +1723,8 @@ mod tests_builder {
     #[test]
     fn analysis_builder_fail_invalid_trajectory_format() {
         match Analysis::builder()
-            .structure("system.tpr")
-            .trajectory("md.xyz")
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/cg_order_leaflets.tab")
             .output("order.yaml")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -1286,6 +1735,135 @@ mod tests_builder {
             Ok(_) => panic!("Should have failed, but succeeded."),
             Err(AnalysisBuilderError::ValidationError(_)) => (),
             Err(_) => panic!("Incorrect error type returned."),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_pass_multiple_trajectories_list() {
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ])
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+            .unwrap();
+
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(
+            analysis.trajectory(),
+            &vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ]
+        );
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+    }
+
+    #[test]
+    fn analysis_builder_pass_multiple_trajectories_glob() {
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/split/pcpepg?.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+            .unwrap();
+
+        assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
+        assert_eq!(
+            analysis.trajectory(),
+            &vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ]
+        );
+        assert_eq!(
+            analysis.heavy_atoms().unwrap(),
+            "@membrane and element name carbon"
+        );
+        assert_eq!(
+            analysis.hydrogens().unwrap(),
+            "@membrane and element name hydrogen"
+        );
+    }
+
+    #[test]
+    fn analysis_builder_fail_no_trajectories() {
+        let no_trajectories: Vec<&str> = vec![];
+
+        match Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(no_trajectories)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_inconsistent_trajectory_formats() {
+        match Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/pcpepg.trr",
+            ])
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
+
+    #[test]
+    fn analysis_builder_fail_unsupported_concatenation() {
+        match Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(vec!["tests/files/pcpepg.gro", "tests/files/pcpepg.gro"])
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .build()
+        {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(AnalysisBuilderError::ValidationError(_)) => (),
+            Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
 }

@@ -1,0 +1,1 @@
+Directory for input structure and trajectory. These files are not uploaded to GitHub due to their size. If you want them, write an e-mail to ladmeb@gmail.com.

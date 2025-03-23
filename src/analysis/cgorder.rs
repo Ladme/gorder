@@ -3,16 +3,14 @@
 
 //! Contains the implementation of the calculation of the coarse-grained order parameters.
 
+use crate::analysis::topology::classify::MoleculesClassifier;
 use crate::{
     analysis::{common::prepare_geometry_selection, index::read_ndx_file, structure},
     presentation::{AnalysisResults, OrderResults},
 };
 use crate::{
     analysis::{
-        common::{
-            macros::group_name, prepare_membrane_normal_calculation, read_trajectory,
-            sanity_check_molecules,
-        },
+        common::{macros::group_name, prepare_membrane_normal_calculation, read_trajectory},
         pbc::{NoPBC, PBC3D},
         topology::SystemTopology,
     },
@@ -65,7 +63,7 @@ pub(super) fn analyze_coarse_grained(
     // get the relevant molecules
     macro_rules! classify_molecules_with_pbc {
         ($pbc:expr) => {
-            super::common::classify_molecules(&system, "Beads", "Beads", &analysis, $pbc)
+            MoleculesClassifier::classify(&system, &analysis, $pbc)
         };
     }
 
@@ -74,7 +72,8 @@ pub(super) fn analyze_coarse_grained(
         false => classify_molecules_with_pbc!(&NoPBC)?,
     };
 
-    if !sanity_check_molecules(&molecules) {
+    // check that there are molecules to analyze
+    if molecules.n_molecule_types() == 0 {
         return Ok(AnalysisResults::CG(CGOrderResults::empty(analysis)));
     }
 
@@ -94,6 +93,9 @@ pub(super) fn analyze_coarse_grained(
         data.finalize_manual_leaflet_classification(classification)?;
     }
 
+    // finalize the membrane normal specification
+    data.finalize_manual_membrane_normals(analysis.membrane_normal())?;
+
     if let Some(error_estimation) = analysis.estimate_error() {
         error_estimation.info();
     }
@@ -109,7 +111,7 @@ pub(super) fn analyze_coarse_grained(
         analysis.silent(),
     )?;
 
-    result.validate_leaflet_classification(analysis.step())?;
+    result.validate_run(analysis.step())?;
     result.log_total_analyzed_frames();
 
     // print basic info about error estimation
@@ -130,7 +132,8 @@ mod tests {
         analysis::{
             common::analyze_frame,
             geometry::GeometrySelectionType,
-            molecule::{BondType, MoleculeType},
+            topology::bond::{BondType, OrderBonds},
+            topology::molecule::{MoleculeType, MoleculeTypes},
         },
         input::{AnalysisType, LeafletClassification},
     };
@@ -162,14 +165,9 @@ mod tests {
                 .unwrap()
         };
 
-        let molecules = super::super::common::classify_molecules(
-            &system,
-            "Beads",
-            "Beads",
-            &analysis,
-            &PBC3D::from_system(&system),
-        )
-        .unwrap();
+        let molecules =
+            MoleculesClassifier::classify(&system, &analysis, &PBC3D::from_system(&system))
+                .unwrap();
         (
             system,
             SystemTopology::new(
@@ -241,17 +239,22 @@ mod tests {
         analyze_frame(&system, &mut data).unwrap();
         let expected_total_orders = expected_total_orders();
 
-        for (m, molecule) in data.molecule_types().iter().enumerate() {
-            let n_instances = molecule.order_bonds().bond_types()[0].bonds().len();
+        let molecule_types = match data.molecule_types() {
+            MoleculeTypes::AtomBased(_) => panic!("Molecule types should be bond-based."),
+            MoleculeTypes::BondBased(x) => x,
+        };
+
+        for (m, molecule) in molecule_types.iter().enumerate() {
+            let n_instances = molecule.order_structure().bond_types()[0].bonds().len();
             let orders = molecule
-                .order_bonds()
+                .order_structure()
                 .bond_types()
                 .iter()
                 .map(|b| b.total().order().into())
                 .collect::<Vec<f32>>();
 
             let samples = molecule
-                .order_bonds()
+                .order_structure()
                 .bond_types()
                 .iter()
                 .map(|b| b.total().n_samples())
@@ -259,7 +262,7 @@ mod tests {
 
             assert_eq!(orders.len(), expected_total_orders[m].len());
             for (real, expected) in orders.iter().zip(expected_total_orders[m].iter()) {
-                assert_relative_eq!(real, expected);
+                assert_relative_eq!(real, expected, epsilon = 1e-5);
             }
 
             for sample in samples {
@@ -268,12 +271,12 @@ mod tests {
         }
     }
 
-    fn collect_bond_data<T, F>(molecule: &MoleculeType, func: F) -> Vec<T>
+    fn collect_bond_data<T, F>(molecule: &MoleculeType<OrderBonds>, func: F) -> Vec<T>
     where
         F: Fn(&BondType) -> T,
     {
         molecule
-            .order_bonds()
+            .order_structure()
             .bond_types()
             .iter()
             .map(func)
@@ -294,7 +297,12 @@ mod tests {
         let expected_upper_samples = [121, 121, 12];
         let expected_lower_samples = [121, 121, 12];
 
-        for (m, molecule) in data.molecule_types().iter().enumerate() {
+        let molecule_types = match data.molecule_types() {
+            MoleculeTypes::AtomBased(_) => panic!("Molecule types should be bond-based."),
+            MoleculeTypes::BondBased(x) => x,
+        };
+
+        for (m, molecule) in molecule_types.iter().enumerate() {
             let total_orders: Vec<f32> = collect_bond_data(molecule, |b| b.total().order().into());
             let upper_orders =
                 collect_bond_data(molecule, |b| b.upper().as_ref().unwrap().order().into());
@@ -328,7 +336,7 @@ mod tests {
             ] {
                 assert_eq!(order.len(), expected_order.len());
                 for (real, expected) in order.iter().zip(expected_order.iter()) {
-                    assert_relative_eq!(real, expected);
+                    assert_relative_eq!(real, expected, epsilon = 1e-5);
                 }
 
                 for &sample in samples {

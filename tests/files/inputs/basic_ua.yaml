@@ -1,0 +1,7 @@
+# Test file for binary application.
+structure: tests/files/ua.tpr
+trajectory: tests/files/ua.xtc
+type: !UAOrder
+  saturated: "(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)"
+  unsaturated: "(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"
+output_yaml: temp_ua_order.yaml

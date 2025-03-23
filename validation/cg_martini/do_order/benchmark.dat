@@ -1,0 +1,2 @@
+Benchmark 1: python do-order.py ../files/traj_whole.xtc ../files/system.tpr 0 1000000 1 0 0 1 512 POPC
+  Time (abs ≡):        265.374 s               [User: 258.167 s, System: 4.924 s]

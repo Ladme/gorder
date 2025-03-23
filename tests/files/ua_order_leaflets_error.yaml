@@ -1,0 +1,2268 @@
+# Order parameters calculated with 'gorder v0.6.0-dev.2' using a structure file 'tests/files/ua.tpr' and a trajectory file 'tests/files/ua.xtc'.
+average order:
+  total:
+    mean: 0.1169
+    error: 0.0027
+  upper:
+    mean: 0.1151
+    error: 0.0031
+  lower:
+    mean: 0.1186
+    error: 0.0031
+POPC:
+  average order:
+    total:
+      mean: 0.1101
+      error: 0.0019
+    upper:
+      mean: 0.1075
+      error: 0.003
+    lower:
+      mean: 0.1128
+      error: 0.0021
+  order parameters:
+    POPC C1 (0):
+      total:
+        mean: -0.0039
+        error: 0.0111
+      upper:
+        mean: -0.002
+        error: 0.0142
+      lower:
+        mean: -0.0058
+        error: 0.013
+      bonds:
+      - total:
+          mean: 0.0079
+          error: 0.0471
+        upper:
+          mean: 0.0234
+          error: 0.0399
+        lower:
+          mean: -0.0075
+          error: 0.0577
+      - total:
+          mean: -0.0244
+          error: 0.012
+        upper:
+          mean: -0.0317
+          error: 0.0245
+        lower:
+          mean: -0.017
+          error: 0.035
+      - total:
+          mean: 0.0048
+          error: 0.0118
+        upper:
+          mean: 0.0024
+          error: 0.0351
+        lower:
+          mean: 0.0072
+          error: 0.0225
+    POPC C2 (1):
+      total:
+        mean: -0.0019
+        error: 0.0152
+      upper:
+        mean: -0.0069
+        error: 0.0122
+      lower:
+        mean: 0.003
+        error: 0.0194
+      bonds:
+      - total:
+          mean: 0.0129
+          error: 0.0302
+        upper:
+          mean: 0.0085
+          error: 0.0366
+        lower:
+          mean: 0.0172
+          error: 0.0389
+      - total:
+          mean: 0.0044
+          error: 0.0129
+        upper:
+          mean: 0.0017
+          error: 0.036
+        lower:
+          mean: 0.007
+          error: 0.0213
+      - total:
+          mean: -0.023
+          error: 0.0118
+        upper:
+          mean: -0.0308
+          error: 0.0226
+        lower:
+          mean: -0.0152
+          error: 0.0351
+    POPC C3 (2):
+      total:
+        mean: 0.0048
+        error: 0.0044
+      upper:
+        mean: -0.0
+        error: 0.0082
+      lower:
+        mean: 0.0096
+        error: 0.0052
+      bonds:
+      - total:
+          mean: 0.0136
+          error: 0.0332
+        upper:
+          mean: 0.0079
+          error: 0.0441
+        lower:
+          mean: 0.0193
+          error: 0.0379
+      - total:
+          mean: -0.0223
+          error: 0.0176
+        upper:
+          mean: -0.0234
+          error: 0.0172
+        lower:
+          mean: -0.0211
+          error: 0.0302
+      - total:
+          mean: 0.023
+          error: 0.0222
+        upper:
+          mean: 0.0154
+          error: 0.0345
+        lower:
+          mean: 0.0306
+          error: 0.0236
+    POPC C5 (4):
+      total:
+        mean: -0.0412
+        error: 0.0111
+      upper:
+        mean: -0.0293
+        error: 0.0081
+      lower:
+        mean: -0.0532
+        error: 0.0244
+      bonds:
+      - total:
+          mean: -0.0455
+          error: 0.0182
+        upper:
+          mean: -0.035
+          error: 0.0171
+        lower:
+          mean: -0.0561
+          error: 0.0412
+      - total:
+          mean: -0.0369
+          error: 0.0202
+        upper:
+          mean: -0.0235
+          error: 0.0295
+        lower:
+          mean: -0.0503
+          error: 0.0288
+    POPC C6 (5):
+      total:
+        mean: -0.0868
+        error: 0.0087
+      upper:
+        mean: -0.085
+        error: 0.0186
+      lower:
+        mean: -0.0886
+        error: 0.0188
+      bonds:
+      - total:
+          mean: -0.1548
+          error: 0.0261
+        upper:
+          mean: -0.1552
+          error: 0.0515
+        lower:
+          mean: -0.1544
+          error: 0.0339
+      - total:
+          mean: -0.0188
+          error: 0.0173
+        upper:
+          mean: -0.0149
+          error: 0.0187
+        lower:
+          mean: -0.0228
+          error: 0.0268
+    POPC C12 (11):
+      total:
+        mean: 0.2321
+        error: 0.0062
+      upper:
+        mean: 0.2445
+        error: 0.0152
+      lower:
+        mean: 0.2196
+        error: 0.0073
+      bonds:
+      - total:
+          mean: 0.1864
+          error: 0.0092
+        upper:
+          mean: 0.2063
+          error: 0.0274
+        lower:
+          mean: 0.1664
+          error: 0.0183
+      - total:
+          mean: 0.2778
+          error: 0.0053
+        upper:
+          mean: 0.2828
+          error: 0.0121
+        lower:
+          mean: 0.2728
+          error: 0.0062
+    POPC C13 (12):
+      total:
+        mean: 0.1064
+        error: 0.0174
+      upper:
+        mean: 0.1251
+        error: 0.0407
+      lower:
+        mean: 0.0877
+        error: 0.0098
+      bonds:
+      - total:
+          mean: 0.1064
+          error: 0.0174
+        upper:
+          mean: 0.1251
+          error: 0.0407
+        lower:
+          mean: 0.0877
+          error: 0.0098
+    POPC C17 (16):
+      total:
+        mean: 0.1603
+        error: 0.0085
+      upper:
+        mean: 0.1819
+        error: 0.0157
+      lower:
+        mean: 0.1387
+        error: 0.0091
+      bonds:
+      - total:
+          mean: 0.1709
+          error: 0.003
+        upper:
+          mean: 0.186
+          error: 0.0156
+        lower:
+          mean: 0.1558
+          error: 0.0108
+      - total:
+          mean: 0.1497
+          error: 0.0142
+        upper:
+          mean: 0.1778
+          error: 0.0201
+        lower:
+          mean: 0.1215
+          error: 0.0198
+    POPC C18 (17):
+      total:
+        mean: 0.1892
+        error: 0.0079
+      upper:
+        mean: 0.2007
+        error: 0.0124
+      lower:
+        mean: 0.1778
+        error: 0.0072
+      bonds:
+      - total:
+          mean: 0.1988
+          error: 0.0077
+        upper:
+          mean: 0.2088
+          error: 0.0106
+        lower:
+          mean: 0.1888
+          error: 0.0222
+      - total:
+          mean: 0.1796
+          error: 0.0162
+        upper:
+          mean: 0.1926
+          error: 0.0265
+        lower:
+          mean: 0.1667
+          error: 0.0197
+    POPC C19 (18):
+      total:
+        mean: 0.1943
+        error: 0.0118
+      upper:
+        mean: 0.2057
+        error: 0.0161
+      lower:
+        mean: 0.183
+        error: 0.0108
+      bonds:
+      - total:
+          mean: 0.2091
+          error: 0.0091
+        upper:
+          mean: 0.2209
+          error: 0.0219
+        lower:
+          mean: 0.1973
+          error: 0.0203
+      - total:
+          mean: 0.1796
+          error: 0.0167
+        upper:
+          mean: 0.1906
+          error: 0.0176
+        lower:
+          mean: 0.1687
+          error: 0.0259
+    POPC C20 (19):
+      total:
+        mean: 0.2113
+        error: 0.0099
+      upper:
+        mean: 0.2219
+        error: 0.0142
+      lower:
+        mean: 0.2007
+        error: 0.0139
+      bonds:
+      - total:
+          mean: 0.2173
+          error: 0.0044
+        upper:
+          mean: 0.23
+          error: 0.012
+        lower:
+          mean: 0.2046
+          error: 0.0136
+      - total:
+          mean: 0.2053
+          error: 0.0172
+        upper:
+          mean: 0.2138
+          error: 0.0255
+        lower:
+          mean: 0.1969
+          error: 0.0335
+    POPC C21 (20):
+      total:
+        mean: 0.1982
+        error: 0.01
+      upper:
+        mean: 0.2063
+        error: 0.0137
+      lower:
+        mean: 0.1901
+        error: 0.0122
+      bonds:
+      - total:
+          mean: 0.2002
+          error: 0.0154
+        upper:
+          mean: 0.2102
+          error: 0.015
+        lower:
+          mean: 0.1902
+          error: 0.0168
+      - total:
+          mean: 0.1962
+          error: 0.006
+        upper:
+          mean: 0.2025
+          error: 0.0244
+        lower:
+          mean: 0.19
+          error: 0.0166
+    POPC C22 (21):
+      total:
+        mean: 0.2159
+        error: 0.0055
+      upper:
+        mean: 0.2138
+        error: 0.0094
+      lower:
+        mean: 0.218
+        error: 0.0038
+      bonds:
+      - total:
+          mean: 0.2158
+          error: 0.0119
+        upper:
+          mean: 0.2132
+          error: 0.0142
+        lower:
+          mean: 0.2184
+          error: 0.0102
+      - total:
+          mean: 0.216
+          error: 0.0127
+        upper:
+          mean: 0.2144
+          error: 0.0167
+        lower:
+          mean: 0.2175
+          error: 0.0137
+    POPC C23 (22):
+      total:
+        mean: 0.1786
+        error: 0.0078
+      upper:
+        mean: 0.1769
+        error: 0.007
+      lower:
+        mean: 0.1804
+        error: 0.0101
+      bonds:
+      - total:
+          mean: 0.1751
+          error: 0.0132
+        upper:
+          mean: 0.1735
+          error: 0.0276
+        lower:
+          mean: 0.1767
+          error: 0.0207
+      - total:
+          mean: 0.1822
+          error: 0.0095
+        upper:
+          mean: 0.1804
+          error: 0.0267
+        lower:
+          mean: 0.184
+          error: 0.0256
+    POPC C24 (23):
+      total:
+        mean: 0.0978
+        error: 0.007
+      upper:
+        mean: 0.1088
+        error: 0.0172
+      lower:
+        mean: 0.0869
+        error: 0.0118
+      bonds:
+      - total:
+          mean: 0.0978
+          error: 0.007
+        upper:
+          mean: 0.1088
+          error: 0.0172
+        lower:
+          mean: 0.0869
+          error: 0.0118
+    POPC C25 (24):
+      total:
+        mean: -0.0184
+        error: 0.0089
+      upper:
+        mean: -0.028
+        error: 0.0162
+      lower:
+        mean: -0.0087
+        error: 0.011
+      bonds:
+      - total:
+          mean: -0.0184
+          error: 0.0089
+        upper:
+          mean: -0.028
+          error: 0.0162
+        lower:
+          mean: -0.0087
+          error: 0.011
+    POPC C26 (25):
+      total:
+        mean: 0.1375
+        error: 0.0075
+      upper:
+        mean: 0.1302
+        error: 0.0112
+      lower:
+        mean: 0.1447
+        error: 0.0163
+      bonds:
+      - total:
+          mean: 0.1323
+          error: 0.0161
+        upper:
+          mean: 0.1133
+          error: 0.0119
+        lower:
+          mean: 0.1513
+          error: 0.036
+      - total:
+          mean: 0.1427
+          error: 0.0102
+        upper:
+          mean: 0.1472
+          error: 0.0132
+        lower:
+          mean: 0.1381
+          error: 0.0143
+    POPC C27 (26):
+      total:
+        mean: 0.1709
+        error: 0.0076
+      upper:
+        mean: 0.1592
+        error: 0.0151
+      lower:
+        mean: 0.1825
+        error: 0.0134
+      bonds:
+      - total:
+          mean: 0.1722
+          error: 0.0122
+        upper:
+          mean: 0.1576
+          error: 0.0277
+        lower:
+          mean: 0.1868
+          error: 0.0268
+      - total:
+          mean: 0.1695
+          error: 0.0109
+        upper:
+          mean: 0.1609
+          error: 0.0196
+        lower:
+          mean: 0.1782
+          error: 0.0145
+    POPC C28 (27):
+      total:
+        mean: 0.1265
+        error: 0.0141
+      upper:
+        mean: 0.1101
+        error: 0.0157
+      lower:
+        mean: 0.1429
+        error: 0.0208
+      bonds:
+      - total:
+          mean: 0.1284
+          error: 0.0221
+        upper:
+          mean: 0.1108
+          error: 0.0167
+        lower:
+          mean: 0.146
+          error: 0.0343
+      - total:
+          mean: 0.1247
+          error: 0.0099
+        upper:
+          mean: 0.1095
+          error: 0.0205
+        lower:
+          mean: 0.1399
+          error: 0.0162
+    POPC C29 (28):
+      total:
+        mean: 0.1355
+        error: 0.013
+      upper:
+        mean: 0.117
+        error: 0.0167
+      lower:
+        mean: 0.154
+        error: 0.0184
+      bonds:
+      - total:
+          mean: 0.1421
+          error: 0.02
+        upper:
+          mean: 0.114
+          error: 0.0199
+        lower:
+          mean: 0.1703
+          error: 0.0261
+      - total:
+          mean: 0.1289
+          error: 0.0126
+        upper:
+          mean: 0.12
+          error: 0.0203
+        lower:
+          mean: 0.1378
+          error: 0.0157
+    POPC C30 (29):
+      total:
+        mean: 0.0984
+        error: 0.0154
+      upper:
+        mean: 0.0794
+        error: 0.0173
+      lower:
+        mean: 0.1174
+        error: 0.0151
+      bonds:
+      - total:
+          mean: 0.1025
+          error: 0.0167
+        upper:
+          mean: 0.0777
+          error: 0.022
+        lower:
+          mean: 0.1272
+          error: 0.0167
+      - total:
+          mean: 0.0943
+          error: 0.0167
+        upper:
+          mean: 0.0811
+          error: 0.0168
+        lower:
+          mean: 0.1075
+          error: 0.0192
+    POPC C31 (30):
+      total:
+        mean: 0.1004
+        error: 0.0188
+      upper:
+        mean: 0.0825
+        error: 0.0191
+      lower:
+        mean: 0.1183
+        error: 0.0197
+      bonds:
+      - total:
+          mean: 0.1012
+          error: 0.018
+        upper:
+          mean: 0.0812
+          error: 0.0202
+        lower:
+          mean: 0.1213
+          error: 0.0182
+      - total:
+          mean: 0.0995
+          error: 0.0317
+        upper:
+          mean: 0.0837
+          error: 0.033
+        lower:
+          mean: 0.1152
+          error: 0.0331
+    POPC C32 (31):
+      total:
+        mean: -0.1359
+        error: 0.0057
+      upper:
+        mean: -0.1225
+        error: 0.0136
+      lower:
+        mean: -0.1493
+        error: 0.011
+      bonds:
+      - total:
+          mean: -0.165
+          error: 0.0033
+        upper:
+          mean: -0.2022
+          error: 0.0452
+        lower:
+          mean: -0.1279
+          error: 0.0401
+      - total:
+          mean: -0.1068
+          error: 0.0091
+        upper:
+          mean: -0.0428
+          error: 0.0265
+        lower:
+          mean: -0.1708
+          error: 0.0335
+    POPC C36 (35):
+      total:
+        mean: 0.1737
+        error: 0.0096
+      upper:
+        mean: 0.1638
+        error: 0.0106
+      lower:
+        mean: 0.1837
+        error: 0.0178
+      bonds:
+      - total:
+          mean: 0.1933
+          error: 0.009
+        upper:
+          mean: 0.1795
+          error: 0.0244
+        lower:
+          mean: 0.207
+          error: 0.0141
+      - total:
+          mean: 0.1542
+          error: 0.0197
+        upper:
+          mean: 0.148
+          error: 0.0182
+        lower:
+          mean: 0.1604
+          error: 0.0262
+    POPC C37 (36):
+      total:
+        mean: 0.1924
+        error: 0.0101
+      upper:
+        mean: 0.1831
+        error: 0.0059
+      lower:
+        mean: 0.2017
+        error: 0.0175
+      bonds:
+      - total:
+          mean: 0.2002
+          error: 0.0061
+        upper:
+          mean: 0.1837
+          error: 0.012
+        lower:
+          mean: 0.2166
+          error: 0.0215
+      - total:
+          mean: 0.1846
+          error: 0.0159
+        upper:
+          mean: 0.1824
+          error: 0.0125
+        lower:
+          mean: 0.1868
+          error: 0.0197
+    POPC C38 (37):
+      total:
+        mean: 0.1842
+        error: 0.0096
+      upper:
+        mean: 0.1762
+        error: 0.0074
+      lower:
+        mean: 0.1923
+        error: 0.0199
+      bonds:
+      - total:
+          mean: 0.1923
+          error: 0.004
+        upper:
+          mean: 0.1748
+          error: 0.021
+        lower:
+          mean: 0.2098
+          error: 0.0218
+      - total:
+          mean: 0.1761
+          error: 0.0192
+        upper:
+          mean: 0.1775
+          error: 0.0229
+        lower:
+          mean: 0.1748
+          error: 0.0189
+    POPC C39 (38):
+      total:
+        mean: 0.1831
+        error: 0.0116
+      upper:
+        mean: 0.1725
+        error: 0.0009
+      lower:
+        mean: 0.1936
+        error: 0.0232
+      bonds:
+      - total:
+          mean: 0.1883
+          error: 0.0176
+        upper:
+          mean: 0.1691
+          error: 0.0132
+        lower:
+          mean: 0.2075
+          error: 0.0267
+      - total:
+          mean: 0.1778
+          error: 0.0159
+        upper:
+          mean: 0.1759
+          error: 0.0145
+        lower:
+          mean: 0.1797
+          error: 0.0264
+    POPC C40 (39):
+      total:
+        mean: 0.1781
+        error: 0.0108
+      upper:
+        mean: 0.1733
+        error: 0.0056
+      lower:
+        mean: 0.1829
+        error: 0.0167
+      bonds:
+      - total:
+          mean: 0.1851
+          error: 0.0144
+        upper:
+          mean: 0.1702
+          error: 0.0189
+        lower:
+          mean: 0.1999
+          error: 0.0202
+      - total:
+          mean: 0.1711
+          error: 0.0142
+        upper:
+          mean: 0.1763
+          error: 0.0185
+        lower:
+          mean: 0.1659
+          error: 0.0136
+    POPC C41 (40):
+      total:
+        mean: 0.1735
+        error: 0.007
+      upper:
+        mean: 0.1596
+        error: 0.0132
+      lower:
+        mean: 0.1875
+        error: 0.0031
+      bonds:
+      - total:
+          mean: 0.1847
+          error: 0.0117
+        upper:
+          mean: 0.1689
+          error: 0.0198
+        lower:
+          mean: 0.2005
+          error: 0.0131
+      - total:
+          mean: 0.1624
+          error: 0.0103
+        upper:
+          mean: 0.1503
+          error: 0.0224
+        lower:
+          mean: 0.1744
+          error: 0.009
+    POPC C42 (41):
+      total:
+        mean: 0.1681
+        error: 0.012
+      upper:
+        mean: 0.1627
+        error: 0.0172
+      lower:
+        mean: 0.1735
+        error: 0.0124
+      bonds:
+      - total:
+          mean: 0.1716
+          error: 0.0252
+        upper:
+          mean: 0.1645
+          error: 0.0276
+        lower:
+          mean: 0.1787
+          error: 0.0292
+      - total:
+          mean: 0.1646
+          error: 0.0115
+        upper:
+          mean: 0.1609
+          error: 0.0313
+        lower:
+          mean: 0.1684
+          error: 0.0223
+    POPC C43 (42):
+      total:
+        mean: 0.1615
+        error: 0.0124
+      upper:
+        mean: 0.1566
+        error: 0.0144
+      lower:
+        mean: 0.1663
+        error: 0.0166
+      bonds:
+      - total:
+          mean: 0.1623
+          error: 0.0256
+        upper:
+          mean: 0.1602
+          error: 0.0275
+        lower:
+          mean: 0.1644
+          error: 0.0354
+      - total:
+          mean: 0.1606
+          error: 0.0127
+        upper:
+          mean: 0.153
+          error: 0.0343
+        lower:
+          mean: 0.1682
+          error: 0.0154
+    POPC C44 (43):
+      total:
+        mean: 0.1543
+        error: 0.0107
+      upper:
+        mean: 0.1491
+        error: 0.0139
+      lower:
+        mean: 0.1595
+        error: 0.0112
+      bonds:
+      - total:
+          mean: 0.1556
+          error: 0.0137
+        upper:
+          mean: 0.1496
+          error: 0.0181
+        lower:
+          mean: 0.1616
+          error: 0.0136
+      - total:
+          mean: 0.153
+          error: 0.0146
+        upper:
+          mean: 0.1486
+          error: 0.0265
+        lower:
+          mean: 0.1573
+          error: 0.0099
+    POPC C45 (44):
+      total:
+        mean: 0.1496
+        error: 0.0087
+      upper:
+        mean: 0.1414
+        error: 0.0078
+      lower:
+        mean: 0.1578
+        error: 0.0126
+      bonds:
+      - total:
+          mean: 0.1554
+          error: 0.0092
+        upper:
+          mean: 0.1487
+          error: 0.0064
+        lower:
+          mean: 0.1621
+          error: 0.0147
+      - total:
+          mean: 0.1438
+          error: 0.0196
+        upper:
+          mean: 0.1341
+          error: 0.0176
+        lower:
+          mean: 0.1536
+          error: 0.0239
+    POPC C46 (45):
+      total:
+        mean: 0.1377
+        error: 0.0118
+      upper:
+        mean: 0.1357
+        error: 0.0173
+      lower:
+        mean: 0.1397
+        error: 0.0139
+      bonds:
+      - total:
+          mean: 0.1417
+          error: 0.0127
+        upper:
+          mean: 0.1418
+          error: 0.008
+        lower:
+          mean: 0.1416
+          error: 0.0231
+      - total:
+          mean: 0.1337
+          error: 0.0196
+        upper:
+          mean: 0.1296
+          error: 0.0278
+        lower:
+          mean: 0.1377
+          error: 0.0131
+    POPC C47 (46):
+      total:
+        mean: 0.1261
+        error: 0.0108
+      upper:
+        mean: 0.1194
+        error: 0.0121
+      lower:
+        mean: 0.1327
+        error: 0.0147
+      bonds:
+      - total:
+          mean: 0.1347
+          error: 0.0196
+        upper:
+          mean: 0.1285
+          error: 0.0159
+        lower:
+          mean: 0.1409
+          error: 0.0305
+      - total:
+          mean: 0.1174
+          error: 0.0118
+        upper:
+          mean: 0.1102
+          error: 0.0153
+        lower:
+          mean: 0.1245
+          error: 0.0095
+    POPC C48 (47):
+      total:
+        mean: 0.1063
+        error: 0.0096
+      upper:
+        mean: 0.1015
+        error: 0.0154
+      lower:
+        mean: 0.1111
+        error: 0.0121
+      bonds:
+      - total:
+          mean: 0.1102
+          error: 0.0101
+        upper:
+          mean: 0.0947
+          error: 0.0176
+        lower:
+          mean: 0.1257
+          error: 0.0174
+      - total:
+          mean: 0.1024
+          error: 0.0099
+        upper:
+          mean: 0.1083
+          error: 0.0168
+        lower:
+          mean: 0.0966
+          error: 0.0102
+    POPC C49 (48):
+      total:
+        mean: 0.0851
+        error: 0.0119
+      upper:
+        mean: 0.0829
+        error: 0.0162
+      lower:
+        mean: 0.0872
+        error: 0.0172
+      bonds:
+      - total:
+          mean: 0.0918
+          error: 0.0147
+        upper:
+          mean: 0.0824
+          error: 0.0243
+        lower:
+          mean: 0.1011
+          error: 0.0159
+      - total:
+          mean: 0.0784
+          error: 0.0151
+        upper:
+          mean: 0.0835
+          error: 0.0121
+        lower:
+          mean: 0.0733
+          error: 0.0288
+    POPC C50 (49):
+      total:
+        mean: 0.0207
+        error: 0.0067
+      upper:
+        mean: 0.0189
+        error: 0.0057
+      lower:
+        mean: 0.0224
+        error: 0.0105
+      bonds:
+      - total:
+          mean: -0.108
+          error: 0.0209
+        upper:
+          mean: -0.1088
+          error: 0.025
+        lower:
+          mean: -0.1072
+          error: 0.0291
+      - total:
+          mean: 0.0781
+          error: 0.0151
+        upper:
+          mean: 0.0832
+          error: 0.0117
+        lower:
+          mean: 0.0731
+          error: 0.0288
+      - total:
+          mean: 0.0919
+          error: 0.0148
+        upper:
+          mean: 0.0824
+          error: 0.0242
+        lower:
+          mean: 0.1015
+          error: 0.0164
+    POPC CA1 (50):
+      total:
+        mean: 0.0677
+        error: 0.0139
+      upper:
+        mean: 0.0533
+        error: 0.0121
+      lower:
+        mean: 0.082
+        error: 0.0202
+      bonds:
+      - total:
+          mean: 0.0637
+          error: 0.0184
+        upper:
+          mean: 0.0516
+          error: 0.0247
+        lower:
+          mean: 0.0758
+          error: 0.0149
+      - total:
+          mean: 0.0716
+          error: 0.0165
+        upper:
+          mean: 0.055
+          error: 0.0182
+        lower:
+          mean: 0.0882
+          error: 0.0284
+    POPC CA2 (51):
+      total:
+        mean: 0.0439
+        error: 0.007
+      upper:
+        mean: 0.0423
+        error: 0.0048
+      lower:
+        mean: 0.0454
+        error: 0.0111
+      bonds:
+      - total:
+          mean: -0.0022
+          error: 0.0126
+        upper:
+          mean: 0.0218
+          error: 0.0142
+        lower:
+          mean: -0.0262
+          error: 0.0239
+      - total:
+          mean: 0.0708
+          error: 0.0168
+        upper:
+          mean: 0.0539
+          error: 0.0184
+        lower:
+          mean: 0.0878
+          error: 0.0288
+      - total:
+          mean: 0.063
+          error: 0.0183
+        upper:
+          mean: 0.0513
+          error: 0.0246
+        lower:
+          mean: 0.0747
+          error: 0.0148
+POPS:
+  average order:
+    total:
+      mean: 0.147
+      error: 0.0106
+    upper:
+      mean: 0.1491
+      error: 0.0093
+    lower:
+      mean: 0.1449
+      error: 0.0125
+  order parameters:
+    POPS C5 (4):
+      total:
+        mean: -0.2411
+        error: 0.0169
+      upper:
+        mean: -0.2898
+        error: 0.0937
+      lower:
+        mean: -0.1925
+        error: 0.0652
+      bonds:
+      - total:
+          mean: -0.2411
+          error: 0.0169
+        upper:
+          mean: -0.2898
+          error: 0.0937
+        lower:
+          mean: -0.1925
+          error: 0.0652
+    POPS C9 (8):
+      total:
+        mean: -0.2743
+        error: 0.0233
+      upper:
+        mean: -0.2916
+        error: 0.0277
+      lower:
+        mean: -0.257
+        error: 0.0443
+      bonds:
+      - total:
+          mean: -0.2361
+          error: 0.0252
+        upper:
+          mean: -0.2988
+          error: 0.0456
+        lower:
+          mean: -0.1734
+          error: 0.0797
+      - total:
+          mean: -0.3125
+          error: 0.0237
+        upper:
+          mean: -0.2844
+          error: 0.045
+        lower:
+          mean: -0.3406
+          error: 0.0203
+    POPS C15 (14):
+      total:
+        mean: 0.2858
+        error: 0.0118
+      upper:
+        mean: 0.2937
+        error: 0.0146
+      lower:
+        mean: 0.278
+        error: 0.0281
+      bonds:
+      - total:
+          mean: 0.2735
+          error: 0.02
+        upper:
+          mean: 0.3027
+          error: 0.005
+        lower:
+          mean: 0.2443
+          error: 0.0372
+      - total:
+          mean: 0.2981
+          error: 0.0155
+        upper:
+          mean: 0.2846
+          error: 0.0296
+        lower:
+          mean: 0.3116
+          error: 0.0229
+    POPS C16 (15):
+      total:
+        mean: 0.1966
+        error: 0.0143
+      upper:
+        mean: 0.1923
+        error: 0.0325
+      lower:
+        mean: 0.2009
+        error: 0.0433
+      bonds:
+      - total:
+          mean: 0.1966
+          error: 0.0143
+        upper:
+          mean: 0.1923
+          error: 0.0325
+        lower:
+          mean: 0.2009
+          error: 0.0433
+    POPS C20 (19):
+      total:
+        mean: 0.2272
+        error: 0.0142
+      upper:
+        mean: 0.2431
+        error: 0.0135
+      lower:
+        mean: 0.2112
+        error: 0.0196
+      bonds:
+      - total:
+          mean: 0.1629
+          error: 0.0186
+        upper:
+          mean: 0.1841
+          error: 0.0102
+        lower:
+          mean: 0.1417
+          error: 0.0359
+      - total:
+          mean: 0.2914
+          error: 0.0105
+        upper:
+          mean: 0.3021
+          error: 0.0234
+        lower:
+          mean: 0.2808
+          error: 0.0152
+    POPS C21 (20):
+      total:
+        mean: 0.2548
+        error: 0.0113
+      upper:
+        mean: 0.2608
+        error: 0.0192
+      lower:
+        mean: 0.2487
+        error: 0.0122
+      bonds:
+      - total:
+          mean: 0.2118
+          error: 0.0143
+        upper:
+          mean: 0.2178
+          error: 0.0179
+        lower:
+          mean: 0.2059
+          error: 0.0325
+      - total:
+          mean: 0.2977
+          error: 0.0185
+        upper:
+          mean: 0.3038
+          error: 0.0328
+        lower:
+          mean: 0.2916
+          error: 0.0099
+    POPS C22 (21):
+      total:
+        mean: 0.2468
+        error: 0.0179
+      upper:
+        mean: 0.2428
+        error: 0.0282
+      lower:
+        mean: 0.2507
+        error: 0.0143
+      bonds:
+      - total:
+          mean: 0.2283
+          error: 0.0251
+        upper:
+          mean: 0.2212
+          error: 0.0447
+        lower:
+          mean: 0.2355
+          error: 0.0272
+      - total:
+          mean: 0.2652
+          error: 0.0189
+        upper:
+          mean: 0.2644
+          error: 0.0253
+        lower:
+          mean: 0.2659
+          error: 0.0305
+    POPS C23 (22):
+      total:
+        mean: 0.2633
+        error: 0.0117
+      upper:
+        mean: 0.266
+        error: 0.0162
+      lower:
+        mean: 0.2606
+        error: 0.0292
+      bonds:
+      - total:
+          mean: 0.2632
+          error: 0.009
+        upper:
+          mean: 0.2586
+          error: 0.0224
+        lower:
+          mean: 0.2677
+          error: 0.0342
+      - total:
+          mean: 0.2634
+          error: 0.0158
+        upper:
+          mean: 0.2734
+          error: 0.0221
+        lower:
+          mean: 0.2534
+          error: 0.0284
+    POPS C24 (23):
+      total:
+        mean: 0.2498
+        error: 0.0155
+      upper:
+        mean: 0.2561
+        error: 0.0159
+      lower:
+        mean: 0.2434
+        error: 0.0345
+      bonds:
+      - total:
+          mean: 0.2465
+          error: 0.0116
+        upper:
+          mean: 0.2522
+          error: 0.0209
+        lower:
+          mean: 0.2408
+          error: 0.0408
+      - total:
+          mean: 0.253
+          error: 0.024
+        upper:
+          mean: 0.2601
+          error: 0.0293
+        lower:
+          mean: 0.246
+          error: 0.0298
+    POPS C25 (24):
+      total:
+        mean: 0.263
+        error: 0.0046
+      upper:
+        mean: 0.2681
+        error: 0.0075
+      lower:
+        mean: 0.2578
+        error: 0.0105
+      bonds:
+      - total:
+          mean: 0.2491
+          error: 0.0116
+        upper:
+          mean: 0.2764
+          error: 0.018
+        lower:
+          mean: 0.2217
+          error: 0.0336
+      - total:
+          mean: 0.2769
+          error: 0.014
+        upper:
+          mean: 0.2599
+          error: 0.0214
+        lower:
+          mean: 0.294
+          error: 0.0187
+    POPS C26 (25):
+      total:
+        mean: 0.2197
+        error: 0.012
+      upper:
+        mean: 0.233
+        error: 0.0181
+      lower:
+        mean: 0.2063
+        error: 0.0173
+      bonds:
+      - total:
+          mean: 0.2081
+          error: 0.0207
+        upper:
+          mean: 0.2307
+          error: 0.0374
+        lower:
+          mean: 0.1854
+          error: 0.0427
+      - total:
+          mean: 0.2313
+          error: 0.0131
+        upper:
+          mean: 0.2354
+          error: 0.0248
+        lower:
+          mean: 0.2273
+          error: 0.0215
+    POPS C27 (26):
+      total:
+        mean: 0.1342
+        error: 0.0018
+      upper:
+        mean: 0.147
+        error: 0.0228
+      lower:
+        mean: 0.1214
+        error: 0.0216
+      bonds:
+      - total:
+          mean: 0.1342
+          error: 0.0018
+        upper:
+          mean: 0.147
+          error: 0.0228
+        lower:
+          mean: 0.1214
+          error: 0.0216
+    POPS C28 (27):
+      total:
+        mean: -0.0698
+        error: 0.0513
+      upper:
+        mean: -0.0412
+        error: 0.0276
+      lower:
+        mean: -0.0983
+        error: 0.076
+      bonds:
+      - total:
+          mean: -0.0698
+          error: 0.0513
+        upper:
+          mean: -0.0412
+          error: 0.0276
+        lower:
+          mean: -0.0983
+          error: 0.076
+    POPS C29 (28):
+      total:
+        mean: 0.153
+        error: 0.0283
+      upper:
+        mean: 0.168
+        error: 0.026
+      lower:
+        mean: 0.1379
+        error: 0.0395
+      bonds:
+      - total:
+          mean: 0.1614
+          error: 0.0256
+        upper:
+          mean: 0.1891
+          error: 0.0312
+        lower:
+          mean: 0.1337
+          error: 0.0378
+      - total:
+          mean: 0.1446
+          error: 0.0414
+        upper:
+          mean: 0.147
+          error: 0.0383
+        lower:
+          mean: 0.1422
+          error: 0.0496
+    POPS C30 (29):
+      total:
+        mean: 0.186
+        error: 0.0266
+      upper:
+        mean: 0.2144
+        error: 0.031
+      lower:
+        mean: 0.1576
+        error: 0.036
+      bonds:
+      - total:
+          mean: 0.1831
+          error: 0.0333
+        upper:
+          mean: 0.2258
+          error: 0.0497
+        lower:
+          mean: 0.1404
+          error: 0.0349
+      - total:
+          mean: 0.189
+          error: 0.0404
+        upper:
+          mean: 0.2031
+          error: 0.0273
+        lower:
+          mean: 0.1749
+          error: 0.0575
+    POPS C31 (30):
+      total:
+        mean: 0.1391
+        error: 0.0246
+      upper:
+        mean: 0.1559
+        error: 0.0387
+      lower:
+        mean: 0.1223
+        error: 0.0361
+      bonds:
+      - total:
+          mean: 0.1526
+          error: 0.0342
+        upper:
+          mean: 0.1598
+          error: 0.0503
+        lower:
+          mean: 0.1455
+          error: 0.0229
+      - total:
+          mean: 0.1256
+          error: 0.033
+        upper:
+          mean: 0.1521
+          error: 0.0274
+        lower:
+          mean: 0.0991
+          error: 0.0734
+    POPS C32 (31):
+      total:
+        mean: 0.1387
+        error: 0.0302
+      upper:
+        mean: 0.1446
+        error: 0.0338
+      lower:
+        mean: 0.1328
+        error: 0.0376
+      bonds:
+      - total:
+          mean: 0.1568
+          error: 0.0426
+        upper:
+          mean: 0.1579
+          error: 0.0582
+        lower:
+          mean: 0.1557
+          error: 0.0352
+      - total:
+          mean: 0.1206
+          error: 0.0385
+        upper:
+          mean: 0.1313
+          error: 0.0224
+        lower:
+          mean: 0.1098
+          error: 0.0714
+    POPS C33 (32):
+      total:
+        mean: 0.1009
+        error: 0.0273
+      upper:
+        mean: 0.1037
+        error: 0.0261
+      lower:
+        mean: 0.0982
+        error: 0.0447
+      bonds:
+      - total:
+          mean: 0.1124
+          error: 0.036
+        upper:
+          mean: 0.1202
+          error: 0.0436
+        lower:
+          mean: 0.1046
+          error: 0.0491
+      - total:
+          mean: 0.0895
+          error: 0.0456
+        upper:
+          mean: 0.0872
+          error: 0.0297
+        lower:
+          mean: 0.0918
+          error: 0.0766
+    POPS C34 (33):
+      total:
+        mean: 0.1078
+        error: 0.0268
+      upper:
+        mean: 0.1031
+        error: 0.0359
+      lower:
+        mean: 0.1124
+        error: 0.039
+      bonds:
+      - total:
+          mean: 0.1233
+          error: 0.0345
+        upper:
+          mean: 0.1241
+          error: 0.0549
+        lower:
+          mean: 0.1225
+          error: 0.028
+      - total:
+          mean: 0.0922
+          error: 0.0241
+        upper:
+          mean: 0.0822
+          error: 0.0359
+        lower:
+          mean: 0.1023
+          error: 0.0598
+    POPS C35 (34):
+      total:
+        mean: 0.0722
+        error: 0.0302
+      upper:
+        mean: 0.0662
+        error: 0.0292
+      lower:
+        mean: 0.0781
+        error: 0.0341
+      bonds:
+      - total:
+          mean: 0.0674
+          error: 0.046
+        upper:
+          mean: 0.0618
+          error: 0.0475
+        lower:
+          mean: 0.0731
+          error: 0.0467
+      - total:
+          mean: 0.0769
+          error: 0.0239
+        upper:
+          mean: 0.0705
+          error: 0.0202
+        lower:
+          mean: 0.0832
+          error: 0.0304
+    POPS C36 (35):
+      total:
+        mean: 0.0605
+        error: 0.0186
+      upper:
+        mean: 0.0669
+        error: 0.0253
+      lower:
+        mean: 0.0541
+        error: 0.0166
+      bonds:
+      - total:
+          mean: 0.04
+          error: 0.0293
+        upper:
+          mean: 0.0707
+          error: 0.057
+        lower:
+          mean: 0.0093
+          error: 0.0392
+      - total:
+          mean: 0.0756
+          error: 0.0229
+        upper:
+          mean: 0.07
+          error: 0.0188
+        lower:
+          mean: 0.0811
+          error: 0.0294
+      - total:
+          mean: 0.066
+          error: 0.0457
+        upper:
+          mean: 0.0601
+          error: 0.0473
+        lower:
+          mean: 0.0719
+          error: 0.0463
+    POPS C37 (36):
+      total:
+        mean: -0.2242
+        error: 0.0101
+      upper:
+        mean: -0.2575
+        error: 0.0191
+      lower:
+        mean: -0.191
+        error: 0.0166
+      bonds:
+      - total:
+          mean: -0.1247
+          error: 0.0235
+        upper:
+          mean: -0.2639
+          error: 0.0454
+        lower:
+          mean: 0.0144
+          error: 0.0358
+      - total:
+          mean: -0.3237
+          error: 0.0272
+        upper:
+          mean: -0.2511
+          error: 0.0509
+        lower:
+          mean: -0.3964
+          error: 0.0242
+    POPS C41 (40):
+      total:
+        mean: 0.2356
+        error: 0.0164
+      upper:
+        mean: 0.2679
+        error: 0.0202
+      lower:
+        mean: 0.2033
+        error: 0.0236
+      bonds:
+      - total:
+          mean: 0.2871
+          error: 0.0175
+        upper:
+          mean: 0.2984
+          error: 0.0098
+        lower:
+          mean: 0.2757
+          error: 0.0294
+      - total:
+          mean: 0.1841
+          error: 0.0211
+        upper:
+          mean: 0.2373
+          error: 0.0322
+        lower:
+          mean: 0.1309
+          error: 0.0369
+    POPS C42 (41):
+      total:
+        mean: 0.2673
+        error: 0.0096
+      upper:
+        mean: 0.2898
+        error: 0.0165
+      lower:
+        mean: 0.2448
+        error: 0.0255
+      bonds:
+      - total:
+          mean: 0.2926
+          error: 0.0183
+        upper:
+          mean: 0.2915
+          error: 0.0143
+        lower:
+          mean: 0.2937
+          error: 0.0322
+      - total:
+          mean: 0.242
+          error: 0.0244
+        upper:
+          mean: 0.2882
+          error: 0.0399
+        lower:
+          mean: 0.1959
+          error: 0.0294
+    POPS C43 (42):
+      total:
+        mean: 0.2212
+        error: 0.0044
+      upper:
+        mean: 0.2327
+        error: 0.0264
+      lower:
+        mean: 0.2097
+        error: 0.0291
+      bonds:
+      - total:
+          mean: 0.2492
+          error: 0.0198
+        upper:
+          mean: 0.2412
+          error: 0.0141
+        lower:
+          mean: 0.2573
+          error: 0.0413
+      - total:
+          mean: 0.1932
+          error: 0.0234
+        upper:
+          mean: 0.2242
+          error: 0.0519
+        lower:
+          mean: 0.1621
+          error: 0.0315
+    POPS C44 (43):
+      total:
+        mean: 0.2212
+        error: 0.011
+      upper:
+        mean: 0.2303
+        error: 0.0155
+      lower:
+        mean: 0.2122
+        error: 0.0203
+      bonds:
+      - total:
+          mean: 0.2196
+          error: 0.021
+        upper:
+          mean: 0.2121
+          error: 0.0158
+        lower:
+          mean: 0.2271
+          error: 0.0368
+      - total:
+          mean: 0.2229
+          error: 0.0114
+        upper:
+          mean: 0.2484
+          error: 0.0405
+        lower:
+          mean: 0.1973
+          error: 0.0206
+    POPS C45 (44):
+      total:
+        mean: 0.2256
+        error: 0.0192
+      upper:
+        mean: 0.2332
+        error: 0.0196
+      lower:
+        mean: 0.218
+        error: 0.0223
+      bonds:
+      - total:
+          mean: 0.2405
+          error: 0.0153
+        upper:
+          mean: 0.2357
+          error: 0.0239
+        lower:
+          mean: 0.2452
+          error: 0.0381
+      - total:
+          mean: 0.2108
+          error: 0.0314
+        upper:
+          mean: 0.2307
+          error: 0.0516
+        lower:
+          mean: 0.1909
+          error: 0.036
+    POPS C46 (45):
+      total:
+        mean: 0.2221
+        error: 0.0241
+      upper:
+        mean: 0.2204
+        error: 0.0202
+      lower:
+        mean: 0.2239
+        error: 0.035
+      bonds:
+      - total:
+          mean: 0.2084
+          error: 0.0262
+        upper:
+          mean: 0.1986
+          error: 0.0341
+        lower:
+          mean: 0.2181
+          error: 0.0531
+      - total:
+          mean: 0.2359
+          error: 0.0441
+        upper:
+          mean: 0.2421
+          error: 0.0715
+        lower:
+          mean: 0.2296
+          error: 0.0489
+    POPS C47 (46):
+      total:
+        mean: 0.2199
+        error: 0.026
+      upper:
+        mean: 0.2144
+        error: 0.0268
+      lower:
+        mean: 0.2255
+        error: 0.0369
+      bonds:
+      - total:
+          mean: 0.2164
+          error: 0.0301
+        upper:
+          mean: 0.2033
+          error: 0.0202
+        lower:
+          mean: 0.2294
+          error: 0.0596
+      - total:
+          mean: 0.2235
+          error: 0.037
+        upper:
+          mean: 0.2254
+          error: 0.0604
+        lower:
+          mean: 0.2216
+          error: 0.0242
+    POPS C48 (47):
+      total:
+        mean: 0.2003
+        error: 0.0232
+      upper:
+        mean: 0.1855
+        error: 0.0255
+      lower:
+        mean: 0.215
+        error: 0.0433
+      bonds:
+      - total:
+          mean: 0.1966
+          error: 0.0297
+        upper:
+          mean: 0.1758
+          error: 0.0391
+        lower:
+          mean: 0.2174
+          error: 0.0579
+      - total:
+          mean: 0.2039
+          error: 0.0194
+        upper:
+          mean: 0.1953
+          error: 0.0248
+        lower:
+          mean: 0.2126
+          error: 0.0327
+    POPS C49 (48):
+      total:
+        mean: 0.1876
+        error: 0.0136
+      upper:
+        mean: 0.1748
+        error: 0.0182
+      lower:
+        mean: 0.2004
+        error: 0.0217
+      bonds:
+      - total:
+          mean: 0.1845
+          error: 0.0204
+        upper:
+          mean: 0.1695
+          error: 0.0344
+        lower:
+          mean: 0.1994
+          error: 0.0475
+      - total:
+          mean: 0.1907
+          error: 0.0186
+        upper:
+          mean: 0.1801
+          error: 0.0419
+        lower:
+          mean: 0.2014
+          error: 0.0153
+    POPS C50 (49):
+      total:
+        mean: 0.1789
+        error: 0.0121
+      upper:
+        mean: 0.1663
+        error: 0.0149
+      lower:
+        mean: 0.1915
+        error: 0.0288
+      bonds:
+      - total:
+          mean: 0.177
+          error: 0.0209
+        upper:
+          mean: 0.1591
+          error: 0.054
+        lower:
+          mean: 0.195
+          error: 0.0438
+      - total:
+          mean: 0.1808
+          error: 0.0243
+        upper:
+          mean: 0.1736
+          error: 0.0382
+        lower:
+          mean: 0.188
+          error: 0.0209
+    POPS C51 (50):
+      total:
+        mean: 0.1637
+        error: 0.0129
+      upper:
+        mean: 0.1488
+        error: 0.0168
+      lower:
+        mean: 0.1785
+        error: 0.0313
+      bonds:
+      - total:
+          mean: 0.1632
+          error: 0.015
+        upper:
+          mean: 0.1576
+          error: 0.0419
+        lower:
+          mean: 0.1688
+          error: 0.0462
+      - total:
+          mean: 0.1641
+          error: 0.0154
+        upper:
+          mean: 0.14
+          error: 0.0279
+        lower:
+          mean: 0.1882
+          error: 0.0242
+    POPS C52 (51):
+      total:
+        mean: 0.1467
+        error: 0.0257
+      upper:
+        mean: 0.1461
+        error: 0.0215
+      lower:
+        mean: 0.1473
+        error: 0.0375
+      bonds:
+      - total:
+          mean: 0.1466
+          error: 0.0278
+        upper:
+          mean: 0.1531
+          error: 0.0357
+        lower:
+          mean: 0.1401
+          error: 0.06
+      - total:
+          mean: 0.1468
+          error: 0.027
+        upper:
+          mean: 0.1391
+          error: 0.0245
+        lower:
+          mean: 0.1545
+          error: 0.0381
+    POPS C53 (52):
+      total:
+        mean: 0.1259
+        error: 0.029
+      upper:
+        mean: 0.1218
+        error: 0.0244
+      lower:
+        mean: 0.1299
+        error: 0.0386
+      bonds:
+      - total:
+          mean: 0.1239
+          error: 0.041
+        upper:
+          mean: 0.1355
+          error: 0.0214
+        lower:
+          mean: 0.1123
+          error: 0.0654
+      - total:
+          mean: 0.1278
+          error: 0.0285
+        upper:
+          mean: 0.108
+          error: 0.0303
+        lower:
+          mean: 0.1475
+          error: 0.0461
+    POPS C54 (53):
+      total:
+        mean: 0.1071
+        error: 0.0268
+      upper:
+        mean: 0.1113
+        error: 0.0391
+      lower:
+        mean: 0.1029
+        error: 0.0323
+      bonds:
+      - total:
+          mean: 0.1061
+          error: 0.0339
+        upper:
+          mean: 0.1255
+          error: 0.0383
+        lower:
+          mean: 0.0868
+          error: 0.0527
+      - total:
+          mean: 0.1081
+          error: 0.0304
+        upper:
+          mean: 0.0971
+          error: 0.0434
+        lower:
+          mean: 0.1191
+          error: 0.0469
+    POPS C55 (54):
+      total:
+        mean: 0.0394
+        error: 0.0131
+      upper:
+        mean: 0.0332
+        error: 0.0208
+      lower:
+        mean: 0.0457
+        error: 0.0187
+      bonds:
+      - total:
+          mean: -0.0949
+          error: 0.048
+        upper:
+          mean: -0.1226
+          error: 0.0576
+        lower:
+          mean: -0.0672
+          error: 0.0496
+      - total:
+          mean: 0.1076
+          error: 0.03
+        upper:
+          mean: 0.0973
+          error: 0.0432
+        lower:
+          mean: 0.1179
+          error: 0.0463
+      - total:
+          mean: 0.1056
+          error: 0.0344
+        upper:
+          mean: 0.1249
+          error: 0.0388
+        lower:
+          mean: 0.0862
+          error: 0.0527

@@ -4,13 +4,13 @@
 //! Integration tests for the calculation of coarse-grained order parameters.
 
 use std::{
-    fs::File,
+    fs::{read_to_string, File},
     io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
 };
 
 use approx::assert_relative_eq;
-use gorder::{input::DynamicNormal, prelude::*, Leaflet};
+use gorder::prelude::*;
 use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
@@ -53,6 +53,33 @@ fn test_cg_order_basic_yaml() {
         "tests/files/cg_order_basic.yaml",
         1
     ));
+}
+
+#[test]
+fn test_cg_order_basic_concatenated_yaml_multiple_threads() {
+    for n_threads in [1, 2, 3, 8, 64, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/split/cg*.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_basic.yaml",
+            1
+        ));
+    }
 }
 
 #[test]
@@ -222,18 +249,52 @@ fn test_cg_order_leaflets_yaml_alt_traj() {
         "tests/files/cg.dcd",
         "tests/files/cg.lammpstrj",
     ] {
+        for n_threads in [1, 3, 8] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/cg.tpr")
+                .trajectory(trajectory)
+                .output(path_to_output)
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .leaflets(
+                    LeafletClassification::individual("name PO4", "name C4A C4B")
+                        .with_frequency(Frequency::once()),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/cg_order_leaflets.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_trr_concatenated() {
+    for n_threads in [1, 3, 8] {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
 
         let analysis = Analysis::builder()
             .structure("tests/files/cg.tpr")
-            .trajectory(trajectory)
+            .trajectory("tests/files/split/cg*.trr")
             .output(path_to_output)
             .analysis_type(AnalysisType::cgorder("@membrane"))
             .leaflets(
                 LeafletClassification::individual("name PO4", "name C4A C4B")
                     .with_frequency(Frequency::once()),
             )
+            .n_threads(n_threads)
             .silent()
             .overwrite()
             .build()
@@ -687,8 +748,8 @@ fn test_cg_order_begin_end_step_yaml() {
         .trajectory("tests/files/cg.xtc")
         .output(path_to_output)
         .analysis_type(AnalysisType::cgorder("@membrane"))
-        .begin(350_000.0)
-        .end(356_000.0)
+        .begin(352_000.0)
+        .end(358_000.0)
         .step(5)
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
         .silent()
@@ -718,8 +779,47 @@ fn test_cg_order_begin_end_step_yaml_multiple_threads() {
             .trajectory("tests/files/cg.xtc")
             .output(path_to_output)
             .analysis_type(AnalysisType::cgorder("@membrane"))
-            .begin(350_000.0)
-            .end(356_000.0)
+            .begin(352_000.0)
+            .end(358_000.0)
+            .step(5)
+            .leaflets(LeafletClassification::global("@membrane", "name PO4"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        let results = analysis.run().unwrap();
+        assert_eq!(results.n_analyzed_frames(), 13);
+        results.write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_begin_end_step.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_begin_end_step_concatenated_yaml_multiple_threads() {
+    for n_threads in [1, 2, 3, 8, 64, 128] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory(vec![
+                "tests/files/split/cg1.xtc",
+                "tests/files/split/cg2.xtc",
+                "tests/files/split/cg3.xtc",
+                "tests/files/split/cg4.xtc",
+                "tests/files/split/cg5.xtc",
+            ])
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .begin(352_000.0)
+            .end(358_000.0)
             .step(5)
             .leaflets(LeafletClassification::global("@membrane", "name PO4"))
             .n_threads(n_threads)
@@ -761,8 +861,8 @@ fn test_cg_order_begin_end_step_yaml_leaflets_multiple_threads_various_frequenci
                     .trajectory("tests/files/cg.xtc")
                     .output(path_to_output)
                     .analysis_type(AnalysisType::cgorder("@membrane"))
-                    .begin(350_000.0)
-                    .end(356_000.0)
+                    .begin(352_000.0)
+                    .end(358_000.0)
                     .step(5)
                     .leaflets(method.clone().with_frequency(freq))
                     .n_threads(n_threads)
@@ -795,8 +895,8 @@ fn test_cg_order_begin_end_yaml() {
         .trajectory("tests/files/cg.xtc")
         .output(path_to_output)
         .analysis_type(AnalysisType::cgorder("@membrane"))
-        .begin(350_000.0)
-        .end(356_000.0)
+        .begin(352_000.0)
+        .end(358_000.0)
         .leaflets(LeafletClassification::global("@membrane", "name PO4"))
         .silent()
         .overwrite()
@@ -825,8 +925,8 @@ fn test_cg_order_begin_end_yaml_multiple_threads() {
             .trajectory("tests/files/cg.xtc")
             .output(path_to_output)
             .analysis_type(AnalysisType::cgorder("@membrane"))
-            .begin(350_000.0)
-            .end(356_000.0)
+            .begin(352_000.0)
+            .end(358_000.0)
             .leaflets(LeafletClassification::global("@membrane", "name PO4"))
             .n_threads(n_threads)
             .silent()
@@ -2129,8 +2229,8 @@ fn test_cg_order_leaflets_asymmetric_ordermaps_multiple_threads() {
             .unwrap();
 
         let result = match analysis.run().unwrap() {
-            AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
             AnalysisResults::CG(x) => x,
+            _ => panic!("Incorrect results type returned."),
         };
 
         for molecule in result.molecules() {
@@ -2421,12 +2521,12 @@ fn test_cg_order_geometry_cuboid_z() {
 
     let results_geometry = match results_geometry {
         AnalysisResults::CG(x) => x,
-        AnalysisResults::AA(_) => panic!("Invalid results."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     let results_leaflets = match results_leaflets {
         AnalysisResults::CG(x) => x,
-        AnalysisResults::AA(_) => panic!("Invalid results."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     for (mol, mol2) in results_geometry
@@ -2480,12 +2580,12 @@ fn test_cg_order_geometry_cylinder_z() {
 
     let results_geometry = match results_geometry {
         AnalysisResults::CG(x) => x,
-        AnalysisResults::AA(_) => panic!("Invalid results."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     let results_leaflets = match results_leaflets {
         AnalysisResults::CG(x) => x,
-        AnalysisResults::AA(_) => panic!("Invalid results."),
+        _ => panic!("Incorrect results type returned."),
     };
 
     for (mol, mol2) in results_geometry
@@ -3238,6 +3338,175 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_yaml() {
 }
 
 #[test]
+fn test_cg_order_vesicle_membrane_normals_from_file_yaml() {
+    for n_threads in [1, 3, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/vesicle.tpr")
+            .trajectory("tests/files/vesicle.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder(
+                "name C1A D2A C3A C4A C1B C2B C3B C4B",
+            ))
+            .membrane_normal("tests/files/normals_vesicle.yaml")
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_vesicle.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_membrane_normals_from_file_fail_unmatching_molecules() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_unmatching.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("inconsistent number of molecules specified in the normals structure")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_normals_from_file_fail_missing_molecule_type() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_missing.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("not found in the manual normals structure")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_normals_from_file_fail_empty_molecule_type() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_empty.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("no membrane normals provided for molecule type")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_membrane_normals_from_file_fail_too_many_frames() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_vesicle.yaml")
+        .begin(2600000.0)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("number of frames specified in the normals structure")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_membrane_normals_from_file_fail_nonexistent_file() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal("tests/files/normals_nonexistent.yaml")
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("could not open the normals file")),
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_membrane_normals_from_map_yaml() {
+    let string = read_to_string("tests/files/normals_vesicle.yaml").unwrap();
+    let normals_map: HashMap<String, Vec<Vec<Vector3D>>> = serde_yaml::from_str(&string).unwrap();
+
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(MembraneNormal::from(normals_map))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_cg_order_vesicle_leaflets_dynamic_membrane_normal_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -3398,9 +3667,7 @@ fn test_cg_order_fail_dynamic_undefined_leaflet_normal() {
 
     match analysis.run() {
         Ok(_) => panic!("Analysis should have failed."),
-        Err(e) => assert!(e
-            .to_string()
-            .contains("leaflet classification requires static membrane normal")),
+        Err(e) => assert!(e.to_string().contains("leaflet classification requires it")),
     }
 }
 
@@ -3607,8 +3874,8 @@ fn test_cg_order_basic_rust_api() {
         .unwrap();
 
     let results = match analysis.run().unwrap() {
-        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
         AnalysisResults::CG(x) => x,
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 101);
@@ -3707,8 +3974,8 @@ fn test_cg_order_error_rust_api() {
         .unwrap();
 
     let results = match analysis.run().unwrap() {
-        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
         AnalysisResults::CG(x) => x,
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 101);
@@ -3861,8 +4128,8 @@ fn test_cg_order_leaflets_rust_api() {
         .unwrap();
 
     let results = match analysis.run().unwrap() {
-        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
         AnalysisResults::CG(x) => x,
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 101);
@@ -3997,8 +4264,8 @@ fn test_cg_order_error_leaflets_rust_api() {
         .unwrap();
 
     let results = match analysis.run().unwrap() {
-        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
         AnalysisResults::CG(x) => x,
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 101);
@@ -4129,12 +4396,17 @@ fn test_cg_order_ordermaps_rust_api() {
         .unwrap();
 
     let results = match analysis.run().unwrap() {
-        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
         AnalysisResults::CG(x) => x,
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 101);
     assert_eq!(results.molecules().count(), 1);
+
+    // average ordermaps for the entire system
+    assert!(results.average_ordermaps().total().is_some());
+    assert!(results.average_ordermaps().upper().is_none());
+    assert!(results.average_ordermaps().lower().is_none());
 
     // average ordermaps for the entire molecule
     let molecule = results.get_molecule("POPC").unwrap();
@@ -4214,8 +4486,8 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
         .unwrap();
 
     let results = match analysis.run().unwrap() {
-        AnalysisResults::AA(_) => panic!("Incorrect results type returned."),
         AnalysisResults::CG(x) => x,
+        _ => panic!("Incorrect results type returned."),
     };
 
     assert_eq!(results.n_analyzed_frames(), 101);

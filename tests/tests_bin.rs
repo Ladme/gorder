@@ -47,6 +47,50 @@ fn test_bin_aa_order_basic_yaml() {
 }
 
 #[test]
+fn test_bin_ua_order_basic_yaml() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/basic_ua.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_ua_order.yaml",
+        "tests/files/ua_order_basic.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_ua_order.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_ua_order_from_aa_yaml() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/ua_from_aa.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_ua_order_from_aa.yaml",
+        "tests/files/ua_order_from_aa.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_ua_order_from_aa.yaml").unwrap();
+}
+
+#[test]
 fn test_bin_cg_order_leaflets_yaml_tab() {
     Command::cargo_bin("gorder")
         .unwrap()
@@ -133,6 +177,41 @@ fn test_bin_estimate_error() {
     std::fs::remove_file("temp_cg_ee.yaml").unwrap();
     std::fs::remove_file("temp_cg_ee.tab").unwrap();
     std::fs::remove_file("temp_cg_ee.csv").unwrap();
+}
+
+#[test]
+fn test_bin_concatenate_estimate_error() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/concatenate_estimate_error_cg.yaml",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_cat_ee.yaml",
+        "tests/files/cg_order_error.yaml",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_cat_ee.tab",
+        "tests/files/cg_order_error.tab",
+        1
+    ));
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_cat_ee.csv",
+        "tests/files/cg_order_error.csv",
+        0
+    ));
+
+    std::fs::remove_file("temp_cg_cat_ee.yaml").unwrap();
+    std::fs::remove_file("temp_cg_cat_ee.tab").unwrap();
+    std::fs::remove_file("temp_cg_cat_ee.csv").unwrap();
 }
 
 #[test]
@@ -293,6 +372,28 @@ fn test_bin_cg_vesicle_dynamic() {
     std::fs::remove_file("temp_cg_order_vesicle_dynamic_membrane_normal.yaml").unwrap();
 }
 
+#[test]
+fn test_bin_ua_order_dynamic_yaml() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/ua_dynamic.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_ua_order_dynamic.yaml",
+        "tests/files/ua_order_dynamic_normals.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_ua_order_dynamic.yaml").unwrap();
+}
+
 // testing single NDX file
 #[test]
 fn test_bin_aa_leaflets_once_ndx() {
@@ -362,6 +463,45 @@ fn test_bin_cg_leaflets_every20_ndx() {
 }
 
 #[test]
+fn test_bin_cg_inline_manual_normals() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/inline_manual_normals.yaml",
+            "--overwrite",
+            "--silent",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_cg_inline_manual_normals.yaml",
+        "tests/files/cg_order_vesicle.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_cg_inline_manual_normals.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_cg_leaflets_fail_nonexistent_traj() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/cg_fail_nonexistent_traj.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .failure()
+        .stdout("")
+        .stderr(
+            "[E] error: file 'cg.xtc' was not found or could not be read as a trajectory file\n",
+        );
+}
+
+#[test]
 fn test_bin_aa_leaflets_fail_no_ndx() {
     Command::cargo_bin("gorder")
         .unwrap()
@@ -373,7 +513,7 @@ fn test_bin_aa_leaflets_fail_no_ndx() {
         .assert()
         .failure()
         .stdout("")
-        .stderr("[E] error: could not understand the contents of the configuration file 'tests/files/inputs/leaflets_ndx_fail.yaml' (leaflets.ndx: no match for tests/files/nonexistent*.ndx at line 9 column 8)\n");
+        .stderr("[E] error: file \'tests/files/nonexistent*.ndx\' was not found\n");
 }
 
 #[test]
@@ -464,4 +604,19 @@ fn test_bin_output_config_writing_fails() {
     ));
 
     std::fs::remove_file("temp_aa_order_config_fails.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_ua_no_carbons() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/ua_no_carbons.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .failure()
+        .stdout("")
+        .stderr("[E] error: no carbons for the calculation of united-atom order parameters were specified\n");
 }

@@ -1,0 +1,31 @@
+# This file was created Wed Mar 19 16:37:38 2025
+# Created by:
+#                      :-) GROMACS - gmx order, 2024.4 (-:
+# 
+# Executable:   /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo/bin/gmx_mpi
+# Data prefix:  /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo
+# Working dir:  /home/ladme/Documents/Programming/Rust/gorder-article/validation/aa_charmm/gmx_order_palmitoyl
+# Command line:
+#   gmx_mpi order -s ../files/system.tpr -f ../files/traj.xtc -n index_palmitoyl.ndx -od order_palmitoyl.xvg
+# gmx order is part of G R O M A C S:
+#
+# GROningen MAchine for Chemical Simulation
+#
+@    title "Deuterium order parameters"
+@    xaxis  label "Atom"
+@    yaxis  label "Scd"
+@TYPE xy
+           1       0.215931
+           2       0.164364
+           3       0.203311
+           4       0.202562
+           5       0.215748
+           6       0.205152
+           7       0.205006
+           8       0.188137
+           9       0.180685
+          10       0.160956
+          11       0.149708
+          12       0.128763
+          13       0.112479
+          14      0.0840643

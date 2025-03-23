@@ -12,6 +12,8 @@ use crate::presentation::{
 };
 use std::io::Write;
 
+use super::uaresults::{UAAtomResults, UABondResults, UAMoleculeResults, UAOrderResults};
+
 /// Structure handling the writing of a csv output.
 #[derive(Debug, Clone)]
 pub(super) struct CsvPresenter<'a, R: OrderResults> {
@@ -147,6 +149,57 @@ impl CsvWrite for BondResults {
     }
 }
 
+/// Write CSV header for all-atom or united-atom order parameters.
+fn csv_header_aa_ua(writer: &mut impl Write, properties: &CsvProperties) -> Result<(), WriteError> {
+    write_result!(writer, "molecule,residue,atom,relative index");
+
+    match (properties.leaflets, properties.errors) {
+        (true, true) => write_result!(
+            writer,
+            ",total full membrane,total full membrane error,\
+                 total upper leaflet,total upper leaflet error,\
+                 total lower leaflet,total lower leaflet error"
+        ),
+        (true, false) => write_result!(
+            writer,
+            ",total full membrane,total upper leaflet,total lower leaflet"
+        ),
+        (false, true) => write_result!(writer, ",total,total error"),
+        (false, false) => write_result!(writer, ",total"),
+    };
+
+    for i in 1..=properties.max_bonds {
+        match (properties.leaflets, properties.errors) {
+            (true, true) => write_result!(
+                writer,
+                ",hydrogen #{} full membrane,hydrogen #{} full membrane error,\
+                 hydrogen #{} upper leaflet,hydrogen #{} upper leaflet error,\
+                 hydrogen #{} lower leaflet,hydrogen #{} lower leaflet error",
+                i,
+                i,
+                i,
+                i,
+                i,
+                i
+            ),
+            (true, false) => write_result!(
+                writer,
+                ",hydrogen #{} full membrane,\
+                 hydrogen #{} upper leaflet,\
+                 hydrogen #{} lower leaflet",
+                i,
+                i,
+                i
+            ),
+            (false, true) => write_result!(writer, ",hydrogen #{},hydrogen #{} error", i, i),
+            (false, false) => write_result!(writer, ",hydrogen #{}", i),
+        };
+    }
+
+    write_result!(writer, "\n");
+    Ok(())
+}
+
 impl CsvWrite for AAOrderResults {
     /// Write csv data for atomistic order parameters.
     fn write_csv(
@@ -154,52 +207,7 @@ impl CsvWrite for AAOrderResults {
         writer: &mut impl Write,
         properties: &CsvProperties,
     ) -> Result<(), WriteError> {
-        write_result!(writer, "molecule,residue,atom,relative index");
-
-        match (properties.leaflets, properties.errors) {
-            (true, true) => write_result!(
-                writer,
-                ",total full membrane,total full membrane error,\
-                 total upper leaflet,total upper leaflet error,\
-                 total lower leaflet,total lower leaflet error"
-            ),
-            (true, false) => write_result!(
-                writer,
-                ",total full membrane,total upper leaflet,total lower leaflet"
-            ),
-            (false, true) => write_result!(writer, ",total,total error"),
-            (false, false) => write_result!(writer, ",total"),
-        };
-
-        for i in 1..=properties.max_bonds {
-            match (properties.leaflets, properties.errors) {
-                (true, true) => write_result!(
-                    writer,
-                    ",hydrogen #{} full membrane,hydrogen #{} full membrane error,\
-                 hydrogen #{} upper leaflet,hydrogen #{} upper leaflet error,\
-                 hydrogen #{} lower leaflet,hydrogen #{} lower leaflet error",
-                    i,
-                    i,
-                    i,
-                    i,
-                    i,
-                    i
-                ),
-                (true, false) => write_result!(
-                    writer,
-                    ",hydrogen #{} full membrane,\
-                 hydrogen #{} upper leaflet,\
-                 hydrogen #{} lower leaflet",
-                    i,
-                    i,
-                    i
-                ),
-                (false, true) => write_result!(writer, ",hydrogen #{},hydrogen #{} error", i, i),
-                (false, false) => write_result!(writer, ",hydrogen #{}", i),
-            };
-        }
-
-        write_result!(writer, "\n");
+        csv_header_aa_ua(writer, properties)?;
 
         self.molecules()
             .try_for_each(|mol| mol.write_csv(writer, properties))?;
@@ -301,5 +309,80 @@ impl CsvWrite for CGMoleculeResults {
             write_result!(writer, "\n");
         }
         Ok(())
+    }
+}
+
+impl CsvWrite for UAOrderResults {
+    /// Write csv data for united-atom order parameters.
+    fn write_csv(
+        &self,
+        writer: &mut impl Write,
+        properties: &CsvProperties,
+    ) -> Result<(), WriteError> {
+        csv_header_aa_ua(writer, properties)?;
+
+        self.molecules()
+            .try_for_each(|mol| mol.write_csv(writer, properties))?;
+        Ok(())
+    }
+}
+
+impl CsvWrite for UAMoleculeResults {
+    /// Write csv data for a single united-atom molecule.
+    #[inline]
+    fn write_csv(
+        &self,
+        writer: &mut impl Write,
+        properties: &CsvProperties,
+    ) -> Result<(), WriteError> {
+        for atom in self.order().values() {
+            write_result!(writer, "{},", self.molecule());
+            atom.write_csv(writer, properties)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl CsvWrite for UAAtomResults {
+    /// Write csv data for a single united atom.
+    fn write_csv(
+        &self,
+        writer: &mut impl Write,
+        properties: &CsvProperties,
+    ) -> Result<(), WriteError> {
+        write_result!(
+            writer,
+            "{},{},{}",
+            self.atom().residue_name(),
+            self.atom().atom_name(),
+            self.atom().relative_index()
+        );
+
+        self.order().write_csv(writer, properties)?;
+        let mut bonds = self.bonds();
+        for _ in 0..properties.max_bonds {
+            match bonds.next() {
+                Some(bond) => bond.write_csv(writer, properties)?,
+                None => {
+                    CsvPresenter::<AAOrderResults>::write_empty_bond_collection(writer, properties)?
+                }
+            }
+        }
+
+        write_result!(writer, "\n");
+        Ok(())
+    }
+}
+
+impl CsvWrite for UABondResults {
+    /// Write csv data for a single united-atom bond.
+    #[inline(always)]
+    fn write_csv(
+        &self,
+        writer: &mut impl Write,
+        properties: &CsvProperties,
+    ) -> Result<(), WriteError> {
+        self.order().write_csv(writer, properties)
     }
 }

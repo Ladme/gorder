@@ -26,6 +26,13 @@ pub enum Geometry {
 impl Geometry {
     /// Construct a cuboid.
     /// Returns an error in case any of the dimensions is invalid.
+    ///
+    /// ## Parameters
+    /// - `reference` - reference point relative to which the
+    ///    position of the cuboid is specified
+    /// - `xdim` - span of the cuboid along the x-axis
+    /// - `ydim` - span of the cuboid along the y-axis
+    /// - `zdim` - span of the cuboid along the z-axis
     pub fn cuboid(
         reference: impl Into<GeomReference>,
         xdim: [f32; 2],
@@ -45,6 +52,13 @@ impl Geometry {
 
     /// Construct a cylinder.
     /// Returns an error in case the radius is negative or the span is invalid.
+    ///
+    /// ## Parameters
+    /// - `reference` - reference point relative to which the position
+    ///    and size of the cylinder is specified
+    /// - `radius` - radius of the cylinder
+    /// - `span` - span of the cylinder along its main axis
+    /// - `orientation` - orientation of the main axis of the cylinder
     pub fn cylinder(
         reference: impl Into<GeomReference>,
         radius: f32,
@@ -64,6 +78,10 @@ impl Geometry {
 
     /// Construct a sphere.
     /// Returns an error in case the radius is negative.
+    ///
+    /// ## Parameters
+    /// - `reference` - center of the sphere
+    /// - `radius` - radius of the sphere
     pub fn sphere(
         reference: impl Into<GeomReference>,
         radius: f32,

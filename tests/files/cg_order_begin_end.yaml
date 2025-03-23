@@ -1,155 +1,155 @@
-# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+# Order parameters calculated with 'gorder v0.5.0' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
 average order:
-  total: 0.2969
-  upper: 0.2972
-  lower: 0.2967
+  total: 0.2987
+  upper: 0.2994
+  lower: 0.298
 POPC:
   average order:
-    total: 0.2927
-    upper: 0.2949
-    lower: 0.2905
+    total: 0.2967
+    upper: 0.2981
+    lower: 0.2954
   order parameters:
     POPC NC3 (0) - POPC PO4 (1):
-      total: -0.1343
-      upper: -0.136
-      lower: -0.1327
+      total: -0.1329
+      upper: -0.1344
+      lower: -0.1314
     POPC PO4 (1) - POPC GL1 (2):
-      total: 0.5906
-      upper: 0.5904
-      lower: 0.5909
+      total: 0.5935
+      upper: 0.5898
+      lower: 0.5972
     POPC GL1 (2) - POPC GL2 (3):
-      total: -0.1826
-      upper: -0.177
-      lower: -0.1881
+      total: -0.1849
+      upper: -0.1812
+      lower: -0.1885
     POPC GL1 (2) - POPC C1A (4):
-      total: 0.3837
-      upper: 0.3658
-      lower: 0.4017
+      total: 0.3884
+      upper: 0.3801
+      lower: 0.3967
     POPC GL2 (3) - POPC C1B (8):
-      total: 0.4873
-      upper: 0.4986
-      lower: 0.476
+      total: 0.4932
+      upper: 0.5008
+      lower: 0.4857
     POPC C1A (4) - POPC D2A (5):
-      total: 0.3596
-      upper: 0.3485
-      lower: 0.3707
+      total: 0.367
+      upper: 0.3626
+      lower: 0.3714
     POPC D2A (5) - POPC C3A (6):
-      total: 0.2922
-      upper: 0.2923
-      lower: 0.2922
+      total: 0.2981
+      upper: 0.2941
+      lower: 0.3021
     POPC C3A (6) - POPC C4A (7):
-      total: 0.2401
-      upper: 0.2405
-      lower: 0.2397
+      total: 0.2461
+      upper: 0.2451
+      lower: 0.2471
     POPC C1B (8) - POPC C2B (9):
-      total: 0.4986
-      upper: 0.5145
-      lower: 0.4826
+      total: 0.5063
+      upper: 0.5185
+      lower: 0.494
     POPC C2B (9) - POPC C3B (10):
-      total: 0.4167
-      upper: 0.4302
-      lower: 0.4033
+      total: 0.4188
+      upper: 0.4292
+      lower: 0.4084
     POPC C3B (10) - POPC C4B (11):
-      total: 0.2679
-      upper: 0.2763
-      lower: 0.2596
+      total: 0.2705
+      upper: 0.2742
+      lower: 0.2667
 POPE:
   average order:
-    total: 0.3
-    upper: 0.2985
-    lower: 0.3014
+    total: 0.2998
+    upper: 0.2993
+    lower: 0.3002
   order parameters:
     POPE NH3 (0) - POPE PO4 (1):
-      total: -0.1354
-      upper: -0.1336
-      lower: -0.1372
+      total: -0.1345
+      upper: -0.1343
+      lower: -0.1347
     POPE PO4 (1) - POPE GL1 (2):
-      total: 0.6113
-      upper: 0.608
-      lower: 0.6145
+      total: 0.612
+      upper: 0.61
+      lower: 0.614
     POPE GL1 (2) - POPE GL2 (3):
-      total: -0.195
-      upper: -0.1953
-      lower: -0.1947
+      total: -0.1914
+      upper: -0.1921
+      lower: -0.1907
     POPE GL1 (2) - POPE C1A (4):
-      total: 0.412
-      upper: 0.4105
-      lower: 0.4136
+      total: 0.4073
+      upper: 0.4067
+      lower: 0.408
     POPE GL2 (3) - POPE C1B (8):
-      total: 0.4893
-      upper: 0.4892
-      lower: 0.4893
+      total: 0.4934
+      upper: 0.4938
+      lower: 0.4931
     POPE C1A (4) - POPE D2A (5):
-      total: 0.385
-      upper: 0.3779
-      lower: 0.3922
+      total: 0.376
+      upper: 0.3693
+      lower: 0.3826
     POPE D2A (5) - POPE C3A (6):
-      total: 0.311
-      upper: 0.3098
-      lower: 0.3122
+      total: 0.3062
+      upper: 0.3011
+      lower: 0.3112
     POPE C3A (6) - POPE C4A (7):
-      total: 0.2526
-      upper: 0.2523
-      lower: 0.2528
+      total: 0.2491
+      upper: 0.246
+      lower: 0.2522
     POPE C1B (8) - POPE C2B (9):
-      total: 0.4922
-      upper: 0.4893
-      lower: 0.495
+      total: 0.493
+      upper: 0.4958
+      lower: 0.4901
     POPE C2B (9) - POPE C3B (10):
-      total: 0.4118
-      upper: 0.4111
-      lower: 0.4124
+      total: 0.4176
+      upper: 0.4234
+      lower: 0.4117
     POPE C3B (10) - POPE C4B (11):
-      total: 0.2648
-      upper: 0.2639
-      lower: 0.2656
+      total: 0.2688
+      upper: 0.273
+      lower: 0.2646
 POPG:
   average order:
-    total: 0.3091
-    upper: 0.3068
-    lower: 0.3114
+    total: 0.3071
+    upper: 0.3132
+    lower: 0.3009
   order parameters:
     POPG GL0 (0) - POPG PO4 (1):
-      total: -0.0262
-      upper: -0.0332
-      lower: -0.0193
+      total: -0.0255
+      upper: -0.0359
+      lower: -0.0151
     POPG PO4 (1) - POPG GL1 (2):
-      total: 0.5993
-      upper: 0.5889
-      lower: 0.6097
+      total: 0.6003
+      upper: 0.5778
+      lower: 0.6229
     POPG GL1 (2) - POPG GL2 (3):
-      total: -0.1989
-      upper: -0.211
-      lower: -0.1867
+      total: -0.2003
+      upper: -0.2076
+      lower: -0.1931
     POPG GL1 (2) - POPG C1A (4):
-      total: 0.4211
-      upper: 0.4306
-      lower: 0.4115
+      total: 0.4157
+      upper: 0.4263
+      lower: 0.4052
     POPG GL2 (3) - POPG C1B (8):
-      total: 0.473
-      upper: 0.4653
-      lower: 0.4806
+      total: 0.4801
+      upper: 0.4772
+      lower: 0.483
     POPG C1A (4) - POPG D2A (5):
-      total: 0.3828
-      upper: 0.4055
-      lower: 0.36
+      total: 0.379
+      upper: 0.4125
+      lower: 0.3454
     POPG D2A (5) - POPG C3A (6):
-      total: 0.3102
-      upper: 0.3078
-      lower: 0.3125
+      total: 0.295
+      upper: 0.3173
+      lower: 0.2728
     POPG C3A (6) - POPG C4A (7):
-      total: 0.2492
-      upper: 0.2532
-      lower: 0.2453
+      total: 0.2397
+      upper: 0.2631
+      lower: 0.2163
     POPG C1B (8) - POPG C2B (9):
-      total: 0.4946
-      upper: 0.4664
-      lower: 0.5228
+      total: 0.5059
+      upper: 0.5073
+      lower: 0.5046
     POPG C2B (9) - POPG C3B (10):
-      total: 0.4129
-      upper: 0.4137
-      lower: 0.4122
+      total: 0.4179
+      upper: 0.4394
+      lower: 0.3965
     POPG C3B (10) - POPG C4B (11):
-      total: 0.2822
-      upper: 0.2874
-      lower: 0.2771
+      total: 0.2699
+      upper: 0.268
+      lower: 0.2718

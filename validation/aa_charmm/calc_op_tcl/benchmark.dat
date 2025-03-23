@@ -1,0 +1,2 @@
+Benchmark 1: vmd -e calc_op.tcl
+  Time (abs ≡):        158.056 s               [User: 154.491 s, System: 2.342 s]

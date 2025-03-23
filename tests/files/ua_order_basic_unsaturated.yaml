@@ -1,0 +1,27 @@
+# Order parameters calculated with 'gorder v0.6.0-dev.2' using a structure file 'tests/files/ua.tpr' and a trajectory file 'tests/files/ua.xtc'.
+average order:
+  total: 0.0382
+POPC:
+  average order:
+    total: 0.0397
+  order parameters:
+    POPC C24 (23):
+      total: 0.0978
+      bonds:
+      - total: 0.0978
+    POPC C25 (24):
+      total: -0.0184
+      bonds:
+      - total: -0.0184
+POPS:
+  average order:
+    total: 0.0322
+  order parameters:
+    POPS C27 (26):
+      total: 0.1342
+      bonds:
+      - total: 0.1342
+    POPS C28 (27):
+      total: -0.0698
+      bonds:
+      - total: -0.0698

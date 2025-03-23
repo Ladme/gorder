@@ -3,6 +3,10 @@
 
 //! This module contains structures and methods for presenting the results of the analysis.
 
+use crate::analysis::topology::atom::AtomType;
+use crate::analysis::topology::bond::BondTopology;
+use crate::analysis::topology::molecule::MoleculeTypes;
+use crate::analysis::topology::OrderCalculable;
 use crate::input::{Frequency, LeafletClassification, Plane};
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::cgresults::CGOrderResults;
@@ -13,13 +17,7 @@ use crate::presentation::tab_presenter::{TabPresenter, TabProperties, TabWrite};
 use crate::presentation::xvg_presenter::{XvgPresenter, XvgProperties, XvgWrite};
 use crate::presentation::yaml_presenter::{YamlPresenter, YamlProperties, YamlWrite};
 use crate::{
-    analysis::{
-        molecule::{AtomType, BondTopology},
-        topology::SystemTopology,
-    },
-    errors::WriteError,
-    input::Analysis,
-    PANIC_MESSAGE,
+    analysis::topology::SystemTopology, errors::WriteError, input::Analysis, PANIC_MESSAGE,
 };
 use colored::Colorize;
 use convergence::{ConvPresenter, ConvProperties, Convergence};
@@ -36,6 +34,7 @@ use std::{
     path::Path,
 };
 use strum_macros::Display;
+use uaresults::UAOrderResults;
 
 macro_rules! write_result {
     ($dst:expr, $($arg:tt)*) => {
@@ -51,6 +50,7 @@ mod csv_presenter;
 pub mod convergence;
 pub mod ordermaps_presenter;
 mod tab_presenter;
+pub mod uaresults;
 mod xvg_presenter;
 mod yaml_presenter;
 
@@ -59,6 +59,7 @@ mod yaml_presenter;
 pub enum AnalysisResults {
     AA(AAOrderResults),
     CG(CGOrderResults),
+    UA(UAOrderResults),
 }
 
 impl AnalysisResults {
@@ -67,6 +68,7 @@ impl AnalysisResults {
         match self {
             AnalysisResults::AA(x) => x.write_all_results(),
             AnalysisResults::CG(x) => x.write_all_results(),
+            AnalysisResults::UA(x) => x.write_all_results(),
         }
     }
 
@@ -75,6 +77,7 @@ impl AnalysisResults {
         match self {
             AnalysisResults::AA(x) => x.n_analyzed_frames(),
             AnalysisResults::CG(x) => x.n_analyzed_frames(),
+            AnalysisResults::UA(x) => x.n_analyzed_frames(),
         }
     }
 
@@ -83,6 +86,7 @@ impl AnalysisResults {
         match self {
             AnalysisResults::AA(x) => x.analysis(),
             AnalysisResults::CG(x) => x.analysis(),
+            AnalysisResults::UA(x) => x.analysis(),
         }
     }
 }
@@ -115,6 +119,7 @@ pub(crate) trait OrderResults:
     Debug + Clone + CsvWrite + TabWrite + YamlWrite + PublicOrderResults
 {
     type OrderType: OrderType;
+    type MoleculeBased: OrderCalculable;
 
     /// Create an empty `OrderResults` structure (i.e., without any molecules).
     fn empty(analysis: Analysis) -> Self;
@@ -374,10 +379,15 @@ pub(crate) trait Presenter<'a, R: OrderResults>: Debug + Clone {
     fn write_header(
         writer: &mut impl Write,
         structure: &str,
-        trajectory: &str,
+        trajectory: &[String],
     ) -> Result<(), WriteError> {
-        write_result!(writer, "# Order parameters calculated with 'gorder v{}' using structure file '{}' and trajectory file '{}'.\n",
-        crate::GORDER_VERSION, structure, trajectory);
+        if trajectory.len() == 1 {
+            write_result!(writer, "# Order parameters calculated with 'gorder v{}' using a structure file '{}' and a trajectory file '{}'.\n",
+            crate::GORDER_VERSION, structure, trajectory.first().expect(PANIC_MESSAGE));
+        } else {
+            write_result!(writer, "# Order parameters calculated with 'gorder v{}' using a structure file '{}' and trajectory files '{}'.\n",
+            crate::GORDER_VERSION, structure, trajectory.join(" "));
+        }
 
         Ok(())
     }
@@ -531,8 +541,11 @@ pub(crate) struct AAOrder {}
 /// Empty struct used as a marker.
 #[derive(Default, Debug, Clone)]
 pub(crate) struct CGOrder {}
+/// Empty struct used as a marker.
+#[derive(Default, Debug, Clone)]
+pub(crate) struct UAOrder {}
 
-/// Trait implemented only by `AAOrder` and `CGOrder` structs.
+/// Trait implemented only by `AAOrder`, `CGOrder`, and `UAOrder` structs.
 pub(crate) trait OrderType: Debug + Clone {
     /// Used to convert an order parameter to its final value depending on the analysis type.
     /// Atomistic order parameters are reported as -S_CH.
@@ -596,6 +609,31 @@ impl OrderType for CGOrder {
     #[inline(always)]
     fn zrange() -> (f32, f32) {
         (-0.5, 1.0)
+    }
+}
+
+impl OrderType for UAOrder {
+    #[inline(always)]
+    fn convert(order: f32, error: Option<f32>) -> Order {
+        Order {
+            value: -order,
+            error,
+        }
+    }
+
+    #[inline(always)]
+    fn zlabel() -> &'static str {
+        "order parameter ($-S_{CH}$)"
+    }
+
+    #[inline(always)]
+    fn xvg_ylabel() -> &'static str {
+        "-Sch"
+    }
+
+    #[inline(always)]
+    fn zrange() -> (f32, f32) {
+        (-1.0, 0.5)
     }
 }
 
@@ -699,25 +737,42 @@ impl SystemTopology {
         write!(
             string,
             "Detected {} relevant molecule type(s):",
-            self.molecule_types().len().to_string().cyan()
+            self.molecule_types().n_molecule_types().to_string().cyan()
         )?;
 
-        for molecule in self.molecule_types().iter() {
-            write!(
-                string,
-                "\n  Molecule type {}: {} order bonds, {} molecules.",
-                molecule.name().cyan(),
-                molecule.order_bonds().bond_types().len().to_string().cyan(),
-                molecule
-                    .order_bonds()
-                    .bond_types()
-                    .first()
-                    .expect(PANIC_MESSAGE)
-                    .bonds()
-                    .len()
-                    .to_string()
-                    .cyan(),
-            )?
+        match self.molecule_types() {
+            MoleculeTypes::BondBased(x) => {
+                for molecule in x.iter() {
+                    write!(
+                        string,
+                        "\n  Molecule type {}: {} order bonds, {} molecules.",
+                        molecule.name().cyan(),
+                        molecule
+                            .order_structure()
+                            .bond_types()
+                            .len()
+                            .to_string()
+                            .cyan(),
+                        molecule.order_structure().n_molecules().to_string().cyan(),
+                    )?
+                }
+            }
+            MoleculeTypes::AtomBased(x) => {
+                for molecule in x.iter() {
+                    write!(
+                        string,
+                        "\n  Molecule type {}: {} order atoms, {} molecules.",
+                        molecule.name().cyan(),
+                        molecule
+                            .order_structure()
+                            .atom_types()
+                            .len()
+                            .to_string()
+                            .cyan(),
+                        molecule.order_structure().n_molecules().to_string().cyan(),
+                    )?
+                }
+            }
         }
 
         log::info!("{}", string);

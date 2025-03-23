@@ -100,6 +100,9 @@ pub enum TopologyError {
     #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
     ZeroBox,
 
+    #[error("{} no carbons for the calculation of united-atom order parameters were specified", "error:".red().bold())]
+    NoUACarbons,
+
     #[error("{}", .0)]
     OrderMapError(OrderMapConfigError),
 
@@ -145,6 +148,10 @@ pub enum AnalysisError {
     /// Used when there is an error in the dynamic membrane normal calculation.
     #[error("{}", .0)]
     DynamicNormalError(DynamicNormalError),
+
+    /// Used when there is an error in manual membrane normal assignment.
+    #[error("{}", .0)]
+    ManualNormalError(ManualNormalError),
 }
 
 /// Errors that can occur when calculating dynamic membrane normals.
@@ -158,6 +165,46 @@ pub enum DynamicNormalError {
 
     #[error("{} could not perform Singular Value Decomposition for dynamic local membrane normal calculation", "error:".red().bold())]
     SVDFailed,
+}
+
+/// Errors that can occur when setting membrane normals manually.
+#[derive(Error, Debug)]
+pub enum ManualNormalError {
+    #[error("{} could not get membrane normals for frame index '{}' (membrane normals available for {} frames)", 
+    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
+    FrameNotFound(usize, usize),
+
+    #[error("{} could not open the normals file '{}'", "error:".red().bold(), .0.yellow())]
+    FileNotFound(String),
+
+    #[error("{} could not understand the contents of the normals file '{}' ({})", "error:".red().bold(), .0.yellow(), .1)]
+    CouldNotParse(String, serde_yaml::Error),
+
+    #[error("{} molecule type '{}' not found in the manual normals structure", "error:".red().bold(), .0.yellow())]
+    MoleculeTypeNotFound(String),
+
+    #[error("{} no membrane normals provided for molecule type '{}'", "error:".red().bold(), .0.yellow())]
+    NoNormals(String),
+
+    #[error("{} inconsistent number of molecules specified in the normals structure: expected '{}' molecules of type '{}', got '{}' molecules in frame '{}'", 
+    "error:".red().bold(), .expected.to_string().yellow(), .molecule.yellow(), .got.to_string().yellow(), .frame.to_string().yellow())]
+    InconsistentNumberOfMolecules {
+        expected: usize,
+        molecule: String,
+        got: usize,
+        frame: usize,
+    },
+
+    #[error("{} molecule type '{}' specified in the normals structure not found in the system (detected molecule types are: '{}')", 
+    "error:".red().bold(), .0.yellow(), .1.join(" ").yellow())]
+    UnknownMoleculeType(String, Vec<String>),
+
+    #[error("{} number of frames specified in the normals structure ('{}') is not consistent with the number of analyzed frames ('{}')",
+    "error:".red().bold(), .used_frames.to_string().yellow(), .analyzed_frames.to_string().yellow())]
+    UnexpectedNumberOfFrames {
+        used_frames: usize,
+        analyzed_frames: usize,
+    },
 }
 
 /// Errors that can occur while writing the results.
@@ -270,7 +317,16 @@ pub enum ConfigError {
     #[error("{} the provided trajectory file '{}' has an unknown, invalid, or unsupported format", "error:".red().bold(), .0.yellow())]
     InvalidTrajectoryFormat(String),
 
-    #[error("{} dynamic membrane normal calculation was requested but leaflet classification requires static membrane normal 
+    #[error("{} the provided trajectory files '{}' and '{}' have inconsistent file format", "error:".red().bold(), .0.yellow(), .1.yellow())]
+    InconsistentTrajectoryFormat(String, String),
+
+    #[error("{} trajectory concatenation is only supported for XTC and TRR files; please provide only one trajectory file", "error:".red().bold())]
+    TrajCatNotSupported,
+
+    #[error("{} no trajectory file has been provided", "error:".red().bold())]
+    NoTrajectoryFile,
+
+    #[error("{} static global membrane normal is not used but leaflet classification requires it
 ({} add '{}' to the '{}' section of your input configuration file or, if analyzing a vesicle, assign the lipids into leaflets manually)", 
     "error:".red().bold(), "hint:".blue().bold(), "membrane_normal".bright_blue(), "leaflets".bright_blue())]
     MissingMembraneNormal,
@@ -316,7 +372,7 @@ pub enum OrderMapConfigError {
     "error:".red().bold(), "hint:".blue().bold())]
     InvalidBoxAuto,
 
-    #[error("{} membrane normal is to be dynamically calculated during the analysis => unable to automatically set ordermap plane ({} set ordermap plane manually)",
+    #[error("{} membrane normal is not a static global dimension => unable to automatically set ordermap plane ({} set ordermap plane manually)",
     "error:".red().bold(), "hint:".blue().bold())]
     InvalidPlaneAuto,
 }

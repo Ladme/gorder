@@ -1,8 +1,0 @@
-Python version 3.12
-
-Note the this script, unlike both `order` and `gorder` does not calculate order parameters for individual leaflets.
-The trajectory has to be iterated through once for each bond, because `lipyphilic` only calculates the average order for all involved bonds.
-
-real	2m12.775s
-user	2m13.347s
-sys	0m2.178s

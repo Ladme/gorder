@@ -16,7 +16,6 @@ mod common;
 pub(crate) mod geometry;
 mod index;
 mod leaflets;
-pub(crate) mod molecule;
 mod normal;
 pub(crate) mod order;
 pub(crate) mod ordermap;
@@ -25,6 +24,7 @@ mod spinner;
 mod structure;
 pub(crate) mod timewise;
 pub(crate) mod topology;
+mod uaorder;
 
 impl Analysis {
     /// Perform the analysis.
@@ -38,6 +38,11 @@ impl Analysis {
                 hydrogens: _,
             } => aaorder::analyze_atomistic(self),
             AnalysisType::CGOrder { beads: _ } => cgorder::analyze_coarse_grained(self),
+            AnalysisType::UAOrder {
+                saturated: _,
+                unsaturated: _,
+                ignore: _,
+            } => uaorder::analyze_united(self),
         }
     }
 
@@ -56,7 +61,9 @@ impl Analysis {
                     map.set_plane(Some(axis.perpendicular()));
                     Ok(())
                 }
-                MembraneNormal::Dynamic(_) => Err(OrderMapConfigError::InvalidPlaneAuto),
+                MembraneNormal::Dynamic(_)
+                | MembraneNormal::FromFile(_)
+                | MembraneNormal::FromMap(_) => Err(OrderMapConfigError::InvalidPlaneAuto),
             };
         }
 
@@ -65,13 +72,10 @@ impl Analysis {
 }
 
 /// Calculate instantenous value of order parameter of a bond defined by a vector going from atom1 to atom2.
-/// Simulation box must be valid and orthogonal.
 #[inline(always)]
 pub(super) fn calc_sch(vector: &Vector3D, membrane_normal: &Vector3D) -> f32 {
     let angle = vector.angle(membrane_normal);
-
     let cos = angle.cos();
-
     (1.5 * cos * cos) - 0.5
 }
 
@@ -83,6 +87,7 @@ mod tests {
     use super::*;
     use approx::assert_relative_eq;
     use groan_rs::prelude::{Dimension, SimBox};
+    use hashbrown::HashMap;
 
     #[test]
     fn test_calc_sch() {
@@ -131,5 +136,33 @@ mod tests {
 
         analysis.init_ordermap(Axis::Z.into()).unwrap();
         assert_eq!(analysis.map().as_ref().unwrap().plane().unwrap(), Plane::XY);
+
+        let mut analysis = Analysis::builder()
+            .structure("md.tpr")
+            .trajectory("md.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .ordermaps(OrderMap::default())
+            .build()
+            .unwrap();
+
+        match analysis.init_ordermap("normals.yaml".into()) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(OrderMapConfigError::InvalidPlaneAuto) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
+
+        let mut map = HashMap::new();
+        map.insert(
+            "POPE".to_owned(),
+            vec![
+                vec![Vector3D::new(1.0, 2.0, 3.0)],
+                vec![Vector3D::new(2.0, 3.0, 4.0)],
+            ],
+        );
+        match analysis.init_ordermap(map.into()) {
+            Ok(_) => panic!("Function should have failed."),
+            Err(OrderMapConfigError::InvalidPlaneAuto) => (),
+            Err(e) => panic!("Unexpected error type `{}` returned.", e),
+        }
     }
 }

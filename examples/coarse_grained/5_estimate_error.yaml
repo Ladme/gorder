@@ -1,0 +1,42 @@
+###########################################
+# Calculation of coarse-grained order     #
+# parameters with error estimation.       #
+# Only full membrane, all output formats. #
+# Analysis performed using 4 threads.     #
+# Manual: ladme.github.io/gorder-manual   # 
+###########################################
+
+### Input Gromacs binary run file.
+structure: system.tpr
+
+### Input Gromacs compressed trajectory file.
+trajectory: traj.xtc
+
+### Calculate coarse-grained order parameters.
+analysis_type: !CGOrder
+
+  ### Analyze all bonds between particles of the membrane.
+  beads: "@membrane"
+
+### Estimate the error of the analysis.
+estimate_error:
+  
+  ### Output the convergence of the calculated order parameters into an xvg file.
+  ### This file can be plotted using `xmgrace`.
+  ### If the order parameters stabilize, your simulation is converged.
+  output_convergence: convergence.xvg
+
+### Path to the output yaml file. Contains full results of the analysis.
+output_yaml: order.yaml
+
+### Path to the output "table" file. Simple to read.
+output_tab: order.tab
+
+### Path to the output xvg file. Can be plotted using `xmgrace`.
+output_xvg: order.xvg
+
+### Path to the output csv file. Open with a spreadsheet software or read with Pandas/Polars.
+output_csv: order.csv
+
+### Perform the analysis using 4 threads.
+n_threads: 4

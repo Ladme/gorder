@@ -1,0 +1,3 @@
+Benchmark 1: gmx_mpi order -s ../files/system.tpr -f ../files/traj.xtc -n index_palmitoyl.ndx -od order_palmitoyl.xvg
+  Time (mean ± σ):      4.751 s ±  0.028 s    [User: 4.253 s, System: 0.142 s]
+  Range (min … max):    4.721 s …  4.796 s    5 runs

@@ -3,10 +3,13 @@
 
 //! Structures and methods for converting between system topology and formatted results.
 
-use crate::analysis::molecule::{AtomType, BondType, MoleculeType};
 use crate::analysis::order::{add_option_order, AnalysisOrder};
 use crate::analysis::ordermap::{add_option_map, Map};
 use crate::analysis::timewise::{AddSum, TimeWiseAddTreatment};
+use crate::analysis::topology::atom::AtomType;
+use crate::analysis::topology::bond::{BondType, OrderBonds, VirtualBondType};
+use crate::analysis::topology::molecule::{MoleculeType, MoleculeTypes};
+use crate::analysis::topology::uatom::UAOrderAtoms;
 use crate::analysis::topology::SystemTopology;
 use crate::input::Analysis;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
@@ -23,6 +26,7 @@ use std::num::NonZeroUsize;
 use std::ops::AddAssign;
 
 use super::convergence::Convergence;
+use super::uaresults::{UAAtomResults, UABondResults, UAMoleculeResults, UAOrderResults};
 
 /// Structure converting from system topology to formatted results.
 #[derive(Debug, Clone)]
@@ -42,9 +46,9 @@ impl<O: MolConvert> ResultsConverter<O> {
 
     /// Convert topology with raw calculated order parameters into a presentable structure.
     pub(crate) fn convert_topology(self, topology: SystemTopology) -> O {
-        let molnames = topology.molecule_types().iter().map(|x| x.name().clone());
-        let (molecule_results, order_summers): (Vec<_>, Vec<_>) = topology
-            .molecule_types()
+        let moltypes = O::unpack_moltypes(topology.molecule_types());
+        let molnames = moltypes.iter().map(|x| x.name().clone());
+        let (molecule_results, order_summers): (Vec<_>, Vec<_>) = moltypes
             .iter()
             .map(|mol| O::convert_molecule(mol, &self))
             .unzip();
@@ -110,6 +114,31 @@ impl<O: MolConvert> ResultsConverter<O> {
         )
     }
 
+    fn convert_virtual_bond(&self, bond_type: &VirtualBondType, molecule: &str) -> UABondResults {
+        let total = self.convert_order(bond_type.total());
+        let upper = bond_type.upper().as_ref().map(|x| self.convert_order(x));
+        let lower = bond_type.lower().as_ref().map(|x| self.convert_order(x));
+
+        let total_ordermap = bond_type
+            .total_map()
+            .as_ref()
+            .map(|x| Self::convert_ordermap(x));
+        let upper_ordermap = bond_type
+            .upper_map()
+            .as_ref()
+            .map(|x| Self::convert_ordermap(x));
+        let lower_ordermap = bond_type
+            .lower_map()
+            .as_ref()
+            .map(|x| Self::convert_ordermap(x));
+
+        UABondResults::new(
+            molecule,
+            OrderCollection::new(Some(total), upper, lower),
+            OrderMapsCollection::new(total_ordermap, upper_ordermap, lower_ordermap),
+        )
+    }
+
     /// Convert raw ordermap into a presentable ordermap.
     fn convert_ordermap(ordermap: &Map) -> GridMapF32 {
         let min_samples = ordermap.params().min_samples();
@@ -137,8 +166,7 @@ impl<O: MolConvert> ResultsConverter<O> {
         )
         .unwrap_or_else(|e| {
             panic!(
-                "FATAL GORDER ERROR | ResultsConverter::convert_ordermap | \
-            Could not convert Map to GridMapF32 ({}). {}",
+                "FATAL GORDER ERROR | ResultsConverter::convert_ordermap | Could not convert Map to GridMapF32 ({}). {}",
                 e, PANIC_MESSAGE
             )
         })
@@ -202,14 +230,17 @@ impl<O: MolConvert> ResultsConverter<O> {
 pub(crate) trait MolConvert: OrderResults {
     /// Convert a molecule type with raw calculated order parameters into a presentable structure.
     fn convert_molecule(
-        molecule_type: &MoleculeType,
+        molecule_type: &MoleculeType<Self::MoleculeBased>,
         converter: &ResultsConverter<Self>,
     ) -> (Self::MoleculeResults, OrderSummer);
+
+    /// Unpack `MoleculeTypes` structure and convert it to the appropriate one or panic if invalid structure was provided.
+    fn unpack_moltypes(molecule_types: &MoleculeTypes) -> &Vec<MoleculeType<Self::MoleculeBased>>;
 }
 
 impl MolConvert for AAOrderResults {
     fn convert_molecule(
-        molecule_type: &MoleculeType,
+        molecule_type: &MoleculeType<OrderBonds>,
         converter: &ResultsConverter<Self>,
     ) -> (Self::MoleculeResults, OrderSummer) {
         let mut order = IndexMap::new();
@@ -218,7 +249,7 @@ impl MolConvert for AAOrderResults {
         for heavy_atom in molecule_type.order_atoms().atoms() {
             let mut relevant_bonds = Vec::new();
 
-            for bond in molecule_type.order_bonds().bond_types() {
+            for bond in molecule_type.order_structure().bond_types() {
                 if bond.contains(heavy_atom) {
                     relevant_bonds.push(bond);
                     summer += bond;
@@ -245,6 +276,14 @@ impl MolConvert for AAOrderResults {
             AAMoleculeResults::new(molecule_type.name(), average, ordermaps, order, convergence),
             summer,
         )
+    }
+
+    fn unpack_moltypes(molecule_types: &MoleculeTypes) -> &Vec<MoleculeType<OrderBonds>> {
+        match molecule_types {
+            MoleculeTypes::AtomBased(_) => panic!(
+                "FATAL GORDER ERROR | AAOrderResults::unpack_moltypes | Invalid `atom-based` moltypes detected. {}", PANIC_MESSAGE),
+            MoleculeTypes::BondBased(x) => x,
+        }
     }
 }
 
@@ -290,13 +329,13 @@ impl AAOrderResults {
 
 impl MolConvert for CGOrderResults {
     fn convert_molecule(
-        molecule_type: &MoleculeType,
+        molecule_type: &MoleculeType<OrderBonds>,
         converter: &ResultsConverter<Self>,
     ) -> (Self::MoleculeResults, OrderSummer) {
         let mut order = IndexMap::new();
         let mut summer = OrderSummer::default();
 
-        for bond in molecule_type.order_bonds().bond_types() {
+        for bond in molecule_type.order_structure().bond_types() {
             summer += bond;
             let results = converter.convert_bond(bond, molecule_type.name());
             order.insert(bond.bond_topology().clone(), results);
@@ -315,6 +354,75 @@ impl MolConvert for CGOrderResults {
             summer,
         )
     }
+
+    fn unpack_moltypes(molecule_types: &MoleculeTypes) -> &Vec<MoleculeType<OrderBonds>> {
+        match molecule_types {
+            MoleculeTypes::AtomBased(_) => panic!(
+                "FATAL GORDER ERROR | CGOrderResults::unpack_moltypes | Invalid `atom-based` moltypes detected. {}", PANIC_MESSAGE),
+            MoleculeTypes::BondBased(x) => x,
+        }
+    }
+}
+
+impl MolConvert for UAOrderResults {
+    fn convert_molecule(
+        molecule_type: &MoleculeType<UAOrderAtoms>,
+        converter: &ResultsConverter<Self>,
+    ) -> (Self::MoleculeResults, OrderSummer) {
+        let mut results = IndexMap::new();
+        let mut molecule_summer = OrderSummer::default();
+
+        for atom in molecule_type.order_structure().atom_types() {
+            let mut atom_summer = OrderSummer::default();
+
+            let converted_bonds = atom
+                .extract_bonds()
+                .into_iter()
+                .map(|b| {
+                    atom_summer += &b;
+                    converter.convert_virtual_bond(&b, molecule_type.name())
+                })
+                .collect::<Vec<UABondResults>>();
+
+            let (average, ordermaps) = converter.convert_order_summer(&atom_summer);
+            let atom_results = UAAtomResults::new(
+                atom.get_type().clone(),
+                molecule_type.name(),
+                average,
+                ordermaps,
+                converted_bonds,
+            );
+
+            molecule_summer += atom_summer;
+            results.insert(atom.get_type().clone(), atom_results);
+        }
+
+        let (average, ordermaps) = converter.convert_order_summer(&molecule_summer);
+        let convergence = if converter.analysis.estimate_error().is_some() {
+            Some(converter.convert_order_summer_to_convergence(&molecule_summer))
+        } else {
+            None
+        };
+
+        (
+            UAMoleculeResults::new(
+                molecule_type.name(),
+                average,
+                ordermaps,
+                results,
+                convergence,
+            ),
+            molecule_summer,
+        )
+    }
+
+    fn unpack_moltypes(molecule_types: &MoleculeTypes) -> &Vec<MoleculeType<UAOrderAtoms>> {
+        match molecule_types {
+            MoleculeTypes::AtomBased(x) => x,
+            MoleculeTypes::BondBased(_) => panic!(
+                "FATAL GORDER ERROR | UAOrderResults::unpack_moltypes | Invalid `bond-based` moltypes detected. {}", PANIC_MESSAGE),
+        }
+    }
 }
 
 /// Helper struct for summing order parameters and ordermaps.
@@ -331,6 +439,19 @@ pub(crate) struct OrderSummer {
 impl AddAssign<&BondType> for OrderSummer {
     #[inline(always)]
     fn add_assign(&mut self, rhs: &BondType) {
+        add_option_order(&mut self.total, Some(rhs.total().clone()));
+        add_option_order(&mut self.upper, rhs.upper().clone());
+        add_option_order(&mut self.lower, rhs.lower().clone());
+
+        add_option_map(&mut self.ordermap_total, rhs.total_map().clone());
+        add_option_map(&mut self.ordermap_upper, rhs.upper_map().clone());
+        add_option_map(&mut self.ordermap_lower, rhs.lower_map().clone());
+    }
+}
+
+impl AddAssign<&VirtualBondType> for OrderSummer {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: &VirtualBondType) {
         add_option_order(&mut self.total, Some(rhs.total().clone()));
         add_option_order(&mut self.upper, rhs.upper().clone());
         add_option_order(&mut self.lower, rhs.lower().clone());
@@ -368,7 +489,7 @@ mod tests {
 
     fn prepare_converter_aa() -> ResultsConverter<AAOrderResults> {
         let analysis = Analysis::builder()
-            .structure("system.gro")
+            .structure("system.tpr")
             .trajectory("md.xtc")
             .analysis_type(AnalysisType::aaorder(
                 "@membrane and element name carbon",
@@ -385,9 +506,27 @@ mod tests {
 
     fn prepare_converter_cg() -> ResultsConverter<CGOrderResults> {
         let analysis = Analysis::builder()
-            .structure("system.gro")
+            .structure("system.tpr")
             .trajectory("md.xtc")
             .analysis_type(AnalysisType::cgorder("@membrane"))
+            .output("order.yaml")
+            .min_samples(50)
+            .estimate_error(EstimateError::default())
+            .build()
+            .unwrap();
+
+        ResultsConverter::new(analysis)
+    }
+
+    fn prepare_converter_ua() -> ResultsConverter<UAOrderResults> {
+        let analysis = Analysis::builder()
+            .structure("system.tpr")
+            .trajectory("md.xtc")
+            .analysis_type(AnalysisType::uaorder(
+                Some("@membrane and element name carbon and not name C29 C210"),
+                Some("@membrane and name C29 C210"),
+                None,
+            ))
             .output("order.yaml")
             .min_samples(50)
             .estimate_error(EstimateError::default())
@@ -560,6 +699,84 @@ mod tests {
             .bin_size([1.0, 1.0])
             .build()
             .unwrap()
+    }
+
+    #[test]
+    fn convert_order_simple_ua() {
+        let analysis_order = AnalysisOrder::<AddExtend>::new(45.32, 56, false);
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert_relative_eq!(order.value(), -0.8092857, epsilon = 1e-4);
+        assert!(order.error().is_none());
+
+        let analysis_order = AnalysisOrder::<AddSum>::new(45.32, 56, false);
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert_relative_eq!(order.value(), -0.8092857, epsilon = 1e-4);
+        assert!(order.error().is_none());
+    }
+
+    #[test]
+    fn convert_order_simple_limit_ua() {
+        let analysis_order = AnalysisOrder::<AddExtend>::new(45.32, 48, false);
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert!(order.value().is_nan());
+        assert!(order.error().is_none());
+
+        let analysis_order = AnalysisOrder::<AddSum>::new(45.32, 48, false);
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert!(order.value().is_nan());
+        assert!(order.error().is_none());
+    }
+
+    #[test]
+    fn convert_order_with_error_ua() {
+        let mut analysis_order = AnalysisOrder::<AddExtend>::new(45.32, 60, true);
+        // we add more values, but since the average is always the same, it does not matter
+        analysis_order.init_new_frame();
+        analysis_order += 0.812;
+        analysis_order.init_new_frame();
+        analysis_order += 0.684;
+        analysis_order.init_new_frame();
+        analysis_order += 0.692;
+        analysis_order.init_new_frame();
+        analysis_order += 0.766;
+        analysis_order.init_new_frame();
+        analysis_order += 0.802;
+        // this frame will be unused in the error analysis
+        analysis_order.init_new_frame();
+        analysis_order += 0.776;
+
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert_relative_eq!(order.value(), -0.755333, epsilon = 1e-4);
+        assert_relative_eq!(order.error().unwrap(), 0.0602428, epsilon = 1e-4);
+    }
+
+    #[test]
+    fn convert_order_with_error_limit_ua() {
+        let mut analysis_order = AnalysisOrder::<AddExtend>::new(45.32, 43, true);
+        // we add more values, but since the average is always the same, it does not matter
+        analysis_order.init_new_frame();
+        analysis_order += 0.812;
+        analysis_order.init_new_frame();
+        analysis_order += 0.684;
+        analysis_order.init_new_frame();
+        analysis_order += 0.692;
+        analysis_order.init_new_frame();
+        analysis_order += 0.766;
+        analysis_order.init_new_frame();
+        analysis_order += 0.802;
+        // this frame will be unused in the error analysis
+        analysis_order.init_new_frame();
+        analysis_order += 0.776;
+
+        let converter = prepare_converter_ua();
+        let order = converter.convert_order(&analysis_order);
+        assert!(order.value().is_nan());
+        assert!(order.error().unwrap().is_nan());
     }
 
     #[test]

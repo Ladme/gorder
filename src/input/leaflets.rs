@@ -494,7 +494,7 @@ where
                         .collect();
 
                     if files.is_empty() {
-                        Err(de::Error::custom(format!("no match for {}", value)))
+                        Ok(vec![value.to_owned()])
                     } else {
                         Ok(files)
                     }
@@ -794,34 +794,6 @@ lower_leaflet: LowerLeaflet";
                 assert_eq!(params.frequency(), Frequency::every(1).unwrap());
             }
             _ => panic!("Invalid leaflet classification returned."),
-        }
-    }
-
-    #[test]
-    fn test_parse_manual_ndx_single_no_match() {
-        let string = "!FromNdx
-heads: \"name P\"
-ndx: index.ndx
-upper_leaflet: UpperLeaflet
-lower_leaflet: LowerLeaflet";
-
-        match serde_yaml::from_str::<LeafletClassification>(string) {
-            Ok(_) => panic!("Function should have failed."),
-            Err(e) => assert!(e.to_string().contains("no match for index.ndx")),
-        }
-    }
-
-    #[test]
-    fn test_parse_manual_ndx_glob_no_match() {
-        let string = "!FromNdx
-heads: \"name P\"
-ndx: index*.ndx
-upper_leaflet: UpperLeaflet
-lower_leaflet: LowerLeaflet";
-
-        match serde_yaml::from_str::<LeafletClassification>(string) {
-            Ok(_) => panic!("Function should have failed."),
-            Err(e) => assert!(e.to_string().contains("no match for index*.ndx")),
         }
     }
 

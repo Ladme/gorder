@@ -1,1 +1,0 @@
-time uv run do-order.py ../files/traj.xtc ../files/system.tpr 0 1000000 1 0 0 1 512 POPC

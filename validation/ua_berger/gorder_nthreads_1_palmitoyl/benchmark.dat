@@ -1,0 +1,3 @@
+Benchmark 1: ./gorder analyze.yaml
+  Time (mean ± σ):      4.163 s ±  0.010 s    [User: 3.735 s, System: 0.195 s]
+  Range (min … max):    4.155 s …  4.177 s    5 runs

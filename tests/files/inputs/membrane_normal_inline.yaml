@@ -1,0 +1,9 @@
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
+output: order.yaml
+analysis_type: !CGOrder
+  beads: "@membrane"
+membrane_normal: !Inline
+  POPC:
+    - [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [5.0, 6.0, 7.0]]
+    - [[2.0, 3.0, 4.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]

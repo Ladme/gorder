@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.5.0-dev.1' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
+# Order parameters calculated with 'gorder v0.6.0-dev.1' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
 average order:
   total: 0.1422
   upper: 0.1409
@@ -611,7 +611,7 @@ POPC:
       bonds:
         POPC HX (36):
           total: 0.1815
-          upper: 0.1329
+          upper: 0.133
           lower: 0.23
         POPC HY (37):
           total: 0.0225
@@ -914,7 +914,7 @@ POPC:
           lower: 0.2617
     POPC C39 (109):
       total: 0.2301
-      upper: 0.2097
+      upper: 0.2096
       lower: 0.2506
       bonds:
         POPC H9X (110):

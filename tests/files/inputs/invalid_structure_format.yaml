@@ -1,5 +1,5 @@
-structure: system.top
-trajectory: md.xtc
+structure: tests/files/pcpepg.top
+trajectory: tests/files/pcpepg.xtc
 type: !AAOrder
   heavy_atoms: "@membrane and element name carbon"
   hydrogens: "@membrane and element name hydrogen"

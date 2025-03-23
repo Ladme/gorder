@@ -7,7 +7,8 @@ use std::fmt::{self, Display};
 
 use colored::Colorize;
 use getset::{CopyGetters, Getters};
-use groan_rs::prelude::Dimension;
+use groan_rs::prelude::Vector3D;
+use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::errors::ConfigError;
@@ -23,13 +24,18 @@ pub enum MembraneNormal {
     Static(Axis),
     /// Membrane normal should be calculated dynamically for each molecule based on the shape of the membrane.
     Dynamic(DynamicNormal),
+    /// Membrane normals for individual molecules should be read from a yaml file.
+    FromFile(String),
+    /// Membrane normals for individual molecules should be set from a map.
+    #[serde(alias = "Inline")]
+    FromMap(HashMap<String, Vec<Vec<Vector3D>>>),
 }
 
 impl MembraneNormal {
     /// Check the validity of the membrane normal.
     pub(super) fn validate(&self) -> Result<(), ConfigError> {
         match self {
-            Self::Static(_) => Ok(()),
+            Self::Static(_) | Self::FromFile(_) | Self::FromMap(_) => Ok(()),
             Self::Dynamic(dynamic) => DynamicNormal::check_radius(dynamic.radius),
         }
     }
@@ -48,6 +54,19 @@ impl Display for MembraneNormal {
                 "Membrane normal will be {} calculated for each molecule.",
                 "dynamically".cyan(),
             ),
+            Self::FromFile(x) => {
+                write!(
+                    f,
+                    "Membrane normals for each molecule will be read from a file '{}'.",
+                    x.cyan(),
+                )
+            }
+            Self::FromMap(_) => {
+                write!(
+                    f,
+                    "Membrane normals are provided manually for each molecule."
+                )
+            }
         }
     }
 }
@@ -64,12 +83,15 @@ impl From<DynamicNormal> for MembraneNormal {
     }
 }
 
-impl From<&MembraneNormal> for Dimension {
-    fn from(value: &MembraneNormal) -> Self {
-        match value {
-            MembraneNormal::Static(axis) => (*axis).into(),
-            MembraneNormal::Dynamic(_) => todo!("Dynamic membrane normal not yet implemented."),
-        }
+impl From<&str> for MembraneNormal {
+    fn from(value: &str) -> Self {
+        Self::FromFile(value.to_owned())
+    }
+}
+
+impl From<HashMap<String, Vec<Vec<Vector3D>>>> for MembraneNormal {
+    fn from(value: HashMap<String, Vec<Vec<Vector3D>>>) -> Self {
+        Self::FromMap(value)
     }
 }
 
@@ -121,9 +143,8 @@ fn default_dynamic_radius() -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
-
     use super::*;
+    use approx::assert_relative_eq;
 
     #[test]
     fn test_deserialize() {
@@ -163,6 +184,63 @@ radius: 3.5",
             }
             _ => panic!("Incorrect membrane normal parsed."),
         }
+
+        match serde_yaml::from_str("!FromFile normals.yaml").unwrap() {
+            MembraneNormal::FromFile(x) => assert_eq!(x, "normals.yaml"),
+            _ => panic!("Incorrect membrane normal parsed."),
+        }
+
+        match serde_yaml::from_str(
+            "!Inline 
+POPC:
+  - [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [5.0, 6.0, 7.0]]
+  - [[2.0, 3.0, 4.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]",
+        )
+        .unwrap()
+        {
+            MembraneNormal::FromMap(x) => {
+                assert!(x.get("POPC").is_some());
+                assert_relative_eq!(
+                    x.get("POPC").unwrap().first().unwrap().get(1).unwrap().y,
+                    3.0
+                );
+                assert_relative_eq!(
+                    x.get("POPC").unwrap().get(1).unwrap().first().unwrap().x,
+                    2.0
+                );
+                assert_relative_eq!(
+                    x.get("POPC").unwrap().get(1).unwrap().get(2).unwrap().z,
+                    8.0
+                );
+            }
+            _ => panic!("Incorrect membrane normal parsed."),
+        }
+
+        match serde_yaml::from_str(
+            "!FromMap
+POPC:
+  - [[1.0, 2.0, 3.0], [2.0, 3.0, 4.0], [5.0, 6.0, 7.0]]
+  - [[2.0, 3.0, 4.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]",
+        )
+        .unwrap()
+        {
+            MembraneNormal::FromMap(x) => {
+                assert!(x.get("POPC").is_some());
+                assert_relative_eq!(
+                    x.get("POPC").unwrap().first().unwrap().get(1).unwrap().y,
+                    3.0
+                );
+                assert_relative_eq!(
+                    x.get("POPC").unwrap().get(1).unwrap().first().unwrap().x,
+                    2.0
+                );
+                assert_relative_eq!(
+                    x.get("POPC").unwrap().get(1).unwrap().get(2).unwrap().z,
+                    8.0
+                );
+            }
+            _ => panic!("Incorrect membrane normal parsed."),
+        }
     }
 
     #[test]
@@ -181,6 +259,51 @@ radius: 3.5",
 heads: name P
 radius: 3.0\n"
         );
+
+        assert_eq!(
+            serde_yaml::to_string(&MembraneNormal::FromFile("normals.yaml".to_owned())).unwrap(),
+            "!FromFile normals.yaml\n"
+        );
+
+        let mut map = HashMap::new();
+        map.insert(
+            "POPC".to_owned(),
+            vec![
+                vec![
+                    Vector3D::new(1.0, 2.0, 3.0),
+                    Vector3D::new(2.0, 3.0, 4.0),
+                    Vector3D::new(5.0, 6.0, 7.0),
+                ],
+                vec![
+                    Vector3D::new(2.0, 3.0, 4.0),
+                    Vector3D::new(3.0, 4.0, 5.0),
+                    Vector3D::new(6.0, 7.0, 8.0),
+                ],
+            ],
+        );
+        let from_map = serde_yaml::to_string(&MembraneNormal::FromMap(map)).unwrap();
+        let expected = "!FromMap
+POPC:
+- - - 1.0
+    - 2.0
+    - 3.0
+  - - 2.0
+    - 3.0
+    - 4.0
+  - - 5.0
+    - 6.0
+    - 7.0
+- - - 2.0
+    - 3.0
+    - 4.0
+  - - 3.0
+    - 4.0
+    - 5.0
+  - - 6.0
+    - 7.0
+    - 8.0
+";
+        assert_eq!(from_map, expected);
     }
 
     #[test]

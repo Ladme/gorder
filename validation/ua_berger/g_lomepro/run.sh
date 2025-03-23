@@ -1,0 +1,3 @@
+#!/bin/bash
+
+hyperfine --runs 5 --prepare 'sync; echo 3 | sudo tee /proc/sys/vm/drop_caches' 'yes 3 0 1 2 | ./g_lomepro_static -s ../files/system.gro -f ../files/traj.xtc -n index_for_lomepro.ndx -order results_unsat/order.dat -lip_num 256 -unsat 1 -nt 8 && yes 3 0 1 | ./g_lomepro_static -s ../files/system.gro -f ../files/traj.xtc -n index_for_lomepro.ndx -order results_sat/order.dat -lip_num 256 -unsat 0 -nt 8'

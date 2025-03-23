@@ -1,0 +1,864 @@
+# Order parameters calculated with 'gorder v0.6.0-dev.2' using a structure file 'tests/files/ua.tpr' and a trajectory file 'tests/files/ua.xtc'.
+average order:
+  total: 0.1161
+  upper: 0.1135
+  lower: 0.1187
+POPC:
+  average order:
+    total: 0.1076
+    upper: 0.1045
+    lower: 0.1107
+  order parameters:
+    POPC C1 (0):
+      total: 0.0001
+      upper: 0.0007
+      lower: -0.0004
+      bonds:
+      - total: 0.011
+        upper: 0.032
+        lower: -0.0099
+      - total: -0.0133
+        upper: -0.0343
+        lower: 0.0077
+      - total: 0.0026
+        upper: 0.0044
+        lower: 0.0009
+    POPC C2 (1):
+      total: -0.0034
+      upper: -0.0097
+      lower: 0.0029
+      bonds:
+      - total: 0.0004
+        upper: 0.0014
+        lower: -0.0006
+      - total: 0.001
+        upper: 0.0034
+        lower: -0.0014
+      - total: -0.0115
+        upper: -0.0338
+        lower: 0.0108
+    POPC C3 (2):
+      total: 0.0056
+      upper: 0.004
+      lower: 0.0073
+      bonds:
+      - total: 0.0033
+        upper: -0.0002
+        lower: 0.0067
+      - total: -0.0189
+        upper: -0.0183
+        lower: -0.0195
+      - total: 0.0326
+        upper: 0.0305
+        lower: 0.0347
+    POPC C5 (4):
+      total: -0.0487
+      upper: -0.0357
+      lower: -0.0618
+      bonds:
+      - total: -0.0486
+        upper: -0.0335
+        lower: -0.0637
+      - total: -0.0489
+        upper: -0.0379
+        lower: -0.0599
+    POPC C6 (5):
+      total: -0.0844
+      upper: -0.0751
+      lower: -0.0936
+      bonds:
+      - total: -0.151
+        upper: -0.1334
+        lower: -0.1687
+      - total: -0.0177
+        upper: -0.0167
+        lower: -0.0186
+    POPC C12 (11):
+      total: 0.2325
+      upper: 0.2368
+      lower: 0.2282
+      bonds:
+      - total: 0.1897
+        upper: 0.1996
+        lower: 0.1799
+      - total: 0.2753
+        upper: 0.2741
+        lower: 0.2766
+    POPC C13 (12):
+      total: 0.1044
+      upper: 0.1223
+      lower: 0.0865
+      bonds:
+      - total: 0.1044
+        upper: 0.1223
+        lower: 0.0865
+    POPC C17 (16):
+      total: 0.161
+      upper: 0.1844
+      lower: 0.1376
+      bonds:
+      - total: 0.1737
+        upper: 0.1859
+        lower: 0.1615
+      - total: 0.1482
+        upper: 0.1829
+        lower: 0.1136
+    POPC C18 (17):
+      total: 0.1888
+      upper: 0.1931
+      lower: 0.1844
+      bonds:
+      - total: 0.2055
+        upper: 0.2038
+        lower: 0.2072
+      - total: 0.1721
+        upper: 0.1825
+        lower: 0.1616
+    POPC C19 (18):
+      total: 0.1958
+      upper: 0.2047
+      lower: 0.187
+      bonds:
+      - total: 0.215
+        upper: 0.2233
+        lower: 0.2068
+      - total: 0.1766
+        upper: 0.1861
+        lower: 0.1672
+    POPC C20 (19):
+      total: 0.2074
+      upper: 0.2156
+      lower: 0.1992
+      bonds:
+      - total: 0.2212
+        upper: 0.2356
+        lower: 0.2068
+      - total: 0.1936
+        upper: 0.1955
+        lower: 0.1916
+    POPC C21 (20):
+      total: 0.1879
+      upper: 0.1897
+      lower: 0.1861
+      bonds:
+      - total: 0.186
+        upper: 0.1928
+        lower: 0.1792
+      - total: 0.1898
+        upper: 0.1866
+        lower: 0.193
+    POPC C22 (21):
+      total: 0.2092
+      upper: 0.2056
+      lower: 0.2129
+      bonds:
+      - total: 0.2125
+        upper: 0.21
+        lower: 0.215
+      - total: 0.206
+        upper: 0.2012
+        lower: 0.2108
+    POPC C23 (22):
+      total: 0.1799
+      upper: 0.1751
+      lower: 0.1847
+      bonds:
+      - total: 0.1772
+        upper: 0.18
+        lower: 0.1743
+      - total: 0.1826
+        upper: 0.1702
+        lower: 0.195
+    POPC C24 (23):
+      total: 0.1012
+      upper: 0.1295
+      lower: 0.073
+      bonds:
+      - total: 0.1012
+        upper: 0.1295
+        lower: 0.073
+    POPC C25 (24):
+      total: -0.0228
+      upper: -0.0424
+      lower: -0.0033
+      bonds:
+      - total: -0.0228
+        upper: -0.0424
+        lower: -0.0033
+    POPC C26 (25):
+      total: 0.1383
+      upper: 0.1222
+      lower: 0.1544
+      bonds:
+      - total: 0.1323
+        upper: 0.0931
+        lower: 0.1714
+      - total: 0.1443
+        upper: 0.1512
+        lower: 0.1373
+    POPC C27 (26):
+      total: 0.1693
+      upper: 0.1564
+      lower: 0.1821
+      bonds:
+      - total: 0.1741
+        upper: 0.1484
+        lower: 0.1998
+      - total: 0.1644
+        upper: 0.1645
+        lower: 0.1644
+    POPC C28 (27):
+      total: 0.1225
+      upper: 0.0976
+      lower: 0.1473
+      bonds:
+      - total: 0.128
+        upper: 0.0999
+        lower: 0.156
+      - total: 0.117
+        upper: 0.0953
+        lower: 0.1387
+    POPC C29 (28):
+      total: 0.1289
+      upper: 0.0973
+      lower: 0.1605
+      bonds:
+      - total: 0.1379
+        upper: 0.0951
+        lower: 0.1807
+      - total: 0.1199
+        upper: 0.0996
+        lower: 0.1403
+    POPC C30 (29):
+      total: 0.0978
+      upper: 0.0761
+      lower: 0.1196
+      bonds:
+      - total: 0.1092
+        upper: 0.091
+        lower: 0.1273
+      - total: 0.0865
+        upper: 0.0612
+        lower: 0.1119
+    POPC C31 (30):
+      total: 0.1047
+      upper: 0.0877
+      lower: 0.1218
+      bonds:
+      - total: 0.1085
+        upper: 0.095
+        lower: 0.122
+      - total: 0.101
+        upper: 0.0803
+        lower: 0.1216
+    POPC C32 (31):
+      total: -0.1405
+      upper: -0.1211
+      lower: -0.16
+      bonds:
+      - total: -0.1742
+        upper: -0.2057
+        lower: -0.1427
+      - total: -0.1068
+        upper: -0.0364
+        lower: -0.1772
+    POPC C36 (35):
+      total: 0.1715
+      upper: 0.1703
+      lower: 0.1727
+      bonds:
+      - total: 0.2073
+        upper: 0.2027
+        lower: 0.2119
+      - total: 0.1357
+        upper: 0.138
+        lower: 0.1335
+    POPC C37 (36):
+      total: 0.1861
+      upper: 0.185
+      lower: 0.1873
+      bonds:
+      - total: 0.2027
+        upper: 0.1928
+        lower: 0.2126
+      - total: 0.1695
+        upper: 0.1772
+        lower: 0.1619
+    POPC C38 (37):
+      total: 0.171
+      upper: 0.1728
+      lower: 0.1691
+      bonds:
+      - total: 0.1883
+        upper: 0.1766
+        lower: 0.2001
+      - total: 0.1536
+        upper: 0.169
+        lower: 0.1382
+    POPC C39 (38):
+      total: 0.1747
+      upper: 0.1692
+      lower: 0.1801
+      bonds:
+      - total: 0.1906
+        upper: 0.164
+        lower: 0.2172
+      - total: 0.1587
+        upper: 0.1745
+        lower: 0.143
+    POPC C40 (39):
+      total: 0.1807
+      upper: 0.1723
+      lower: 0.1891
+      bonds:
+      - total: 0.1941
+        upper: 0.1776
+        lower: 0.2106
+      - total: 0.1673
+        upper: 0.1669
+        lower: 0.1676
+    POPC C41 (40):
+      total: 0.1734
+      upper: 0.1558
+      lower: 0.191
+      bonds:
+      - total: 0.1813
+        upper: 0.1709
+        lower: 0.1917
+      - total: 0.1656
+        upper: 0.1408
+        lower: 0.1903
+    POPC C42 (41):
+      total: 0.1661
+      upper: 0.162
+      lower: 0.1703
+      bonds:
+      - total: 0.1726
+        upper: 0.1752
+        lower: 0.1701
+      - total: 0.1596
+        upper: 0.1488
+        lower: 0.1704
+    POPC C43 (42):
+      total: 0.1634
+      upper: 0.16
+      lower: 0.1668
+      bonds:
+      - total: 0.1606
+        upper: 0.157
+        lower: 0.1643
+      - total: 0.1662
+        upper: 0.163
+        lower: 0.1694
+    POPC C44 (43):
+      total: 0.1528
+      upper: 0.1507
+      lower: 0.155
+      bonds:
+      - total: 0.1518
+        upper: 0.1471
+        lower: 0.1564
+      - total: 0.1539
+        upper: 0.1543
+        lower: 0.1535
+    POPC C45 (44):
+      total: 0.144
+      upper: 0.1377
+      lower: 0.1503
+      bonds:
+      - total: 0.143
+        upper: 0.1333
+        lower: 0.1528
+      - total: 0.1449
+        upper: 0.1421
+        lower: 0.1477
+    POPC C46 (45):
+      total: 0.13
+      upper: 0.1287
+      lower: 0.1314
+      bonds:
+      - total: 0.1331
+        upper: 0.1276
+        lower: 0.1385
+      - total: 0.127
+        upper: 0.1298
+        lower: 0.1243
+    POPC C47 (46):
+      total: 0.1156
+      upper: 0.1104
+      lower: 0.1208
+      bonds:
+      - total: 0.1314
+        upper: 0.127
+        lower: 0.1357
+      - total: 0.0998
+        upper: 0.0937
+        lower: 0.1059
+    POPC C48 (47):
+      total: 0.0943
+      upper: 0.0912
+      lower: 0.0974
+      bonds:
+      - total: 0.1093
+        upper: 0.0939
+        lower: 0.1248
+      - total: 0.0792
+        upper: 0.0884
+        lower: 0.07
+    POPC C49 (48):
+      total: 0.076
+      upper: 0.0756
+      lower: 0.0764
+      bonds:
+      - total: 0.0911
+        upper: 0.0792
+        lower: 0.103
+      - total: 0.0609
+        upper: 0.072
+        lower: 0.0498
+    POPC C50 (49):
+      total: 0.0136
+      upper: 0.0131
+      lower: 0.0142
+      bonds:
+      - total: -0.1109
+        upper: -0.1122
+        lower: -0.1097
+      - total: 0.0605
+        upper: 0.072
+        lower: 0.049
+      - total: 0.0913
+        upper: 0.0796
+        lower: 0.1031
+    POPC CA1 (50):
+      total: 0.0731
+      upper: 0.0492
+      lower: 0.0969
+      bonds:
+      - total: 0.0616
+        upper: 0.0406
+        lower: 0.0825
+      - total: 0.0845
+        upper: 0.0577
+        lower: 0.1114
+    POPC CA2 (51):
+      total: 0.0495
+      upper: 0.0445
+      lower: 0.0545
+      bonds:
+      - total: 0.0045
+        upper: 0.0364
+        lower: -0.0275
+      - total: 0.084
+        upper: 0.0571
+        lower: 0.111
+      - total: 0.06
+        upper: 0.04
+        lower: 0.08
+POPS:
+  average order:
+    total: 0.1538
+    upper: 0.1535
+    lower: 0.1541
+  order parameters:
+    POPS C5 (4):
+      total: -0.2483
+      upper: -0.2897
+      lower: -0.207
+      bonds:
+      - total: -0.2483
+        upper: -0.2897
+        lower: -0.207
+    POPS C9 (8):
+      total: -0.2662
+      upper: -0.2853
+      lower: -0.2471
+      bonds:
+      - total: -0.2261
+        upper: -0.2902
+        lower: -0.162
+      - total: -0.3063
+        upper: -0.2805
+        lower: -0.3322
+    POPS C15 (14):
+      total: 0.2876
+      upper: 0.3028
+      lower: 0.2724
+      bonds:
+      - total: 0.2755
+        upper: 0.3175
+        lower: 0.2335
+      - total: 0.2998
+        upper: 0.2881
+        lower: 0.3114
+    POPS C16 (15):
+      total: 0.2061
+      upper: 0.2042
+      lower: 0.2079
+      bonds:
+      - total: 0.2061
+        upper: 0.2042
+        lower: 0.2079
+    POPS C20 (19):
+      total: 0.2387
+      upper: 0.2623
+      lower: 0.2151
+      bonds:
+      - total: 0.1826
+        upper: 0.2169
+        lower: 0.1483
+      - total: 0.2948
+        upper: 0.3077
+        lower: 0.2818
+    POPS C21 (20):
+      total: 0.2614
+      upper: 0.2739
+      lower: 0.2488
+      bonds:
+      - total: 0.2136
+        upper: 0.2372
+        lower: 0.1901
+      - total: 0.3091
+        upper: 0.3106
+        lower: 0.3075
+    POPS C22 (21):
+      total: 0.2473
+      upper: 0.2456
+      lower: 0.249
+      bonds:
+      - total: 0.2342
+        upper: 0.23
+        lower: 0.2385
+      - total: 0.2604
+        upper: 0.2613
+        lower: 0.2596
+    POPS C23 (22):
+      total: 0.2759
+      upper: 0.2679
+      lower: 0.2839
+      bonds:
+      - total: 0.2635
+        upper: 0.2479
+        lower: 0.2792
+      - total: 0.2883
+        upper: 0.288
+        lower: 0.2886
+    POPS C24 (23):
+      total: 0.2519
+      upper: 0.2393
+      lower: 0.2644
+      bonds:
+      - total: 0.2393
+        upper: 0.2427
+        lower: 0.2359
+      - total: 0.2644
+        upper: 0.2359
+        lower: 0.2929
+    POPS C25 (24):
+      total: 0.2523
+      upper: 0.2484
+      lower: 0.2562
+      bonds:
+      - total: 0.2418
+        upper: 0.2739
+        lower: 0.2097
+      - total: 0.2629
+        upper: 0.223
+        lower: 0.3027
+    POPS C26 (25):
+      total: 0.1973
+      upper: 0.2127
+      lower: 0.182
+      bonds:
+      - total: 0.1749
+        upper: 0.2075
+        lower: 0.1423
+      - total: 0.2197
+        upper: 0.2178
+        lower: 0.2217
+    POPS C27 (26):
+      total: 0.1197
+      upper: 0.1256
+      lower: 0.1138
+      bonds:
+      - total: 0.1197
+        upper: 0.1256
+        lower: 0.1138
+    POPS C28 (27):
+      total: -0.0435
+      upper: -0.0133
+      lower: -0.0738
+      bonds:
+      - total: -0.0435
+        upper: -0.0133
+        lower: -0.0738
+    POPS C29 (28):
+      total: 0.1497
+      upper: 0.1776
+      lower: 0.1217
+      bonds:
+      - total: 0.1558
+        upper: 0.21
+        lower: 0.1017
+      - total: 0.1435
+        upper: 0.1453
+        lower: 0.1417
+    POPS C30 (29):
+      total: 0.1938
+      upper: 0.2302
+      lower: 0.1574
+      bonds:
+      - total: 0.2021
+        upper: 0.2682
+        lower: 0.1359
+      - total: 0.1856
+        upper: 0.1923
+        lower: 0.1789
+    POPS C31 (30):
+      total: 0.1407
+      upper: 0.1587
+      lower: 0.1228
+      bonds:
+      - total: 0.1787
+        upper: 0.18
+        lower: 0.1774
+      - total: 0.1027
+        upper: 0.1373
+        lower: 0.0681
+    POPS C32 (31):
+      total: 0.1465
+      upper: 0.1545
+      lower: 0.1385
+      bonds:
+      - total: 0.1825
+        upper: 0.1672
+        lower: 0.1979
+      - total: 0.1105
+        upper: 0.1419
+        lower: 0.0791
+    POPS C33 (32):
+      total: 0.1119
+      upper: 0.1043
+      lower: 0.1195
+      bonds:
+      - total: 0.1361
+        upper: 0.1422
+        lower: 0.1301
+      - total: 0.0877
+        upper: 0.0664
+        lower: 0.109
+    POPS C34 (33):
+      total: 0.1203
+      upper: 0.1122
+      lower: 0.1284
+      bonds:
+      - total: 0.1285
+        upper: 0.1389
+        lower: 0.1182
+      - total: 0.1121
+        upper: 0.0855
+        lower: 0.1387
+    POPS C35 (34):
+      total: 0.1003
+      upper: 0.0871
+      lower: 0.1136
+      bonds:
+      - total: 0.0835
+        upper: 0.0818
+        lower: 0.0852
+      - total: 0.1172
+        upper: 0.0924
+        lower: 0.1419
+    POPS C36 (35):
+      total: 0.0648
+      upper: 0.065
+      lower: 0.0646
+      bonds:
+      - total: -0.0025
+        upper: 0.0247
+        lower: -0.0296
+      - total: 0.1162
+        upper: 0.092
+        lower: 0.1404
+      - total: 0.0807
+        upper: 0.0784
+        lower: 0.083
+    POPS C37 (36):
+      total: -0.2245
+      upper: -0.2525
+      lower: -0.1965
+      bonds:
+      - total: -0.1271
+        upper: -0.2504
+        lower: -0.0038
+      - total: -0.3219
+        upper: -0.2546
+        lower: -0.3891
+    POPS C41 (40):
+      total: 0.2432
+      upper: 0.2806
+      lower: 0.2058
+      bonds:
+      - total: 0.3024
+        upper: 0.3134
+        lower: 0.2913
+      - total: 0.1841
+        upper: 0.2479
+        lower: 0.1203
+    POPS C42 (41):
+      total: 0.2769
+      upper: 0.2957
+      lower: 0.2581
+      bonds:
+      - total: 0.3158
+        upper: 0.3308
+        lower: 0.3009
+      - total: 0.238
+        upper: 0.2607
+        lower: 0.2152
+    POPS C43 (42):
+      total: 0.2248
+      upper: 0.2197
+      lower: 0.2298
+      bonds:
+      - total: 0.252
+        upper: 0.2427
+        lower: 0.2614
+      - total: 0.1975
+        upper: 0.1967
+        lower: 0.1983
+    POPS C44 (43):
+      total: 0.2252
+      upper: 0.2294
+      lower: 0.221
+      bonds:
+      - total: 0.2278
+        upper: 0.22
+        lower: 0.2356
+      - total: 0.2226
+        upper: 0.2387
+        lower: 0.2064
+    POPS C45 (44):
+      total: 0.2369
+      upper: 0.2413
+      lower: 0.2326
+      bonds:
+      - total: 0.2383
+        upper: 0.2226
+        lower: 0.2541
+      - total: 0.2356
+        upper: 0.2599
+        lower: 0.2112
+    POPS C46 (45):
+      total: 0.2568
+      upper: 0.2479
+      lower: 0.2657
+      bonds:
+      - total: 0.2474
+        upper: 0.2258
+        lower: 0.269
+      - total: 0.2662
+        upper: 0.2701
+        lower: 0.2624
+    POPS C47 (46):
+      total: 0.254
+      upper: 0.2478
+      lower: 0.2602
+      bonds:
+      - total: 0.2525
+        upper: 0.2263
+        lower: 0.2788
+      - total: 0.2555
+        upper: 0.2693
+        lower: 0.2417
+    POPS C48 (47):
+      total: 0.2327
+      upper: 0.213
+      lower: 0.2523
+      bonds:
+      - total: 0.2286
+        upper: 0.2085
+        lower: 0.2486
+      - total: 0.2368
+        upper: 0.2175
+        lower: 0.256
+    POPS C49 (48):
+      total: 0.2028
+      upper: 0.1936
+      lower: 0.2119
+      bonds:
+      - total: 0.2064
+        upper: 0.2098
+        lower: 0.203
+      - total: 0.1991
+        upper: 0.1775
+        lower: 0.2208
+    POPS C50 (49):
+      total: 0.1838
+      upper: 0.1511
+      lower: 0.2166
+      bonds:
+      - total: 0.1713
+        upper: 0.128
+        lower: 0.2147
+      - total: 0.1964
+        upper: 0.1743
+        lower: 0.2184
+    POPS C51 (50):
+      total: 0.169
+      upper: 0.1291
+      lower: 0.2089
+      bonds:
+      - total: 0.1568
+        upper: 0.1179
+        lower: 0.1957
+      - total: 0.1812
+        upper: 0.1403
+        lower: 0.2221
+    POPS C52 (51):
+      total: 0.1333
+      upper: 0.1174
+      lower: 0.1491
+      bonds:
+      - total: 0.13
+        upper: 0.1356
+        lower: 0.1244
+      - total: 0.1365
+        upper: 0.0992
+        lower: 0.1738
+    POPS C53 (52):
+      total: 0.1136
+      upper: 0.1013
+      lower: 0.1259
+      bonds:
+      - total: 0.1096
+        upper: 0.1559
+        lower: 0.0633
+      - total: 0.1176
+        upper: 0.0468
+        lower: 0.1885
+    POPS C54 (53):
+      total: 0.1108
+      upper: 0.1295
+      lower: 0.0921
+      bonds:
+      - total: 0.0913
+        upper: 0.1721
+        lower: 0.0105
+      - total: 0.1303
+        upper: 0.0868
+        lower: 0.1737
+    POPS C55 (54):
+      total: 0.049
+      upper: 0.0513
+      lower: 0.0468
+      bonds:
+      - total: -0.0722
+        upper: -0.1044
+        lower: -0.0399
+      - total: 0.1292
+        upper: 0.0862
+        lower: 0.1723
+      - total: 0.0901
+        upper: 0.1719
+        lower: 0.0082

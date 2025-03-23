@@ -1,0 +1,6 @@
+structure: tests/files/cg.tpr
+trajectory: tests/files/cg.xtc
+output: order.yaml
+analysis_type: !CGOrder
+  beads: "@membrane"
+membrane_normal: !FromFile normals.yaml

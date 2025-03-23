@@ -1,0 +1,8 @@
+# Test file for binary application.
+structure: tests/files/pcpepg.tpr
+trajectory: tests/files/pcpepg.xtc
+type: !UAOrder
+  saturated: "@membrane and element name carbon and not name C29 C210 C21 C31"
+  unsaturated: "@membrane and name C29 C210"
+  ignore: "element name hydrogen"
+output_yaml: temp_ua_order_from_aa.yaml

@@ -1,3 +1,10 @@
+## Version 0.6.0
+- **United-atom order parameters:** `gorder` is now able to calculate order parameters in united-atom systems. See the [manual](https://ladme.github.io/gorder-manual/uaorder_basics.html) for more information.
+- **Python API:** `gorder` is now available as a Python package. See the [manual](https://ladme.github.io/gorder-manual/python_api.html) for more information.
+- **Trajectory concatenation:** You can now provide multiple trajectory files which will be all joined into one trajectory and analyzed. In case there are duplicate frames at trajectory boundaries, `gorder` will analyze only one of the duplicate frames. This feature is currently only supported for XTC and TRR files. See the [manual](https://ladme.github.io/gorder-manual/multiple_trajectories.html) for more information.
+- **Manual membrane normals:** Membrane normals can be now assigned manually for each lipid molecule in each trajectory frame. See the [manual](https://ladme.github.io/gorder-manual/manual_normals.html) for more information.
+- **Optimizations:** Local leaflet classification method and dynamic local membrane normal calculation are now much faster, especially for very large systems, through using cell lists. **Warning:** The changes may cause small differences in the calculated order parameters compared to version 0.5, especially for very short trajectories. These differences should be on the order of 0.0001 arb. u. or lower.
+
 ## Version 0.5.0
 - **Dynamic membrane normal calculation:** Membrane normals can be now calculated dynamically from actual membrane shape which allows the calculation of order parameters for vesicles and similar systems (see the [manual](https://ladme.github.io/gorder-manual/membrane_normal.html)).
 - **Ignoring PBC:** You can now choose to ignore periodic boundary conditions. This allows analyzing simulations with non-orthogonal simulation boxes with some small additional friction (making molecules whole). See the [manual](https://ladme.github.io/gorder-manual/no_pbc.html) for more information.

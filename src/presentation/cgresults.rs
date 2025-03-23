@@ -13,7 +13,7 @@ use super::{
     BondResults, CGOrder, MoleculeResults, OrderCollection, OrderResults, PublicMoleculeResults,
     PublicOrderResults,
 };
-use crate::analysis::molecule::BondTopology;
+use crate::analysis::topology::bond::{BondTopology, OrderBonds};
 use crate::input::Analysis;
 use crate::presentation::OrderMapsCollection;
 
@@ -75,6 +75,7 @@ impl PublicOrderResults for CGOrderResults {
 
 impl OrderResults for CGOrderResults {
     type OrderType = CGOrder;
+    type MoleculeBased = OrderBonds;
 
     fn empty(analysis: Analysis) -> Self {
         Self {

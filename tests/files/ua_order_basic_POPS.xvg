@@ -1,0 +1,80 @@
+# Order parameters calculated with 'gorder v0.6.0-dev.2' using a structure file 'system.tpr' and a trajectory file 'traj.xtc'.
+@    title "United-atom order parameters for molecule type POPS"
+@    xaxis label "Atom"
+@    yaxis label "-Sch"
+@    s0 legend "Full membrane"
+@TYPE xy
+# Atom C5:
+1     -0.2411 
+# Atom C9:
+2     -0.2743 
+# Atom C15:
+3      0.2858 
+# Atom C16:
+4      0.1966 
+# Atom C20:
+5      0.2272 
+# Atom C21:
+6      0.2548 
+# Atom C22:
+7      0.2468 
+# Atom C23:
+8      0.2633 
+# Atom C24:
+9      0.2498 
+# Atom C25:
+10     0.2630 
+# Atom C26:
+11     0.2197 
+# Atom C27:
+12     0.1342 
+# Atom C28:
+13    -0.0698 
+# Atom C29:
+14     0.1530 
+# Atom C30:
+15     0.1860 
+# Atom C31:
+16     0.1391 
+# Atom C32:
+17     0.1387 
+# Atom C33:
+18     0.1009 
+# Atom C34:
+19     0.1078 
+# Atom C35:
+20     0.0722 
+# Atom C36:
+21     0.0605 
+# Atom C37:
+22    -0.2242 
+# Atom C41:
+23     0.2356 
+# Atom C42:
+24     0.2673 
+# Atom C43:
+25     0.2212 
+# Atom C44:
+26     0.2212 
+# Atom C45:
+27     0.2256 
+# Atom C46:
+28     0.2221 
+# Atom C47:
+29     0.2199 
+# Atom C48:
+30     0.2003 
+# Atom C49:
+31     0.1876 
+# Atom C50:
+32     0.1789 
+# Atom C51:
+33     0.1637 
+# Atom C52:
+34     0.1467 
+# Atom C53:
+35     0.1259 
+# Atom C54:
+36     0.1071 
+# Atom C55:
+37     0.0394 

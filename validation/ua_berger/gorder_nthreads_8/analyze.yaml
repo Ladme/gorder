@@ -1,0 +1,8 @@
+structure: ../files/system.tpr
+trajectory: ../files/traj.xtc
+analysis_type: !UAOrder
+  saturated: "resname POPC and name C17 C18 C19 C20 C21 C22 C23 C26 C27 C28 C29 C30 C31 CA1 CA2 C36 C37 C38 C39 C40 C41 C42 C43 C44 C45 C46 C47 C48 C49 C50"
+  unsaturated: "resname POPC and name C24 C25"
+output: order.yaml
+n_threads: 8
+overwrite: true

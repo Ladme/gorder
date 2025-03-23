@@ -1,0 +1,6 @@
+structure: tests/files/pcpepg.tpr
+trajectory: [tests/files/split/pcpepg1.xtc, tests/files/split/pcpepg2.xtc, tests/files/split/pcpepg3.xtc, tests/files/split/pcpepg4.xtc, tests/files/split/pcpepg5.xtc]
+type: !AAOrder
+  heavy_atoms: "@membrane and element name carbon"
+  hydrogens: "@membrane and element name hydrogen"
+output_yaml: temp_aa_order_multiple_traj.yaml

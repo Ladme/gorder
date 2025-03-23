@@ -1,0 +1,33 @@
+# This file was created Wed Mar 19 10:12:29 2025
+# Created by:
+#                      :-) GROMACS - gmx order, 2024.4 (-:
+# 
+# Executable:   /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo/bin/gmx_mpi
+# Data prefix:  /home/ladme/spack/opt/spack/linux-linuxmint20-x86_64_v4/gcc-9.4.0/gromacs-2024.4-socx75tn5sdpsochse55pmpoybpy5qzo
+# Working dir:  /home/ladme/Documents/Programming/Rust/gorder-article/validation/ua_berger/gmx_order
+# Command line:
+#   gmx_mpi order -s ../files/system.tpr -f ../files/traj.xtc -n index_oleoyl.ndx -od order_oleoyl.xvg
+# gmx order is part of G R O M A C S:
+#
+# God Rules Over Mankind, Animals, Cosmos and Such
+#
+@    title "Deuterium order parameters"
+@    xaxis  label "Atom"
+@    yaxis  label "Scd"
+@TYPE xy
+           1       0.167032
+           2       0.173649
+           3       0.177665
+           4       0.177545
+           5       0.165627
+           6       0.160377
+           7       0.106567
+           8       0.118612
+           9      0.0946657
+          10      0.0524783
+          11      0.0970393
+          12      0.0921761
+          13      0.0965496
+          14      0.0825216
+          15       0.076985
+          16      0.0574575

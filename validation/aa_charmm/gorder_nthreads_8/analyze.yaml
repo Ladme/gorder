@@ -1,0 +1,8 @@
+structure: ../files/system.tpr
+trajectory: ../files/traj.xtc
+analysis_type: !AAOrder
+  heavy_atoms: "resname POPC and name r'C3.+|C2.+'"
+  hydrogens: "resname POPC and elname hydrogen"
+output: order.yaml
+n_threads: 8
+overwrite: true

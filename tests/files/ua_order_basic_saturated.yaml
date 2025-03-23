@@ -1,0 +1,380 @@
+# Order parameters calculated with 'gorder v0.6.0-dev.2' using a structure file 'tests/files/ua.tpr' and a trajectory file 'tests/files/ua.xtc'.
+average order:
+  total: 0.1189
+POPC:
+  average order:
+    total: 0.1119
+  order parameters:
+    POPC C1 (0):
+      total: -0.0039
+      bonds:
+      - total: 0.0079
+      - total: -0.0244
+      - total: 0.0048
+    POPC C2 (1):
+      total: -0.0019
+      bonds:
+      - total: 0.0129
+      - total: 0.0044
+      - total: -0.023
+    POPC C3 (2):
+      total: 0.0048
+      bonds:
+      - total: 0.0136
+      - total: -0.0223
+      - total: 0.023
+    POPC C5 (4):
+      total: -0.0412
+      bonds:
+      - total: -0.0455
+      - total: -0.0369
+    POPC C6 (5):
+      total: -0.0868
+      bonds:
+      - total: -0.1548
+      - total: -0.0188
+    POPC C12 (11):
+      total: 0.2321
+      bonds:
+      - total: 0.1864
+      - total: 0.2778
+    POPC C13 (12):
+      total: 0.1064
+      bonds:
+      - total: 0.1064
+    POPC C17 (16):
+      total: 0.1603
+      bonds:
+      - total: 0.1709
+      - total: 0.1497
+    POPC C18 (17):
+      total: 0.1892
+      bonds:
+      - total: 0.1988
+      - total: 0.1796
+    POPC C19 (18):
+      total: 0.1943
+      bonds:
+      - total: 0.2091
+      - total: 0.1796
+    POPC C20 (19):
+      total: 0.2113
+      bonds:
+      - total: 0.2173
+      - total: 0.2053
+    POPC C21 (20):
+      total: 0.1982
+      bonds:
+      - total: 0.2002
+      - total: 0.1962
+    POPC C22 (21):
+      total: 0.2159
+      bonds:
+      - total: 0.2158
+      - total: 0.216
+    POPC C23 (22):
+      total: 0.1786
+      bonds:
+      - total: 0.1751
+      - total: 0.1822
+    POPC C26 (25):
+      total: 0.1375
+      bonds:
+      - total: 0.1323
+      - total: 0.1427
+    POPC C27 (26):
+      total: 0.1709
+      bonds:
+      - total: 0.1722
+      - total: 0.1695
+    POPC C28 (27):
+      total: 0.1265
+      bonds:
+      - total: 0.1284
+      - total: 0.1247
+    POPC C29 (28):
+      total: 0.1355
+      bonds:
+      - total: 0.1421
+      - total: 0.1289
+    POPC C30 (29):
+      total: 0.0984
+      bonds:
+      - total: 0.1025
+      - total: 0.0943
+    POPC C31 (30):
+      total: 0.1004
+      bonds:
+      - total: 0.1012
+      - total: 0.0995
+    POPC C32 (31):
+      total: -0.1359
+      bonds:
+      - total: -0.165
+      - total: -0.1068
+    POPC C36 (35):
+      total: 0.1737
+      bonds:
+      - total: 0.1933
+      - total: 0.1542
+    POPC C37 (36):
+      total: 0.1924
+      bonds:
+      - total: 0.2002
+      - total: 0.1846
+    POPC C38 (37):
+      total: 0.1842
+      bonds:
+      - total: 0.1923
+      - total: 0.1761
+    POPC C39 (38):
+      total: 0.1831
+      bonds:
+      - total: 0.1883
+      - total: 0.1778
+    POPC C40 (39):
+      total: 0.1781
+      bonds:
+      - total: 0.1851
+      - total: 0.1711
+    POPC C41 (40):
+      total: 0.1735
+      bonds:
+      - total: 0.1847
+      - total: 0.1624
+    POPC C42 (41):
+      total: 0.1681
+      bonds:
+      - total: 0.1716
+      - total: 0.1646
+    POPC C43 (42):
+      total: 0.1615
+      bonds:
+      - total: 0.1623
+      - total: 0.1606
+    POPC C44 (43):
+      total: 0.1543
+      bonds:
+      - total: 0.1556
+      - total: 0.153
+    POPC C45 (44):
+      total: 0.1496
+      bonds:
+      - total: 0.1554
+      - total: 0.1438
+    POPC C46 (45):
+      total: 0.1377
+      bonds:
+      - total: 0.1417
+      - total: 0.1337
+    POPC C47 (46):
+      total: 0.1261
+      bonds:
+      - total: 0.1347
+      - total: 0.1174
+    POPC C48 (47):
+      total: 0.1063
+      bonds:
+      - total: 0.1102
+      - total: 0.1024
+    POPC C49 (48):
+      total: 0.0851
+      bonds:
+      - total: 0.0918
+      - total: 0.0784
+    POPC C50 (49):
+      total: 0.0207
+      bonds:
+      - total: -0.108
+      - total: 0.0781
+      - total: 0.0919
+    POPC CA1 (50):
+      total: 0.0677
+      bonds:
+      - total: 0.0637
+      - total: 0.0716
+    POPC CA2 (51):
+      total: 0.0439
+      bonds:
+      - total: -0.0022
+      - total: 0.0708
+      - total: 0.063
+POPS:
+  average order:
+    total: 0.1503
+  order parameters:
+    POPS C5 (4):
+      total: -0.2411
+      bonds:
+      - total: -0.2411
+    POPS C9 (8):
+      total: -0.2743
+      bonds:
+      - total: -0.2361
+      - total: -0.3125
+    POPS C15 (14):
+      total: 0.2858
+      bonds:
+      - total: 0.2735
+      - total: 0.2981
+    POPS C16 (15):
+      total: 0.1966
+      bonds:
+      - total: 0.1966
+    POPS C20 (19):
+      total: 0.2272
+      bonds:
+      - total: 0.1629
+      - total: 0.2914
+    POPS C21 (20):
+      total: 0.2548
+      bonds:
+      - total: 0.2118
+      - total: 0.2977
+    POPS C22 (21):
+      total: 0.2468
+      bonds:
+      - total: 0.2283
+      - total: 0.2652
+    POPS C23 (22):
+      total: 0.2633
+      bonds:
+      - total: 0.2632
+      - total: 0.2634
+    POPS C24 (23):
+      total: 0.2498
+      bonds:
+      - total: 0.2465
+      - total: 0.253
+    POPS C25 (24):
+      total: 0.263
+      bonds:
+      - total: 0.2491
+      - total: 0.2769
+    POPS C26 (25):
+      total: 0.2197
+      bonds:
+      - total: 0.2081
+      - total: 0.2313
+    POPS C29 (28):
+      total: 0.153
+      bonds:
+      - total: 0.1614
+      - total: 0.1446
+    POPS C30 (29):
+      total: 0.186
+      bonds:
+      - total: 0.1831
+      - total: 0.189
+    POPS C31 (30):
+      total: 0.1391
+      bonds:
+      - total: 0.1526
+      - total: 0.1256
+    POPS C32 (31):
+      total: 0.1387
+      bonds:
+      - total: 0.1568
+      - total: 0.1206
+    POPS C33 (32):
+      total: 0.1009
+      bonds:
+      - total: 0.1124
+      - total: 0.0895
+    POPS C34 (33):
+      total: 0.1078
+      bonds:
+      - total: 0.1233
+      - total: 0.0922
+    POPS C35 (34):
+      total: 0.0722
+      bonds:
+      - total: 0.0674
+      - total: 0.0769
+    POPS C36 (35):
+      total: 0.0605
+      bonds:
+      - total: 0.04
+      - total: 0.0756
+      - total: 0.066
+    POPS C37 (36):
+      total: -0.2242
+      bonds:
+      - total: -0.1247
+      - total: -0.3237
+    POPS C41 (40):
+      total: 0.2356
+      bonds:
+      - total: 0.2871
+      - total: 0.1841
+    POPS C42 (41):
+      total: 0.2673
+      bonds:
+      - total: 0.2926
+      - total: 0.242
+    POPS C43 (42):
+      total: 0.2212
+      bonds:
+      - total: 0.2492
+      - total: 0.1932
+    POPS C44 (43):
+      total: 0.2212
+      bonds:
+      - total: 0.2196
+      - total: 0.2229
+    POPS C45 (44):
+      total: 0.2256
+      bonds:
+      - total: 0.2405
+      - total: 0.2108
+    POPS C46 (45):
+      total: 0.2221
+      bonds:
+      - total: 0.2084
+      - total: 0.2359
+    POPS C47 (46):
+      total: 0.2199
+      bonds:
+      - total: 0.2164
+      - total: 0.2235
+    POPS C48 (47):
+      total: 0.2003
+      bonds:
+      - total: 0.1966
+      - total: 0.2039
+    POPS C49 (48):
+      total: 0.1876
+      bonds:
+      - total: 0.1845
+      - total: 0.1907
+    POPS C50 (49):
+      total: 0.1789
+      bonds:
+      - total: 0.177
+      - total: 0.1808
+    POPS C51 (50):
+      total: 0.1637
+      bonds:
+      - total: 0.1632
+      - total: 0.1641
+    POPS C52 (51):
+      total: 0.1467
+      bonds:
+      - total: 0.1466
+      - total: 0.1468
+    POPS C53 (52):
+      total: 0.1259
+      bonds:
+      - total: 0.1239
+      - total: 0.1278
+    POPS C54 (53):
+      total: 0.1071
+      bonds:
+      - total: 0.1061
+      - total: 0.1081
+    POPS C55 (54):
+      total: 0.0394
+      bonds:
+      - total: -0.0949
+      - total: 0.1076
+      - total: 0.1056

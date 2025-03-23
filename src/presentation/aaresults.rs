@@ -8,7 +8,8 @@ use super::{
     AAOrder, BondResults, MoleculeResults, OrderCollection, OrderResults, PublicMoleculeResults,
     PublicOrderResults,
 };
-use crate::analysis::molecule::AtomType;
+use crate::analysis::topology::atom::AtomType;
+use crate::analysis::topology::bond::OrderBonds;
 use crate::input::Analysis;
 use crate::presentation::OrderMapsCollection;
 use getset::Getters;
@@ -40,10 +41,10 @@ impl Serialize for AAOrderResults {
     {
         let mut map = serializer.serialize_map(Some(self.molecules.len() + 1))?;
 
-        // Serialize "average order" field
+        // serialize "average order" field
         map.serialize_entry("average order", &self.average_order)?;
 
-        // Serialize individual molecules
+        // serialize individual molecules
         for (key, value) in &self.molecules {
             map.serialize_entry(key, value)?;
         }
@@ -74,6 +75,7 @@ impl PublicOrderResults for AAOrderResults {
 
 impl OrderResults for AAOrderResults {
     type OrderType = AAOrder;
+    type MoleculeBased = OrderBonds;
 
     fn empty(analysis: Analysis) -> Self {
         Self {
