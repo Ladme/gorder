@@ -8,7 +8,7 @@
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
-#     "gorder @ git+https://github.com/Ladme/gorder.git@v0.6#subdirectory=pygorder"
+#     "gorder @ git+https://github.com/Ladme/gorder.git#subdirectory=pygorder"
 # ]
 # ///
 
