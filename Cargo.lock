@@ -586,7 +586,8 @@ dependencies = [
 [[package]]
 name = "groan_rs"
 version = "0.10.0-dev.4"
-source = "git+https://github.com/Ladme/groan_rs.git?branch=v0.10#922e598e1d2f3fbdeaed251b27b1ffffd8a1a7c4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5489ddcea46a4ed392df75812334692a35f6c2853cb33f9f2cf90b566a2d93a2"
 dependencies = [
  "cc",
  "chemfiles",
