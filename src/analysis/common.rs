@@ -41,6 +41,7 @@ fn get_hint(group: &str) -> String {
         "Membrane" => ("membrane".bright_blue(), "leaflets".bright_blue()),
         "Heads" => ("heads".bright_blue(), "leaflets".bright_blue()),
         "NormalHeads" => ("heads".bright_blue(), "membrane_normal".bright_blue()),
+        "ClusterHeads" => ("heads".bright_blue(), "leaflets".bright_blue()),
         "Methyls" => ("methyls".bright_blue(), "leaflets".bright_blue()),
         "GeomReference" => ("reference".bright_blue(), "geometry".bright_blue()),
         "Saturated" => ("saturated".bright_blue(), "analysis_type".bright_blue()),

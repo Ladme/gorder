@@ -329,6 +329,7 @@ fn test_aa_order_leaflets_yaml() {
         LeafletClassification::global("@membrane", "name P"),
         LeafletClassification::local("@membrane", "name P", 2.5),
         LeafletClassification::individual("name P", "name C218 C316"),
+        LeafletClassification::clustering("name P", 2.0),
     ] {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
@@ -523,6 +524,7 @@ fn test_aa_order_leaflets_yaml_multiple_threads() {
             LeafletClassification::global("@membrane", "name P"),
             LeafletClassification::local("@membrane", "name P", 2.5),
             LeafletClassification::individual("name P", "name C218 C316"),
+            LeafletClassification::clustering("name P", 2.0),
         ] {
             let output = NamedTempFile::new().unwrap();
             let path_to_output = output.path().to_str().unwrap();
@@ -560,6 +562,7 @@ fn test_aa_order_leaflets_yaml_multiple_threads_various_frequencies() {
             LeafletClassification::global("@membrane", "name P"),
             LeafletClassification::local("@membrane", "name P", 2.5),
             LeafletClassification::individual("name P", "name C218 C316"),
+            LeafletClassification::clustering("name P", 2.0),
         ] {
             for freq in [
                 Frequency::every(4).unwrap(),
@@ -611,6 +614,7 @@ fn test_aa_order_leaflets_yaml_different_membrane_normals() {
             LeafletClassification::global("@membrane", "name P"),
             LeafletClassification::local("@membrane", "name P", 2.5),
             LeafletClassification::individual("name P", "name C218 C316"),
+            LeafletClassification::clustering("name P", 2.0),
         ] {
             let output = NamedTempFile::new().unwrap();
             let path_to_output = output.path().to_str().unwrap();

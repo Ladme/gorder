@@ -259,6 +259,45 @@ fn test_ua_order_leaflets() {
 }
 
 #[test]
+fn test_ua_order_leaflets_clustering() {
+    for n_threads in [1, 2, 3, 8, 64] {
+        for freq in [
+            Frequency::every(1).unwrap(),
+            Frequency::every(5).unwrap(),
+            Frequency::every(100).unwrap(),
+            Frequency::once(),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_yaml = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/ua.tpr")
+                .trajectory("tests/files/ua.xtc")
+                .output_yaml(path_to_yaml)
+                .analysis_type(AnalysisType::uaorder(
+                    Some("(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)"),
+                    Some("(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+                    None
+                ))
+                .leaflets(LeafletClassification::clustering("name r'^P'", 2.0).with_frequency(freq))
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_yaml,
+                "tests/files/ua_order_leaflets_flipped.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
 fn test_ua_order_begin_end_step() {
     for n_threads in [1, 2, 4, 8, 64] {
         let output = NamedTempFile::new().unwrap();

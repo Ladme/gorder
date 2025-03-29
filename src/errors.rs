@@ -152,6 +152,10 @@ pub enum AnalysisError {
     /// Used when there is an error in manual membrane normal assignment.
     #[error("{}", .0)]
     ManualNormalError(ManualNormalError),
+
+    /// Used when there is an error in cluster-based leaflet assignment.
+    #[error("{}", .0)]
+    ClusterError(ClusterError),
 }
 
 /// Errors that can occur when calculating dynamic membrane normals.
@@ -492,4 +496,21 @@ pub enum ManualLeafletClassificationError {
     #[error("{} molecule type '{}' specified in the leaflet assignment structure not found in the system (detected molecule types are: '{}')", 
     "error:".red().bold(), .0.yellow(), .1.join(" ").yellow())]
     UnknownMoleculeType(String, Vec<String>),
+}
+
+/// Errors that can occur when assigning lipids into leaflets using a clustering method.
+#[derive(Error, Debug)]
+pub enum ClusterError {
+    #[error("{} lipid head identifier with an index '{}' has been classified into a third lipid cluster, but there should only be two clusters
+({} the current value of the '{}' field inside '{}' is '{}'; try increasing it)",
+"error:".red().bold(), .0.to_string().yellow(), "hint:".blue().bold(), "radius".bright_blue(), "leaflets".bright_blue(), .1.bright_blue())]
+    TooManyClusters(usize, String),
+
+    #[error("{} unable to reliably match leaflets between two frames in clustering leaflet classification;
+{} when attempting to match a leaflet to a leaflet identified in a previous analyzed frame,
+both of the previously identified leaflets differ by more than {}% of lipid molecules
+({} it seems that you have an extremely rapid flip-flop in your membrane, very large time differences between your frames, or an unexpected membrane geometry; 
+try increasing the frequency of leaflet classification or assign the lipids into leaflets manually)",
+"error:".red().bold(), "details:".yellow().bold(), .0.to_string().yellow(), "hint:".blue().bold())]
+    CouldNotMatchLeaflets(u8),
 }

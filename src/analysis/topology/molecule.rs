@@ -169,6 +169,9 @@ impl<O: OrderCalculable> MoleculeType<O> {
     pub(crate) fn init_new_frame(&mut self) {
         self.membrane_normal.init_new_frame();
         self.order_structure.init_new_frame();
+        if let Some(leaflet) = self.leaflet_classification.as_mut() {
+            leaflet.init_new_frame();
+        }
     }
 
     /// Get the number of molecules of this molecule type.

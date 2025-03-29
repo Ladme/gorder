@@ -6,6 +6,7 @@
 use core::f32;
 use std::{
     cmp::Ordering,
+    collections::VecDeque,
     fs::read_to_string,
     num::NonZeroUsize,
     sync::Arc,
@@ -20,7 +21,7 @@ use super::{
 use crate::{
     analysis::topology::molecule::handle_moltypes,
     errors::{
-        AnalysisError, ConfigError, ManualLeafletClassificationError,
+        AnalysisError, ClusterError, ConfigError, ManualLeafletClassificationError,
         NdxLeafletClassificationError, TopologyError,
     },
     input::{Frequency, LeafletClassification, MembraneNormal},
@@ -29,26 +30,32 @@ use crate::{
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
     errors::{AtomError, PositionError},
-    prelude::{Dimension, Groups, Vector3D},
+    prelude::{Atom, Dimension, Groups, Vector3D},
     structures::group::Group,
     system::System,
 };
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use parking_lot::Mutex;
 
 use once_cell::{sync::Lazy, unsync::OnceCell};
 
 /// [`TIMEOUT`] in seconds.
-static TIMEOUT_SECONDS: u64 = 5;
+const TIMEOUT_SECONDS: u64 = 5;
 /// Global soft timeout duration for spin-lock used when fetching data for leaflet assignment.
 /// After this time a warning is logged.
 static TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(TIMEOUT_SECONDS));
 
 /// [`HARD_TIMEOUT`] in seconds.
-static HARD_TIMEOUT_SECONDS: u64 = 125;
+const HARD_TIMEOUT_SECONDS: u64 = 125;
 /// Global HARD timeout duration for spin-lock used when fetching data for leaflet assignment.
 /// After this time a PANIC is raised.
 static HARD_TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(HARD_TIMEOUT_SECONDS));
+
+/// Relative number of lipids molecules that must remain in the same leaflet
+/// between two consecutive trajectory frames analyzed by the same thread
+/// for reliable leaflet match.
+/// If this is not maintained, an error is raised.
+const CLUSTER_CLASSIFICATION_LIMIT: f32 = 0.8;
 
 impl LeafletClassification {
     /// Create groups in the system that are required for leaflet classification.
@@ -70,6 +77,9 @@ impl LeafletClassification {
                 create_group(system, "Heads", params.heads())?;
             }
             Self::FromFile(_) | Self::FromMap(_) => (),
+            Self::Clustering(params) => {
+                create_group(system, "ClusterHeads", params.heads())?;
+            }
         }
 
         Ok(())
@@ -107,6 +117,7 @@ pub(crate) enum MoleculeLeafletClassification {
     Individual(IndividualClassification, AssignedLeaflets),
     Manual(ManualClassification, AssignedLeaflets),
     ManualNdx(NdxClassification, AssignedLeaflets),
+    Clustering(ClusterClassification, AssignedLeaflets),
 }
 
 impl MoleculeLeafletClassification {
@@ -197,6 +208,17 @@ impl MoleculeLeafletClassification {
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
+            LeafletClassification::Clustering(cluster_params) => Self::Clustering(
+                ClusterClassification {
+                    heads: Vec::new(),
+                    radius: cluster_params.radius(),
+                    clusters: once_cell::sync::OnceCell::new(),
+                    shared_clusters: Arc::new(Mutex::new(HashMap::new())),
+                    frequency: params.get_frequency()
+                        * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                },
+                AssignedLeaflets::new(needs_shared_storage),
+            ),
         };
 
         Ok(classification)
@@ -222,6 +244,9 @@ impl MoleculeLeafletClassification {
             Self::ManualNdx(x, _) => {
                 x.insert(molecule, system)?;
             }
+            Self::Clustering(x, _) => {
+                x.insert(molecule, system)?;
+            }
             // do nothing; manual "leaflet assignment file" classifier is not set-up like this
             Self::Manual(_, _) => (),
         }
@@ -236,7 +261,8 @@ impl MoleculeLeafletClassification {
             | Self::Local(_, y)
             | Self::Individual(_, y)
             | Self::Manual(_, y)
-            | Self::ManualNdx(_, y) => y.calc_assignment_statistics(),
+            | Self::ManualNdx(_, y)
+            | Self::Clustering(_, y) => y.calc_assignment_statistics(),
         }
     }
 
@@ -249,6 +275,20 @@ impl MoleculeLeafletClassification {
             Self::Individual(x, _) => x.frequency,
             Self::Manual(x, _) => x.frequency,
             Self::ManualNdx(x, _) => x.frequency,
+            Self::Clustering(x, _) => x.frequency,
+        }
+    }
+
+    /// Initialize the reading of a new frame.
+    #[inline(always)]
+    pub(super) fn init_new_frame(&mut self) {
+        match self {
+            Self::Global(_, _)
+            | Self::Local(_, _)
+            | Self::Individual(_, _)
+            | Self::Manual(_, _)
+            | Self::ManualNdx(_, _) => (),
+            Self::Clustering(x, _) => x.clusters = once_cell::sync::OnceCell::new(),
         }
     }
 
@@ -257,8 +297,8 @@ impl MoleculeLeafletClassification {
     #[allow(unused)]
     fn identify_leaflet<'a>(
         &mut self,
-        system: &System,
-        pbc_handler: &impl PBCHandler<'a>,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
@@ -276,6 +316,9 @@ impl MoleculeLeafletClassification {
                 x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
             MoleculeLeafletClassification::ManualNdx(x, _) => {
+                x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
+            }
+            MoleculeLeafletClassification::Clustering(x, _) => {
                 x.identify_leaflet(system, pbc_handler, molecule_index, current_frame)
             }
         }
@@ -332,6 +375,9 @@ impl MoleculeLeafletClassification {
             MoleculeLeafletClassification::ManualNdx(x, y) => {
                 y.assign_lipids(system, pbc_handler, x, current_frame)
             }
+            MoleculeLeafletClassification::Clustering(x, y) => {
+                y.assign_lipids(system, pbc_handler, x, current_frame)
+            }
         }
     }
 
@@ -359,6 +405,9 @@ impl MoleculeLeafletClassification {
             MoleculeLeafletClassification::ManualNdx(x, y) => {
                 y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
             }
+            MoleculeLeafletClassification::Clustering(x, y) => {
+                y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
+            }
         }
     }
 }
@@ -368,8 +417,8 @@ trait LeafletClassifier {
     /// Caclulate membrane leaflet the specified molecule belongs to.
     fn identify_leaflet<'a>(
         &mut self,
-        system: &System,
-        pbc_handler: &impl PBCHandler<'a>,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
         molecule_index: usize,
         current_frame: usize,
     ) -> Result<Leaflet, AnalysisError>;
@@ -997,6 +1046,343 @@ impl LeafletClassifier for NdxClassification {
     }
 }
 
+#[derive(Debug, Clone)]
+struct Clusters {
+    upper: HashSet<usize>,
+    lower: HashSet<usize>,
+}
+
+/// Leaflet classification method that uses DBSCAN clustering to identify leaflets.
+#[derive(Debug, Clone)]
+pub(super) struct ClusterClassification {
+    /// Indices of headgroup identifiers (one per molecule).
+    heads: Vec<usize>,
+    /// Radius for the neighbor search.
+    radius: f32,
+    /// Clusters identified for the current frame.
+    /// TODO: Currently performed independently for each molecule type. This can be optimized dramatically.
+    clusters: once_cell::sync::OnceCell<Clusters>,
+    /// Clusters identified for the other frames.
+    /// Shared among all threads.
+    shared_clusters: Arc<Mutex<HashMap<usize, Clusters>>>,
+    /// Frequency with which the assignment should be performed.
+    frequency: Frequency,
+}
+
+impl LeafletClassifier for ClusterClassification {
+    fn n_molecules(&self) -> usize {
+        self.heads.len()
+    }
+
+    fn identify_leaflet<'a>(
+        &mut self,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
+        molecule_index: usize,
+        current_frame: usize,
+    ) -> Result<Leaflet, AnalysisError> {
+        let clusters = self.clusters.get_or_try_init(|| {
+            let clusters = self.construct_clusters(system, pbc_handler, current_frame)?;
+
+            let mut shared_clusters = self.shared_clusters.lock();
+            let previous = shared_clusters.insert(current_frame, clusters.to_owned());
+
+            // defensive check; no other thread should have read the same frame
+            assert!(previous.is_none(), "FATAL GORDER ERROR | ClusterClassifier::identify_leaflet | Clusters for frame index `{}` already exist in shared storage, but they should not. {}", 
+                current_frame, PANIC_MESSAGE
+            );
+            Ok(clusters)
+        })?;
+
+        if clusters
+            .upper
+            .contains(self.heads.get(molecule_index).expect(PANIC_MESSAGE))
+        {
+            Ok(Leaflet::Upper)
+        } else {
+            Ok(Leaflet::Lower)
+        }
+    }
+}
+
+impl ClusterClassification {
+    /// Insert a new molecule into the classifier.
+    #[inline(always)]
+    fn insert(&mut self, molecule: &Group, system: &System) -> Result<(), TopologyError> {
+        self.heads.push(get_reference_head(
+            molecule,
+            system,
+            group_name!("ClusterHeads"),
+        )?);
+        Ok(())
+    }
+
+    /// Identify clusters and classify them.
+    fn construct_clusters<'a>(
+        &self,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
+        current_frame: usize,
+    ) -> Result<Clusters, AnalysisError> {
+        let (cluster1, cluster2, min_index, min_index_cluster) =
+            self.identify_clusters(system, pbc_handler)?;
+        self.classify_clusters(
+            cluster1,
+            cluster2,
+            min_index,
+            min_index_cluster,
+            current_frame,
+        )
+    }
+
+    /// Identify clusters using DBSCAN.
+    fn identify_clusters<'a>(
+        &self,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
+    ) -> Result<(HashSet<usize>, HashSet<usize>, usize, i8), AnalysisError> {
+        let mut assignments = HashMap::new();
+        let mut queue = VecDeque::new();
+        let mut curr_cluster = -1i8;
+
+        // loop through all heads
+        for atom in system
+            .group_iter(group_name!("ClusterHeads"))
+            .expect(PANIC_MESSAGE)
+        {
+            // skip heads that are already assigned
+            if assignments.contains_key(&atom.get_index()) {
+                continue;
+            }
+
+            curr_cluster += 1;
+            // if the number of clusters is higher than 2, raise an error (there should only be two leaflets)
+            if curr_cluster > 1 {
+                return Err(AnalysisError::ClusterError(ClusterError::TooManyClusters(
+                    atom.get_index(),
+                    self.radius.to_string(),
+                )));
+            }
+
+            // assign this atom and all nearby atoms
+            assignments.insert(atom.get_index(), curr_cluster);
+            self.assign_and_extend_queue(
+                &system,
+                &mut queue,
+                &mut assignments,
+                curr_cluster,
+                atom,
+                pbc_handler,
+            )?;
+
+            // continue with nearby atoms (BFS)
+            while let Some(next) = queue.pop_front() {
+                self.assign_and_extend_queue(
+                    &system,
+                    &mut queue,
+                    &mut assignments,
+                    curr_cluster,
+                    // safety: index must be valid since it is obtained from a nearby atom
+                    unsafe { system.get_atom_unchecked(next) },
+                    pbc_handler,
+                )?;
+            }
+        }
+
+        let mut cluster1 = HashSet::new();
+        let mut cluster2 = HashSet::new();
+        let mut min_index = usize::MAX;
+        let mut min_index_cluster = 0;
+        for (index, cluster) in assignments {
+            match cluster {
+                0 => { cluster1.insert(index); }
+                1 => { cluster2.insert(index); }
+                x => panic!("FATAL GORDER ERROR | ClusterClassifier::identify_cluster | Invalid cluster index `{}`. {}", x, PANIC_MESSAGE),
+            }
+
+            if index < min_index {
+                min_index = index;
+                min_index_cluster = cluster;
+            }
+        }
+
+        Ok((cluster1, cluster2, min_index, min_index_cluster))
+    }
+
+    /// Assign neighboring lipids into the given cluster and expand the queue.
+    fn assign_and_extend_queue<'a>(
+        &self,
+        system: &'a System,
+        queue: &mut VecDeque<usize>,
+        assignments: &mut HashMap<usize, i8>,
+        curr_cluster: i8,
+        atom: &Atom,
+        pbc: &'a impl PBCHandler<'a>,
+    ) -> Result<(), AnalysisError> {
+        let pos = atom
+            .get_position()
+            .ok_or(AnalysisError::UndefinedPosition(atom.get_index()))?;
+
+        for neighbor in pbc.nearby_atoms(system, pos.clone(), self.radius) {
+            match assignments.get(&neighbor.get_index()) {
+                // assign the cluster and add the atom to the queue of atoms to iterate through
+                None => {
+                    assignments.insert(neighbor.get_index(), curr_cluster);
+                    queue.push_back(neighbor.get_index());
+                }
+                // ignore atom that is already assigned
+                Some(x) if *x == curr_cluster => (),
+                // atom cannot be assigned a different cluster than the current one, since then it would be just a single cluster
+                Some(x) => panic!(
+                    "FATAL GORDER ERROR | ClusterClassifier::assign_and_extend_queue | Cluster inconsistency. Expected cluster {}, got {}. {}",
+                    curr_cluster, x, PANIC_MESSAGE
+                ),
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Determine which cluster is `upper` and `which` is lower.
+    ///
+    /// In the first frame, the clusters are classified as follows:
+    /// - the more populated leaflet is the `upper` leaflet,
+    /// - if both leaflets are equally populated, the `upper` leaflet is the one containing
+    ///   a reference atom with the lowest index (typically the first analyzed lipid).
+    ///
+    /// In the other frames, the clusters are classified by trying to match them with the
+    /// clusters from the previous analyzed frame.
+    ///
+    /// In membranes with lipid flip-flop, the match is heuristic and may in extremely
+    /// rare cases be incorrect:
+    /// - Matching will succeed, if less than 20% of lipids have changed leaflet between two analyzed frames.
+    /// - Matching will fail with an error, if 20-80% of lipids have changed leaflet between two analyzed frames.
+    /// - Matching will fail silently and the results will be incorrect if over 80% of lipids have
+    ///   changed leaflet between two analyzed frames! This should be basically unphysical, so it's not
+    ///   a big concern.
+    fn classify_clusters(
+        &self,
+        cluster1: HashSet<usize>,
+        cluster2: HashSet<usize>,
+        min_index: usize,
+        min_index_cluster: i8,
+        frame_index: usize,
+    ) -> Result<Clusters, AnalysisError> {
+        // only for the first frame
+        if frame_index == 0 {
+            return match cluster1.len().cmp(&cluster2.len()) {
+                // more populated cluster is `upper`
+                Ordering::Less => {
+                    colog_info!("Clustering leaflet classification: classifying the more populated leaflet as '{}'.", "upper");
+                    Ok(Clusters {
+                        upper: cluster2,
+                        lower: cluster1,
+                    })
+                }
+                Ordering::Greater => {
+                    colog_info!("Clustering leaflet classification: classifying the more populated leaflet as '{}'.", "upper");
+                    Ok(Clusters {
+                        upper: cluster1,
+                        lower: cluster2,
+                    })
+                }
+                Ordering::Equal => {
+                    // if both clusters are equally populated, cluster containing `min_index` is `upper`
+                    colog_info!("Clustering leaflet classification: classifying the leaflet containing lipid with reference atom index '{}' as '{}'.", min_index, "upper");
+                    if min_index_cluster == 0 {
+                        Ok(Clusters {
+                            upper: cluster1,
+                            lower: cluster2,
+                        })
+                    } else {
+                        Ok(Clusters {
+                            upper: cluster2,
+                            lower: cluster1,
+                        })
+                    }
+                }
+            };
+        }
+
+        // load the clusters from the previous analyzed frame
+        let previous_frame = match self.frequency {
+            Frequency::Once => panic!("FATAL GORDER ERROR | ClusterClassifier::classify_clusters | Frequency is once, but the current frame is {}, not 0. {}", frame_index, PANIC_MESSAGE),
+            Frequency::Every(x) if x.get() > frame_index => panic!("FATAL GORDER ERROR | ClusterClassifier::classify_clusters | Frequency is {}, but the current frame is {}. {}", x.get(), frame_index, PANIC_MESSAGE),
+            Frequency::Every(x) => frame_index - x.get(),
+        };
+
+        let previous_clusters = self.get_from_shared(previous_frame);
+
+        // match the clusters to the previous identified and classified clusters
+        let overlap_cluster1_upper =
+            cluster1.intersection(&previous_clusters.upper).count() as f32 / cluster1.len() as f32;
+        let overlap_cluster1_lower =
+            cluster1.intersection(&previous_clusters.lower).count() as f32 / cluster1.len() as f32;
+
+        if overlap_cluster1_upper < CLUSTER_CLASSIFICATION_LIMIT
+            && overlap_cluster1_lower < CLUSTER_CLASSIFICATION_LIMIT
+        {
+            return Err(AnalysisError::ClusterError(
+                ClusterError::CouldNotMatchLeaflets(
+                    ((1.0 - CLUSTER_CLASSIFICATION_LIMIT) * 100.0).round() as u8,
+                ),
+            ));
+        }
+
+        if overlap_cluster1_upper < overlap_cluster1_lower {
+            Ok(Clusters {
+                upper: cluster2,
+                lower: cluster1,
+            })
+        } else {
+            Ok(Clusters {
+                upper: cluster1,
+                lower: cluster2,
+            })
+        }
+    }
+
+    /// Get the clusters for the specified frame. The requested clusters are removed from the shared storage.
+    /// This requires waiting for the thread responsible for performing the clustering to finish the analysis of this thread.
+    fn get_from_shared(&self, frame: usize) -> Clusters {
+        let start_time = Instant::now();
+        let mut warning_logged = false;
+
+        // spin-lock: waiting for the requested frame to become available
+        loop {
+            let mut shared_clusters = self.shared_clusters.lock();
+            // take the cluster from the shared storage (it is no longer needed in the storage itself)
+            if let Some(c) = shared_clusters.remove(&frame) {
+                return c;
+            }
+
+            // defensive check for a deadlock
+            if start_time.elapsed() > *TIMEOUT {
+                if !warning_logged {
+                    colog_warn!("DEADLOCKED? Thread has been waiting for shared clustering data (frame '{}') for more than {} seconds.
+This may be due to resource contention or a bug. Ensure that your CPU is not oversubscribed and that you have not lost access to the trajectory file.
+If `gorder` is causing oversubscription, reduce the number of threads used for the analysis.
+If other computationally intensive software is running alongside `gorder`, consider terminating it.
+If the issue persists, please report it by opening an issue at `github.com/Ladme/gorder/issues` or sending an email to `ladmeb@gmail.com`. 
+(Note: If no progress is made, this thread will terminate in {} seconds to prevent resource exhaustion.)",
+                    frame,
+                    TIMEOUT_SECONDS,
+                    HARD_TIMEOUT_SECONDS - TIMEOUT_SECONDS,
+                );
+                    warning_logged = true;
+                }
+
+                if start_time.elapsed() > *HARD_TIMEOUT {
+                    panic!("FATAL GORDER ERROR | ClusterClassifier::get_from_shared | Deadlock. Could not get shared clusters for leaflet assignment. Spent more than `{}` seconds inside the spin-lock. {}", 
+                    HARD_TIMEOUT_SECONDS, PANIC_MESSAGE)
+                }
+            }
+
+            // shared data unlock here
+        }
+    }
+}
+
 /// Vector of leaflet assignments for each molecule of the given type.
 #[derive(Debug, Clone)]
 pub(super) struct AssignedLeaflets {
@@ -1034,8 +1420,8 @@ impl AssignedLeaflets {
     /// Assign all lipids into membrane leaflets.
     fn assign_lipids<'a>(
         &mut self,
-        system: &System,
-        pbc_handler: &impl PBCHandler<'a>,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
         classifier: &mut impl LeafletClassifier,
         current_frame: usize,
     ) -> Result<(), AnalysisError> {
@@ -1150,7 +1536,7 @@ pub(super) struct SharedAssignedLeaflets(Arc<Mutex<HashMap<usize, Vec<Leaflet>>>
 impl SharedAssignedLeaflets {
     /// Copy the leaflet assignment for the specified frame.
     /// This requires waiting for the thread responsible for performing the leaflet assignment
-    /// for the `frame_to_fetch` to finish the analysis of this frame.
+    /// to finish the analysis of this frame.
     fn copy_from(&self, frame: usize) -> Vec<Leaflet> {
         let start_time = Instant::now();
         let mut warning_logged = false;
