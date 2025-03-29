@@ -1146,6 +1146,13 @@ impl ClusterClassification {
         let mut curr_cluster = -1i8;
 
         // loop through all heads
+        // NOTE: we are looping in order, not randomly, meaning that
+        // the leaflet containing the first lipid will always be "dominant":
+        // any lipid that is in range of both leaflets (such as a flip-flopping lipid)
+        // will be classified as belonging to the "dominant" leaflet even if it is actually
+        // closer to the other leaflet
+        // this could be solved by randomizing the order of the heads, but `gorder` must remain
+        // fully deterministic, so this is not possible
         for atom in system
             .group_iter(group_name!("ClusterHeads"))
             .expect(PANIC_MESSAGE)
