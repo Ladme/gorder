@@ -549,7 +549,11 @@ pub struct ClusteringParams {
     /// Radius of the sphere for selecting nearby lipid headgroups for clustering.
     /// The default value is 2 nm. The recommended value is half the membrane thickness.
     #[getset(get_copy = "pub")]
-    #[serde(default = "default_clustering_radius")]
+    #[serde(
+        default = "default_clustering_radius",
+        alias = "epsilon",
+        alias = "eps"
+    )]
     radius: f32,
     /// Frequency of leaflet assignment.
     #[serde(default)]
