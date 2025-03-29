@@ -506,11 +506,13 @@ pub enum ClusterError {
 "error:".red().bold(), .0.to_string().yellow(), "hint:".blue().bold(), "radius".bright_blue(), "leaflets".bright_blue(), .1.bright_blue())]
     TooManyClusters(usize, String),
 
-    #[error("{} unable to reliably match leaflets between two frames in clustering leaflet classification;
-{} when attempting to match a leaflet to a leaflet identified in a previous analyzed frame,
-both of the previously identified leaflets differ by more than {}% of lipid molecules
-({} it seems that you have an extremely rapid flip-flop in your membrane, very large time differences between your frames, or an unexpected membrane geometry; 
-try increasing the frequency of leaflet classification or assign the lipids into leaflets manually)",
-"error:".red().bold(), "details:".yellow().bold(), .0.to_string().yellow(), "hint:".blue().bold())]
+    #[error("{} unreliable leaflet matching in clustering classification
+{} when comparing current frame to previous frame, the previously identified leaflets show >{} lipid composition change
+{} this may be caused by either of several issues:
+  - a lipid head in the hydrophobic core may be merging clusters => decrease `leaflets.radius`
+  - membrane pore is present => switch to a different classification method
+  - either too rapid flip-flop or frames too far apart => increase classification frequency
+  - suspicous membrane geometry => verify membrane structure and consider manual leaflet assignment",
+"error:".red().bold(), "details:".yellow().bold(), format!("{}%", .0).yellow(), "hint:".blue().bold())]
     CouldNotMatchLeaflets(u8),
 }
