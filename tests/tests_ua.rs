@@ -279,7 +279,7 @@ fn test_ua_order_leaflets_clustering() {
                     Some("(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
                     None
                 ))
-                .leaflets(LeafletClassification::clustering("name r'^P'", 2.0).with_frequency(freq))
+                .leaflets(LeafletClassification::clustering("name r'^P'", 2.0, 10).with_frequency(freq))
                 .n_threads(n_threads)
                 .silent()
                 .overwrite()

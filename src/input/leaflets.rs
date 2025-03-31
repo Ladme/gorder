@@ -162,10 +162,12 @@ impl LeafletClassification {
     /// - `heads`: GSL query specifying the atoms to use as head identifiers of molecules
     /// - `radius`: radius of the sphere for selecting nearby lipid heads for clustering;
     ///    the recommended value is half the membrane thickness
-    pub fn clustering(heads: &str, radius: f32) -> LeafletClassification {
+    /// - `min_samples`: minimal number of nearby headgroups needed to classify a headgroup as a core point
+    pub fn clustering(heads: &str, radius: f32, min_samples: usize) -> LeafletClassification {
         Self::Clustering(ClusteringParams {
             heads: heads.to_owned(),
             radius,
+            min_samples,
             frequency: Frequency::default(),
         })
     }
@@ -555,6 +557,11 @@ pub struct ClusteringParams {
         alias = "eps"
     )]
     radius: f32,
+    /// Minimal number of headgroups in the vicinity of another headgroup that is needed
+    /// to classify this headgroup as a core point.
+    #[getset(get_copy = "pub")]
+    #[serde(default = "default_min_samples", alias = "min_points")]
+    min_samples: usize,
     /// Frequency of leaflet assignment.
     #[serde(default)]
     #[getset(get_copy = "pub(crate)")]
@@ -563,6 +570,10 @@ pub struct ClusteringParams {
 
 fn default_clustering_radius() -> f32 {
     2.0
+}
+
+fn default_min_samples() -> usize {
+    10
 }
 
 #[cfg(test)]
