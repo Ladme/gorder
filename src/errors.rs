@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use colored::{ColoredString, Colorize};
-use groan_rs::errors::{ParseNdxError, SelectError};
+use groan_rs::errors::{AtomError, ParseNdxError, SelectError};
 use thiserror::Error;
 
 use crate::input::Frequency;
@@ -152,6 +152,10 @@ pub enum AnalysisError {
     /// Used when there is an error in manual membrane normal assignment.
     #[error("{}", .0)]
     ManualNormalError(ManualNormalError),
+
+    /// Used when an error while working with an atom occurs.
+    #[error("{}", .0)]
+    AtomError(AtomError),
 
     /// Used when there is an error in cluster-based leaflet assignment.
     #[error("{}", .0)]

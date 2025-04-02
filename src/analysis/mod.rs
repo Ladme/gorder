@@ -12,6 +12,7 @@ use crate::presentation::AnalysisResults;
 
 mod aaorder;
 mod cgorder;
+mod clustering;
 mod common;
 pub(crate) mod geometry;
 mod index;

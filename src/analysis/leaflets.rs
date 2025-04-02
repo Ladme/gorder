@@ -6,7 +6,6 @@
 use core::f32;
 use std::{
     cmp::Ordering,
-    collections::VecDeque,
     fs::read_to_string,
     num::NonZeroUsize,
     sync::Arc,
@@ -24,13 +23,13 @@ use crate::{
         AnalysisError, ClusterError, ConfigError, ManualLeafletClassificationError,
         NdxLeafletClassificationError, TopologyError,
     },
-    input::{Frequency, LeafletClassification, MembraneNormal},
+    input::{ClusteringMethod, Frequency, LeafletClassification, MembraneNormal},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
 use groan_rs::{
     errors::{AtomError, PositionError},
-    prelude::{Atom, Dimension, Groups, Vector3D},
+    prelude::{Dimension, Groups, Vector3D},
     structures::group::Group,
     system::System,
 };
@@ -211,12 +210,12 @@ impl MoleculeLeafletClassification {
             LeafletClassification::Clustering(cluster_params) => Self::Clustering(
                 ClusterClassification {
                     heads: Vec::new(),
-                    radius: cluster_params.radius(),
-                    min_samples: cluster_params.min_samples(),
+                    method: cluster_params.method(),
                     clusters: once_cell::sync::OnceCell::new(),
                     shared_clusters: Arc::new(Mutex::new(HashMap::new())),
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                    converter: once_cell::sync::OnceCell::new(),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
@@ -1058,16 +1057,16 @@ struct Clusters {
 pub(super) struct ClusterClassification {
     /// Indices of headgroup identifiers (one per molecule).
     heads: Vec<usize>,
-    /// Radius for the neighbor search.
-    radius: f32,
-    /// Minimal number of neighbors for a given headgroup to be classified as a core point.
-    min_samples: usize,
+    /// Clustering method: Sloppy/Precise.
+    method: ClusteringMethod,
     /// Clusters identified for the current frame.
     /// TODO: Currently performed independently for each molecule type. This can be optimized dramatically.
     clusters: once_cell::sync::OnceCell<Clusters>,
     /// Clusters identified for the other frames.
     /// Shared among all threads.
     shared_clusters: Arc<Mutex<HashMap<usize, Clusters>>>,
+    /// Converts from atom indices of headgroup identifiers to their indices in the similarity matrix.
+    converter: once_cell::sync::OnceCell<HashMap<usize, usize>>,
     /// Frequency with which the assignment should be performed.
     frequency: Frequency,
 }
@@ -1155,8 +1154,92 @@ impl ClusterClassification {
         )
     }
 
-    /// Identify clusters using DBSCAN.
+    /// Identify clusters using spectral clustering.
     fn identify_clusters<'a>(
+        &self,
+        system: &'a System,
+        pbc_handler: &'a impl PBCHandler<'a>,
+    ) -> Result<(HashSet<usize>, HashSet<usize>, usize, i8), AnalysisError> {
+        let converter = self.converter.get_or_init(|| Self::create_converter(system));
+
+        let assignments = match self.method {
+            ClusteringMethod::Sloppy => {
+                let similarity_matrix = super::clustering::create_similarity_matrix(
+                    system, 
+                    pbc_handler, 
+                    super::clustering::DISTANCE_CUTOFF, 
+                    super::clustering::SLOPPY_SIGMA, 
+                    converter)?;
+                super::clustering::spectral_clustering_sloppy(&similarity_matrix)
+            }
+            ClusteringMethod::Precise => {
+                let similarity_matrix = super::clustering::create_similarity_matrix(
+                    system, 
+                    pbc_handler, 
+                    f32::INFINITY, 
+                    super::clustering::PRECISE_SIGMA, 
+                    converter)?;
+                super::clustering::spectral_clustering_precise(&similarity_matrix)
+            }
+        };
+
+        Ok(self.process_assignments(assignments))
+    }
+
+    /// Create map for converting between atom indices and matrix indices.
+    pub(super) fn create_converter(system: &System) -> HashMap<usize, usize> {
+        let mut converter = HashMap::new();
+
+        for (i, atom) in system
+            .group_iter(group_name!("ClusterHeads"))
+            .unwrap_or_else(|_| 
+                panic!("FATAL GORDER ERROR | ClusterClassification::create_converter_map | Group `ClusterHeads` should exist. {}", 
+                PANIC_MESSAGE))
+            .enumerate() 
+        {
+            converter.insert(atom.get_index(), i);
+        }
+
+        converter
+    }
+
+    /// Process assignments into two clusters.
+    fn process_assignments(
+        &self,
+        assignments: Vec<usize>,
+    ) -> (HashSet<usize>, HashSet<usize>, usize, i8) {
+        let mut cluster1 = HashSet::new();
+        let mut cluster2 = HashSet::new();
+        let mut min_index = usize::MAX;
+        let mut min_index_cluster = 0;
+
+        for (index, cluster) in assignments.iter().enumerate() {
+            let absolute_index = match self.converter.get().expect(PANIC_MESSAGE).get(&index) {
+                Some(x) => *x,
+                // not all clustered headgroups are to be analyzed; skip those
+                None => continue,
+            };
+
+            match cluster {
+                0 => { cluster1.insert(absolute_index); },
+                1 => { cluster2.insert(absolute_index); },
+                x => panic!(
+                    "FATAL GORDER ERROR | ClusterClassification::process_assignments | Invalid cluster index `{}`. {}",
+                    x,
+                    PANIC_MESSAGE
+                ),
+            }
+
+            if absolute_index < min_index {
+                min_index = absolute_index;
+                min_index_cluster = *cluster as i8;
+            }
+        }
+        (cluster1, cluster2, min_index, min_index_cluster)
+    }
+
+    /// Identify clusters using DBSCAN.
+    /*fn identify_clusters<'a>(
         &self,
         system: &'a System,
         pbc_handler: &'a impl PBCHandler<'a>,
@@ -1316,7 +1399,7 @@ impl ClusterClassification {
         }
 
         (cluster1, cluster2, min_index, min_index_cluster)
-    }
+    }*/
 
     /// Determine which cluster is `upper` and `which` is lower.
     ///

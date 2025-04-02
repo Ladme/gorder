@@ -17,6 +17,6 @@ pub use axis::Axis;
 pub use estimate_error::EstimateError;
 pub use frequency::Frequency;
 pub use geometry::{GeomReference, Geometry};
-pub use leaflets::LeafletClassification;
+pub use leaflets::{ClusteringMethod, LeafletClassification};
 pub use membrane_normal::{DynamicNormal, MembraneNormal};
 pub use ordermap::{GridSpan, OrderMap, Plane};

@@ -442,8 +442,8 @@ pub mod prelude {
 
     pub use super::input::{
         analysis::AnalysisBuilder, ordermap::OrderMapBuilder, Analysis, AnalysisType, Axis,
-        DynamicNormal, EstimateError, Frequency, GeomReference, Geometry, GridSpan,
-        LeafletClassification, MembraneNormal, OrderMap, Plane,
+        ClusteringMethod, DynamicNormal, EstimateError, Frequency, GeomReference, Geometry,
+        GridSpan, LeafletClassification, MembraneNormal, OrderMap, Plane,
     };
 
     pub use super::analysis::topology::atom::AtomType;
