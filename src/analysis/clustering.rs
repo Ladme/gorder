@@ -19,7 +19,7 @@ const N_CLUSTERS: usize = 2;
 /// Sigma value for construction of the similarity matrix when the algorithm is sloppy.
 pub(super) const SLOPPY_SIGMA: f32 = 0.5;
 /// Sigma value for construction of the similarity matrix when the algorithm is precise.
-pub(super) const PRECISE_SIGMA: f32 = 1.1;
+pub(super) const PRECISE_SIGMA: f32 = 1.0;
 /// Distance cut-off used for the sloppy algorithm (in nm).
 pub(super) const DISTANCE_CUTOFF: f32 = 6.0;
 /// Number of times the sloppy assignment should be performed for the first frame to get consensus,
@@ -814,6 +814,30 @@ mod tests {
             false,
             expected_assignments_flat_cg(),
         )
+    }
+
+    #[test]
+    fn test_flat_cg_sloppy_trajectory_pbc() {
+        test_sloppy_trajectory(
+            "tests/files/cg.tpr",
+            "tests/files/cg.xtc",
+            "name PO4",
+            true,
+            expected_assignments_flat_cg(),
+            5,
+        );
+    }
+
+    #[test]
+    fn test_flat_cg_precise_trajectory_pbc() {
+        test_precise_trajectory(
+            "tests/files/cg.tpr",
+            "tests/files/cg.xtc",
+            "name PO4",
+            true,
+            expected_assignments_flat_cg(),
+            5,
+        );
     }
 
     #[test]

@@ -1129,22 +1129,6 @@ impl ClusterClassification {
         let (cluster1, cluster2, min_index, min_index_cluster) =
             self.identify_clusters(system, pbc_handler)?;
 
-        // check that all heads have been assigned into one of the identified clusters (and only once)
-        let classified = cluster1.len() + cluster2.len();
-        let total = system
-            .group_get_n_atoms(group_name!("ClusterHeads"))
-            .expect(PANIC_MESSAGE);
-        match classified.cmp(&total) {
-            Ordering::Less => return Err(AnalysisError::ClusterError(ClusterError::OutlierLipids(
-                classified, total,
-            ))),
-            Ordering::Greater => panic!(
-                "FATAL GORDER ERROR | ClusterClassification::construct_clusters | Some lipids were assigned into both leaflet clusters. {}", 
-                PANIC_MESSAGE
-            ),
-            Ordering::Equal => (),
-        }
-
         self.classify_clusters(
             cluster1,
             cluster2,
@@ -1213,16 +1197,12 @@ impl ClusterClassification {
         let mut min_index = usize::MAX;
         let mut min_index_cluster = 0;
 
-        for (index, cluster) in assignments.iter().enumerate() {
-            let absolute_index = match self.converter.get().expect(PANIC_MESSAGE).get(&index) {
-                Some(x) => *x,
-                // not all clustered headgroups are to be analyzed; skip those
-                None => continue,
-            };
+        for (&abs_index, &matrix_index) in self.converter.get().expect(PANIC_MESSAGE).iter() {
+            let cluster = assignments.get(matrix_index).expect(PANIC_MESSAGE);
 
             match cluster {
-                0 => { cluster1.insert(absolute_index); },
-                1 => { cluster2.insert(absolute_index); },
+                0 => { cluster1.insert(abs_index); },
+                1 => { cluster2.insert(abs_index); },
                 x => panic!(
                     "FATAL GORDER ERROR | ClusterClassification::process_assignments | Invalid cluster index `{}`. {}",
                     x,
@@ -1230,176 +1210,14 @@ impl ClusterClassification {
                 ),
             }
 
-            if absolute_index < min_index {
-                min_index = absolute_index;
+            if abs_index < min_index {
+                min_index = abs_index;
                 min_index_cluster = *cluster as i8;
             }
         }
-        (cluster1, cluster2, min_index, min_index_cluster)
-    }
-
-    /// Identify clusters using DBSCAN.
-    /*fn identify_clusters<'a>(
-        &self,
-        system: &'a System,
-        pbc_handler: &'a impl PBCHandler<'a>,
-    ) -> Result<(HashSet<usize>, HashSet<usize>, usize, i8), AnalysisError> {
-        let mut assignments = HashMap::new();
-        let mut queue = VecDeque::new();
-        let mut curr_cluster = -1i8;
-
-        // loop through all heads
-        // NOTE: we are looping in order, not randomly, meaning that
-        // the leaflet containing the first lipid will always be "dominant":
-        // any lipid that is in range of both leaflets (such as a flip-flopping lipid)
-        // will be classified as belonging to the "dominant" leaflet even if it is actually
-        // closer to the other leaflet
-        // this could be solved by randomizing the order of the heads, but `gorder` must remain
-        // fully deterministic, so this is not possible
-        for atom in system
-            .group_iter(group_name!("ClusterHeads"))
-            .expect(PANIC_MESSAGE)
-        {
-            let index = atom.get_index();
-            // skip heads that are already assigned
-            if assignments.contains_key(&index) {
-                continue;
-            }
-
-            let pos = atom
-                .get_position()
-                .ok_or(AnalysisError::UndefinedPosition(index))?;
-
-            // get the neighbors of this atoms
-            let neighbors: Vec<&Atom> = pbc_handler
-                .nearby_atoms(system, pos.clone(), self.radius)
-                .collect();
-
-            // ignore non-core atoms; these canot start a new cluster
-            if neighbors.len() < self.min_samples {
-                continue;
-            }
-
-            curr_cluster += 1;
-            // if the number of clusters is higher than 2, raise an error (there should only be two leaflets)
-            if curr_cluster > 1 {
-                return Err(AnalysisError::ClusterError(ClusterError::TooManyClusters(
-                    index,
-                )));
-            }
-
-            self.start_new_cluster(
-                index,
-                &neighbors,
-                curr_cluster,
-                system,
-                pbc_handler,
-                &mut assignments,
-                &mut queue,
-            )?;
-        }
-
-        let (cluster1, cluster2, min_index, min_cluster) = self.process_assignments(assignments);
-        Ok((cluster1, cluster2, min_index, min_cluster))
-    }
-
-    /// Assign atoms into a new cluster.
-    fn start_new_cluster<'a>(
-        &self,
-        head_index: usize,
-        neighbors: &[&Atom],
-        cluster_id: i8,
-        system: &'a System,
-        pbc_handler: &'a impl PBCHandler<'a>,
-        assignments: &mut HashMap<usize, i8>,
-        queue: &mut VecDeque<usize>,
-    ) -> Result<(), AnalysisError> {
-        assignments.insert(head_index, cluster_id);
-
-        // assign neighbors into a queue
-        for neighbor in neighbors {
-            let index = neighbor.get_index();
-
-            // skip neighbors that are already assigned into a cluster
-            if assignments.contains_key(&index) {
-                continue;
-            }
-            assignments.insert(index, cluster_id);
-            queue.push_back(index);
-        }
-
-        // process the neighbors
-        self.process_bfs(system, pbc_handler, assignments, queue, cluster_id)
-    }
-
-    /// Assign atoms into a cluster using breadth-first traversal.
-    fn process_bfs<'a>(
-        &self,
-        system: &'a System,
-        pbc_handler: &'a impl PBCHandler<'a>,
-        assignments: &mut HashMap<usize, i8>,
-        queue: &mut VecDeque<usize>,
-        cluster_id: i8,
-    ) -> Result<(), AnalysisError> {
-        while let Some(index) = queue.pop_front() {
-            // safety: index is obtained from a nearby atom
-            let atom = unsafe { system.get_atom_unchecked(index) };
-            let pos = atom
-                .get_position()
-                .ok_or(AnalysisError::UndefinedPosition(index))?;
-
-            let neighbors: Vec<&Atom> = pbc_handler
-                .nearby_atoms(system, pos.clone(), self.radius)
-                .collect();
-
-            if neighbors.len() < self.min_samples {
-                continue;
-            }
-
-            for neighbor in neighbors {
-                let neighbor_index = neighbor.get_index();
-
-                // akip neighbors that are already assigned into a cluster
-                if assignments.contains_key(&neighbor_index) {
-                    continue;
-                }
-
-                assignments.insert(neighbor_index, cluster_id);
-                queue.push_back(neighbor_index);
-            }
-        }
-        Ok(())
-    }
-
-    /// Process assignments into two clusters.
-    fn process_assignments(
-        &self,
-        assignments: HashMap<usize, i8>,
-    ) -> (HashSet<usize>, HashSet<usize>, usize, i8) {
-        let mut cluster1 = HashSet::new();
-        let mut cluster2 = HashSet::new();
-        let mut min_index = usize::MAX;
-        let mut min_index_cluster = 0;
-
-        for (index, cluster) in assignments {
-            match cluster {
-                0 => cluster1.insert(index),
-                1 => cluster2.insert(index),
-                x => panic!(
-                    "FATAL GORDER ERROR | ClusterClassification::process_assignments | Invalid cluster index `{}`. {}",
-                    x,
-                    PANIC_MESSAGE
-                ),
-            };
-
-            if index < min_index {
-                min_index = index;
-                min_index_cluster = cluster;
-            }
-        }
 
         (cluster1, cluster2, min_index, min_index_cluster)
-    }*/
+    }
 
     /// Determine which cluster is `upper` and `which` is lower.
     ///

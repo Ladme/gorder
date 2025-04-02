@@ -505,16 +505,6 @@ pub enum ManualLeafletClassificationError {
 /// Errors that can occur when assigning lipids into leaflets using a clustering method.
 #[derive(Error, Debug)]
 pub enum ClusterError {
-    #[error("{} lipid head identifier with an index '{}' has been classified into a third lipid cluster, but there should only be two clusters
-({} try increasing the value of '{}' or decreasing the value of '{}')",
-"error:".red().bold(), .0.to_string().yellow(), "hint:".blue().bold(), "leaflets.radius".bright_blue(), "leaflets.min_samples".bright_blue())]
-    TooManyClusters(usize),
-
-    #[error("{} not all lipids were assigned into a leaflet: {} headgroups were classified into clusters, but there are {} headgroups in total
-({} try increasing the value of '{}' or decreasing the value of '{}')",
-"error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), "hint:".blue().bold(), "leaflets.radius".bright_blue(), "leaflets.min_samples".bright_blue())]
-    OutlierLipids(usize, usize),
-
     #[error("{} unreliable leaflet matching in clustering classification
 {} when comparing current frame to previous frame, the previously identified leaflets show >{} lipid composition change
 {} this may be caused by either of several issues:

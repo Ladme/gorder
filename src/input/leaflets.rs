@@ -574,14 +574,6 @@ pub struct ClusteringParams {
     frequency: Frequency,
 }
 
-fn default_clustering_radius() -> f32 {
-    2.0
-}
-
-fn default_min_samples() -> usize {
-    10
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
