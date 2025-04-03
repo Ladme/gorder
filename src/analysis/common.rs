@@ -212,14 +212,14 @@ pub(super) fn analyze_frame(
         data.init_new_frame(frame, &mut pbc);
 
         // safety: we are modifying a different part of the `data` structure
-        unsafe { &mut *molecules }.analyze_frame(frame, data.frame(), data.geometry(), &pbc)?
+        unsafe { &mut *molecules }.analyze_frame(frame, data, &pbc)?
     } else {
         let mut pbc = NoPBC;
         // initialize the reading of the next frame
         data.init_new_frame(frame, &mut pbc);
 
         // safety: we are modifying a different part of the `data` structure
-        unsafe { &mut *molecules }.analyze_frame(frame, data.frame(), data.geometry(), &pbc)?
+        unsafe { &mut *molecules }.analyze_frame(frame, data, &pbc)?
     };
 
     // print information about leaflet assignment for quick sanity check by the user

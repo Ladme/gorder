@@ -160,13 +160,9 @@ impl LeafletClassification {
     ///
     /// ## Parameters
     /// - `heads`: GSL query specifying the atoms to use as head identifiers of molecules
-    /// - `method`: more precise specification of the method to use:
-    ///   - `Sloppy`: much faster, but may fail for some geometries
-    ///   - `Precise`: much slower, but can handle almost anything
-    pub fn clustering(heads: &str, method: ClusteringMethod) -> LeafletClassification {
+    pub fn clustering(heads: &str) -> LeafletClassification {
         Self::Clustering(ClusteringParams {
             heads: heads.to_owned(),
-            method,
             frequency: Frequency::default(),
         })
     }
@@ -539,22 +535,6 @@ where
     deserializer.deserialize_any(StringOrVecVisitor)
 }
 
-/// Specifies the clustering method.
-/// - `Sloppy`
-///     - spectral clustering with sparse similarity matrix
-///     - eigendecomposition performed using the Lanczos algorithm
-///     - faster, may fail for weird geometries
-/// - `Precise`
-///     - spectral clustering with dense similarity matrix and full eigendecomposition
-///     - extremely slow
-///     - if it fails to correctly classify leaflets, any other automatic method will fail as well
-#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
-pub enum ClusteringMethod {
-    #[default]
-    Sloppy,
-    Precise,
-}
-
 /// Using the spectral clustering. The only automatic method that can be used for membranes with curved geometry.
 #[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -563,11 +543,6 @@ pub struct ClusteringParams {
     /// There must only be one such atom/bead per lipid molecule.
     #[getset(get = "pub")]
     heads: String,
-    /// Specific spectral clustering approach to use. See [`ClusteringMethod`] for more information.
-    /// Default is `ClusteringMethod::Sloppy`.
-    #[getset(get_copy = "pub")]
-    #[serde(default)]
-    method: ClusteringMethod,
     /// Frequency of leaflet assignment.
     #[serde(default)]
     #[getset(get_copy = "pub(crate)")]

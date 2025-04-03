@@ -8,7 +8,6 @@ use std::ops::Add;
 use getset::{Getters, MutGetters};
 use groan_rs::{structures::group::Group, system::System};
 use hashbrown::HashSet;
-use once_cell::unsync::OnceCell;
 
 use super::{
     super::{
@@ -19,7 +18,7 @@ use super::{
     bond::{BondTopology, OrderBonds},
     bonds_sanity_check, get_atoms_from_bond,
     uatom::UAOrderAtoms,
-    OrderCalculable,
+    OrderCalculable, SystemTopology,
 };
 use crate::{analysis::geometry::GeometrySelectionType, errors::ErrorEstimationError};
 use crate::{
@@ -55,21 +54,24 @@ impl MoleculeTypes {
     pub(crate) fn analyze_frame<'a>(
         &mut self,
         frame: &'a System,
-        frame_index: usize,
-        geometry: &GeometrySelectionType,
+        topology: &'a mut SystemTopology,
         pbc_handler: &'a impl PBCHandler<'a>,
     ) -> Result<(), AnalysisError> {
-        let membrane_center = OnceCell::new(); // used with global classification method
+        let frame_index = topology.frame();
+        // perform system level leaflet-classification, if needed
+        if let Some(classification) = topology.leaflet_classification_mut() {
+            classification.run(frame, pbc_handler, frame_index)?;
+        }
 
         handle_moltypes!(self, x => {
             for molecule in x.iter_mut() {
                 // assign molecules to leaflets
                 if let Some(classifier) = molecule.leaflet_classification_mut() {
-                    classifier.assign_lipids(frame, pbc_handler, frame_index, &membrane_center)?;
+                    classifier.assign_lipids(frame, pbc_handler, frame_index, topology.leaflet_classification())?;
                 }
 
                 // calculate order parameters
-                match geometry {
+                match topology.geometry() {
                     GeometrySelectionType::None(x) => {
                         molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
                     }
@@ -169,9 +171,6 @@ impl<O: OrderCalculable> MoleculeType<O> {
     pub(crate) fn init_new_frame(&mut self) {
         self.membrane_normal.init_new_frame();
         self.order_structure.init_new_frame();
-        if let Some(leaflet) = self.leaflet_classification.as_mut() {
-            leaflet.init_new_frame();
-        }
     }
 
     /// Get the number of molecules of this molecule type.
@@ -510,11 +509,13 @@ mod tests {
                 .unwrap();
 
         let topology = SystemTopology::new(
+            &system,
             molecules,
             None,
             1,
             1,
             crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+            None,
             true,
         );
 
@@ -545,11 +546,13 @@ mod tests {
                 .unwrap();
 
         let topology = SystemTopology::new(
+            &system,
             molecules,
             None,
             1,
             1,
             crate::analysis::geometry::GeometrySelectionType::None(NoSelection {}),
+            None,
             true,
         );
 

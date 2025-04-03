@@ -505,13 +505,15 @@ pub enum ManualLeafletClassificationError {
 /// Errors that can occur when assigning lipids into leaflets using a clustering method.
 #[derive(Error, Debug)]
 pub enum ClusterError {
-    #[error("{} unreliable leaflet matching in clustering classification
+    #[error("{} clustering leaflet classification failed
 {} when comparing current frame to previous frame, the previously identified leaflets show >{} lipid composition change
 {} this may be caused by either of several issues:
-  - a lipid head in the hydrophobic core may be merging clusters => decrease `leaflets.radius`
-  - membrane pore is present => switch to a different classification method
-  - either too rapid flip-flop or frames too far apart => increase classification frequency
-  - suspicous membrane geometry => verify membrane structure and consider manual leaflet assignment",
+  - leaflets identified incorrectly => consider manual leaflet assignment,
+  - too rapid flip-flop => increase classification frequency or reduce the number of threads used,
+  - frames too far apart => increase classification frequency or reduce the number of threads used",
 "error:".red().bold(), "details:".yellow().bold(), format!("{}%", .0).yellow(), "hint:".blue().bold())]
     CouldNotMatchLeaflets(u8),
+
+    #[error("{} could not obtain consistent leaflet assignment using the clustering method for the first frame; assign the lipids to leaflets manually", "error:".red().bold())]
+    SloppyFirstFrameFail,
 }

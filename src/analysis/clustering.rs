@@ -3,12 +3,19 @@
 
 //! Implementation of spectral clustering for leaflet classification.
 
+use std::{cmp::Ordering, sync::Arc, time::{Duration, Instant}};
+
+use getset::Getters;
 use groan_rs::{prelude::Dimension, system::System};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use lanczos::{Hermitian, Order};
 use nalgebra::{DMatrix, SymmetricEigen};
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 
-use crate::{errors::AnalysisError, PANIC_MESSAGE};
+use crate::{
+    errors::{AnalysisError, ClusterError}, PANIC_MESSAGE
+};
 
 use super::{common::macros::group_name, pbc::PBCHandler};
 
@@ -17,281 +24,677 @@ const LANCZOS_ITERATIONS: usize = 300;
 /// Number of clusters to identify.
 const N_CLUSTERS: usize = 2;
 /// Sigma value for construction of the similarity matrix when the algorithm is sloppy.
-pub(super) const SLOPPY_SIGMA: f32 = 0.5;
+const SLOPPY_SIGMA: f32 = 0.5;
 /// Sigma value for construction of the similarity matrix when the algorithm is precise.
-pub(super) const PRECISE_SIGMA: f32 = 1.0;
+const PRECISE_SIGMA: f32 = 1.0;
 /// Distance cut-off used for the sloppy algorithm (in nm).
-pub(super) const DISTANCE_CUTOFF: f32 = 6.0;
-/// Number of times the sloppy assignment should be performed for the first frame to get consensus,
-/// and for any frame where the leaflet match fails after first try.
-pub(super) const SLOPPY_REPEATS: u8 = 3;
+const DISTANCE_CUTOFF: f32 = 6.0;
 
-/// Create a dense or sparse similarity matrix depending on cut-off.
-pub(super) fn create_similarity_matrix<'a>(
-    system: &'a System,
-    pbc: &'a impl PBCHandler<'a>,
-    cutoff: f32,
-    sigma: f32,
-    converter: &HashMap<usize, usize>,
-) -> Result<DMatrix<f32>, AnalysisError> {
-    let n_atoms = system
-        .group_get_n_atoms(group_name!("ClusterHeads"))
-        .expect(PANIC_MESSAGE);
-    let mut matrix = DMatrix::zeros(n_atoms, n_atoms);
+/// Maximal number of times the sloppy method failed in a row for it to be still used.
+const MAX_SLOPPY_FAILS: u8 = 2;
 
-    for (i, atom1) in system
-        .group_iter(group_name!("ClusterHeads"))
-        .expect(PANIC_MESSAGE)
-        .enumerate()
-    {
-        let position1 = atom1
-            .get_position()
-            .ok_or(AnalysisError::UndefinedPosition(atom1.get_index()))?;
+/// Precise assignment will always be performed below this number of headgroups.
+const PRECISE_LOWER_LIMIT: usize = 500;
+/// Precise assignment will never be performed above this number of headgroups.
+const PRECISE_UPPER_LIMIT: usize = 5000;
 
-        if cutoff.is_infinite() {
-            for (j, atom2) in system
-                .group_iter(group_name!("ClusterHeads"))
-                .expect(PANIC_MESSAGE)
-                .enumerate()
-            {
-                let dist = atom1
-                    .distance(
-                        &atom2,
-                        Dimension::XYZ,
-                        system.get_box().expect(PANIC_MESSAGE),
-                    )
-                    .map_err(AnalysisError::AtomError)?;
+/// Relative number of lipids molecules that must remain in the same leaflet
+/// between two consecutive trajectory frames analyzed by the same thread
+/// for reliable leaflet match.
+const CLUSTER_CLASSIFICATION_LIMIT: f32 = 0.8;
 
-                matrix[(i, j)] = (-sigma * dist * dist).exp();
+/// [`TIMEOUT`] in seconds.
+const TIMEOUT_SECONDS: u64 = 120;
+/// Global soft timeout duration for spin-lock used when fetching data for cluster assignment.
+/// After this time a warning is logged.
+static TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(TIMEOUT_SECONDS));
+
+/// [`HARD_TIMEOUT`] in seconds.
+const HARD_TIMEOUT_SECONDS: u64 = 720;
+/// Global HARD timeout duration for spin-lock used when fetching data for cluster assignment.
+/// After this time a PANIC is raised.
+static HARD_TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(HARD_TIMEOUT_SECONDS));
+
+#[derive(Debug, Clone, Getters)]
+pub(crate) struct SystemClusterClassification {
+    /// Converts between global index of an atom and its index in the similarity matrix.
+    converter: HashMap<usize, usize>,
+    /// Clusters assigned for the first frame. Shared among all threads.
+    reference_clusters: Arc<Mutex<Option<Clusters>>>,
+    /// Clusters assigned for the current frame.
+    #[getset(get = "pub(super)")]
+    clusters: Option<Clusters>,
+    /// Number of fails that were encountered using the sloppy method in a row.
+    sloppy_fails: u8,
+}
+
+impl SystemClusterClassification {
+    /// Create a new structure for clustering.
+    pub(super) fn new(system: &System) -> Self {
+        let mut converter = HashMap::new();
+        for (i, atom) in system
+            .group_iter(group_name!("ClusterHeads"))
+            .unwrap_or_else(|_| panic!("Group `ClusterHeads` should exist."))
+            .enumerate()
+        {
+            converter.insert(atom.get_index(), i);
+        }
+
+        SystemClusterClassification {
+            converter,
+            reference_clusters: Arc::new(Mutex::new(None)),
+            clusters: None,
+            sloppy_fails: 0,
+        }
+    }
+
+    /// Assign lipid headgroups into individual leaflets using spectral clustering.
+    pub(super) fn cluster<'a>(
+        &mut self,
+        system: &'a System,
+        pbc: &'a impl PBCHandler<'a>,
+        frame_index: usize,
+    ) -> Result<(), AnalysisError> {
+
+        if frame_index == 0 {
+            if self.converter.len() > PRECISE_UPPER_LIMIT {
+                self.sloppy_cluster_frame_one(system, pbc)?;
+            } else {
+                self.precise_cluster_frame_one(system, pbc)?;
             }
         } else {
-            for (atom2, dist) in pbc.nearby_atoms(system, position1.clone(), cutoff) {
-                let j = *converter
-                    .get(&atom2.get_index()).unwrap_or_else(||
-                        panic!("FATAL GORDER ERROR | clustering::create_similarity_matrix | Atom index `{}` not in converter map. {}", 
-                        atom2.get_index(), PANIC_MESSAGE));
+            if self.converter.len() > PRECISE_LOWER_LIMIT && self.sloppy_fails <= MAX_SLOPPY_FAILS {
+                // system is large and sloppy method did not fail often enough
+                let matrix =
+                    self.create_similarity_matrix(system, pbc, DISTANCE_CUTOFF, SLOPPY_SIGMA)?;
+                let laplacian = Self::create_normalized_laplacian(&matrix);
+                let n = matrix.shape().0;
 
-                matrix[(i, j)] = (-sigma * dist * dist).exp();
-            }
-        }
-    }
-
-    Ok(matrix)
-}
-
-/// Cluster lipid headgroups employing the Lanczos method for eigendecomposition.
-/// For maximum efficiency, the similarity matrix should be sparse.
-/// Much faster than `spectral_clustering_precise`, but may fail for some geometries.
-pub(super) fn spectral_clustering_sloppy(similarity_matrix: &DMatrix<f32>) -> Vec<usize> {
-    let n = similarity_matrix.shape().0;
-
-    // construct Laplacian
-    let laplacian = create_normalized_laplacian(similarity_matrix);
-
-    // calculate smallest eigenvectors (approximately) using the Lanczos algorithm
-    let iterations = LANCZOS_ITERATIONS.min(n);
-    let eigen = laplacian.eigsh(iterations, Order::Smallest);
-    let eigenvalues = eigen.eigenvalues;
-    let eigenvectors = eigen.eigenvectors;
-
-    // create embedding from the collected eigenvectors (skip the first eigenvector since it is zero)
-    let mut embedding = DMatrix::zeros(n, N_CLUSTERS);
-    for (k, _) in eigenvalues.iter().enumerate().skip(1).take(N_CLUSTERS) {
-        for row in 0..n {
-            embedding[(row, k - 1)] = eigenvectors[(row, k)];
-        }
-    }
-
-    // normalize each row to unit length
-    for mut row in embedding.row_iter_mut() {
-        let norm = row.iter().map(|&x| x * x).sum::<f32>().sqrt();
-        if norm > 1e-10 {
-            for x in row.iter_mut() {
-                *x /= norm;
-            }
-        }
-    }
-
-    // perform k-means clustering on the rows of embedding
-    k_means(&embedding, N_CLUSTERS)
-}
-
-/// Cluster lipid headgroups using full eigendecomposition of a full (dense) matrix.
-/// Much slower than `spectral_clustering_sloppy` but should work for any geometry.
-pub(super) fn spectral_clustering_precise(similarity_matrix: &DMatrix<f32>) -> Vec<usize> {
-    let n = similarity_matrix.shape().0;
-
-    // construct Laplacian
-    let laplacian = create_normalized_laplacian(similarity_matrix);
-
-    // calculate all eigenvectors
-    let eigen = SymmetricEigen::new(laplacian);
-    let eigenvalues = eigen.eigenvalues;
-    let eigenvectors = eigen.eigenvectors;
-
-    // select N_CLUSTERS smallest eigenvectors (skipping the first eigenvector which is zero)
-    let mut indices: Vec<usize> = (0..n).collect();
-    indices.sort_by(|&i, &j| eigenvalues[i].partial_cmp(&eigenvalues[j]).unwrap());
-    let selected_indices = &indices[1..(N_CLUSTERS + 1)];
-
-    // create embedding
-    let mut embedding = DMatrix::zeros(n, N_CLUSTERS);
-    for (k, &i) in selected_indices.iter().enumerate() {
-        for row in 0..n {
-            embedding[(row, k)] = eigenvectors[(row, i)];
-        }
-    }
-
-    // normalize each row to unit length
-    for mut row in embedding.row_iter_mut() {
-        let norm = row.iter().map(|&x| x * x).sum::<f32>().sqrt();
-        if norm > 1e-10 {
-            for x in row.iter_mut() {
-                *x /= norm;
-            }
-        }
-    }
-
-    // perform k-means clustering on the rows of embedding
-    k_means(&embedding, N_CLUSTERS)
-}
-
-/// Create normalized Laplacian for the similarity matrix.
-fn create_normalized_laplacian(similarity_matrix: &DMatrix<f32>) -> DMatrix<f32> {
-    let n = similarity_matrix.nrows();
-
-    // compute degree matrix (diagonal)
-    let degrees: Vec<f32> = (0..n).map(|i| similarity_matrix.row(i).sum()).collect();
-
-    // create D^(-1/2)
-    let d_neg_sqrt: Vec<f32> = degrees
-        .iter()
-        .map(|&x| if x > 1e-10 { 1.0 / x.sqrt() } else { 0.0 })
-        .collect();
-
-    // create normalized Laplacian: I - D^(-1/2) * W * D^(-1/2)
-    let mut laplacian = DMatrix::identity(n, n);
-
-    for i in 0..n {
-        for j in 0..n {
-            let w_ij = similarity_matrix[(i, j)];
-            if w_ij != 0.0 {
-                laplacian[(i, j)] -= d_neg_sqrt[i] * w_ij * d_neg_sqrt[j];
-            }
-        }
-    }
-
-    laplacian
-}
-
-/// Perform k-means clustering.
-fn k_means(data: &nalgebra::DMatrix<f32>, k: usize) -> Vec<usize> {
-    assert!(
-        k > 0,
-        "FATAL GORDER ERROR | clustering::k_means | Number of clusters must be greater than 0. {}",
-        PANIC_MESSAGE
-    );
-    assert!(
-        data.nrows() >= k,
-        "FATAL GORDER ERROR | clustering::k_means | More clusters than data points. {}",
-        PANIC_MESSAGE
-    );
-
-    let (n_samples, n_features) = (data.nrows(), data.ncols());
-    let mut centroids = nalgebra::DMatrix::zeros(k, n_features);
-    let mut labels = vec![0; n_samples];
-    let mut prev_labels = vec![usize::MAX; n_samples];
-
-    // initialize centroids with first k samples
-    for i in 0..k {
-        for j in 0..n_features {
-            centroids[(i, j)] = data[(i, j)];
-        }
-    }
-
-    // main optimization loop
-    for _ in 0..100 {
-        // assign labels
-        for sample_idx in 0..n_samples {
-            let mut best_cluster = 0;
-            let mut min_distance = f32::INFINITY;
-
-            for cluster_idx in 0..k {
-                let distance = euclidean_distance(data, sample_idx, &centroids, cluster_idx);
-
-                if distance < min_distance {
-                    min_distance = distance;
-                    best_cluster = cluster_idx;
+                // try sloppy method up to three times (sloppy is heuristic)
+                for _ in 0..3 {
+                    if let Some(valid_cluster) = self.sloppy_clustering(&laplacian, n, frame_index)
+                    {
+                        self.clusters = Some(valid_cluster);
+                        // reset sloppy fails counter
+                        self.sloppy_fails = 0;
+                        return Ok(());
+                    }
                 }
-            }
 
-            labels[sample_idx] = best_cluster;
-        }
+                // still no luck with assignment?, increase the sloppy fails counter and use the precise method
+                self.sloppy_fails += 1;
 
-        // check convergence
-        if labels == prev_labels {
-            break;
-        }
+                let matrix =
+                    self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
+                let laplacian = Self::create_normalized_laplacian(&matrix);
+                let n = matrix.shape().0;
 
-        // update centroids
-        let mut counts = vec![0; k];
-        centroids.fill(0.0);
-
-        for sample_idx in 0..n_samples {
-            let cluster = labels[sample_idx];
-
-            for j in 0..n_features {
-                centroids[(cluster, j)] += data[(sample_idx, j)];
-            }
-
-            counts[cluster] += 1;
-        }
-
-        // normalize and handle empty clusters
-        for cluster in 0..k {
-            let count = counts[cluster];
-            if count > 0 {
-                for j in 0..n_features {
-                    centroids[(cluster, j)] /= count as f32;
+                match self.precise_clustering(laplacian, n, frame_index) {
+                    Some(x) => self.clusters = Some(x),
+                    None => return Err(AnalysisError::ClusterError(ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8)))
                 }
             } else {
-                // handle empty cluster by using the first data point
-                for j in 0..n_features {
-                    centroids[(cluster, j)] = data[(0, j)];
+                // system is small => use precise method
+                let matrix = self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
+                let laplacian = Self::create_normalized_laplacian(&matrix);
+                let n = matrix.shape().0;
+
+                match self.precise_clustering(laplacian, n, frame_index) {
+                    Some(x) => self.clusters = Some(x),
+                    None => return Err(AnalysisError::ClusterError(ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8)))
                 }
             }
         }
 
-        prev_labels.clone_from(&labels);
+        Ok(())
     }
 
-    labels
+    /// Perform sloppy leaflet assignment for the first frame. Try it at least two times and check for matches.
+    fn sloppy_cluster_frame_one<'a>(
+        &mut self,
+        system: &'a System,
+        pbc: &'a impl PBCHandler<'a>,
+    ) -> Result<(), AnalysisError> {
+        let matrix = self.create_similarity_matrix(system, pbc, DISTANCE_CUTOFF, SLOPPY_SIGMA)?;
+        let laplacian = Self::create_normalized_laplacian(&matrix);
+        let n = matrix.shape().0;
+
+        let cluster1 = self.sloppy_clustering(&laplacian, n, 0);
+        let cluster2 = self.sloppy_clustering(&laplacian, n, 0);
+
+        match (cluster1, cluster2) {
+            (None, _) | (_, None) => {
+                return Err(AnalysisError::ClusterError(
+                    ClusterError::SloppyFirstFrameFail,
+                ))
+            }
+            (Some(x), Some(y)) if x == y => {
+                // assignment successful
+                self.clusters = Some(x);
+            }
+            (Some(x), Some(y)) if x != y => {
+                // assignment mismatch => run one more time
+                let cluster3 = self.sloppy_clustering(&laplacian, n, 0).ok_or(
+                    AnalysisError::ClusterError(ClusterError::SloppyFirstFrameFail),
+                )?;
+                if x == cluster3 {
+                    self.clusters = Some(x);
+                } else if y == cluster3 {
+                    self.clusters = Some(y);
+                } else {
+                    return Err(AnalysisError::ClusterError(
+                        ClusterError::SloppyFirstFrameFail,
+                    ));
+                }
+            }
+            _ => unreachable!("FATAL GORDER ERROR | SystemClusterClassification::sloppy_cluster_frame_one | Unreachable pattern reached."),
+        }
+
+        // update shared data
+        self.update_shared();
+        
+        Ok(())
+    }
+
+    /// Perform precise leaflet assignment for the first frame.
+    fn precise_cluster_frame_one<'a>(
+        &mut self,
+        system: &'a System,
+        pbc: &'a impl PBCHandler<'a>,
+    ) -> Result<(), AnalysisError> {
+        let matrix = self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
+        let laplacian = Self::create_normalized_laplacian(&matrix);
+        let n = matrix.shape().0;
+        let clusters = self
+            .precise_clustering(laplacian, n, 0)
+            .unwrap_or_else(|| 
+                panic!("FATAL GORDER ERROR | SystemClusterClassification::precise_cluster_frame_one | Could not classify clusters in frame 0. {}", 
+                PANIC_MESSAGE)
+            );
+
+        self.clusters = Some(clusters);
+
+        // update shared data
+        self.update_shared();
+
+        Ok(())
+    }
+
+    /// Copy the current clusters assignment to shared data.
+    fn update_shared(&mut self) {
+        let mut shared_clusters = self.reference_clusters.lock();
+        *shared_clusters = self.clusters.clone();
+        // Defensive check
+        assert!(shared_clusters.is_some(), "FATAL GORDER ERROR | SystemClusterClassification::sloppy_cluster_frame_one | Shared clusters is None, after assigning. {}", PANIC_MESSAGE);
+    }
+
+    /// Get clusters assignment from shared data.
+    fn get_from_shared(&self) -> Clusters {
+        let start_time = Instant::now();
+        let mut warning_logged = false;
+
+        // spin-lock: waiting for the requested frame to become available
+        loop {
+            let shared_clusters = self.reference_clusters.lock();
+            if let Some(clusters) = shared_clusters.clone() {
+                return clusters
+            }
+
+            // defensive check for a deadlock
+            if start_time.elapsed() > *TIMEOUT {
+                if !warning_logged {
+                    colog_warn!("DEADLOCKED? Thread has been waiting for shared clustering data (frame '0') for more than {} seconds.
+This may be due to extreme system size, resource contention or a bug. 
+Ensure that your CPU is not oversubscribed and that you have not lost access to the trajectory file.
+If `gorder` is causing oversubscription, reduce the number of threads used for the analysis.
+If other computationally intensive software is running alongside `gorder`, consider terminating it.
+If the issue persists, please report it by opening an issue at `github.com/Ladme/gorder/issues` or sending an email to `ladmeb@gmail.com`.
+(Note: If no progress is made, this thread will terminate in {} seconds to prevent resource exhaustion.)",
+                    TIMEOUT_SECONDS,
+                    HARD_TIMEOUT_SECONDS - TIMEOUT_SECONDS,
+                );
+                    warning_logged = true;
+                }
+
+                if start_time.elapsed() > *HARD_TIMEOUT {
+                    panic!("FATAL GORDER ERROR | SystemClusterClassification::get_from_shared | Deadlock. Could not get shared clusters for leaflet assignment. Spent more than `{}` seconds inside the spin-lock. {}",
+                    HARD_TIMEOUT_SECONDS, PANIC_MESSAGE)
+                }
+            }
+
+            // shared data unlock here
+        }
+    }
+
+    /// Perform one sloppy clustering without checking the validity of the clusters.
+    fn sloppy_clustering(
+        &self,
+        laplacian: &DMatrix<f32>,
+        n: usize,
+        frame_index: usize,
+    ) -> Option<Clusters> {
+        let embedding =
+            Self::calc_and_embed_eigenvectors_lanczos(&laplacian, n, LANCZOS_ITERATIONS.min(n));
+        let assignments = Self::k_means(&embedding, N_CLUSTERS);
+        let (c1, c2, _, min_index_cluster) = self.process_assignments(assignments);
+        self.classify_clusters(c1, c2, min_index_cluster, frame_index)
+    }
+
+    /// Perform one precise clustering without checking the validity of the clusters.
+    fn precise_clustering(
+        &self,
+        laplacian: DMatrix<f32>,
+        n: usize,
+        frame_index: usize,
+    ) -> Option<Clusters> {
+        let embedding = Self::calc_and_embed_eigenvectors_full(laplacian, n);
+        let assignments = Self::k_means(&embedding, N_CLUSTERS);
+        let (c1, c2, _, min_index_cluster) = self.process_assignments(assignments);
+        self.classify_clusters(c1, c2, min_index_cluster, frame_index)
+    }
+
+    /// Create a dense or sparse similarity matrix depending on cut-off.
+    fn create_similarity_matrix<'a>(
+        &self,
+        system: &'a System,
+        pbc: &'a impl PBCHandler<'a>,
+        cutoff: f32,
+        sigma: f32,
+    ) -> Result<DMatrix<f32>, AnalysisError> {
+        let n_atoms = system
+            .group_get_n_atoms(group_name!("ClusterHeads"))
+            .expect(PANIC_MESSAGE);
+        let mut matrix = DMatrix::zeros(n_atoms, n_atoms);
+
+        for (i, atom1) in system
+            .group_iter(group_name!("ClusterHeads"))
+            .expect(PANIC_MESSAGE)
+            .enumerate()
+        {
+            let position1 = atom1
+                .get_position()
+                .ok_or(AnalysisError::UndefinedPosition(atom1.get_index()))?;
+
+            if cutoff.is_infinite() {
+                for (j, atom2) in system
+                    .group_iter(group_name!("ClusterHeads"))
+                    .expect(PANIC_MESSAGE)
+                    .enumerate()
+                {
+                    let dist = atom1
+                        .distance(
+                            &atom2,
+                            Dimension::XYZ,
+                            system.get_box().expect(PANIC_MESSAGE),
+                        )
+                        .map_err(AnalysisError::AtomError)?;
+
+                    matrix[(i, j)] = (-sigma * dist * dist).exp();
+                }
+            } else {
+                for (atom2, dist) in pbc.nearby_atoms(system, position1.clone(), cutoff) {
+                    let j = *self.converter
+                    .get(&atom2.get_index()).unwrap_or_else(||
+                        panic!("FATAL GORDER ERROR | SystemClusterClassification::create_similarity_matrix | Atom index `{}` not in converter map. {}", 
+                        atom2.get_index(), PANIC_MESSAGE));
+
+                    matrix[(i, j)] = (-sigma * dist * dist).exp();
+                }
+            }
+        }
+
+        Ok(matrix)
+    }
+
+    /// Calculate eigenvectors using the Lanczos method and create an embedding for them.
+    fn calc_and_embed_eigenvectors_lanczos(
+        laplacian: &DMatrix<f32>,
+        items: usize,
+        iterations: usize,
+    ) -> DMatrix<f32> {
+        let eigen = laplacian.eigsh(iterations.min(items), Order::Smallest);
+        let eigenvalues = eigen.eigenvalues;
+        let eigenvectors = eigen.eigenvectors;
+
+        // create embedding from the collected eigenvectors (skip the first eigenvector since it is zero)
+        let mut embedding = DMatrix::zeros(items, N_CLUSTERS);
+        for (k, _) in eigenvalues.iter().enumerate().skip(1).take(N_CLUSTERS) {
+            for row in 0..items {
+                embedding[(row, k - 1)] = eigenvectors[(row, k)];
+            }
+        }
+
+        // normalize each row to unit length
+        for mut row in embedding.row_iter_mut() {
+            let norm = row.iter().map(|&x| x * x).sum::<f32>().sqrt();
+            if norm > 1e-10 {
+                for x in row.iter_mut() {
+                    *x /= norm;
+                }
+            }
+        }
+
+        embedding
+    }
+
+    /// Calculate eigenvectors using full eigendecomposition and create an embedding for them.
+    fn calc_and_embed_eigenvectors_full(laplacian: DMatrix<f32>, items: usize) -> DMatrix<f32> {
+        let eigen = SymmetricEigen::new(laplacian);
+        let eigenvalues = eigen.eigenvalues;
+        let eigenvectors = eigen.eigenvectors;
+
+        // select N_CLUSTERS smallest eigenvectors (skipping the first eigenvector which is zero)
+        let mut indices: Vec<usize> = (0..items).collect();
+        indices.sort_by(|&i, &j| eigenvalues[i].partial_cmp(&eigenvalues[j]).unwrap());
+        let selected_indices = &indices[1..(N_CLUSTERS + 1)];
+
+        // create embedding
+        let mut embedding = DMatrix::zeros(items, N_CLUSTERS);
+        for (k, &i) in selected_indices.iter().enumerate() {
+            for row in 0..items {
+                embedding[(row, k)] = eigenvectors[(row, i)];
+            }
+        }
+
+        // normalize each row to unit length
+        for mut row in embedding.row_iter_mut() {
+            let norm = row.iter().map(|&x| x * x).sum::<f32>().sqrt();
+            if norm > 1e-10 {
+                for x in row.iter_mut() {
+                    *x /= norm;
+                }
+            }
+        }
+
+        embedding
+    }
+
+    /// Process assignments into two clusters.
+    fn process_assignments(
+        &self,
+        assignments: Vec<usize>,
+    ) -> (HashSet<usize>, HashSet<usize>, usize, i8) {
+        let mut cluster1 = HashSet::new();
+        let mut cluster2 = HashSet::new();
+        let mut min_index = usize::MAX;
+        let mut min_index_cluster = 0;
+
+        for (&abs_index, &matrix_index) in self.converter.iter() {
+            let cluster = assignments.get(matrix_index).expect(PANIC_MESSAGE);
+
+            match cluster {
+                0 => { cluster1.insert(abs_index); },
+                1 => { cluster2.insert(abs_index); },
+                x => panic!(
+                    "FATAL GORDER ERROR | SystemClusterClassification::process_assignments | Invalid cluster index `{}`. {}",
+                    x,
+                    PANIC_MESSAGE
+                ),
+            }
+
+            if abs_index < min_index {
+                min_index = abs_index;
+                min_index_cluster = *cluster as i8;
+            }
+        }
+
+        (cluster1, cluster2, min_index, min_index_cluster)
+    }
+
+    /// Determine which cluster is `upper` and `which` is lower.
+    ///
+    /// In the first frame, the clusters are classified as follows:
+    /// - the more populated leaflet is the `upper` leaflet,
+    /// - if both leaflets are equally populated, the `upper` leaflet is the one containing
+    ///   a reference atom with the lowest index (typically the first analyzed lipid).
+    ///
+    /// In the other frames, the clusters are classified by trying to match them with the
+    /// clusters from the previous frame analyzed by this thread.
+    ///
+    /// In membranes with lipid flip-flop, the match is heuristic and may in extremely
+    /// rare cases be incorrect:
+    /// - Matching will succeed, if less than 20% of lipids have changed leaflet between two analyzed frames.
+    /// - Matching will fail (returning None), if 20-80% of lipids have changed leaflet between two analyzed frames.
+    /// - Matching will fail silently and the results will be incorrect if over 80% of lipids have
+    ///   changed leaflet between two analyzed frames! This should be basically unphysical, so it's not
+    ///   a big concern.
+    fn classify_clusters(
+        &self,
+        cluster1: HashSet<usize>,
+        cluster2: HashSet<usize>,
+        min_index_cluster: i8,
+        frame_index: usize,
+    ) -> Option<Clusters> {
+        // only for the first frame
+        if frame_index == 0 {
+            return Some(Clusters::classify_ab_initio(
+                cluster1,
+                cluster2,
+                min_index_cluster,
+            ));
+        }
+
+        let previous_clusters = match &self.clusters {
+            Some(x) => x,
+            // load data from shared storage
+            None => &self.get_from_shared(),
+        };
+
+        Clusters::classify_by_match(previous_clusters, cluster1, cluster2)
+    }
+
+    /// Create normalized Laplacian for the similarity matrix.
+    fn create_normalized_laplacian(similarity_matrix: &DMatrix<f32>) -> DMatrix<f32> {
+        let n = similarity_matrix.nrows();
+
+        // compute degree matrix (diagonal)
+        let degrees: Vec<f32> = (0..n).map(|i| similarity_matrix.row(i).sum()).collect();
+
+        // create D^(-1/2)
+        let d_neg_sqrt: Vec<f32> = degrees
+            .iter()
+            .map(|&x| if x > 1e-10 { 1.0 / x.sqrt() } else { 0.0 })
+            .collect();
+
+        // create normalized Laplacian: I - D^(-1/2) * W * D^(-1/2)
+        let mut laplacian = DMatrix::identity(n, n);
+
+        for i in 0..n {
+            for j in 0..n {
+                let w_ij = similarity_matrix[(i, j)];
+                if w_ij != 0.0 {
+                    laplacian[(i, j)] -= d_neg_sqrt[i] * w_ij * d_neg_sqrt[j];
+                }
+            }
+        }
+
+        laplacian
+    }
+
+    /// Perform k-means clustering.
+    fn k_means(data: &nalgebra::DMatrix<f32>, k: usize) -> Vec<usize> {
+        assert!(
+        k > 0,
+        "FATAL GORDER ERROR | SystemClusterClassification::k_means | Number of clusters must be greater than 0. {}",
+        PANIC_MESSAGE
+    );
+        assert!(
+            data.nrows() >= k,
+            "FATAL GORDER ERROR | SystemClusterClassification::k_means | More clusters than data points. {}",
+            PANIC_MESSAGE
+        );
+
+        let (n_samples, n_features) = (data.nrows(), data.ncols());
+        let mut centroids = nalgebra::DMatrix::zeros(k, n_features);
+        let mut labels = vec![0; n_samples];
+        let mut prev_labels = vec![usize::MAX; n_samples];
+
+        // initialize centroids with first k samples
+        for i in 0..k {
+            for j in 0..n_features {
+                centroids[(i, j)] = data[(i, j)];
+            }
+        }
+
+        // main optimization loop
+        for _ in 0..100 {
+            // assign labels
+            for sample_idx in 0..n_samples {
+                let mut best_cluster = 0;
+                let mut min_distance = f32::INFINITY;
+
+                for cluster_idx in 0..k {
+                    let distance =
+                        Self::euclidean_distance(data, sample_idx, &centroids, cluster_idx);
+
+                    if distance < min_distance {
+                        min_distance = distance;
+                        best_cluster = cluster_idx;
+                    }
+                }
+
+                labels[sample_idx] = best_cluster;
+            }
+
+            // check convergence
+            if labels == prev_labels {
+                break;
+            }
+
+            // update centroids
+            let mut counts = vec![0; k];
+            centroids.fill(0.0);
+
+            for sample_idx in 0..n_samples {
+                let cluster = labels[sample_idx];
+
+                for j in 0..n_features {
+                    centroids[(cluster, j)] += data[(sample_idx, j)];
+                }
+
+                counts[cluster] += 1;
+            }
+
+            // normalize and handle empty clusters
+            for cluster in 0..k {
+                let count = counts[cluster];
+                if count > 0 {
+                    for j in 0..n_features {
+                        centroids[(cluster, j)] /= count as f32;
+                    }
+                } else {
+                    // handle empty cluster by using the first data point
+                    for j in 0..n_features {
+                        centroids[(cluster, j)] = data[(0, j)];
+                    }
+                }
+            }
+
+            prev_labels.clone_from(&labels);
+        }
+
+        labels
+    }
+
+    /// Calculate Euclidean distance between rows in matrices.
+    fn euclidean_distance(
+        matrix1: &nalgebra::DMatrix<f32>,
+        row1: usize,
+        matrix2: &nalgebra::DMatrix<f32>,
+        row2: usize,
+    ) -> f32 {
+        let n_features = matrix1.ncols();
+        let mut sum = 0.0;
+
+        for j in 0..n_features {
+            let diff = matrix1[(row1, j)] - matrix2[(row2, j)];
+            sum += diff * diff;
+        }
+
+        sum.sqrt()
+    }
 }
 
-/// Calculate Euclidean distance between rows in matrices.
-fn euclidean_distance(
-    matrix1: &nalgebra::DMatrix<f32>,
-    row1: usize,
-    matrix2: &nalgebra::DMatrix<f32>,
-    row2: usize,
-) -> f32 {
-    let n_features = matrix1.ncols();
-    let mut sum = 0.0;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Clusters {
+    pub(super) upper: HashSet<usize>,
+    pub(super) lower: HashSet<usize>,
+}
 
-    for j in 0..n_features {
-        let diff = matrix1[(row1, j)] - matrix2[(row2, j)];
-        sum += diff * diff;
+impl Clusters {
+    /// Classify clusters as leaflets using the properties of the clusters.
+    /// This should not be performed for the first frame.
+    fn classify_ab_initio(
+        cluster1: HashSet<usize>,
+        cluster2: HashSet<usize>,
+        min_index_cluster: i8,
+    ) -> Self {
+        return match cluster1.len().cmp(&cluster2.len()) {
+            // more populated cluster is `upper`
+            Ordering::Less => {
+                Clusters {
+                    upper: cluster2,
+                    lower: cluster1,
+                }
+            }
+            Ordering::Greater => {
+                Clusters {
+                    upper: cluster1,
+                    lower: cluster2,
+                }
+            }
+            Ordering::Equal => {
+                // if both clusters are equally populated, cluster containing `min_index` is `upper`
+                if min_index_cluster == 0 {
+                    Clusters {
+                        upper: cluster1,
+                        lower: cluster2,
+                    }
+                } else {
+                    Clusters {
+                        upper: cluster2,
+                        lower: cluster1,
+                    }
+                }
+            }
+        };
     }
 
-    sum.sqrt()
+    /// Classsify clusters as leaflets by trying to match them to reference clusters.
+    /// Returns `None`, if the match fails.
+    fn classify_by_match(
+        reference: &Clusters,
+        cluster1: HashSet<usize>,
+        cluster2: HashSet<usize>,
+    ) -> Option<Self> {
+        let overlap_cluster1_upper =
+            cluster1.intersection(&reference.upper).count() as f32 / cluster1.len() as f32;
+        let overlap_cluster1_lower =
+            cluster1.intersection(&reference.lower).count() as f32 / cluster1.len() as f32;
+
+        if overlap_cluster1_upper < CLUSTER_CLASSIFICATION_LIMIT
+            && overlap_cluster1_lower < CLUSTER_CLASSIFICATION_LIMIT
+        {
+            return None;
+        }
+
+        if overlap_cluster1_upper < overlap_cluster1_lower {
+            Some(Clusters {
+                upper: cluster2,
+                lower: cluster1,
+            })
+        } else {
+            Some(Clusters {
+                upper: cluster1,
+                lower: cluster2,
+            })
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::analysis::{
-        leaflets::ClusterClassification,
-        pbc::{NoPBC, PBC3D},
-    };
+    use crate::analysis::pbc::{NoPBC, PBC3D};
 
     use super::*;
 
@@ -301,20 +704,24 @@ mod tests {
             .group_create(group_name!("ClusterHeads"), heads)
             .unwrap();
 
-        let converter = ClusterClassification::create_converter(&system);
+        let clustering = SystemClusterClassification::new(&system);
         let matrix = if handle_pbc {
-            create_similarity_matrix(
-                &system,
-                &PBC3D::new(system.get_box().unwrap()),
-                DISTANCE_CUTOFF,
-                SLOPPY_SIGMA,
-                &converter,
-            )
-            .unwrap()
+            clustering
+                .create_similarity_matrix(
+                    &system,
+                    &PBC3D::new(system.get_box().unwrap()),
+                    DISTANCE_CUTOFF,
+                    SLOPPY_SIGMA,
+                )
+                .unwrap()
         } else {
-            create_similarity_matrix(&system, &NoPBC, DISTANCE_CUTOFF, SLOPPY_SIGMA, &converter)
+            clustering
+                .create_similarity_matrix(&system, &NoPBC, DISTANCE_CUTOFF, SLOPPY_SIGMA)
                 .unwrap()
         };
+
+        let laplacian = SystemClusterClassification::create_normalized_laplacian(&matrix);
+        let n = matrix.shape().0;
 
         // try 3 times
         let mut i = 0;
@@ -322,8 +729,9 @@ mod tests {
             if i == 3 {
                 panic!("Could not reach match after 3 tries.");
             }
-
-            let assignments = spectral_clustering_sloppy(&matrix);
+            
+            let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_lanczos(&laplacian, n, LANCZOS_ITERATIONS);
+            let assignments = SystemClusterClassification::k_means(&embedding, N_CLUSTERS);
             let assignments_reversed: Vec<usize> = assignments
                 .iter()
                 .map(|x| match x {
@@ -347,22 +755,27 @@ mod tests {
             .group_create(group_name!("ClusterHeads"), heads)
             .unwrap();
 
-        let converter = ClusterClassification::create_converter(&system);
+        let clustering = SystemClusterClassification::new(&system);
         let matrix = if handle_pbc {
-            create_similarity_matrix(
-                &system,
-                &PBC3D::new(system.get_box().unwrap()),
-                f32::INFINITY,
-                PRECISE_SIGMA,
-                &converter,
-            )
-            .unwrap()
+            clustering
+                .create_similarity_matrix(
+                    &system,
+                    &PBC3D::new(system.get_box().unwrap()),
+                    f32::INFINITY,
+                    PRECISE_SIGMA,
+                )
+                .unwrap()
         } else {
-            create_similarity_matrix(&system, &NoPBC, f32::INFINITY, PRECISE_SIGMA, &converter)
+            clustering
+                .create_similarity_matrix(&system, &NoPBC, f32::INFINITY, PRECISE_SIGMA)
                 .unwrap()
         };
+        
+        let laplacian = SystemClusterClassification::create_normalized_laplacian(&matrix);
+        let n = matrix.shape().0;
 
-        let assignments = spectral_clustering_precise(&matrix);
+        let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_full(laplacian, n);
+        let assignments = SystemClusterClassification::k_means(&embedding, N_CLUSTERS);
         let assignments_reversed: Vec<usize> = assignments
             .iter()
             .map(|x| match x {
@@ -388,23 +801,27 @@ mod tests {
             .group_create(group_name!("ClusterHeads"), heads)
             .unwrap();
 
-        let converter = ClusterClassification::create_converter(&system);
+        let clustering = SystemClusterClassification::new(&system);
 
         for frame in system.xtc_iter(xtc).unwrap().with_step(step).unwrap() {
             let frame = frame.unwrap();
             let matrix = if handle_pbc {
-                create_similarity_matrix(
-                    frame,
-                    &PBC3D::new(frame.get_box().unwrap()),
-                    DISTANCE_CUTOFF,
-                    SLOPPY_SIGMA,
-                    &converter,
-                )
-                .unwrap()
+                clustering
+                    .create_similarity_matrix(
+                        frame,
+                        &PBC3D::new(frame.get_box().unwrap()),
+                        DISTANCE_CUTOFF,
+                        SLOPPY_SIGMA,
+                    )
+                    .unwrap()
             } else {
-                create_similarity_matrix(frame, &NoPBC, DISTANCE_CUTOFF, SLOPPY_SIGMA, &converter)
+                clustering
+                    .create_similarity_matrix(frame, &NoPBC, DISTANCE_CUTOFF, SLOPPY_SIGMA)
                     .unwrap()
             };
+
+            let laplacian = SystemClusterClassification::create_normalized_laplacian(&matrix);
+            let n = matrix.shape().0;
 
             let mut i = 0;
             loop {
@@ -412,7 +829,8 @@ mod tests {
                     panic!("Could not reach match after 3 tries.");
                 }
 
-                let assignments = spectral_clustering_sloppy(&matrix);
+                let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_lanczos(&laplacian, n, LANCZOS_ITERATIONS);
+                let assignments = SystemClusterClassification::k_means(&embedding, N_CLUSTERS);
                 let assignments_reversed: Vec<usize> = assignments
                     .iter()
                     .map(|x| match x {
@@ -444,26 +862,31 @@ mod tests {
             .group_create(group_name!("ClusterHeads"), heads)
             .unwrap();
 
-        let converter = ClusterClassification::create_converter(&system);
+        let clustering = SystemClusterClassification::new(&system);
 
         for frame in system.xtc_iter(xtc).unwrap().with_step(step).unwrap() {
             let frame = frame.unwrap();
 
             let matrix = if handle_pbc {
-                create_similarity_matrix(
-                    &frame,
-                    &PBC3D::new(frame.get_box().unwrap()),
-                    f32::INFINITY,
-                    PRECISE_SIGMA,
-                    &converter,
-                )
-                .unwrap()
+                clustering
+                    .create_similarity_matrix(
+                        &frame,
+                        &PBC3D::new(frame.get_box().unwrap()),
+                        f32::INFINITY,
+                        PRECISE_SIGMA,
+                    )
+                    .unwrap()
             } else {
-                create_similarity_matrix(&frame, &NoPBC, f32::INFINITY, PRECISE_SIGMA, &converter)
+                clustering
+                    .create_similarity_matrix(&frame, &NoPBC, f32::INFINITY, PRECISE_SIGMA)
                     .unwrap()
             };
 
-            let assignments = spectral_clustering_precise(&matrix);
+            let laplacian = SystemClusterClassification::create_normalized_laplacian(&matrix);
+            let n = matrix.shape().0;
+
+            let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_full(laplacian, n);
+            let assignments = SystemClusterClassification::k_means(&embedding, N_CLUSTERS);
             let assignments_reversed: Vec<usize> = assignments
                 .iter()
                 .map(|x| match x {
