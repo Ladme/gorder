@@ -485,6 +485,28 @@ fn test_bin_cg_inline_manual_normals() {
 }
 
 #[test]
+fn test_bin_aa_clustering() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/aa_clustering.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert!(diff_files_ignore_first(
+        "temp_aa_buckled_clustering.yaml",
+        "tests/files/aa_order_buckled_leaflets.yaml",
+        1
+    ));
+
+    std::fs::remove_file("temp_aa_buckled_clustering.yaml").unwrap();
+}
+
+#[test]
 fn test_bin_cg_leaflets_fail_nonexistent_traj() {
     Command::cargo_bin("gorder")
         .unwrap()
@@ -607,7 +629,7 @@ fn test_bin_output_config_writing_fails() {
 }
 
 #[test]
-fn test_bin_ua_no_carbons() {
+fn test_bin_ua_no_carbons_fail() {
     Command::cargo_bin("gorder")
         .unwrap()
         .args([

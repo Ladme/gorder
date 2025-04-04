@@ -1,0 +1,16 @@
+# Test file for binary application.
+structure: tests/files/aa_buckled.tpr
+trajectory: tests/files/aa_buckled.xtc
+type: !AAOrder
+  heavy_atoms: "@membrane and element name carbon"
+  hydrogens: "@membrane and element name hydrogen"
+
+leaflets: !Clustering
+  heads: "name P"
+  frequency: !Every 5
+
+membrane_normal: !Dynamic
+  heads: "name P"
+
+n_threads: 4
+output_yaml: temp_aa_buckled_clustering.yaml

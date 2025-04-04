@@ -34,7 +34,7 @@ const DISTANCE_CUTOFF: f32 = 6.0;
 const MAX_SLOPPY_FAILS: u8 = 3;
 
 /// Precise assignment will always be performed below this number of headgroups.
-const PRECISE_LOWER_LIMIT: usize = 500;
+const PRECISE_LOWER_LIMIT: usize = 1000;
 /// Precise assignment will never be performed above this number of headgroups (unless the sloppy method fails 3 times).
 const PRECISE_UPPER_LIMIT: usize = 5000;
 
@@ -158,7 +158,6 @@ impl SystemClusterClassification {
         pbc: &'a impl PBCHandler<'a>,
         frame_index: usize,
     ) -> Result<(), AnalysisError> {
-
         if frame_index == 0 {
             if self.converter.len() > PRECISE_UPPER_LIMIT {
                 self.sloppy_cluster_frame_one(system, pbc)?;
@@ -1543,7 +1542,7 @@ mod tests {
     #[test]
     fn test_buckled_cg_sloppy_pbc() {
         test_sloppy(
-            "tests/files/martini_buckled.tpr",
+            "tests/files/cg_buckled.tpr",
             "name PO4",
             true,
             expected_assignments_buckled_cg(),
@@ -1553,7 +1552,7 @@ mod tests {
     #[test]
     fn test_buckled_cg_sloppy_nopbc() {
         test_sloppy(
-            "tests/files/martini_buckled.tpr",
+            "tests/files/cg_buckled.tpr",
             "name PO4",
             false,
             expected_assignments_buckled_cg(),
@@ -1563,7 +1562,7 @@ mod tests {
     #[test]
     fn test_buckled_cg_precise_pbc() {
         test_precise(
-            "tests/files/martini_buckled.tpr",
+            "tests/files/cg_buckled.tpr",
             "name PO4",
             true,
             expected_assignments_buckled_cg(),
@@ -1573,7 +1572,7 @@ mod tests {
     #[test]
     fn test_buckled_cg_precise_nopbc() {
         test_precise(
-            "tests/files/martini_buckled.tpr",
+            "tests/files/cg_buckled.tpr",
             "name PO4",
             false,
             expected_assignments_buckled_cg(),
@@ -1583,8 +1582,8 @@ mod tests {
     #[test]
     fn test_buckled_cg_precise_trajectory_pbc() {
         test_precise_trajectory(
-            "tests/files/martini_buckled.tpr",
-            "tests/files/martini_buckled.xtc",
+            "tests/files/cg_buckled.tpr",
+            "tests/files/cg_buckled.xtc",
             "name PO4",
             true,
             expected_assignments_buckled_cg(),
@@ -1595,68 +1594,12 @@ mod tests {
     #[test]
     fn test_buckled_cg_precise_trajectory_nopbc() {
         test_precise_trajectory(
-            "tests/files/martini_buckled.tpr",
-            "tests/files/martini_buckled.xtc",
+            "tests/files/cg_buckled.tpr",
+            "tests/files/cg_buckled.xtc",
             "name PO4",
             false,
             expected_assignments_buckled_cg(),
             5,
         );
     }
-
-    /*#[test]
-    fn output_clusters_sloppy() {
-        let mut system = System::from_file("tests/files/martini_buckled.tpr").unwrap();
-        system
-            .group_create(group_name!("ClusterHeads"), "name PO4")
-            .unwrap();
-
-        let converter = ClusterClassification::create_converter(&system);
-        let matrix = if true {
-            create_similarity_matrix(
-                &system,
-                &PBC3D::new(system.get_box().unwrap()),
-                DISTANCE_CUTOFF,
-                SLOPPY_SIGMA,
-                &converter,
-            )
-            .unwrap()
-        } else {
-            create_similarity_matrix(&system, &NoPBC, DISTANCE_CUTOFF, SLOPPY_SIGMA, &converter)
-                .unwrap()
-        };
-
-        let assignments = spectral_clustering_sloppy(&matrix);
-        println!("{:?}", assignments);
-
-        output_clusters_as_gro(&mut system, assignments, &converter);
-    }
-
-    #[test]
-    fn output_clusters_precise() {
-        let mut system = System::from_file("tests/files/martini_buckled.tpr").unwrap();
-        system
-            .group_create(group_name!("ClusterHeads"), "name PO4")
-            .unwrap();
-
-        let converter = ClusterClassification::create_converter(&system);
-        let matrix = if true {
-            create_similarity_matrix(
-                &system,
-                &PBC3D::new(system.get_box().unwrap()),
-                f32::INFINITY,
-                PRECISE_SIGMA,
-                &converter,
-            )
-            .unwrap()
-        } else {
-            create_similarity_matrix(&system, &NoPBC, f32::INFINITY, PRECISE_SIGMA, &converter)
-                .unwrap()
-        };
-
-        let assignments = spectral_clustering_precise(&matrix);
-        println!("{:?}", assignments);
-
-        output_clusters_as_gro(&mut system, assignments, &converter);
-    }*/
 }

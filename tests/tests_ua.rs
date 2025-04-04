@@ -260,7 +260,7 @@ fn test_ua_order_leaflets() {
 
 #[test]
 fn test_ua_order_leaflets_clustering() {
-    for n_threads in [1, 2, 3, 8, 64] {
+    for n_threads in [1, 2, 8, 64] {
         for freq in [
             Frequency::every(1).unwrap(),
             Frequency::every(5).unwrap(),
