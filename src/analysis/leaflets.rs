@@ -40,13 +40,13 @@ use parking_lot::Mutex;
 use once_cell::sync::Lazy;
 
 /// [`TIMEOUT`] in seconds.
-const TIMEOUT_SECONDS: u64 = 5;
+const TIMEOUT_SECONDS: u64 = 60;
 /// Global soft timeout duration for spin-lock used when fetching data for leaflet assignment.
 /// After this time a warning is logged.
 static TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(TIMEOUT_SECONDS));
 
 /// [`HARD_TIMEOUT`] in seconds.
-const HARD_TIMEOUT_SECONDS: u64 = 125;
+const HARD_TIMEOUT_SECONDS: u64 = 720;
 /// Global HARD timeout duration for spin-lock used when fetching data for leaflet assignment.
 /// After this time a PANIC is raised.
 static HARD_TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(HARD_TIMEOUT_SECONDS));
@@ -1323,7 +1323,7 @@ impl SharedAssignedLeaflets {
             if start_time.elapsed() > *TIMEOUT {
                 if !warning_logged {
                     colog_warn!("DEADLOCKED? Thread has been waiting for shared leaflet assignment data (frame '{}') for more than {} seconds.
-This may be due to resource contention or a bug. Ensure that your CPU is not oversubscribed and that you have not lost access to the trajectory file.
+This may be due to extreme system size, resource contention or a bug. Ensure that your CPU is not oversubscribed and that you have not lost access to the trajectory file.
 If `gorder` is causing oversubscription, reduce the number of threads used for the analysis.
 If other computationally intensive software is running alongside `gorder`, consider terminating it.
 If the issue persists, please report it by opening an issue at `github.com/Ladme/gorder/issues` or sending an email to `ladmeb@gmail.com`. 
