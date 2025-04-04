@@ -73,6 +73,13 @@ impl LeafletClassification {
             Self::FromFile(_) | Self::FromMap(_) => (),
             Self::Clustering(params) => {
                 create_group(system, "ClusterHeads", params.heads())?;
+                // we need at least two atoms to cluster
+                let n_atoms = system
+                    .group_get_n_atoms(group_name!("ClusterHeads"))
+                    .expect(PANIC_MESSAGE);
+                if n_atoms < 2 {
+                    return Err(TopologyError::NotEnoughAtomsToCluster(n_atoms));
+                }
             }
         }
 

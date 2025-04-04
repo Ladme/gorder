@@ -103,6 +103,10 @@ pub enum TopologyError {
     #[error("{} no carbons for the calculation of united-atom order parameters were specified", "error:".red().bold())]
     NoUACarbons,
 
+    #[error("{} clustering leaflet classification has been requested but only '{}' headgroup atom has been provided; need at least '{}' atoms",
+    "error:".red().bold(), .0.to_string().yellow(), "2".yellow())]
+    NotEnoughAtomsToCluster(usize),
+
     #[error("{}", .0)]
     OrderMapError(OrderMapConfigError),
 
