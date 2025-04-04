@@ -30,12 +30,12 @@ const PRECISE_SIGMA: f32 = 1.0;
 /// Distance cut-off used for the sloppy algorithm (in nm).
 const DISTANCE_CUTOFF: f32 = 6.0;
 
-/// Maximal number of times the sloppy method failed in a row for it to be still used.
-const MAX_SLOPPY_FAILS: u8 = 2;
+/// Maximal number of times the sloppy method can fail in a row before we switch to the precise method.
+const MAX_SLOPPY_FAILS: u8 = 3;
 
 /// Precise assignment will always be performed below this number of headgroups.
 const PRECISE_LOWER_LIMIT: usize = 500;
-/// Precise assignment will never be performed above this number of headgroups.
+/// Precise assignment will never be performed above this number of headgroups (unless the sloppy method fails 3 times).
 const PRECISE_UPPER_LIMIT: usize = 5000;
 
 /// Relative number of lipids molecules that must remain in the same leaflet
@@ -89,6 +89,69 @@ impl SystemClusterClassification {
     }
 
     /// Assign lipid headgroups into individual leaflets using spectral clustering.
+    /// 
+    /// ## Algorithmic details
+    /// Spectral clustering works by creating a graph structure from the provided headgroup
+    /// atoms (atoms are nodes) and assigning weights to the individual edges based on 
+    /// the distance between the atoms (between 0 and 1, inclusive). 
+    /// The closer the atoms are to each other, the higher the weight of the edge connecting them. 
+    /// 
+    /// Once this 'similarity matrix' is constructed, we calculate a normalized Laplacian from it
+    /// and then perform eigendecomposition of the Laplacian. We use the two smallest eigenvectors
+    /// with non-zero eigenvalues and perform k-means clustering on them.
+    /// 
+    /// From the k-means clustering, we obtain the assignments of individual headgroup atoms
+    /// to clusters.
+    /// 
+    /// Ideally, the 'similarity matrix' should be constructed by calculating the distances
+    /// between all pairs of atoms, and a complete eigendecomposition should be performed for the
+    /// Laplacian. We call this method the 'precise' method.
+    /// 
+    /// The 'precise' method is however VERY computationally expensive for large systems
+    /// (it scales as `O(n^3)`, where `n` is the number of particles).
+    /// 
+    /// It is in many cases sufficient to only calculate the distances for the 'similarity matrix' 
+    /// between nearby atoms (using CellGrid) and then only calculate several smallest eigenvectors
+    /// using the Lanczos method. We call this method the 'sloppy' method. 
+    /// The 'sloppy' method has some problems:
+    /// - It is heuristic and may fail even for simple geometries depending on the random seed used.
+    /// - It will very likely fail for more complex geometries. Fortunately, the failure is typically
+    ///   catastrophic, as in it is very easy to recognize when it happens.
+    /// - For small systems, the Lanczos method performed at sufficient precision can be
+    ///   slower than full eigendecomposition.
+    /// 
+    /// This function attempts to intelligently select the appropriate method to balance
+    /// computational expense and accuracy. It also attempts to validate that the
+    /// assignment did not catastrophically fail.
+    /// 
+    /// For the first analyzed frame, we aim to perform 'precise' clustering since we 
+    /// need robust reference clusters. Only when clustering more than [`PRECISE_UPPER_LIMIT`]
+    /// atoms (lipid molecules) do we perform 'sloppy' clustering. To validate it (remember: 'sloppy' clustering is heuristic), 
+    /// we perform it up to three times until reaching two identical results in two independent runs.
+    /// If all three runs provide different results, we return an error. 
+    /// When performing the 'precise' clustering, we assume that it is correct. If this assumption proves to be
+    /// wrong, we will most likely get to know in the following frame.
+    /// 
+    /// For all other analyzed frames, we try to perform 'sloppy' clustering unless the system is very small
+    /// (fewer than [`PRECISE_LOWER_LIMIT`] lipid molecules), in which case it will actually be faster to
+    /// perform 'precise' clustering.
+    /// For most systems, we perform up to three 'sloppy' clustering runs until we reach a 'match' with
+    /// clusters identified in the previous trajectory frame analyzed by the same thread
+    /// (or in the first, reference frame, if this is the first frame analyzed by this thread).
+    /// To see what constitutes a 'match' between clusters, see [`SystemClusterClassification::classify_clusters`].
+    /// Simply put, clusters 'match' if they do not differ too much from each other.
+    /// This is heuristic again and may fail if the frames are not sufficiently correlated, but this should be extremely rare.
+    /// 
+    /// In case none of the three 'sloppy' clustering runs returns a 'match', we switch to 'precise' clustering,
+    /// unless the system is too large (larger than [`PRECISE_UPPER_LIMIT`], in which case we return an error).
+    /// We only perform one 'precise' clustering and try to match the clusters again. If this fails, we return an error.
+    /// 
+    /// If 'sloppy' clustering fails in [`MAX_SLOPPY_FAILS`] consecutive analyzed frames, we switch to precise clustering
+    /// permanently.
+    /// 
+    /// When performing 'precise' clustering (small systems or if 'sloppy' clustering fails too much),
+    /// we always perform only one 'precise' run since it is not heuristic. We attempt to match the results
+    /// to clusters from the previous frame, and if this fails, we immediately return an error.
     pub(super) fn cluster<'a>(
         &mut self,
         system: &'a System,
@@ -102,8 +165,11 @@ impl SystemClusterClassification {
             } else {
                 self.precise_cluster_frame_one(system, pbc)?;
             }
+
+            // print information about cluster classification
+            self.clusters.as_ref().expect(PANIC_MESSAGE).log_info();          
         } else {
-            if self.converter.len() > PRECISE_LOWER_LIMIT && self.sloppy_fails <= MAX_SLOPPY_FAILS {
+            if self.converter.len() > PRECISE_LOWER_LIMIT && self.sloppy_fails < MAX_SLOPPY_FAILS {
                 // system is large and sloppy method did not fail often enough
                 let matrix =
                     self.create_similarity_matrix(system, pbc, DISTANCE_CUTOFF, SLOPPY_SIGMA)?;
@@ -123,6 +189,13 @@ impl SystemClusterClassification {
 
                 // still no luck with assignment?, increase the sloppy fails counter and use the precise method
                 self.sloppy_fails += 1;
+
+                // do not perform precise clustering if the system is very large
+                if self.converter.len() > PRECISE_UPPER_LIMIT {
+                    return Err(AnalysisError::ClusterError(
+                        ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8))
+                    );
+                }
 
                 let matrix =
                     self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
@@ -276,8 +349,8 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
         let embedding =
             Self::calc_and_embed_eigenvectors_lanczos(&laplacian, n, LANCZOS_ITERATIONS.min(n));
         let assignments = Self::k_means(&embedding, N_CLUSTERS);
-        let (c1, c2, _, min_index_cluster) = self.process_assignments(assignments);
-        self.classify_clusters(c1, c2, min_index_cluster, frame_index)
+        let (c1, c2, min_index, min_index_cluster) = self.process_assignments(assignments);
+        self.classify_clusters(c1, c2, min_index, min_index_cluster, frame_index)
     }
 
     /// Perform one precise clustering without checking the validity of the clusters.
@@ -289,8 +362,8 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
     ) -> Option<Clusters> {
         let embedding = Self::calc_and_embed_eigenvectors_full(laplacian, n);
         let assignments = Self::k_means(&embedding, N_CLUSTERS);
-        let (c1, c2, _, min_index_cluster) = self.process_assignments(assignments);
-        self.classify_clusters(c1, c2, min_index_cluster, frame_index)
+        let (c1, c2, min_index, min_index_cluster) = self.process_assignments(assignments);
+        self.classify_clusters(c1, c2, min_index, min_index_cluster, frame_index)
     }
 
     /// Create a dense or sparse similarity matrix depending on cut-off.
@@ -462,6 +535,7 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
         &self,
         cluster1: HashSet<usize>,
         cluster2: HashSet<usize>,
+        min_index: usize,
         min_index_cluster: i8,
         frame_index: usize,
     ) -> Option<Clusters> {
@@ -470,6 +544,7 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
             return Some(Clusters::classify_ab_initio(
                 cluster1,
                 cluster2,
+                min_index,
                 min_index_cluster,
             ));
         }
@@ -480,7 +555,7 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
             None => &self.get_from_shared(),
         };
 
-        Clusters::classify_by_match(previous_clusters, cluster1, cluster2)
+        Clusters::classify_by_match(previous_clusters, cluster1, cluster2, min_index)
     }
 
     /// Create normalized Laplacian for the similarity matrix.
@@ -619,6 +694,7 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
 pub(super) struct Clusters {
     pub(super) upper: HashSet<usize>,
     pub(super) lower: HashSet<usize>,
+    min_index: usize,
 }
 
 impl Clusters {
@@ -627,6 +703,7 @@ impl Clusters {
     fn classify_ab_initio(
         cluster1: HashSet<usize>,
         cluster2: HashSet<usize>,
+        min_index: usize,
         min_index_cluster: i8,
     ) -> Self {
         return match cluster1.len().cmp(&cluster2.len()) {
@@ -635,12 +712,14 @@ impl Clusters {
                 Clusters {
                     upper: cluster2,
                     lower: cluster1,
+                    min_index,
                 }
             }
             Ordering::Greater => {
                 Clusters {
                     upper: cluster1,
                     lower: cluster2,
+                    min_index,
                 }
             }
             Ordering::Equal => {
@@ -649,11 +728,13 @@ impl Clusters {
                     Clusters {
                         upper: cluster1,
                         lower: cluster2,
+                        min_index,
                     }
                 } else {
                     Clusters {
                         upper: cluster2,
                         lower: cluster1,
+                        min_index,
                     }
                 }
             }
@@ -666,6 +747,7 @@ impl Clusters {
         reference: &Clusters,
         cluster1: HashSet<usize>,
         cluster2: HashSet<usize>,
+        min_index: usize,
     ) -> Option<Self> {
         let overlap_cluster1_upper =
             cluster1.intersection(&reference.upper).count() as f32 / cluster1.len() as f32;
@@ -682,12 +764,23 @@ impl Clusters {
             Some(Clusters {
                 upper: cluster2,
                 lower: cluster1,
+                min_index,
             })
         } else {
             Some(Clusters {
                 upper: cluster1,
                 lower: cluster2,
+                min_index,
             })
+        }
+    }
+
+    /// Log information about which cluster was assigned as the `upper` leaflet and which as the `lower` leaflet.
+    fn log_info(&self) {
+        if self.upper.len() > self.lower.len() {
+            colog_info!("Clustering leaflet classification: classifying the more populated leaflet as '{}'.", "upper");
+        } else {
+            colog_info!("Clustering leaflet classification: classifying the leaflet containing lipid with reference atom index '{}' as '{}'.", self.min_index, "upper");
         }
     }
 }
