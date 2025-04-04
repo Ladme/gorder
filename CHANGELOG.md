@@ -1,3 +1,6 @@
+## Version 0.7.0
+- **Leaflet classification for curved membranes:** `gorder` can now use spectral clustering to classify lipids into leaflets for any membrane geometry, including buckled membranes and vesicles. See the [manual](https://ladme.github.io/gorder-manual/leaflets.html#clustering-method-for-leaflet-classification) for more information.
+
 ## Version 0.6.0
 - **United-atom order parameters:** `gorder` is now able to calculate order parameters in united-atom systems. See the [manual](https://ladme.github.io/gorder-manual/uaorder_basics.html) for more information.
 - **Python API:** `gorder` is now available as a Python package. See the [manual](https://ladme.github.io/gorder-manual/python_api.html) for more information.
