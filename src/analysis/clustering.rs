@@ -789,7 +789,96 @@ impl Clusters {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests_clusters {
+    use super::*;
+
+    #[test]
+    fn test_ab_initio_unequal_populations() {
+        let cluster1 = HashSet::from([13, 18, 24, 27, 29, 33, 156, 17, 14]);
+        let cluster2 = HashSet::from([1, 4, 8, 146, 158, 123, 1453, 13]);
+
+        let min_index = 1;
+        let min_index_cluster = 1;
+
+        let clusters = Clusters::classify_ab_initio(cluster1.clone(), cluster2.clone(), min_index, min_index_cluster);
+
+        assert_eq!(clusters.upper, cluster1);
+        assert_eq!(clusters.lower, cluster2);
+        assert_eq!(clusters.min_index, min_index);
+    }
+
+    #[test]
+    fn test_ab_initio_equal_populations() {
+        let cluster1 = HashSet::from([13, 18, 24, 27, 29, 33, 156, 17, 14]);
+        let cluster2 = HashSet::from([1, 4, 8, 146, 158, 123, 1453, 13, 19]);
+
+        let min_index = 1;
+        let min_index_cluster = 1;
+
+        let clusters = Clusters::classify_ab_initio(cluster1.clone(), cluster2.clone(), min_index, min_index_cluster);
+
+        assert_eq!(clusters.upper, cluster2);
+        assert_eq!(clusters.lower, cluster1);
+        assert_eq!(clusters.min_index, min_index);
+    }
+
+    #[test]
+    fn test_matching_perfect() {
+        let cluster1 = HashSet::from([13, 18, 24, 27, 29, 33, 156, 17, 14]);
+        let cluster2 = HashSet::from([1, 4, 8, 146, 158, 123, 1453, 13, 19]);
+
+        let min_index = 1;
+        let min_index_cluster = 1;
+
+        let clusters = Clusters::classify_ab_initio(cluster1.clone(), cluster2.clone(), min_index, min_index_cluster);
+
+        let clusters2 = Clusters::classify_by_match(&clusters, cluster1, cluster2, min_index).unwrap();
+
+        assert_eq!(clusters, clusters2);
+    }
+
+    #[test]
+    fn test_matching_small_mismatch() {
+        let cluster1 = HashSet::from([13, 18, 24, 27, 29, 33, 156, 17, 14]);
+        let cluster2 = HashSet::from([1, 4, 8, 146, 158, 123, 1453, 13, 19]);
+
+        let min_index = 1;
+        let min_index_cluster = 1;
+
+        let clusters = Clusters::classify_ab_initio(cluster1, cluster2, min_index, min_index_cluster);
+
+        let cluster1 = HashSet::from([13, 18, 24, 27, 29, 33, 156, 17, 14, 1]);
+        let cluster2 = HashSet::from([4, 8, 146, 158, 123, 1453, 13, 19]);
+
+        let clusters2 = Clusters::classify_by_match(&clusters, cluster1.clone(), cluster2.clone(), min_index).unwrap();
+
+        assert_eq!(clusters2.upper, cluster2);
+        assert_eq!(clusters2.lower, cluster1);
+
+        let clusters3 = Clusters::classify_by_match(&clusters, cluster2.clone(), cluster1.clone(), min_index).unwrap();
+
+        assert_eq!(clusters3, clusters2);
+    }
+
+    #[test]
+    fn test_matching_large_mismatch() {
+        let cluster1 = HashSet::from([13, 18, 24, 27, 29, 33, 156, 17, 14]);
+        let cluster2 = HashSet::from([1, 4, 8, 146, 158, 123, 1453, 13, 19]);
+
+        let min_index = 1;
+        let min_index_cluster = 1;
+
+        let clusters = Clusters::classify_ab_initio(cluster1, cluster2, min_index, min_index_cluster);
+
+        let cluster1 = HashSet::from([13, 18, 24, 27, 17, 14, 1, 13, 19]);
+        let cluster2 = HashSet::from([4, 8, 146, 158, 123, 29, 33, 156, 1453]);
+
+        assert!(Clusters::classify_by_match(&clusters, cluster1, cluster2, min_index).is_none());
+    }
+}
+
+#[cfg(test)]
+mod tests_classify {
     use crate::analysis::pbc::{NoPBC, PBC3D};
 
     use super::*;
