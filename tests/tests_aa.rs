@@ -4136,6 +4136,36 @@ fn test_aa_order_leaflets_no_pbc_multiple_threads() {
 }
 
 #[test]
+fn test_aa_order_leaflets_clustering_no_pbc() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::clustering("name P"))
+        .handle_pbc(false)
+        .n_threads(4)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_leaflets_nopbc.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_aa_order_error_leaflets_no_pbc_multiple_threads() {
     for n_threads in [1, 3, 8, 16] {
         for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {

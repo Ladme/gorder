@@ -1,0 +1,155 @@
+# Order parameters calculated with 'gorder v0.7.0-dev.1' using a structure file 'tests/files/cg.tpr' and a trajectory file 'tests/files/cg.xtc'.
+average order:
+  total: 0.2971
+  upper: 0.2971
+  lower: .nan
+POPC:
+  average order:
+    total: 0.2965
+    upper: 0.2965
+    lower: .nan
+  order parameters:
+    POPC NC3 (0) - POPC PO4 (1):
+      total: -0.137
+      upper: -0.137
+      lower: .nan
+    POPC PO4 (1) - POPC GL1 (2):
+      total: 0.5891
+      upper: 0.5891
+      lower: .nan
+    POPC GL1 (2) - POPC GL2 (3):
+      total: -0.1798
+      upper: -0.1798
+      lower: .nan
+    POPC GL1 (2) - POPC C1A (4):
+      total: 0.3798
+      upper: 0.3798
+      lower: .nan
+    POPC GL2 (3) - POPC C1B (8):
+      total: 0.5012
+      upper: 0.5012
+      lower: .nan
+    POPC C1A (4) - POPC D2A (5):
+      total: 0.3647
+      upper: 0.3647
+      lower: .nan
+    POPC D2A (5) - POPC C3A (6):
+      total: 0.2872
+      upper: 0.2872
+      lower: .nan
+    POPC C3A (6) - POPC C4A (7):
+      total: 0.2351
+      upper: 0.2351
+      lower: .nan
+    POPC C1B (8) - POPC C2B (9):
+      total: 0.5202
+      upper: 0.5202
+      lower: .nan
+    POPC C2B (9) - POPC C3B (10):
+      total: 0.4291
+      upper: 0.4291
+      lower: .nan
+    POPC C3B (10) - POPC C4B (11):
+      total: 0.2721
+      upper: 0.2721
+      lower: .nan
+POPE:
+  average order:
+    total: 0.2965
+    upper: 0.2965
+    lower: .nan
+  order parameters:
+    POPE NH3 (0) - POPE PO4 (1):
+      total: -0.1338
+      upper: -0.1338
+      lower: .nan
+    POPE PO4 (1) - POPE GL1 (2):
+      total: 0.6101
+      upper: 0.6101
+      lower: .nan
+    POPE GL1 (2) - POPE GL2 (3):
+      total: -0.1909
+      upper: -0.1909
+      lower: .nan
+    POPE GL1 (2) - POPE C1A (4):
+      total: 0.4079
+      upper: 0.4079
+      lower: .nan
+    POPE GL2 (3) - POPE C1B (8):
+      total: 0.4892
+      upper: 0.4892
+      lower: .nan
+    POPE C1A (4) - POPE D2A (5):
+      total: 0.3713
+      upper: 0.3713
+      lower: .nan
+    POPE D2A (5) - POPE C3A (6):
+      total: 0.3014
+      upper: 0.3014
+      lower: .nan
+    POPE C3A (6) - POPE C4A (7):
+      total: 0.2434
+      upper: 0.2434
+      lower: .nan
+    POPE C1B (8) - POPE C2B (9):
+      total: 0.4896
+      upper: 0.4896
+      lower: .nan
+    POPE C2B (9) - POPE C3B (10):
+      total: 0.4093
+      upper: 0.4093
+      lower: .nan
+    POPE C3B (10) - POPE C4B (11):
+      total: 0.2635
+      upper: 0.2635
+      lower: .nan
+POPG:
+  average order:
+    total: 0.3085
+    upper: 0.3085
+    lower: .nan
+  order parameters:
+    POPG GL0 (0) - POPG PO4 (1):
+      total: -0.0237
+      upper: -0.0237
+      lower: .nan
+    POPG PO4 (1) - POPG GL1 (2):
+      total: 0.5942
+      upper: 0.5942
+      lower: .nan
+    POPG GL1 (2) - POPG GL2 (3):
+      total: -0.2234
+      upper: -0.2234
+      lower: .nan
+    POPG GL1 (2) - POPG C1A (4):
+      total: 0.4404
+      upper: 0.4404
+      lower: .nan
+    POPG GL2 (3) - POPG C1B (8):
+      total: 0.4723
+      upper: 0.4723
+      lower: .nan
+    POPG C1A (4) - POPG D2A (5):
+      total: 0.4129
+      upper: 0.4129
+      lower: .nan
+    POPG D2A (5) - POPG C3A (6):
+      total: 0.2994
+      upper: 0.2994
+      lower: .nan
+    POPG C3A (6) - POPG C4A (7):
+      total: 0.2488
+      upper: 0.2488
+      lower: .nan
+    POPG C1B (8) - POPG C2B (9):
+      total: 0.4884
+      upper: 0.4884
+      lower: .nan
+    POPG C2B (9) - POPG C3B (10):
+      total: 0.4183
+      upper: 0.4183
+      lower: .nan
+    POPG C3B (10) - POPG C4B (11):
+      total: 0.2663
+      upper: 0.2663
+      lower: .nan

@@ -242,6 +242,38 @@ fn test_cg_order_leaflets_yaml() {
 }
 
 #[test]
+fn test_cg_order_leaflets_yaml_only_upper() {
+    for method in [
+        LeafletClassification::global("@membrane", "name PO4"),
+        LeafletClassification::local("@membrane", "name PO4", 2.5),
+        LeafletClassification::individual("name PO4", "name C4A C4B"),
+        LeafletClassification::clustering("name PO4"),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("resid 1 to 254"))
+            .leaflets(method.with_frequency(Frequency::once()))
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets_only_upper.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
 fn test_cg_order_leaflets_yaml_alt_traj() {
     for trajectory in [
         "tests/files/cg.trr",
@@ -3735,6 +3767,35 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_centered_nopbc_yaml() {
     assert!(diff_files_ignore_first(
         path_to_output,
         "tests/files/cg_order_vesicle_centered.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normal_centered_clustering_nopbc_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle_centered.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .leaflets(LeafletClassification::clustering("name PO4").with_frequency(Frequency::once()))
+        .handle_pbc(false)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle_leaflets_centered.yaml",
         1
     ));
 }
