@@ -689,10 +689,14 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
     }
 }
 
+/// Leaflets assigned using spectral clustering.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Clusters {
+    /// Upper leaflet.
     pub(super) upper: HashSet<usize>,
+    /// Lower leaflet.
     pub(super) lower: HashSet<usize>,
+    /// Smallest index of the headgroup-representing atoms.
     min_index: usize,
 }
 
