@@ -145,6 +145,7 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
     leaflets.add_class::<leaflets::GlobalClassification>()?;
     leaflets.add_class::<leaflets::LocalClassification>()?;
     leaflets.add_class::<leaflets::IndividualClassification>()?;
+    leaflets.add_class::<leaflets::ClusteringClassification>()?;
     leaflets.add_class::<leaflets::ManualClassification>()?;
     leaflets.add_class::<leaflets::NdxClassification>()?;
     m.add_submodule(&leaflets)?;

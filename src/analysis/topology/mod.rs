@@ -3,17 +3,20 @@
 
 //! Implementation of a structure describing the topology of the entire system.
 
-use crate::input::{Analysis, EstimateError, OrderMap};
+use crate::input::{Analysis, EstimateError, LeafletClassification, OrderMap};
 use crate::PANIC_MESSAGE;
 
+use super::clustering::SystemClusterClassification;
 use super::geometry::{GeometrySelection, GeometrySelectionType};
-use super::leaflets::MoleculeLeafletClassification;
+use super::leaflets::{
+    MoleculeLeafletClassification, SystemLeafletClassification, SystemLeafletClassificationType,
+};
 use super::normal::MoleculeMembraneNormal;
 use super::pbc::PBCHandler;
 use crate::errors::{AnalysisError, ErrorEstimationError, TopologyError};
 use crate::presentation::converter::{MolConvert, ResultsConverter};
 use getset::{CopyGetters, Getters, MutGetters};
-use groan_rs::prelude::Atom;
+use groan_rs::prelude::{Atom, Vector3D};
 use groan_rs::system::{ParallelTrajData, System};
 use hashbrown::HashSet;
 use indexmap::IndexMap;
@@ -51,30 +54,53 @@ pub(crate) struct SystemTopology {
     /// Structure for geometry selection.
     #[getset(get = "pub(super)")]
     geometry: GeometrySelectionType,
-    /// Structure handling PBC treatment.
+    /// Structure for system-level leaflet classification.
+    #[getset(get = "pub(super)", get_mut = "pub(super)")]
+    leaflet_classification: Option<SystemLeafletClassification>,
+    /// Should PBC be handled?
     #[getset(get_copy = "pub(super)")]
     handle_pbc: bool,
 }
 
 impl SystemTopology {
     #[inline(always)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
+        system: &System,
         molecule_types: MoleculeTypes,
         estimate_error: Option<EstimateError>,
         step_size: usize,
         n_threads: usize,
         geometry: GeometrySelectionType,
+        leaflets: Option<&LeafletClassification>,
         handle_pbc: bool,
     ) -> SystemTopology {
+        let leaflet_classification = match leaflets {
+            Some(LeafletClassification::Global(x)) => Some(SystemLeafletClassification::new(
+                SystemLeafletClassificationType::MembraneCenter(Vector3D::new(0.0, 0.0, 0.0)),
+                x.frequency(),
+                step_size,
+            )),
+            Some(LeafletClassification::Clustering(x)) => Some(SystemLeafletClassification::new(
+                SystemLeafletClassificationType::Clustering(SystemClusterClassification::new(
+                    system,
+                )),
+                x.frequency(),
+                step_size,
+            )),
+            _ => None,
+        };
+
         SystemTopology {
             thread_id: 0,
-            frame: step_size, // will be modified in initialization
+            frame: step_size, // will be modified during initialization
             n_threads,
             step_size,
             total_frames: 0,
             molecule_types,
             estimate_error,
             geometry,
+            leaflet_classification,
             handle_pbc,
         }
     }
@@ -209,6 +235,7 @@ impl Add<SystemTopology> for SystemTopology {
             molecule_types: self.molecule_types + rhs.molecule_types,
             estimate_error: self.estimate_error,
             geometry: self.geometry,
+            leaflet_classification: self.leaflet_classification,
             handle_pbc: self.handle_pbc,
         }
     }
@@ -330,6 +357,7 @@ mod tests {
     // this is important for shared data to be properly read in leaflet assignment
     #[test]
     fn test_simulated_iteration() {
+        let system = System::new("System", vec![], None);
         for n_frames in 0..301 {
             for step in [1, 2, 3, 4, 5, 7, 10, 15, 20, 100] {
                 let expected_visited_frames = (0..n_frames).step_by(step).collect::<Vec<usize>>();
@@ -340,11 +368,13 @@ mod tests {
                     let mut threads = (0..n_threads)
                         .map(|i| {
                             let mut top = SystemTopology::new(
+                                &system,
                                 MoleculeTypes::BondBased(vec![]),
                                 None,
                                 step,
                                 n_threads,
                                 GeometrySelectionType::default(),
+                                None,
                                 true,
                             );
                             top.initialize(i);

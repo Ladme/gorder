@@ -1,0 +1,89 @@
+# Order parameters calculated with 'gorder v0.7.0-dev.1' using a structure file 'cg_buckled.tpr' and a trajectory file 'cg_buckled.xtc'.
+average order:
+  total: 0.2834
+  upper: 0.2833
+  lower: 0.2835
+POPC:
+  average order:
+    total: 0.2717
+    upper: 0.2724
+    lower: 0.271
+  order parameters:
+    POPC NC3 (0) - POPC PO4 (1):
+      total: -0.1219
+      upper: -0.122
+      lower: -0.1218
+    POPC PO4 (1) - POPC GL1 (2):
+      total: 0.6356
+      upper: 0.6364
+      lower: 0.6348
+    POPC GL1 (2) - POPC GL2 (3):
+      total: -0.2264
+      upper: -0.2239
+      lower: -0.2289
+    POPC GL1 (2) - POPC C1A (4):
+      total: 0.5256
+      upper: 0.5252
+      lower: 0.5261
+    POPC GL2 (3) - POPC C1B (8):
+      total: 0.4585
+      upper: 0.458
+      lower: 0.4591
+    POPC C1A (4) - POPC D2A (5):
+      total: 0.4092
+      upper: 0.4114
+      lower: 0.4071
+    POPC D2A (5) - POPC C3A (6):
+      total: 0.2018
+      upper: 0.2028
+      lower: 0.2008
+    POPC C3A (6) - POPC C4A (7):
+      total: 0.1537
+      upper: 0.1549
+      lower: 0.1526
+    POPC C1B (8) - POPC C2B (9):
+      total: 0.4328
+      upper: 0.4316
+      lower: 0.434
+    POPC C2B (9) - POPC C3B (10):
+      total: 0.3295
+      upper: 0.3298
+      lower: 0.3292
+    POPC C3B (10) - POPC C4B (11):
+      total: 0.1898
+      upper: 0.192
+      lower: 0.1877
+OPC:
+  average order:
+    total: 0.3387
+    upper: 0.335
+    lower: 0.3423
+  order parameters:
+    OPC NC3 (0) - OPC PO4 (1):
+      total: -0.0081
+      upper: -0.0107
+      lower: -0.0055
+    OPC PO4 (1) - OPC GL1 (2):
+      total: 0.5135
+      upper: 0.5118
+      lower: 0.5152
+    OPC GL1 (2) - OPC GL2 (3):
+      total: 0.4933
+      upper: 0.4879
+      lower: 0.4987
+    OPC GL2 (3) - OPC C1B (4):
+      total: 0.5635
+      upper: 0.5631
+      lower: 0.5638
+    OPC C1B (4) - OPC D2B (5):
+      total: 0.4187
+      upper: 0.4147
+      lower: 0.4226
+    OPC D2B (5) - OPC C3B (6):
+      total: 0.217
+      upper: 0.2094
+      lower: 0.2246
+    OPC C3B (6) - OPC C4B (7):
+      total: 0.1728
+      upper: 0.1688
+      lower: 0.1768

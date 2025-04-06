@@ -6,7 +6,7 @@
 use std::path::Path;
 
 use colored::{ColoredString, Colorize};
-use groan_rs::errors::{ParseNdxError, SelectError};
+use groan_rs::errors::{AtomError, ParseNdxError, SelectError};
 use thiserror::Error;
 
 use crate::input::Frequency;
@@ -103,6 +103,10 @@ pub enum TopologyError {
     #[error("{} no carbons for the calculation of united-atom order parameters were specified", "error:".red().bold())]
     NoUACarbons,
 
+    #[error("{} clustering leaflet classification has been requested but only '{}' headgroup atom has been provided; need at least '{}' atoms",
+    "error:".red().bold(), .0.to_string().yellow(), "2".yellow())]
+    NotEnoughAtomsToCluster(usize),
+
     #[error("{}", .0)]
     OrderMapError(OrderMapConfigError),
 
@@ -152,6 +156,14 @@ pub enum AnalysisError {
     /// Used when there is an error in manual membrane normal assignment.
     #[error("{}", .0)]
     ManualNormalError(ManualNormalError),
+
+    /// Used when an error while working with an atom occurs.
+    #[error("{}", .0)]
+    AtomError(AtomError),
+
+    /// Used when there is an error in cluster-based leaflet assignment.
+    #[error("{}", .0)]
+    ClusterError(ClusterError),
 }
 
 /// Errors that can occur when calculating dynamic membrane normals.
@@ -492,4 +504,20 @@ pub enum ManualLeafletClassificationError {
     #[error("{} molecule type '{}' specified in the leaflet assignment structure not found in the system (detected molecule types are: '{}')", 
     "error:".red().bold(), .0.yellow(), .1.join(" ").yellow())]
     UnknownMoleculeType(String, Vec<String>),
+}
+
+/// Errors that can occur when assigning lipids into leaflets using a clustering method.
+#[derive(Error, Debug)]
+pub enum ClusterError {
+    #[error("{} clustering leaflet classification failed
+{} when comparing current frame to previous frame, the previously identified leaflets show >{} lipid composition change
+{} this may be caused by either of several issues:
+  - leaflets identified incorrectly => consider manual leaflet assignment,
+  - too rapid flip-flop => increase classification frequency or reduce the number of threads used,
+  - frames too far apart => increase classification frequency or reduce the number of threads used",
+"error:".red().bold(), "details:".yellow().bold(), format!("{}%", .0).yellow(), "hint:".blue().bold())]
+    CouldNotMatchLeaflets(u8),
+
+    #[error("{} could not obtain consistent leaflet assignment using the clustering method for the first frame; assign the lipids to leaflets manually", "error:".red().bold())]
+    SloppyFirstFrameFail,
 }

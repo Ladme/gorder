@@ -35,12 +35,13 @@ impl<'source> FromPyObject<'source> for LeafletClassification {
             GlobalClassification,
             LocalClassification,
             IndividualClassification,
+            ClusteringClassification,
             ManualClassification,
             NdxClassification
         );
 
         Err(ConfigError::new_err(
-            "expected an instance of GlobalClassification, LocalClassification, IndividualClassification, ManualClassification, or NdxClassification",
+            "expected an instance of GlobalClassification, LocalClassification, IndividualClassification, ClusteringClassification, ManualClassification, or NdxClassification",
         ))
     }
 }
@@ -201,6 +202,33 @@ impl IndividualClassification {
             )?,
             membrane_normal,
         )?;
+
+        Ok(Self(classification))
+    }
+}
+
+/// Assign lipids into leaflets using spectral clustering.
+///
+/// Reliable even for curved membranes but very slow, especially for large systems.
+///
+/// Attributes
+/// ----------
+/// heads : str
+///     Selection query specifying reference atoms representing lipid headgroups
+///     (typically phosphorus atoms or phosphate beads).
+///     There must be exactly one such atom/bead per lipid molecule.
+/// frequency : Optional[Frequency]
+///     Frequency of classification. Defaults to every frame.
+#[pyclass]
+#[derive(Clone)]
+pub struct ClusteringClassification(RsLeafletClassification);
+
+#[pymethods]
+impl ClusteringClassification {
+    #[new]
+    #[pyo3(signature = (heads, frequency = None))]
+    pub fn new(heads: &str, frequency: Option<Frequency>) -> PyResult<Self> {
+        let classification = add_freq(RsLeafletClassification::clustering(heads), frequency)?;
 
         Ok(Self(classification))
     }

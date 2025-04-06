@@ -29,6 +29,7 @@ pub enum LeafletClassification {
     #[serde(alias = "Inline")]
     FromMap(FromMapParams),
     FromNdx(FromNdxParams),
+    Clustering(ClusteringParams),
 }
 
 impl fmt::Display for LeafletClassification {
@@ -40,6 +41,7 @@ impl fmt::Display for LeafletClassification {
             LeafletClassification::FromFile(_)
             | LeafletClassification::FromMap(_)
             | LeafletClassification::FromNdx(_) => write!(f, "manual"),
+            LeafletClassification::Clustering(_) => write!(f, "clustering"),
         }
     }
 }
@@ -151,6 +153,20 @@ impl LeafletClassification {
         })
     }
 
+    /// Get leaflet assignment using spectral clustering.
+    ///
+    /// This is the only automatic method applicable to
+    /// curved membranes such as vesicles, buckled membranes, or tubes.
+    ///
+    /// ## Parameters
+    /// - `heads`: GSL query specifying the atoms to use as head identifiers of molecules
+    pub fn clustering(heads: &str) -> LeafletClassification {
+        Self::Clustering(ClusteringParams {
+            heads: heads.to_owned(),
+            frequency: Frequency::default(),
+        })
+    }
+
     /// Assign lipids to leaflets every N analyzed trajectory frames or only once (using the first trajectory frame).
     /// (Note that this is 'analyzed trajectory frames' - if you skip some frames using `step`,
     /// they will not be counted here.)
@@ -163,6 +179,7 @@ impl LeafletClassification {
             LeafletClassification::FromFile(x) => x.frequency = frequency,
             LeafletClassification::FromMap(x) => x.frequency = frequency,
             LeafletClassification::FromNdx(x) => x.frequency = frequency,
+            LeafletClassification::Clustering(x) => x.frequency = frequency,
         }
 
         self
@@ -183,6 +200,8 @@ impl LeafletClassification {
             LeafletClassification::FromFile(_)
             | LeafletClassification::FromMap(_)
             | LeafletClassification::FromNdx(_) => (),
+            // ignore for clustering
+            LeafletClassification::Clustering(_) => (),
         }
 
         self
@@ -198,6 +217,7 @@ impl LeafletClassification {
             LeafletClassification::FromFile(x) => x.frequency(),
             LeafletClassification::FromMap(x) => x.frequency(),
             LeafletClassification::FromNdx(x) => x.frequency(),
+            LeafletClassification::Clustering(x) => x.frequency(),
         }
     }
 
@@ -212,6 +232,7 @@ impl LeafletClassification {
             LeafletClassification::FromFile(_)
             | LeafletClassification::FromMap(_)
             | LeafletClassification::FromNdx(_) => None,
+            LeafletClassification::Clustering(_) => None,
         }
     }
 
@@ -512,6 +533,20 @@ where
     }
 
     deserializer.deserialize_any(StringOrVecVisitor)
+}
+
+/// Using the spectral clustering. The only automatic method that can be used for membranes with curved geometry.
+#[derive(Debug, Clone, Getters, CopyGetters, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClusteringParams {
+    /// Reference atoms identifying lipid headgroups (usually a phosphorus atom or a phosphate bead).
+    /// There must only be one such atom/bead per lipid molecule.
+    #[getset(get = "pub")]
+    heads: String,
+    /// Frequency of leaflet assignment.
+    #[serde(default)]
+    #[getset(get_copy = "pub(crate)")]
+    frequency: Frequency,
 }
 
 #[cfg(test)]

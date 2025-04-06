@@ -86,11 +86,13 @@ pub(super) fn analyze_united(
     }
 
     let mut data = SystemTopology::new(
+        &system,
         molecules,
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
         geom,
+        analysis.leaflets().as_ref(),
         analysis.handle_pbc(),
     );
 

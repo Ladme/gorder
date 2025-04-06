@@ -329,6 +329,7 @@ fn test_aa_order_leaflets_yaml() {
         LeafletClassification::global("@membrane", "name P"),
         LeafletClassification::local("@membrane", "name P", 2.5),
         LeafletClassification::individual("name P", "name C218 C316"),
+        LeafletClassification::clustering("name P"),
     ] {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
@@ -598,6 +599,45 @@ fn test_aa_order_leaflets_yaml_multiple_threads_various_frequencies() {
 }
 
 #[test]
+fn test_aa_order_leaflets_yaml_clustering_multiple_threads_various_frequencies() {
+    for n_threads in [1, 2, 8, 64] {
+        for freq in [
+            Frequency::every(1).unwrap(),
+            Frequency::every(4).unwrap(),
+            Frequency::every(20).unwrap(),
+            Frequency::every(100).unwrap(),
+            Frequency::once(),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(LeafletClassification::clustering("name P").with_frequency(freq))
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/aa_order_leaflets.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
 fn test_aa_order_leaflets_yaml_different_membrane_normals() {
     for (input_traj, normal) in [
         "tests/files/pcpepg_switched_xy.xtc",
@@ -611,6 +651,7 @@ fn test_aa_order_leaflets_yaml_different_membrane_normals() {
             LeafletClassification::global("@membrane", "name P"),
             LeafletClassification::local("@membrane", "name P", 2.5),
             LeafletClassification::individual("name P", "name C218 C316"),
+            LeafletClassification::clustering("name P"),
         ] {
             let output = NamedTempFile::new().unwrap();
             let path_to_output = output.path().to_str().unwrap();
@@ -4095,6 +4136,36 @@ fn test_aa_order_leaflets_no_pbc_multiple_threads() {
 }
 
 #[test]
+fn test_aa_order_leaflets_clustering_no_pbc() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg_whole_nobox.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::clustering("name P"))
+        .handle_pbc(false)
+        .n_threads(4)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_leaflets_nopbc.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_aa_order_error_leaflets_no_pbc_multiple_threads() {
     for n_threads in [1, 3, 8, 16] {
         for structure in ["tests/files/pcpepg.tpr", "tests/files/pcpepg_nobox.pdb"] {
@@ -4602,6 +4673,36 @@ fn test_aa_order_buckled_dynamic_membrane_normal_ordermaps_yaml() {
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
     assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+}
+
+#[test]
+fn test_aa_order_buckled_leaflets_clustering_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/aa_buckled.tpr")
+        .trajectory("tests/files/aa_buckled.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .membrane_normal(DynamicNormal::new("name P", 2.0).unwrap())
+        .leaflets(LeafletClassification::clustering("name P"))
+        .n_threads(8)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/aa_order_buckled_leaflets.yaml",
+        1
+    ));
 }
 
 #[test]

@@ -78,11 +78,13 @@ pub(super) fn analyze_coarse_grained(
     }
 
     let mut data = SystemTopology::new(
+        &system,
         molecules,
         analysis.estimate_error().clone(),
         analysis.step(),
         analysis.n_threads(),
         geom,
+        analysis.leaflets().as_ref(),
         analysis.handle_pbc(),
     );
 
@@ -169,13 +171,15 @@ mod tests {
             MoleculesClassifier::classify(&system, &analysis, &PBC3D::from_system(&system))
                 .unwrap();
         (
-            system,
+            system.clone(),
             SystemTopology::new(
+                &system,
                 molecules,
                 None,
                 1,
                 1,
                 GeometrySelectionType::default(),
+                leaflet_classification.as_ref(),
                 true,
             ),
         )

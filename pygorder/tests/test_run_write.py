@@ -198,6 +198,7 @@ def test_leaflets():
         gorder.leaflets.GlobalClassification("@membrane", "name PO4"), 
         gorder.leaflets.LocalClassification("@membrane", "name PO4", radius = 2.5), 
         gorder.leaflets.IndividualClassification("name PO4", "name C4A C4B"),
+        gorder.leaflets.ClusteringClassification("name PO4"),
         gorder.leaflets.ManualClassification("../tests/files/inputs/leaflets_files/cg_every.yaml"),
         gorder.leaflets.ManualClassification(manual_dict),
         gorder.leaflets.NdxClassification(ndx = ["../tests/files/ndx/cg_leaflets.ndx"] * 101, heads = "name PO4", upper_leaflet = "Upper", lower_leaflet = "Lower")
@@ -222,6 +223,28 @@ def test_leaflets():
             assert diff_files_ignore_first(temp_file_path, "../tests/files/cg_order_leaflets.yaml", 1), "Files do not match!"
         finally:
             shutil.rmtree(temp_file_path, ignore_errors=True)
+
+def test_leaflets_clustering_once():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/cg.tpr",
+        trajectory = "../tests/files/cg.xtc",
+        analysis_type = gorder.analysis_types.CGOrder("@membrane"),
+        leaflets = gorder.leaflets.ClusteringClassification("name PO4", frequency = gorder.Frequency.once()),
+        output_yaml = temp_file_path,
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/cg_order_leaflets.yaml", 1), "Files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
+    
 
 def test_ua_leaflets():
     with tempfile.NamedTemporaryFile(delete = False) as temp_file:

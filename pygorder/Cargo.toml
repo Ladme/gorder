@@ -1,6 +1,6 @@
 [package]
 name = "pygorder"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 
 [lib]
@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 gorder_core = { package = "gorder", path = ".." }
 hashbrown = "0.15.2"
 numpy = "0.24.0"
-pyo3 = { version = "0.24", features = ["extension-module"] }
+pyo3 = { version = "0.24.1", features = ["extension-module"] }
 colog = "1.3.0"
 log = "0.4.22"
 ctrlc = "3.4.5"

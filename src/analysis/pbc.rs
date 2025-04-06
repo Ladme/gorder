@@ -6,7 +6,7 @@
 use groan_rs::{
     errors::{AtomError, GroupError},
     prelude::{
-        AtomIterable, AtomIteratorWithBox, CellGrid, CellNeighbors, Cylinder, Dimension, ImmutableAtomIterable, SimBox, Sphere, Vector3D
+        Atom, AtomIterable, AtomIteratorWithBox, CellGrid, CellNeighbors, Cylinder, Dimension, ImmutableAtomIterable, SimBox, Sphere, Vector3D
     },
     system::System,
 };
@@ -74,6 +74,10 @@ pub(crate) trait PBCHandler<'a> {
 
     /// Initialize reading of the new frame.
     fn init_new_frame(&mut self);
+
+    /// Get atoms that are closer to the `reference` than `distance`.
+    /// Returns an iterator over atoms and their distances from reference.
+    fn nearby_atoms(&'a self, system: &'a System, reference: Vector3D, distance: f32) -> impl Iterator<Item = (&'a Atom, f32)>;
 }
 
 /// PBCHandler that ignores all periodic boundary conditions.
@@ -210,6 +214,25 @@ impl<'a> PBCHandler<'a> for NoPBC {
 
     #[inline(always)]
     fn init_new_frame(&mut self) {}
+
+    fn nearby_atoms(&'a self, system: &'a System, reference: Vector3D, distance: f32) -> impl Iterator<Item = (&'a Atom, f32)> {
+        system
+            .group_iter(group_name!("ClusterHeads"))
+            .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | NoPBC::nearby_atoms | Group `ClusterHeads` should exist. {}", PANIC_MESSAGE))
+            .filter_map(move |atom| {
+                let pos2 = atom.get_position();
+                if let Some(pos2) = pos2 {
+                    let dist = reference.distance_naive(pos2, Dimension::XYZ);
+                    if dist < distance {
+                        Some((atom, dist))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+    }
 }
 
 /// PBCHandler that assumes periodic boundary conditions in all three dimensions.
@@ -220,6 +243,8 @@ pub(crate) struct PBC3D<'a> {
     membrane_grid: OnceCell<CellGrid<'a>>,
     /// Cell grid for normal heads atoms.
     heads_grid: OnceCell<CellGrid<'a>>,
+    /// Cell grid for clustering atoms.
+    cluster_grid: OnceCell<CellGrid<'a>>,
 }
 
 impl<'a> PBCHandler<'a> for PBC3D<'a> {
@@ -376,6 +401,25 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
     fn init_new_frame(&mut self) {
         self.membrane_grid = OnceCell::new();
         self.heads_grid = OnceCell::new();
+        self.cluster_grid = OnceCell::new();
+    }
+
+    fn nearby_atoms(&'a self, system: &'a System, reference: Vector3D, distance: f32) -> impl Iterator<Item = (&'a Atom, f32)> {
+        let cell_grid = self.cluster_grid.get_or_init(|| {
+            CellGrid::new(system, group_name!("ClusterHeads"), distance)
+            .unwrap_or_else(|e| 
+                panic!("FATAL GORDER ERROR | PBC3D::nearby_atoms | Could not construct a cell grid `{}`. {}", e, PANIC_MESSAGE)
+            )
+        });
+
+        cell_grid.neighbors_iter(reference.clone(), CellNeighbors::default())
+            .filter_map(move |atom| {
+                match atom.distance_from_point(&reference, Dimension::XYZ, system.get_box().expect(PANIC_MESSAGE)) {
+                    Ok(x) if x < distance => Some((atom, x)),
+                    Ok(_) => None,
+                    Err(_) => None,
+                }
+            })
     }
 }
 
@@ -385,6 +429,7 @@ impl<'a> PBC3D<'a> {
             simbox,
             membrane_grid: OnceCell::new(),
             heads_grid: OnceCell::new(),
+            cluster_grid: OnceCell::new(),
         }
     }
 
@@ -398,6 +443,7 @@ impl<'a> PBC3D<'a> {
             ),
             membrane_grid: OnceCell::new(),
             heads_grid: OnceCell::new(),
+            cluster_grid: OnceCell::new(),
         }
     }
 }

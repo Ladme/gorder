@@ -215,6 +215,7 @@ fn test_cg_order_leaflets_yaml() {
         LeafletClassification::global("@membrane", "name PO4"),
         LeafletClassification::local("@membrane", "name PO4", 2.5),
         LeafletClassification::individual("name PO4", "name C4A C4B"),
+        LeafletClassification::clustering("name PO4"),
     ] {
         let output = NamedTempFile::new().unwrap();
         let path_to_output = output.path().to_str().unwrap();
@@ -235,6 +236,38 @@ fn test_cg_order_leaflets_yaml() {
         assert!(diff_files_ignore_first(
             path_to_output,
             "tests/files/cg_order_leaflets.yaml",
+            1
+        ));
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_yaml_only_upper() {
+    for method in [
+        LeafletClassification::global("@membrane", "name PO4"),
+        LeafletClassification::local("@membrane", "name PO4", 2.5),
+        LeafletClassification::individual("name PO4", "name C4A C4B"),
+        LeafletClassification::clustering("name PO4"),
+    ] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/cg.tpr")
+            .trajectory("tests/files/cg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder("resid 1 to 254"))
+            .leaflets(method.with_frequency(Frequency::once()))
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            "tests/files/cg_order_leaflets_only_upper.yaml",
             1
         ));
     }
@@ -540,6 +573,41 @@ fn test_cg_order_leaflets_yaml_multiple_threads_various_frequencies() {
 }
 
 #[test]
+fn test_cg_order_leaflets_clustering_yaml_multiple_threads_various_frequencies() {
+    for n_threads in [1, 2, 5, 8, 128] {
+        for freq in [
+            Frequency::every(1).unwrap(),
+            Frequency::every(4).unwrap(),
+            Frequency::every(200).unwrap(),
+            Frequency::once(),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/cg.tpr")
+                .trajectory("tests/files/cg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .leaflets(LeafletClassification::clustering("name PO4").with_frequency(freq))
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output,
+                "tests/files/cg_order_leaflets.yaml",
+                1
+            ));
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_leaflets_table() {
     for method in [
         LeafletClassification::global("@membrane", "name PO4"),
@@ -736,6 +804,41 @@ fn test_cg_order_leaflets_limit_csv() {
         "tests/files/cg_order_leaflets_limit.csv",
         1
     ));
+}
+
+#[test]
+fn test_cg_order_leaflets_clustering_fail_not_enough_atoms() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::clustering("resid 1 and name PO4"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e
+            .to_string()
+            .contains("clustering leaflet classification has been requested but only")),
+    }
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg.tpr")
+        .trajectory("tests/files/cg.xtc")
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .leaflets(LeafletClassification::clustering("not all"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    match analysis.run() {
+        Ok(_) => panic!("Analysis should have failed."),
+        Err(e) => assert!(e.to_string().contains("is empty")),
+    }
 }
 
 #[test]
@@ -1911,6 +2014,49 @@ fn test_cg_order_leaflets_scrambling_various_methods_and_frequencies() {
                 ));
             }
         }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_scrambling_clustering() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    for freq in [
+        Frequency::every(1).unwrap(),
+        Frequency::every(10).unwrap(),
+        Frequency::once(),
+    ] {
+        let analysis = Analysis::builder()
+            .structure("tests/files/scrambling/cg_scrambling.tpr")
+            .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .output_yaml(path_to_output)
+            .leaflets(
+                LeafletClassification::clustering("name PO4")
+                    .clone()
+                    .with_frequency(freq),
+            )
+            .n_threads(4)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        let test_file = match freq {
+            Frequency::Every(n) if n.get() == 1 => "order_clustering.yaml",
+            Frequency::Every(n) if n.get() == 10 => "order_clustering_every_10.yaml",
+            Frequency::Once => "order_once.yaml",
+            _ => unreachable!("Unexpected frequency."),
+        };
+
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            &format!("tests/files/scrambling/{}", test_file),
+            1
+        ));
     }
 }
 
@@ -3543,6 +3689,34 @@ fn test_cg_order_vesicle_leaflets_dynamic_membrane_normal_yaml() {
 }
 
 #[test]
+fn test_cg_order_vesicle_leaflets_clustering_dynamic_membrane_normal_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .leaflets(LeafletClassification::clustering("name PO4").with_frequency(Frequency::once()))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle_leaflets.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_cg_order_vesicle_dynamic_membrane_normal_centered_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -3598,6 +3772,35 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_centered_nopbc_yaml() {
 }
 
 #[test]
+fn test_cg_order_vesicle_dynamic_membrane_normal_centered_clustering_nopbc_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle_centered.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .leaflets(LeafletClassification::clustering("name PO4").with_frequency(Frequency::once()))
+        .handle_pbc(false)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_vesicle_leaflets_centered.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_cg_order_buckled_dynamic_membrane_normal_yaml() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -3618,6 +3821,33 @@ fn test_cg_order_buckled_dynamic_membrane_normal_yaml() {
     assert!(diff_files_ignore_first(
         path_to_output,
         "tests/files/cg_order_buckled.yaml",
+        1
+    ));
+}
+
+#[test]
+fn test_cg_order_buckled_leaflets_clustering_dynamic_membrane_normal_yaml() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/cg_buckled.tpr")
+        .trajectory("tests/files/cg_buckled.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder("@membrane"))
+        .membrane_normal(DynamicNormal::new("name PO4", 2.0).unwrap())
+        .leaflets(LeafletClassification::clustering("name PO4"))
+        .n_threads(4)
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output,
+        "tests/files/cg_order_buckled_leaflets.yaml",
         1
     ));
 }
