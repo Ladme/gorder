@@ -12,8 +12,6 @@ Command line tool for calculating lipid order parameters from Gromacs simulation
 $ cargo install gorder
 ```
 
-(*You need to have `cmake` version 3 or higher installed on your system.*)
-
 ## Usage
 
 1) Prepare a yaml file describing the parameters of your analysis. It's as simple as:
