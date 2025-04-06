@@ -217,6 +217,8 @@ impl IndividualClassification {
 ///     Selection query specifying reference atoms representing lipid headgroups
 ///     (typically phosphorus atoms or phosphate beads).
 ///     There must be exactly one such atom/bead per lipid molecule.
+/// frequency : Optional[Frequency]
+///     Frequency of classification. Defaults to every frame.
 #[pyclass]
 #[derive(Clone)]
 pub struct ClusteringClassification(RsLeafletClassification);
