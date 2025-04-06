@@ -348,6 +348,9 @@ pub enum ConfigError {
     "error:".red().bold(), .0.yellow(),
     "hint:".blue().bold(), "radius".bright_blue())]
     InvalidDynamicNormalRadius(String),
+
+    #[error("{} {}", "error:".red().bold(), .0)]
+    DeprecationError(String),
 }
 
 /// Errors that can occur when constructing an `OrderMap` structure from the provided configuration.

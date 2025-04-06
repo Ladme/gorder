@@ -149,7 +149,7 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 /// structure : str
 ///     Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure and topology of the system.
 /// trajectory : Union[str, list[str]]
-///     Path to an XTC (recommended), TRR, GRO, PDB, Amber NetCDF, DCD, or LAMMPSTRJ trajectory file to be analyzed.
+///     Path to an XTC (recommended), TRR, or GRO trajectory file to be analyzed.
 ///     You can provide multiple XTC or TRR trajectories and these will be seamlessly concatenated.
 /// analysis_type : Union[AAOrder, CGOrder, UAOrder]
 ///     Type of analysis to perform (e.g., AAOrder or CGOrder).

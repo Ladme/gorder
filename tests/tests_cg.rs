@@ -275,13 +275,7 @@ fn test_cg_order_leaflets_yaml_only_upper() {
 
 #[test]
 fn test_cg_order_leaflets_yaml_alt_traj() {
-    for trajectory in [
-        "tests/files/cg.trr",
-        "tests/files/cg_traj.gro",
-        "tests/files/cg.nc",
-        "tests/files/cg.dcd",
-        "tests/files/cg.lammpstrj",
-    ] {
+    for trajectory in ["tests/files/cg.trr", "tests/files/cg_traj.gro"] {
         for n_threads in [1, 3, 8] {
             let output = NamedTempFile::new().unwrap();
             let path_to_output = output.path().to_str().unwrap();

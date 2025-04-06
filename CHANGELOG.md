@@ -1,5 +1,6 @@
 ## Version 0.7.0
 - **Leaflet classification for curved membranes:** `gorder` can now use spectral clustering to classify lipids into leaflets for any membrane geometry, including buckled membranes and vesicles. See the [manual](https://ladme.github.io/gorder-manual/leaflets.html#clustering-method-for-leaflet-classification) for more information.
+- **!!BREAKING CHANGE!!** **Removed support for some trajectory formats:** Removed support for PDB, Amber NetCDF, DCD, and LAMMPSTRJ trajectories. (PDB structure files are still supported.) The parsing of these trajectories relied on the `chemfiles` library, whose maintenance standards and capabilities just do not meet the quality requirements for `gorder`. If you need to use these trajectory formats, you can still use `gorder v0.6`.
 
 ## Version 0.6.0
 - **United-atom order parameters:** `gorder` is now able to calculate order parameters in united-atom systems. See the [manual](https://ladme.github.io/gorder-manual/uaorder_basics.html) for more information.

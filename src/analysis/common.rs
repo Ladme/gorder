@@ -14,7 +14,7 @@ use crate::PANIC_MESSAGE;
 use colored::Colorize;
 use groan_rs::files::FileType;
 use groan_rs::prelude::{
-    ChemfilesReader, GroReader, GroupXtcReader, OrderedAtomIterator, ProgressPrinter, SimBox, TrrReader
+    GroReader, GroupXtcReader, OrderedAtomIterator, ProgressPrinter, SimBox, TrrReader
 };
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 
@@ -327,18 +327,6 @@ pub(super) fn read_trajectory(
             )}
         FileType::GRO => system
             .traj_iter_map_reduce::<GroReader, SystemTopology, AnalysisError>(
-                trajectory.first().expect(PANIC_MESSAGE),
-                n_threads,
-                analyze_frame,
-                topology,
-                None,
-                Some(begin),
-                Some(end),
-                Some(step),
-                progress_printer,
-            ),
-        FileType::PDB | FileType::NC | FileType::DCD | FileType::LAMMPSTRJ | FileType::TNG => system
-            .traj_iter_map_reduce::<ChemfilesReader, SystemTopology, AnalysisError>(
                 trajectory.first().expect(PANIC_MESSAGE),
                 n_threads,
                 analyze_frame,

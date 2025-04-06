@@ -358,6 +358,7 @@ fn test_aa_order_leaflets_yaml() {
     }
 }
 
+/* deprecated since v0.7
 #[test]
 fn test_aa_order_leaflets_yaml_alt_traj() {
     for traj in ["tests/files/pcpepg.nc", "tests/files/pcpepg.dcd"] {
@@ -400,7 +401,7 @@ fn test_aa_order_leaflets_yaml_alt_traj() {
             }
         }
     }
-}
+}*/
 
 #[test]
 fn test_aa_order_leaflets_yaml_from_gro() {

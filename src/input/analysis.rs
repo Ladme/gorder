@@ -134,7 +134,7 @@ pub struct Analysis {
     #[getset(get = "pub")]
     bonds: Option<String>,
 
-    /// Path to an XTC (recommended), TRR, GRO, PDB, NC, DCD, or LAMMPSTRJ containing the trajectory to be analyzed.
+    /// Path to an XTC (recommended), TRR, or GRO file containing the trajectory to be analyzed.
     /// Multiple XTC or TRR trajectories can be provided and these will be concatenated.
     #[getset(get = "pub")]
     #[serde(deserialize_with = "deserialize_string_or_vec")]
@@ -349,11 +349,14 @@ fn validate_trajectory_format(files: &[String]) -> Result<(), ConfigError> {
         let file_type = FileType::from_name(file);
         match file_type {
             FileType::XTC | FileType::TRR => (),
-            FileType::GRO | FileType::PDB | FileType::NC | FileType::DCD | FileType::LAMMPSTRJ => {
+            FileType::GRO => {
                 // trajectory concatenation is not supported for these formats
                 if files.len() > 1 {
                     return Err(ConfigError::TrajCatNotSupported);
                 }
+            }
+            FileType::PDB | FileType::NC | FileType::DCD | FileType::LAMMPSTRJ => {
+                return Err(ConfigError::DeprecationError("since 'gorder' v0.7, PDB, NC, DCD, and LAMPPSTR trajectories are not supported; if you want to use them, switch to version 0.6".into()))
             }
             _ => return Err(ConfigError::InvalidTrajectoryFormat(file.to_owned())),
         }
