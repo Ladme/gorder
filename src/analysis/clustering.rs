@@ -393,13 +393,12 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
                     .expect(PANIC_MESSAGE)
                     .enumerate()
                 {
-                    let dist = atom1
-                        .distance(
-                            &atom2,
-                            Dimension::XYZ,
-                            system.get_box().expect(PANIC_MESSAGE),
-                        )
-                        .map_err(AnalysisError::AtomError)?;
+                    let dist = pbc.atoms_distance(
+                        system, 
+                        atom1.get_index(), 
+                        atom2.get_index(), 
+                        Dimension::XYZ
+                    ).map_err(AnalysisError::AtomError)?;
 
                     matrix[(i, j)] = (-sigma * dist * dist).exp();
                 }
