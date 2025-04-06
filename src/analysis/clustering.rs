@@ -167,54 +167,52 @@ impl SystemClusterClassification {
 
             // print information about cluster classification
             self.clusters.as_ref().expect(PANIC_MESSAGE).log_info();          
+        } else if self.converter.len() > PRECISE_LOWER_LIMIT && self.sloppy_fails < MAX_SLOPPY_FAILS {
+            // system is large and sloppy method did not fail often enough
+            let matrix =
+                self.create_similarity_matrix(system, pbc, DISTANCE_CUTOFF, SLOPPY_SIGMA)?;
+            let laplacian = Self::create_normalized_laplacian(&matrix);
+            let n = matrix.shape().0;
+
+            // try sloppy method up to three times (sloppy is heuristic)
+            for _ in 0..3 {
+                if let Some(valid_cluster) = self.sloppy_clustering(&laplacian, n, frame_index)
+                {
+                    self.clusters = Some(valid_cluster);
+                    // reset sloppy fails counter
+                    self.sloppy_fails = 0;
+                    return Ok(());
+                }
+            }
+
+            // still no luck with assignment?, increase the sloppy fails counter and use the precise method
+            self.sloppy_fails += 1;
+
+            // do not perform precise clustering if the system is very large
+            if self.converter.len() > PRECISE_UPPER_LIMIT {
+                return Err(AnalysisError::ClusterError(
+                    ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8))
+                );
+            }
+
+            let matrix =
+                self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
+            let laplacian = Self::create_normalized_laplacian(&matrix);
+            let n = matrix.shape().0;
+
+            match self.precise_clustering(laplacian, n, frame_index) {
+                Some(x) => self.clusters = Some(x),
+                None => return Err(AnalysisError::ClusterError(ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8)))
+            }
         } else {
-            if self.converter.len() > PRECISE_LOWER_LIMIT && self.sloppy_fails < MAX_SLOPPY_FAILS {
-                // system is large and sloppy method did not fail often enough
-                let matrix =
-                    self.create_similarity_matrix(system, pbc, DISTANCE_CUTOFF, SLOPPY_SIGMA)?;
-                let laplacian = Self::create_normalized_laplacian(&matrix);
-                let n = matrix.shape().0;
+            // system is small => use precise method
+            let matrix = self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
+            let laplacian = Self::create_normalized_laplacian(&matrix);
+            let n = matrix.shape().0;
 
-                // try sloppy method up to three times (sloppy is heuristic)
-                for _ in 0..3 {
-                    if let Some(valid_cluster) = self.sloppy_clustering(&laplacian, n, frame_index)
-                    {
-                        self.clusters = Some(valid_cluster);
-                        // reset sloppy fails counter
-                        self.sloppy_fails = 0;
-                        return Ok(());
-                    }
-                }
-
-                // still no luck with assignment?, increase the sloppy fails counter and use the precise method
-                self.sloppy_fails += 1;
-
-                // do not perform precise clustering if the system is very large
-                if self.converter.len() > PRECISE_UPPER_LIMIT {
-                    return Err(AnalysisError::ClusterError(
-                        ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8))
-                    );
-                }
-
-                let matrix =
-                    self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
-                let laplacian = Self::create_normalized_laplacian(&matrix);
-                let n = matrix.shape().0;
-
-                match self.precise_clustering(laplacian, n, frame_index) {
-                    Some(x) => self.clusters = Some(x),
-                    None => return Err(AnalysisError::ClusterError(ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8)))
-                }
-            } else {
-                // system is small => use precise method
-                let matrix = self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
-                let laplacian = Self::create_normalized_laplacian(&matrix);
-                let n = matrix.shape().0;
-
-                match self.precise_clustering(laplacian, n, frame_index) {
-                    Some(x) => self.clusters = Some(x),
-                    None => return Err(AnalysisError::ClusterError(ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8)))
-                }
+            match self.precise_clustering(laplacian, n, frame_index) {
+                Some(x) => self.clusters = Some(x),
+                None => return Err(AnalysisError::ClusterError(ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8)))
             }
         }
 
@@ -346,7 +344,7 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
         frame_index: usize,
     ) -> Option<Clusters> {
         let embedding =
-            Self::calc_and_embed_eigenvectors_lanczos(&laplacian, n, LANCZOS_ITERATIONS.min(n));
+            Self::calc_and_embed_eigenvectors_lanczos(laplacian, n, LANCZOS_ITERATIONS.min(n));
         let assignments = Self::k_means(&embedding, N_CLUSTERS);
         let (c1, c2, min_index, min_index_cluster) = self.process_assignments(assignments);
         self.classify_clusters(c1, c2, min_index, min_index_cluster, frame_index)
@@ -612,7 +610,7 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
         // main optimization loop
         for _ in 0..100 {
             // assign labels
-            for sample_idx in 0..n_samples {
+            for (sample_idx, label) in labels.iter_mut().enumerate().take(n_samples) {
                 let mut best_cluster = 0;
                 let mut min_distance = f32::INFINITY;
 
@@ -626,7 +624,7 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
                     }
                 }
 
-                labels[sample_idx] = best_cluster;
+                *label = best_cluster;
             }
 
             // check convergence
@@ -708,7 +706,7 @@ impl Clusters {
         min_index: usize,
         min_index_cluster: i8,
     ) -> Self {
-        return match cluster1.len().cmp(&cluster2.len()) {
+        match cluster1.len().cmp(&cluster2.len()) {
             // more populated cluster is `upper`
             Ordering::Less => {
                 Clusters {
@@ -740,7 +738,7 @@ impl Clusters {
                     }
                 }
             }
-        };
+        }
     }
 
     /// Classsify clusters as leaflets by trying to match them to reference clusters.
@@ -1054,7 +1052,7 @@ mod tests_classify {
             let matrix = if handle_pbc {
                 clustering
                     .create_similarity_matrix(
-                        &frame,
+                        frame,
                         &PBC3D::new(frame.get_box().unwrap()),
                         f32::INFINITY,
                         PRECISE_SIGMA,
@@ -1062,7 +1060,7 @@ mod tests_classify {
                     .unwrap()
             } else {
                 clustering
-                    .create_similarity_matrix(&frame, &NoPBC, f32::INFINITY, PRECISE_SIGMA)
+                    .create_similarity_matrix(frame, &NoPBC, f32::INFINITY, PRECISE_SIGMA)
                     .unwrap()
             };
 

@@ -64,6 +64,7 @@ pub(crate) struct SystemTopology {
 
 impl SystemTopology {
     #[inline(always)]
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         system: &System,
         molecule_types: MoleculeTypes,
@@ -99,7 +100,7 @@ impl SystemTopology {
             molecule_types,
             estimate_error,
             geometry,
-            leaflet_classification: leaflet_classification,
+            leaflet_classification,
             handle_pbc,
         }
     }

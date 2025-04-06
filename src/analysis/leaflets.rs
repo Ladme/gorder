@@ -1118,12 +1118,11 @@ impl LeafletClassifier for ClusterClassification {
         molecule_index: usize,
         _current_frame: usize,
     ) -> Result<Leaflet, AnalysisError> {
-        Ok(self.
+        Ok(*self.
             assignment
             .get(molecule_index)
             .unwrap_or_else(|| panic!("FATAL GORDER ERROR | ClusterClassification::identify_leaflet | Molecule index `{}` not found in the assignment. {}", 
             molecule_index, PANIC_MESSAGE))
-            .clone()
         )
     }
 }
