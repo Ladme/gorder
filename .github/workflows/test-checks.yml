@@ -1,0 +1,117 @@
+name: Test Checks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linux-build:
+    name: Build / Linux / ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+          if [ "${{ matrix.compiler }}" = "clang" ]; then
+            sudo apt-get install -y clang
+          fi
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Set compiler environment
+        if: matrix.compiler == 'clang'
+        run: |
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
+
+  windows-build:
+    name: Build / Windows / ${{ matrix.toolchain }}
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        toolchain: [msvc, gnu]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC (msvc toolchain)
+        if: matrix.toolchain == 'msvc'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup MinGW (gnu toolchain)
+        if: matrix.toolchain == 'gnu'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: mingw-w64-x86_64-toolchain
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: x86_64-pc-windows-${{ matrix.toolchain }}
+          components: rustc, cargo, rust-std
+          override: true
+          default: ${{ matrix.toolchain == 'gnu' && true || false }}
+      
+      - name: Configure MinGW Environment
+        if: matrix.toolchain == 'gnu'
+        shell: bash
+        run: |
+          echo "CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc" >> $GITHUB_ENV
+          echo "CC_x86_64_pc_windows_gnu=x86_64-w64-mingw32-gcc" >> $GITHUB_ENV
+          echo "CXX_x86_64_pc_windows_gnu=x86_64-w64-mingw32-g++" >> $GITHUB_ENV
+
+      - name: Set Cargo Path
+        shell: pwsh
+        run: |
+          $cargoPath = "$env:USERPROFILE\.cargo\bin"
+          echo "$cargoPath" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
+        env:
+          PATH: ${{ env.PATH }};${{ (matrix.toolchain == 'gnu' && 'C:\\msys64\\mingw64\\bin') || '' }}
+
+  macos-build:
+    name: Build / macOS / clang
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install cmake
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --release
