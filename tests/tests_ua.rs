@@ -3,31 +3,15 @@
 
 //! Integration tests for the calculation of united-atom order parameters.
 
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::Path,
-};
+mod common;
+
+use std::path::Path;
 
 use approx::assert_relative_eq;
 use gorder::prelude::*;
 use tempfile::{NamedTempFile, TempDir};
 
-/// Test utility. Diff the contents of two files without the first `skip` lines.
-pub(crate) fn diff_files_ignore_first(file1: &str, file2: &str, skip: usize) -> bool {
-    let content1 = read_file_without_first_lines(file1, skip);
-    let content2 = read_file_without_first_lines(file2, skip);
-    content1 == content2
-}
-
-fn read_file_without_first_lines(file: &str, skip: usize) -> Vec<String> {
-    let reader = BufReader::new(File::open(file).unwrap());
-    reader
-        .lines()
-        .skip(skip) // skip the first line
-        .map(|line| line.unwrap())
-        .collect()
-}
+use common::{assert_eq_maps, diff_files_ignore_first};
 
 #[test]
 fn test_ua_order_basic() {
@@ -400,13 +384,13 @@ fn test_ua_order_maps_basic() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps_ua/{}", file);
-            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            assert_eq_maps(&real_file, &test_file, 2);
         }
 
         // full map for the entire system is the same as for POPC
         let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
         let test_file = "tests/files/ordermaps_ua/ordermap_average_full.dat";
-        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+        assert_eq_maps(&real_file, test_file, 2);
 
         // check the script
         let real_script = format!("{}/plot.py", path_to_dir);
@@ -487,13 +471,13 @@ fn test_ua_order_maps_leaflets() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps_ua/{}", file);
-            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            assert_eq_maps(&real_file, &test_file, 2);
         }
 
         // full map for the entire system is the same as for POPC
         let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
         let test_file = "tests/files/ordermaps_ua/ordermap_average_full.dat";
-        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+        assert_eq_maps(&real_file, test_file, 2);
 
         // check the script
         let real_script = format!("{}/plot.py", path_to_dir);

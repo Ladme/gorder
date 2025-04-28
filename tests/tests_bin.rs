@@ -3,26 +3,10 @@
 
 //! Tests of the binary application.
 
-use std::io::BufRead;
-use std::{fs::File, io::BufReader};
+mod common;
 
 use assert_cmd::Command;
-
-/// Test utility. Diff the contents of two files without the first `skip` lines.
-pub(crate) fn diff_files_ignore_first(file1: &str, file2: &str, skip: usize) -> bool {
-    let content1 = read_file_without_first_lines(file1, skip);
-    let content2 = read_file_without_first_lines(file2, skip);
-    content1 == content2
-}
-
-fn read_file_without_first_lines(file: &str, skip: usize) -> Vec<String> {
-    let reader = BufReader::new(File::open(file).unwrap());
-    reader
-        .lines()
-        .skip(skip) // Skip the first line
-        .map(|line| line.unwrap())
-        .collect()
-}
+use common::{assert_eq_maps, diff_files_ignore_first};
 
 #[test]
 fn test_bin_aa_order_basic_yaml() {
@@ -141,7 +125,7 @@ fn test_bin_cg_order_maps() {
     for file in expected_file_names {
         let real_file = format!("temp_cg_ordermaps/POPC/{}", file);
         let test_file = format!("tests/files/ordermaps_cg/{}", file);
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        assert_eq_maps(&real_file, &test_file, 2);
     }
 
     std::fs::remove_dir_all("temp_cg_ordermaps").unwrap();
@@ -256,7 +240,7 @@ fn test_bin_cg_order_maps_export_config() {
     for file in expected_file_names {
         let real_file = format!("temp_cg_ordermaps_for_export_config/POPC/{}", file);
         let test_file = format!("tests/files/ordermaps_cg/{}", file);
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        assert_eq_maps(&real_file, &test_file, 2);
     }
 
     std::fs::remove_dir_all("temp_cg_ordermaps_for_export_config").unwrap();

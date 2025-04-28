@@ -3,9 +3,11 @@
 
 //! Integration tests for the calculation of atomistic order parameters.
 
+mod common;
+
 use std::{
     fs::{read_to_string, File},
-    io::{BufRead, BufReader, Read},
+    io::Read,
     path::{Path, PathBuf},
 };
 
@@ -15,21 +17,7 @@ use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
-/// Test utility. Diff the contents of two files without the first `skip` lines.
-pub(crate) fn diff_files_ignore_first(file1: &str, file2: &str, skip: usize) -> bool {
-    let content1 = read_file_without_first_lines(file1, skip);
-    let content2 = read_file_without_first_lines(file2, skip);
-    content1 == content2
-}
-
-fn read_file_without_first_lines(file: &str, skip: usize) -> Vec<String> {
-    let reader = BufReader::new(File::open(file).unwrap());
-    reader
-        .lines()
-        .skip(skip) // skip the first line
-        .map(|line| line.unwrap())
-        .collect()
-}
+use common::{assert_eq_maps, diff_files_ignore_first};
 
 #[test]
 fn test_aa_order_basic_yaml() {
@@ -1432,13 +1420,13 @@ fn test_aa_order_maps_basic() {
     for file in expected_file_names {
         let real_file = format!("{}/POPC/{}", path_to_dir, file);
         let test_file = format!("tests/files/ordermaps/{}", file);
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        assert_eq_maps(&real_file, &test_file, 2);
     }
 
     // full map for the entire system is the same as for POPC
     let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps/ordermap_average_full.dat";
-    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    assert_eq_maps(&real_file, test_file, 2);
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
@@ -1527,7 +1515,7 @@ fn test_aa_order_maps_leaflets() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
-            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            assert_eq_maps(&real_file, &test_file, 2);
         }
 
         // full maps for the entire system are the same as for POPC
@@ -1538,7 +1526,7 @@ fn test_aa_order_maps_leaflets() {
         ] {
             let real_file = format!("{}/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
-            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            assert_eq_maps(&real_file, &test_file, 2);
         }
 
         // check the script
@@ -1589,7 +1577,7 @@ fn test_aa_order_maps_leaflets_full() {
     ] {
         let real_file = format!("{}/{}", path_to_dir, file);
         let test_file = format!("tests/files/ordermaps/full/{}", file);
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        assert_eq_maps(&real_file, &test_file, 2);
     }
 
     // check the script
@@ -1688,7 +1676,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
             for file in expected_file_names {
                 let real_file = format!("{}/POPC/{}", path_to_dir, file);
                 let test_file = format!("tests/files/ordermaps/{}", file);
-                assert!(diff_files_ignore_first(&real_file, &test_file, 4));
+                assert_eq_maps(&real_file, &test_file, 4);
             }
 
             // check the script
@@ -1754,13 +1742,13 @@ fn test_aa_order_maps_basic_multiple_threads() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps/{}", file);
-            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            assert_eq_maps(&real_file, &test_file, 2);
         }
 
         // full map for the entire system is the same as for POPC
         let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
         let test_file = "tests/files/ordermaps/ordermap_average_full.dat";
-        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+        assert_eq_maps(&real_file, test_file, 2);
 
         // check the script
         let real_script = format!("{}/plot.py", path_to_dir);
@@ -1898,7 +1886,7 @@ fn test_aa_order_maps_basic_backup() {
     for file in expected_file_names {
         let real_file = format!("{}/POPC/{}", path_to_dir, file);
         let test_file = format!("tests/files/ordermaps/{}", file);
-        assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+        assert_eq_maps(&real_file, &test_file, 2);
     }
 
     // check the script
@@ -1965,7 +1953,7 @@ fn test_aa_order_maps_basic_different_plane() {
     // only test one file
     let real_file = format!("{}/POPC/ordermap_POPC-C218-87_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps/ordermap_xz.dat";
-    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    assert_eq_maps(&real_file, test_file, 2);
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
@@ -2953,7 +2941,7 @@ fn test_aa_order_geometry_cuboid_static_square_multiple_threads() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps_cuboid/{}", file);
-            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            assert_eq_maps(&real_file, &test_file, 2);
         }
 
         assert!(diff_files_ignore_first(
@@ -3023,7 +3011,7 @@ fn test_aa_order_geometry_cylinder_static_multiple_threads() {
         for file in expected_file_names {
             let real_file = format!("{}/POPC/{}", path_to_dir, file);
             let test_file = format!("tests/files/ordermaps_cylinder/{}", file);
-            assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+            assert_eq_maps(&real_file, &test_file, 2);
         }
 
         assert!(diff_files_ignore_first(
@@ -4249,7 +4237,7 @@ fn test_aa_order_maps_leaflets_no_pbc() {
             for file in expected_file_names {
                 let real_file = format!("{}/POPC/{}", path_to_dir, file);
                 let test_file = format!("tests/files/ordermaps_nopbc/{}", file);
-                assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+                assert_eq_maps(&real_file, &test_file, 2);
             }
 
             // full maps for the entire system are the same as for POPC
@@ -4260,7 +4248,7 @@ fn test_aa_order_maps_leaflets_no_pbc() {
             ] {
                 let real_file = format!("{}/{}", path_to_dir, file);
                 let test_file = format!("tests/files/ordermaps_nopbc/{}", file);
-                assert!(diff_files_ignore_first(&real_file, &test_file, 2));
+                assert_eq_maps(&real_file, &test_file, 2);
             }
 
             // check the script
@@ -4323,7 +4311,7 @@ fn test_aa_order_geometry_cuboid_ordermaps_no_pbc() {
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_nopbc/cuboid.dat";
-        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+        assert_eq_maps(&real_file, test_file, 2);
     }
 }
 
@@ -4372,7 +4360,7 @@ fn test_aa_order_geometry_cylinder_ordermaps_no_pbc() {
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_nopbc/cylinder.dat";
-        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+        assert_eq_maps(&real_file, test_file, 2);
     }
 }
 
@@ -4421,7 +4409,7 @@ fn test_aa_order_geometry_sphere_ordermaps_no_pbc() {
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_nopbc/sphere.dat";
-        assert!(diff_files_ignore_first(&real_file, test_file, 2));
+        assert_eq_maps(&real_file, test_file, 2);
     }
 }
 
@@ -4666,10 +4654,10 @@ fn test_aa_order_buckled_dynamic_membrane_normal_ordermaps_yaml() {
 
     let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps_buckled/ordermap_average_full.dat";
-    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    assert_eq_maps(&real_file, test_file, 2);
 
     let real_file = format!("{}/POPC/ordermap_average_full.dat", path_to_dir);
-    assert!(diff_files_ignore_first(&real_file, test_file, 2));
+    assert_eq_maps(&real_file, test_file, 2);
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
