@@ -551,7 +551,13 @@ pub struct ClusteringParams {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::*;
+
+    fn compare_as_paths(path1: &str, path2: &str) {
+        assert_eq!(Path::new(path1), Path::new(path2));
+    }
 
     #[test]
     #[should_panic]
@@ -729,7 +735,7 @@ lower_leaflet: LowerLeaflet";
         match serde_yaml::from_str(string).unwrap() {
             LeafletClassification::FromNdx(params) => {
                 assert_eq!(params.heads(), "name P");
-                assert_eq!(params.ndx(), &vec!["tests/files/cg.ndx"]);
+                compare_as_paths(&params.ndx()[0], "tests/files/cg.ndx");
                 assert_eq!(params.upper_leaflet(), "UpperLeaflet");
                 assert_eq!(params.lower_leaflet(), "LowerLeaflet");
                 assert_eq!(params.frequency(), Frequency::every(1).unwrap());
@@ -750,7 +756,7 @@ lower_leaflet: LowerLeaflet";
         match serde_yaml::from_str(string).unwrap() {
             LeafletClassification::FromNdx(params) => {
                 assert_eq!(params.heads(), "name P");
-                assert_eq!(params.ndx(), &vec!["tests/files/pcpepg.ndx"]);
+                compare_as_paths(&params.ndx()[0], "tests/files/pcpepg.ndx");
                 assert_eq!(params.upper_leaflet(), "UpperLeaflet");
                 assert_eq!(params.lower_leaflet(), "LowerLeaflet");
                 assert_eq!(params.frequency(), Frequency::once());
@@ -817,13 +823,8 @@ lower_leaflet: LowerLeaflet";
         match serde_yaml::from_str(string).unwrap() {
             LeafletClassification::FromNdx(params) => {
                 assert_eq!(params.heads(), "name P");
-                assert_eq!(
-                    params.ndx(),
-                    &vec![
-                        "tests/files/ndx/glob/index1.ndx",
-                        "tests/files/ndx/glob/index2.ndx"
-                    ]
-                );
+                compare_as_paths(&params.ndx()[0], "tests/files/ndx/glob/index1.ndx");
+                compare_as_paths(&params.ndx()[1], "tests/files/ndx/glob/index2.ndx");
                 assert_eq!(params.upper_leaflet(), "UpperLeaflet");
                 assert_eq!(params.lower_leaflet(), "LowerLeaflet");
                 assert_eq!(params.frequency(), Frequency::every(1).unwrap());

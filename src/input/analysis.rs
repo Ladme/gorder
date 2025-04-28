@@ -812,12 +812,16 @@ mod tests_yaml {
         input::{ordermap::Plane, GridSpan},
     };
 
+    fn compare_as_paths(path1: &str, path2: &str) {
+        assert_eq!(Path::new(path1), Path::new(path2));
+    }
+
     #[test]
     fn analysis_yaml_pass_basic() {
         let analysis = Analysis::from_file("tests/files/inputs/basic.yaml").unwrap();
 
         assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
-        assert_eq!(analysis.trajectory(), &vec!["tests/files/pcpepg.xtc"]);
+        compare_as_paths(&analysis.trajectory()[0], "tests/files/pcpepg.xtc");
         assert!(analysis.index().is_none());
         assert!(analysis.output().is_none());
         assert!(analysis.output_tab().is_none());
@@ -854,7 +858,7 @@ mod tests_yaml {
         let analysis = Analysis::from_file("tests/files/inputs/full.yaml").unwrap();
 
         assert_eq!(analysis.structure(), "tests/files/cg.tpr");
-        assert_eq!(analysis.trajectory(), &["tests/files/cg.xtc"]);
+        compare_as_paths(&analysis.trajectory()[0], "tests/files/cg.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
         assert_eq!(analysis.output().as_ref().unwrap(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
@@ -1251,16 +1255,11 @@ mod tests_yaml {
             Analysis::from_file("tests/files/inputs/multiple_trajectories_list.yaml").unwrap();
 
         assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
-        assert_eq!(
-            analysis.trajectory(),
-            &vec![
-                "tests/files/split/pcpepg1.xtc",
-                "tests/files/split/pcpepg2.xtc",
-                "tests/files/split/pcpepg3.xtc",
-                "tests/files/split/pcpepg4.xtc",
-                "tests/files/split/pcpepg5.xtc",
-            ]
-        );
+        compare_as_paths(&analysis.trajectory()[0], "tests/files/split/pcpepg1.xtc");
+        compare_as_paths(&analysis.trajectory()[1], "tests/files/split/pcpepg2.xtc");
+        compare_as_paths(&analysis.trajectory()[2], "tests/files/split/pcpepg3.xtc");
+        compare_as_paths(&analysis.trajectory()[3], "tests/files/split/pcpepg4.xtc");
+        compare_as_paths(&analysis.trajectory()[4], "tests/files/split/pcpepg5.xtc");
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
@@ -1277,16 +1276,11 @@ mod tests_yaml {
             Analysis::from_file("tests/files/inputs/multiple_trajectories_glob.yaml").unwrap();
 
         assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
-        assert_eq!(
-            analysis.trajectory(),
-            &vec![
-                "tests/files/split/pcpepg1.xtc",
-                "tests/files/split/pcpepg2.xtc",
-                "tests/files/split/pcpepg3.xtc",
-                "tests/files/split/pcpepg4.xtc",
-                "tests/files/split/pcpepg5.xtc",
-            ]
-        );
+        compare_as_paths(&analysis.trajectory()[0], "tests/files/split/pcpepg1.xtc");
+        compare_as_paths(&analysis.trajectory()[1], "tests/files/split/pcpepg2.xtc");
+        compare_as_paths(&analysis.trajectory()[2], "tests/files/split/pcpepg3.xtc");
+        compare_as_paths(&analysis.trajectory()[3], "tests/files/split/pcpepg4.xtc");
+        compare_as_paths(&analysis.trajectory()[4], "tests/files/split/pcpepg5.xtc");
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
@@ -1342,6 +1336,10 @@ mod tests_builder {
     use super::super::GridSpan;
     use super::*;
 
+    fn compare_as_paths(path1: &str, path2: &str) {
+        assert_eq!(Path::new(path1), Path::new(path2));
+    }
+
     #[test]
     fn analysis_builder_pass_basic() {
         let analysis = Analysis::builder()
@@ -1355,7 +1353,7 @@ mod tests_builder {
             .unwrap();
 
         assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
-        assert_eq!(analysis.trajectory(), &["tests/files/pcpepg.xtc"]);
+        compare_as_paths(&analysis.trajectory()[0], "tests/files/pcpepg.xtc");
         assert!(analysis.index().is_none());
         assert!(analysis.output().is_none());
         assert!(analysis.output_tab().is_none());
@@ -1433,7 +1431,7 @@ mod tests_builder {
             .unwrap();
 
         assert_eq!(analysis.structure(), "tests/files/cg.tpr");
-        assert_eq!(analysis.trajectory(), &["tests/files/cg.xtc"]);
+        compare_as_paths(&analysis.trajectory()[0], "tests/files/cg.xtc");
         assert_eq!(analysis.index().as_ref().unwrap(), "index.ndx");
         assert_eq!(analysis.output().as_ref().unwrap(), "order.yaml");
         assert_eq!(analysis.output_tab().as_ref().unwrap(), "order.dat");
@@ -1760,16 +1758,11 @@ mod tests_builder {
             .unwrap();
 
         assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
-        assert_eq!(
-            analysis.trajectory(),
-            &vec![
-                "tests/files/split/pcpepg1.xtc",
-                "tests/files/split/pcpepg2.xtc",
-                "tests/files/split/pcpepg3.xtc",
-                "tests/files/split/pcpepg4.xtc",
-                "tests/files/split/pcpepg5.xtc",
-            ]
-        );
+        compare_as_paths(&analysis.trajectory()[0], "tests/files/split/pcpepg1.xtc");
+        compare_as_paths(&analysis.trajectory()[1], "tests/files/split/pcpepg2.xtc");
+        compare_as_paths(&analysis.trajectory()[2], "tests/files/split/pcpepg3.xtc");
+        compare_as_paths(&analysis.trajectory()[3], "tests/files/split/pcpepg4.xtc");
+        compare_as_paths(&analysis.trajectory()[4], "tests/files/split/pcpepg5.xtc");
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
@@ -1793,16 +1786,11 @@ mod tests_builder {
             .unwrap();
 
         assert_eq!(analysis.structure(), "tests/files/pcpepg.tpr");
-        assert_eq!(
-            analysis.trajectory(),
-            &vec![
-                "tests/files/split/pcpepg1.xtc",
-                "tests/files/split/pcpepg2.xtc",
-                "tests/files/split/pcpepg3.xtc",
-                "tests/files/split/pcpepg4.xtc",
-                "tests/files/split/pcpepg5.xtc",
-            ]
-        );
+        compare_as_paths(&analysis.trajectory()[0], "tests/files/split/pcpepg1.xtc");
+        compare_as_paths(&analysis.trajectory()[1], "tests/files/split/pcpepg2.xtc");
+        compare_as_paths(&analysis.trajectory()[2], "tests/files/split/pcpepg3.xtc");
+        compare_as_paths(&analysis.trajectory()[3], "tests/files/split/pcpepg4.xtc");
+        compare_as_paths(&analysis.trajectory()[4], "tests/files/split/pcpepg5.xtc");
         assert_eq!(
             analysis.heavy_atoms().unwrap(),
             "@membrane and element name carbon"
