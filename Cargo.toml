@@ -1,6 +1,6 @@
 [package]
 name = "gorder"
-version = "0.7.0"
+version = "0.7.1"
 description = "Calculating lipid order parameters from Gromacs simulations"
 edition = "2021"
 rust-version = "1.82"
@@ -12,7 +12,10 @@ exclude = ["/tests", "/validation", "/pygorder", "/examples"]
 
 [dependencies]
 backitup = "0.1.1"
-groan_rs = { version = "0.10.0-dev.4", features = ["parallel", "serde"] }
+groan_rs = { git = "https://github.com/Ladme/groan_rs", branch = "v0.10", features = [
+    "parallel",
+    "serde",
+] }
 colored = "3.0.0"
 thiserror = "2.0.12"
 derive_builder = "0.20.2"
