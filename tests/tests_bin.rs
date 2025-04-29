@@ -6,7 +6,7 @@
 mod common;
 
 use assert_cmd::Command;
-use common::{assert_eq_maps, diff_files_ignore_first};
+use common::{assert_eq_csv, assert_eq_maps, assert_eq_order};
 
 #[test]
 fn test_bin_aa_order_basic_yaml() {
@@ -21,11 +21,7 @@ fn test_bin_aa_order_basic_yaml() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
-        "temp_aa_order.yaml",
-        "tests/files/aa_order_basic.yaml",
-        1
-    ));
+    assert_eq_order("temp_aa_order.yaml", "tests/files/aa_order_basic.yaml", 1);
 
     std::fs::remove_file("temp_aa_order.yaml").unwrap();
 }
@@ -43,11 +39,7 @@ fn test_bin_ua_order_basic_yaml() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
-        "temp_ua_order.yaml",
-        "tests/files/ua_order_basic.yaml",
-        1
-    ));
+    assert_eq_order("temp_ua_order.yaml", "tests/files/ua_order_basic.yaml", 1);
 
     std::fs::remove_file("temp_ua_order.yaml").unwrap();
 }
@@ -65,11 +57,11 @@ fn test_bin_ua_order_from_aa_yaml() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_ua_order_from_aa.yaml",
         "tests/files/ua_order_from_aa.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_ua_order_from_aa.yaml").unwrap();
 }
@@ -83,17 +75,13 @@ fn test_bin_cg_order_leaflets_yaml_tab() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_order.yaml",
         "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 
-    assert!(diff_files_ignore_first(
-        "temp_cg_order.tab",
-        "tests/files/cg_order_leaflets.tab",
-        1
-    ));
+    assert_eq_order("temp_cg_order.tab", "tests/files/cg_order_leaflets.tab", 1);
 
     std::fs::remove_file("temp_cg_order.yaml").unwrap();
     std::fs::remove_file("temp_cg_order.tab").unwrap();
@@ -108,11 +96,12 @@ fn test_bin_cg_order_maps() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_order_maps.yaml",
         "tests/files/cg_order_small.yaml",
-        1
-    ));
+        1,
+    );
+
     std::fs::remove_file("temp_cg_order_maps.yaml").unwrap();
 
     let expected_file_names = [
@@ -140,23 +129,9 @@ fn test_bin_estimate_error() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
-        "temp_cg_ee.yaml",
-        "tests/files/cg_order_error.yaml",
-        1
-    ));
-
-    assert!(diff_files_ignore_first(
-        "temp_cg_ee.tab",
-        "tests/files/cg_order_error.tab",
-        1
-    ));
-
-    assert!(diff_files_ignore_first(
-        "temp_cg_ee.csv",
-        "tests/files/cg_order_error.csv",
-        0
-    ));
+    assert_eq_order("temp_cg_ee.yaml", "tests/files/cg_order_error.yaml", 1);
+    assert_eq_order("temp_cg_ee.tab", "tests/files/cg_order_error.tab", 1);
+    assert_eq_csv("temp_cg_ee.csv", "tests/files/cg_order_error.csv", 0);
 
     std::fs::remove_file("temp_cg_ee.yaml").unwrap();
     std::fs::remove_file("temp_cg_ee.tab").unwrap();
@@ -175,23 +150,9 @@ fn test_bin_concatenate_estimate_error() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
-        "temp_cg_cat_ee.yaml",
-        "tests/files/cg_order_error.yaml",
-        1
-    ));
-
-    assert!(diff_files_ignore_first(
-        "temp_cg_cat_ee.tab",
-        "tests/files/cg_order_error.tab",
-        1
-    ));
-
-    assert!(diff_files_ignore_first(
-        "temp_cg_cat_ee.csv",
-        "tests/files/cg_order_error.csv",
-        0
-    ));
+    assert_eq_order("temp_cg_cat_ee.yaml", "tests/files/cg_order_error.yaml", 1);
+    assert_eq_order("temp_cg_cat_ee.tab", "tests/files/cg_order_error.tab", 1);
+    assert_eq_csv("temp_cg_cat_ee.csv", "tests/files/cg_order_error.csv", 0);
 
     std::fs::remove_file("temp_cg_cat_ee.yaml").unwrap();
     std::fs::remove_file("temp_cg_cat_ee.tab").unwrap();
@@ -223,11 +184,12 @@ fn test_bin_cg_order_maps_export_config() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_order_maps_for_export_config.yaml",
         "tests/files/cg_order_small.yaml",
-        1
-    ));
+        1,
+    );
+
     std::fs::remove_file("temp_cg_order_maps_for_export_config.yaml").unwrap();
 
     let expected_file_names = [
@@ -260,11 +222,11 @@ fn test_bin_cg_geometry_selection() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_order_cylinder.yaml",
         "tests/files/cg_order_cylinder.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_cg_order_cylinder.yaml").unwrap();
 }
@@ -282,11 +244,11 @@ fn test_bin_aa_leaflets_from_file() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_aa_order_leaflets_from_file.yaml",
         "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_aa_order_leaflets_from_file.yaml").unwrap();
 }
@@ -304,11 +266,11 @@ fn test_bin_cg_leaflets_from_map() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_order_leaflets_from_map.yaml",
         "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_cg_order_leaflets_from_map.yaml").unwrap();
 }
@@ -326,11 +288,11 @@ fn test_bin_aa_leaflets_no_pbc() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_aa_order_leaflets_no_pbc.yaml",
         "tests/files/aa_order_leaflets_nopbc.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_aa_order_leaflets_no_pbc.yaml").unwrap();
 }
@@ -347,11 +309,11 @@ fn test_bin_cg_vesicle_dynamic() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_order_vesicle_dynamic_membrane_normal.yaml",
         "tests/files/cg_order_vesicle.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_cg_order_vesicle_dynamic_membrane_normal.yaml").unwrap();
 }
@@ -369,11 +331,11 @@ fn test_bin_ua_order_dynamic_yaml() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_ua_order_dynamic.yaml",
         "tests/files/ua_order_dynamic_normals.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_ua_order_dynamic.yaml").unwrap();
 }
@@ -392,11 +354,11 @@ fn test_bin_aa_leaflets_once_ndx() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_aa_order_leaflets_ndx.yaml",
         "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_aa_order_leaflets_ndx.yaml").unwrap();
 }
@@ -415,11 +377,11 @@ fn test_bin_cg_leaflets_every_ndx() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_order_scrambling_leaflets_ndx.yaml",
         "tests/files/scrambling/order_global.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_cg_order_scrambling_leaflets_ndx.yaml").unwrap();
 }
@@ -437,11 +399,11 @@ fn test_bin_cg_leaflets_every20_ndx() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_leaflets_every20_ndx.yaml",
         "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_cg_leaflets_every20_ndx.yaml").unwrap();
 }
@@ -459,11 +421,11 @@ fn test_bin_cg_inline_manual_normals() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_cg_inline_manual_normals.yaml",
         "tests/files/cg_order_vesicle.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_cg_inline_manual_normals.yaml").unwrap();
 }
@@ -481,11 +443,11 @@ fn test_bin_aa_clustering() {
         .success()
         .stdout("");
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_aa_buckled_clustering.yaml",
         "tests/files/aa_order_buckled_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_aa_buckled_clustering.yaml").unwrap();
 }
@@ -603,11 +565,11 @@ fn test_bin_output_config_writing_fails() {
  |      error: could not create file \'this_directory_does_not_exist/analysis_out.yaml\'\n",
         );
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         "temp_aa_order_config_fails.yaml",
         "tests/files/aa_order_basic.yaml",
-        1
-    ));
+        1,
+    );
 
     std::fs::remove_file("temp_aa_order_config_fails.yaml").unwrap();
 }

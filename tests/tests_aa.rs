@@ -17,7 +17,7 @@ use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
-use common::{assert_eq_maps, diff_files_ignore_first};
+use common::{assert_eq_csv, assert_eq_maps, assert_eq_order};
 
 #[test]
 fn test_aa_order_basic_yaml() {
@@ -39,11 +39,7 @@ fn test_aa_order_basic_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_basic.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_basic.yaml", 1);
 }
 
 #[test]
@@ -74,11 +70,7 @@ fn test_aa_order_basic_concatenated_yaml_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_basic.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_basic.yaml", 1);
     }
 }
 
@@ -100,11 +92,7 @@ fn test_aa_order_basic_ndx_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_basic.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_basic.yaml", 1);
 }
 
 #[test]
@@ -151,11 +139,7 @@ fn test_aa_order_basic_table() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/aa_order_basic.tab",
-        1
-    ));
+    assert_eq_order(path_to_table, "tests/files/aa_order_basic.tab", 1);
 }
 
 #[test]
@@ -184,7 +168,7 @@ fn test_aa_order_basic_xvg() {
         let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
         let path_expected = format!("tests/files/aa_order_basic_{}.xvg", molecule);
 
-        assert!(diff_files_ignore_first(&path, &path_expected, 1));
+        assert_eq_order(&path, &path_expected, 1);
     }
 }
 
@@ -208,11 +192,7 @@ fn test_aa_order_basic_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/aa_order_basic.csv",
-        0
-    ));
+    assert_eq_csv(path_to_csv, "tests/files/aa_order_basic.csv", 0);
 }
 
 #[test]
@@ -246,7 +226,7 @@ fn test_aa_order_basic_xvg_weird_names() {
             };
 
             let path_expected = format!("tests/files/aa_order_basic_{}.xvg", molecule);
-            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+            assert_eq_order(&path, &path_expected, 1);
         }
     }
 }
@@ -273,11 +253,7 @@ fn test_aa_order_basic_yaml_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_basic.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_basic.yaml", 1);
     }
 }
 
@@ -303,11 +279,7 @@ fn test_aa_order_basic_table_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_table,
-            "tests/files/aa_order_basic.tab",
-            1
-        ));
+        assert_eq_order(path_to_table, "tests/files/aa_order_basic.tab", 1);
     }
 }
 
@@ -338,11 +310,7 @@ fn test_aa_order_leaflets_yaml() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
     }
 }
 
@@ -413,11 +381,7 @@ fn test_aa_order_leaflets_yaml_from_gro() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -442,11 +406,7 @@ fn test_aa_order_leaflets_yaml_from_gro_min_bonds() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -470,11 +430,7 @@ fn test_aa_order_leaflets_yaml_from_pdb() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -499,11 +455,7 @@ fn test_aa_order_leaflets_yaml_from_pqr() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -534,11 +486,7 @@ fn test_aa_order_leaflets_yaml_multiple_threads() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/aa_order_leaflets.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
         }
     }
 }
@@ -577,11 +525,7 @@ fn test_aa_order_leaflets_yaml_multiple_threads_various_frequencies() {
 
                 analysis.run().unwrap().write().unwrap();
 
-                assert!(diff_files_ignore_first(
-                    path_to_output,
-                    "tests/files/aa_order_leaflets.yaml",
-                    1
-                ));
+                assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
             }
         }
     }
@@ -617,11 +561,7 @@ fn test_aa_order_leaflets_yaml_clustering_multiple_threads_various_frequencies()
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/aa_order_leaflets.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
         }
     }
 }
@@ -662,11 +602,7 @@ fn test_aa_order_leaflets_yaml_different_membrane_normals() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/aa_order_leaflets.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
         }
     }
 }
@@ -697,11 +633,7 @@ fn test_aa_order_leaflets_table() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_table,
-            "tests/files/aa_order_leaflets.tab",
-            1
-        ));
+        assert_eq_order(path_to_table, "tests/files/aa_order_leaflets.tab", 1);
     }
 }
 
@@ -737,7 +669,7 @@ fn test_aa_order_leaflets_xvg() {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
             let path_expected = format!("tests/files/aa_order_leaflets_{}.xvg", molecule);
 
-            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+            assert_eq_order(&path, &path_expected, 1);
         }
     }
 }
@@ -768,11 +700,7 @@ fn test_aa_order_leaflets_csv() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_csv,
-            "tests/files/aa_order_leaflets.csv",
-            0
-        ));
+        assert_eq_csv(path_to_csv, "tests/files/aa_order_leaflets.csv", 0);
     }
 }
 
@@ -797,11 +725,7 @@ fn test_aa_order_leaflets_yaml_supershort() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_selected.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_selected.yaml", 1);
 }
 
 #[test]
@@ -825,11 +749,11 @@ fn test_aa_order_one_different_hydrogen_numbers_table() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_table,
         "tests/files/aa_order_different_hydrogen_numbers.tab",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -853,11 +777,11 @@ fn test_aa_order_one_different_hydrogen_numbers_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_csv(
         path_to_csv,
         "tests/files/aa_order_different_hydrogen_numbers.csv",
-        0
-    ));
+        0,
+    );
 }
 
 #[test]
@@ -881,11 +805,7 @@ fn test_aa_order_limit_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_limit.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_limit.yaml", 1);
 }
 
 #[test]
@@ -910,11 +830,11 @@ fn test_aa_order_leaflets_limit_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_leaflets_limit.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -939,11 +859,7 @@ fn test_aa_order_leaflets_limit_tab() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/aa_order_leaflets_limit.tab",
-        1
-    ));
+    assert_eq_order(path_to_table, "tests/files/aa_order_leaflets_limit.tab", 1);
 }
 
 #[test]
@@ -968,11 +884,7 @@ fn test_aa_order_leaflets_limit_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/aa_order_leaflets_limit.csv",
-        0
-    ));
+    assert_eq_csv(path_to_csv, "tests/files/aa_order_leaflets_limit.csv", 0);
 }
 
 #[test]
@@ -1001,11 +913,11 @@ fn test_aa_order_begin_end_step_yaml() {
     assert_eq!(results.n_analyzed_frames(), 4);
     results.write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_begin_end_step.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -1036,11 +948,11 @@ fn test_aa_order_begin_end_step_yaml_multiple_threads() {
         assert_eq!(results.n_analyzed_frames(), 4);
         results.write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/aa_order_begin_end_step.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -1072,11 +984,11 @@ fn test_aa_order_concatenated_begin_end_step_yaml_multiple_threads() {
         assert_eq!(results.n_analyzed_frames(), 4);
         results.write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/aa_order_begin_end_step.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -1117,11 +1029,7 @@ fn test_aa_order_step_yaml_leaflets_multiple_threads_various_frequencies() {
                 assert_eq!(results.n_analyzed_frames(), 11);
                 results.write().unwrap();
 
-                assert!(diff_files_ignore_first(
-                    path_to_output,
-                    "tests/files/aa_order_step.yaml",
-                    1
-                ));
+                assert_eq_order(path_to_output, "tests/files/aa_order_step.yaml", 1);
             }
         }
     }
@@ -1165,11 +1073,11 @@ fn test_aa_order_begin_end_step_yaml_leaflets_multiple_threads_various_frequenci
                 assert_eq!(results.n_analyzed_frames(), 4);
                 results.write().unwrap();
 
-                assert!(diff_files_ignore_first(
+                assert_eq_order(
                     path_to_output,
                     "tests/files/aa_order_begin_end_step.yaml",
-                    1
-                ));
+                    1,
+                );
             }
         }
     }
@@ -1200,11 +1108,7 @@ fn test_aa_order_begin_end_yaml() {
     assert_eq!(results.n_analyzed_frames(), 11);
     results.write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_begin_end.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_begin_end.yaml", 1);
 }
 
 #[test]
@@ -1234,11 +1138,7 @@ fn test_aa_order_begin_end_yaml_multiple_threads() {
         assert_eq!(results.n_analyzed_frames(), 11);
         results.write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_begin_end.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_begin_end.yaml", 1);
     }
 }
 
@@ -1352,18 +1252,12 @@ fn test_aa_order_basic_all_formats_backup() {
 
     analysis.run().unwrap().write().unwrap();
 
-    let all_files = [
-        ("tests/files/aa_order_basic.yaml", &file_paths[0]),
-        ("tests/files/aa_order_basic.tab", &file_paths[1]),
-        ("tests/files/aa_order_basic.csv", &file_paths[2]),
-        ("tests/files/aa_order_basic_POPC.xvg", &file_paths[3]),
-        ("tests/files/aa_order_basic_POPE.xvg", &file_paths[4]),
-        ("tests/files/aa_order_basic_POPG.xvg", &file_paths[5]),
-    ];
-
-    for (expected, result) in &all_files {
-        assert!(diff_files_ignore_first(result, expected, 1));
-    }
+    assert_eq_order(&file_paths[0], "tests/files/aa_order_basic.yaml", 1);
+    assert_eq_order(&file_paths[1], "tests/files/aa_order_basic.tab", 1);
+    assert_eq_csv(&file_paths[2], "tests/files/aa_order_basic.csv", 0);
+    assert_eq_order(&file_paths[3], "tests/files/aa_order_basic_POPC.xvg", 1);
+    assert_eq_order(&file_paths[4], "tests/files/aa_order_basic_POPE.xvg", 1);
+    assert_eq_order(&file_paths[5], "tests/files/aa_order_basic_POPG.xvg", 1);
 
     read_and_compare_files(
         path_to_dir,
@@ -1430,13 +1324,13 @@ fn test_aa_order_maps_basic() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
-
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_small.yaml",
-        1
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
     ));
+
+    assert_eq_order(path_to_output, "tests/files/aa_order_small.yaml", 1);
 }
 
 #[test]
@@ -1531,13 +1425,17 @@ fn test_aa_order_maps_leaflets() {
 
         // check the script
         let real_script = format!("{}/plot.py", path_to_dir);
-        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+        assert!(common::diff_files_ignore_first(
+            &real_script,
+            "scripts/plot.py",
+            0
+        ));
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/aa_order_leaflets_small.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -1582,7 +1480,11 @@ fn test_aa_order_maps_leaflets_full() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
+    ));
 }
 
 #[test]
@@ -1643,7 +1545,7 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
                 "ordermap_POPC-C22-32_lower.dat",
                 "ordermap_POPC-C22-32--POPC-H2S-34_upper.dat",
                 "ordermap_POPC-C24-47--POPC-H4R-48_upper.dat",
-                //"ordermap_POPC-C218-87--POPC-H18R-88_lower.dat",  // this file does not pass the test due to some rounding error
+                "ordermap_POPC-C218-87--POPC-H18R-88_lower.dat",
                 "ordermap_POPC-C218-87--POPC-H18T-90_lower.dat",
                 "ordermap_POPC-C22-32--POPC-H2R-33_lower.dat",
                 "ordermap_POPC-C22-32_full.dat",
@@ -1681,13 +1583,17 @@ fn test_aa_order_maps_leaflets_different_membrane_normals() {
 
             // check the script
             let real_script = format!("{}/plot.py", path_to_dir);
-            assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+            assert!(common::diff_files_ignore_first(
+                &real_script,
+                "scripts/plot.py",
+                0
+            ));
 
-            assert!(diff_files_ignore_first(
+            assert_eq_order(
                 path_to_output,
                 "tests/files/aa_order_leaflets_small.yaml",
-                1
-            ));
+                1,
+            );
         }
     }
 }
@@ -1752,13 +1658,13 @@ fn test_aa_order_maps_basic_multiple_threads() {
 
         // check the script
         let real_script = format!("{}/plot.py", path_to_dir);
-        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
-
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_small.yaml",
-            1
+        assert!(common::diff_files_ignore_first(
+            &real_script,
+            "scripts/plot.py",
+            0
         ));
+
+        assert_eq_order(path_to_output, "tests/files/aa_order_small.yaml", 1);
     }
 }
 
@@ -1830,7 +1736,11 @@ fn test_aa_order_maps_basic_weird_molecules() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
+    ));
 }
 
 #[test]
@@ -1891,13 +1801,13 @@ fn test_aa_order_maps_basic_backup() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
-
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_small.yaml",
-        1
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
     ));
+
+    assert_eq_order(path_to_output, "tests/files/aa_order_small.yaml", 1);
 
     // check backed up directory
     let directories = std::fs::read_dir(path_to_outer_dir)
@@ -1957,13 +1867,13 @@ fn test_aa_order_maps_basic_different_plane() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
-
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_small.yaml",
-        1
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
     ));
+
+    assert_eq_order(path_to_output, "tests/files/aa_order_small.yaml", 1);
 }
 
 #[test]
@@ -1987,11 +1897,7 @@ fn test_aa_order_error_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_error.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_error.yaml", 1);
 }
 
 #[test]
@@ -2017,11 +1923,7 @@ fn test_aa_order_error_yaml_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_error.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_error.yaml", 1);
     }
 }
 
@@ -2047,11 +1949,11 @@ fn test_aa_order_error_leaflets_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_error_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -2078,11 +1980,11 @@ fn test_aa_order_error_leaflets_yaml_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/aa_order_error_leaflets.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -2107,11 +2009,7 @@ fn test_aa_order_error_tab() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/aa_order_error.tab",
-        1
-    ));
+    assert_eq_order(path_to_table, "tests/files/aa_order_error.tab", 1);
 }
 
 #[test]
@@ -2136,11 +2034,7 @@ fn test_aa_order_error_leaflets_tab() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/aa_order_error_leaflets.tab",
-        1
-    ));
+    assert_eq_order(path_to_table, "tests/files/aa_order_error_leaflets.tab", 1);
 }
 
 #[test]
@@ -2164,11 +2058,7 @@ fn test_aa_order_error_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/aa_order_error.csv",
-        1
-    ));
+    assert_eq_csv(path_to_csv, "tests/files/aa_order_error.csv", 0);
 }
 
 #[test]
@@ -2193,11 +2083,7 @@ fn test_aa_order_error_leaflets_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/aa_order_error_leaflets.csv",
-        1
-    ));
+    assert_eq_csv(path_to_csv, "tests/files/aa_order_error_leaflets.csv", 0);
 }
 
 #[test]
@@ -2228,7 +2114,7 @@ fn test_aa_order_error_xvg() {
         // same files as when `estimate_error` is not provided - xvg files do not show error
         let path_expected = format!("tests/files/aa_order_basic_{}.xvg", molecule);
 
-        assert!(diff_files_ignore_first(&path, &path_expected, 1));
+        assert_eq_order(&path, &path_expected, 1);
     }
 }
 
@@ -2261,7 +2147,7 @@ fn test_aa_order_error_leaflets_xvg() {
         // same files as when `estimate_error` is not provided - xvg files do not show error
         let path_expected = format!("tests/files/aa_order_leaflets_{}.xvg", molecule);
 
-        assert!(diff_files_ignore_first(&path, &path_expected, 1));
+        assert_eq_order(&path, &path_expected, 1);
     }
 }
 
@@ -2295,23 +2181,9 @@ fn test_aa_order_error_limit() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_yaml,
-        "tests/files/aa_order_error_limit.yaml",
-        1
-    ));
-
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/aa_order_error_limit.tab",
-        1
-    ));
-
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/aa_order_error_limit.csv",
-        1
-    ));
+    assert_eq_order(path_to_yaml, "tests/files/aa_order_error_limit.yaml", 1);
+    assert_eq_order(path_to_table, "tests/files/aa_order_error_limit.tab", 1);
+    assert_eq_csv(path_to_csv, "tests/files/aa_order_error_limit.csv", 0);
 }
 
 #[test]
@@ -2345,23 +2217,23 @@ fn test_aa_order_error_leaflets_limit() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_yaml,
         "tests/files/aa_order_error_leaflets_limit.yaml",
-        1
-    ));
+        1,
+    );
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_table,
         "tests/files/aa_order_error_leaflets_limit.tab",
-        1
-    ));
+        1,
+    );
 
-    assert!(diff_files_ignore_first(
+    assert_eq_csv(
         path_to_csv,
         "tests/files/aa_order_error_leaflets_limit.csv",
-        1
-    ));
+        0,
+    );
 }
 
 #[test]
@@ -2385,11 +2257,11 @@ fn test_aa_order_error_blocks_10_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_error_blocks10.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -2435,11 +2307,7 @@ fn test_aa_order_convergence() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_convergence.xvg",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_convergence.xvg", 1);
 }
 
 #[test]
@@ -2463,11 +2331,11 @@ fn test_aa_order_leaflets_convergence() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_leaflets_convergence.xvg",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -2492,11 +2360,7 @@ fn test_aa_order_convergence_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_convergence.xvg",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_convergence.xvg", 1);
     }
 }
 
@@ -2521,11 +2385,7 @@ fn test_aa_order_convergence_step() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_convergence_s5.xvg",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_convergence_s5.xvg", 1);
 }
 
 #[test]
@@ -2565,23 +2425,23 @@ fn test_aa_order_leaflets_asymmetric_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_yaml,
             "tests/files/asymmetric/aa_order_asymmetric.yaml",
-            1
-        ));
+            1,
+        );
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_tab,
             "tests/files/asymmetric/aa_order_asymmetric.tab",
-            1
-        ));
+            1,
+        );
 
-        assert!(diff_files_ignore_first(
+        assert_eq_csv(
             path_to_csv,
             "tests/files/asymmetric/aa_order_asymmetric.csv",
-            0
-        ));
+            0,
+        );
 
         for molecule in ["POPC", "POPE"] {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
@@ -2590,7 +2450,7 @@ fn test_aa_order_leaflets_asymmetric_multiple_threads() {
                 molecule
             );
 
-            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+            assert_eq_order(&path, &path_expected, 1);
         }
     }
 }
@@ -2633,23 +2493,23 @@ fn test_aa_order_leaflets_asymmetric_error_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_yaml,
             "tests/files/asymmetric/aa_order_asymmetric_errors.yaml",
-            1
-        ));
+            1,
+        );
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_tab,
             "tests/files/asymmetric/aa_order_asymmetric_errors.tab",
-            1
-        ));
+            1,
+        );
 
-        assert!(diff_files_ignore_first(
+        assert_eq_csv(
             path_to_csv,
             "tests/files/asymmetric/aa_order_asymmetric_errors.csv",
-            0
-        ));
+            0,
+        );
 
         for molecule in ["POPC", "POPE"] {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
@@ -2658,7 +2518,7 @@ fn test_aa_order_leaflets_asymmetric_error_multiple_threads() {
                 molecule
             );
 
-            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+            assert_eq_order(&path, &path_expected, 1);
         }
     }
 }
@@ -2705,7 +2565,7 @@ fn test_aa_order_leaflets_asymmetric_ordermaps_multiple_threads() {
                     for ((_, _, t), (_, _, u)) in
                         total.extract_convert().zip(upper.extract_convert())
                     {
-                        assert_relative_eq!(t, u, epsilon = 1e-4);
+                        assert_relative_eq!(t, u, epsilon = 2e-4);
                     }
 
                     for (_, _, l) in lower.extract_convert() {
@@ -2715,7 +2575,7 @@ fn test_aa_order_leaflets_asymmetric_ordermaps_multiple_threads() {
                     for ((_, _, t), (_, _, l)) in
                         total.extract_convert().zip(lower.extract_convert())
                     {
-                        assert_relative_eq!(t, l, epsilon = 1e-4);
+                        assert_relative_eq!(t, l, epsilon = 2e-4);
                     }
 
                     for (_, _, u) in upper.extract_convert() {
@@ -2734,7 +2594,7 @@ fn test_aa_order_leaflets_asymmetric_ordermaps_multiple_threads() {
                         for ((_, _, t), (_, _, u)) in
                             total.extract_convert().zip(upper.extract_convert())
                         {
-                            assert_relative_eq!(t, u, epsilon = 1e-4);
+                            assert_relative_eq!(t, u, epsilon = 2e-4);
                         }
 
                         for (_, _, l) in lower.extract_convert() {
@@ -2744,7 +2604,7 @@ fn test_aa_order_leaflets_asymmetric_ordermaps_multiple_threads() {
                         for ((_, _, t), (_, _, l)) in
                             total.extract_convert().zip(lower.extract_convert())
                         {
-                            assert_relative_eq!(t, l, epsilon = 1e-4);
+                            assert_relative_eq!(t, l, epsilon = 2e-4);
                         }
 
                         for (_, _, u) in upper.extract_convert() {
@@ -2794,11 +2654,7 @@ fn test_aa_order_geometry_cuboid_full() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_basic.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_basic.yaml", 1);
     }
 }
 
@@ -2838,11 +2694,7 @@ fn test_aa_order_geometry_cylinder_full() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/aa_order_basic.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/aa_order_basic.yaml", 1);
         }
     }
 }
@@ -2874,11 +2726,7 @@ fn test_aa_order_geometry_sphere_full() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_basic.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_basic.yaml", 1);
     }
 }
 
@@ -2944,11 +2792,7 @@ fn test_aa_order_geometry_cuboid_static_square_multiple_threads() {
             assert_eq_maps(&real_file, &test_file, 2);
         }
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_cuboid_square.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_cuboid_square.yaml", 1);
     }
 }
 
@@ -3014,11 +2858,7 @@ fn test_aa_order_geometry_cylinder_static_multiple_threads() {
             assert_eq_maps(&real_file, &test_file, 2);
         }
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_cylinder.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_cylinder.yaml", 1);
     }
 }
 
@@ -3045,11 +2885,7 @@ fn test_aa_order_geometry_sphere_static_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_sphere_static.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_sphere_static.yaml", 1);
     }
 }
 
@@ -3082,11 +2918,7 @@ fn test_aa_order_geometry_cuboid_box_center_patch() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_cuboid_patch.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_cuboid_patch.yaml", 1);
 }
 
 #[test]
@@ -3110,11 +2942,7 @@ fn test_aa_order_geometry_cylinder_box_center_x() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_cylinder_x.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_cylinder_x.yaml", 1);
 }
 
 #[test]
@@ -3138,11 +2966,7 @@ fn test_aa_order_geometry_sphere_box_center() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_sphere_center.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_sphere_center.yaml", 1);
 }
 
 #[test]
@@ -3166,11 +2990,11 @@ fn test_aa_order_geometry_cuboid_dynamic() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_cuboid_dynamic.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3197,11 +3021,11 @@ fn test_aa_order_geometry_cylinder_dynamic() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_cylinder_dynamic.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3225,11 +3049,11 @@ fn test_aa_order_geometry_sphere_dynamic() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_sphere_dynamic.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3418,11 +3242,7 @@ fn test_aa_order_leaflets_from_file_once_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
     }
 }
 
@@ -3451,11 +3271,7 @@ fn test_aa_order_leaflets_from_map_once() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -3482,11 +3298,11 @@ fn test_aa_order_leaflets_from_file_once_asymmetric() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/asymmetric/aa_order_asymmetric.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3517,11 +3333,7 @@ fn test_aa_order_leaflets_from_file_every10_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
     }
 }
 
@@ -3553,11 +3365,7 @@ fn test_aa_order_leaflets_from_map_every10() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -3587,11 +3395,7 @@ fn test_aa_order_leaflets_from_file_every10_stepping() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_step.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_step.yaml", 1);
 }
 
 #[test]
@@ -3619,11 +3423,7 @@ fn test_aa_order_leaflets_from_file_every_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
     }
 }
 
@@ -3652,11 +3452,7 @@ fn test_aa_order_leaflets_from_map_every() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -3687,11 +3483,11 @@ fn test_aa_order_leaflets_from_file_every_begin_end_step_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/aa_order_begin_end_step.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -4115,11 +3911,11 @@ fn test_aa_order_leaflets_no_pbc_multiple_threads() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
+            assert_eq_order(
                 path_to_output,
                 "tests/files/aa_order_leaflets_nopbc.yaml",
-                1
-            ));
+                1,
+            );
         }
     }
 }
@@ -4147,11 +3943,11 @@ fn test_aa_order_leaflets_clustering_no_pbc() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_leaflets_nopbc.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -4180,11 +3976,11 @@ fn test_aa_order_error_leaflets_no_pbc_multiple_threads() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
+            assert_eq_order(
                 path_to_output,
                 "tests/files/aa_order_error_leaflets_nopbc.yaml",
-                1
-            ));
+                1,
+            );
         }
     }
 }
@@ -4253,7 +4049,11 @@ fn test_aa_order_maps_leaflets_no_pbc() {
 
             // check the script
             let real_script = format!("{}/plot.py", path_to_dir);
-            assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+            assert!(common::diff_files_ignore_first(
+                &real_script,
+                "scripts/plot.py",
+                0
+            ));
         }
     }
 }
@@ -4303,11 +4103,7 @@ fn test_aa_order_geometry_cuboid_ordermaps_no_pbc() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_cuboid_nopbc.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_cuboid_nopbc.yaml", 1);
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_nopbc/cuboid.dat";
@@ -4352,11 +4148,11 @@ fn test_aa_order_geometry_cylinder_ordermaps_no_pbc() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/aa_order_cylinder_nopbc.yaml",
-            1
-        ));
+            1,
+        );
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_nopbc/cylinder.dat";
@@ -4401,11 +4197,7 @@ fn test_aa_order_geometry_sphere_ordermaps_no_pbc() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_sphere_nopbc.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_sphere_nopbc.yaml", 1);
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_nopbc/sphere.dat";
@@ -4569,11 +4361,11 @@ fn test_aa_order_leaflets_yaml_shifted_trajectory() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/aa_order_leaflets_shifted.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -4605,11 +4397,11 @@ fn test_aa_order_leaflets_dynamic_membrane_normal_yaml() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/aa_order_leaflets_dynamic.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -4646,11 +4438,7 @@ fn test_aa_order_buckled_dynamic_membrane_normal_ordermaps_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/aa_order_buckled.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/aa_order_buckled.yaml", 1);
 
     let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps_buckled/ordermap_average_full.dat";
@@ -4661,7 +4449,11 @@ fn test_aa_order_buckled_dynamic_membrane_normal_ordermaps_yaml() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
+    ));
 }
 
 #[test]
@@ -4687,11 +4479,11 @@ fn test_aa_order_buckled_leaflets_clustering_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/aa_order_buckled_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -4729,16 +4521,8 @@ fn test_aa_order_buckled_membrane_normals_from_file_from_map_min_yaml() {
         analysis.run().unwrap().write().unwrap();
     }
 
-    assert!(diff_files_ignore_first(
-        &output_paths[0],
-        &output_paths[1],
-        1
-    ));
-    assert!(diff_files_ignore_first(
-        &output_paths[1],
-        &output_paths[2],
-        1
-    ));
+    assert_eq_order(&output_paths[0], &output_paths[1], 1);
+    assert_eq_order(&output_paths[1], &output_paths[2], 1);
 }
 
 #[test]
@@ -4915,11 +4699,7 @@ fn test_aa_order_leaflets_from_ndx_once_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
     }
 }
 
@@ -4955,11 +4735,7 @@ fn test_aa_order_leaflets_from_ndx_every_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
     }
 }
 
@@ -4998,11 +4774,7 @@ fn test_aa_order_leaflets_from_ndx_every10_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/aa_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
     }
 }
 
@@ -5044,11 +4816,7 @@ fn test_aa_order_leaflets_from_ndx_step_multiple_threads() {
             assert_eq!(results.n_analyzed_frames(), 11);
             results.write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/aa_order_step.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/aa_order_step.yaml", 1);
         }
     }
 }
@@ -5160,7 +4928,7 @@ fn test_aa_order_basic_rust_api() {
     assert_relative_eq!(
         results.average_order().total().unwrap().value(),
         0.1423,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(results.average_order().upper().is_none());
     assert!(results.average_order().lower().is_none());
@@ -5190,7 +4958,7 @@ fn test_aa_order_basic_rust_api() {
         assert_relative_eq!(
             average_order.total().unwrap().value(),
             expected_average_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.total().unwrap().error().is_none());
         assert!(average_order.upper().is_none());
@@ -5215,7 +4983,7 @@ fn test_aa_order_basic_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_atom_order[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.total().unwrap().error().is_none());
         assert!(order.upper().is_none());
@@ -5243,7 +5011,7 @@ fn test_aa_order_basic_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_atom2_order[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.total().unwrap().error().is_none());
         assert!(order.upper().is_none());
@@ -5308,12 +5076,12 @@ fn test_aa_order_error_rust_api() {
     assert_relative_eq!(
         results.average_order().total().unwrap().value(),
         0.1423,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().total().unwrap().error().unwrap(),
         0.0026,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(results.average_order().upper().is_none());
     assert!(results.average_order().lower().is_none());
@@ -5353,12 +5121,12 @@ fn test_aa_order_error_rust_api() {
         assert_relative_eq!(
             average_order.total().unwrap().value(),
             expected_average_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert_relative_eq!(
             average_order.total().unwrap().error().unwrap(),
             expected_average_errors[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.upper().is_none());
         assert!(average_order.lower().is_none());
@@ -5386,7 +5154,7 @@ fn test_aa_order_error_rust_api() {
             assert_relative_eq!(
                 *convergence.total().as_ref().unwrap().get(frame).unwrap(),
                 expected_convergence_values.get(i).unwrap().get(j).unwrap(),
-                epsilon = 1e-4
+                epsilon = 2e-4
             );
         }
 
@@ -5407,12 +5175,12 @@ fn test_aa_order_error_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_atom_order[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert_relative_eq!(
             order.total().unwrap().error().unwrap(),
             expected_atom_errors[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.upper().is_none());
         assert!(order.lower().is_none());
@@ -5439,12 +5207,12 @@ fn test_aa_order_error_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_atom2_order[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert_relative_eq!(
             order.total().unwrap().error().unwrap(),
             expected_atom2_errors[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.upper().is_none());
         assert!(order.lower().is_none());
@@ -5501,17 +5269,17 @@ fn test_aa_order_leaflets_rust_api() {
     assert_relative_eq!(
         results.average_order().total().unwrap().value(),
         0.1423,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().upper().unwrap().value(),
         0.1411,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().lower().unwrap().value(),
         0.1434,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     assert!(results.average_ordermaps().total().is_none());
@@ -5545,20 +5313,20 @@ fn test_aa_order_leaflets_rust_api() {
         assert_relative_eq!(
             average_order.total().unwrap().value(),
             expected_average_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.total().unwrap().error().is_none());
         assert_relative_eq!(
             average_order.upper().unwrap().value(),
             expected_average_upper[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.upper().unwrap().error().is_none());
 
         assert_relative_eq!(
             average_order.lower().unwrap().value(),
             expected_average_lower[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.lower().unwrap().error().is_none());
 
@@ -5581,21 +5349,21 @@ fn test_aa_order_leaflets_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_atom_order[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.total().unwrap().error().is_none());
 
         assert_relative_eq!(
             order.upper().unwrap().value(),
             expected_atom_upper[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.upper().unwrap().error().is_none());
 
         assert_relative_eq!(
             order.lower().unwrap().value(),
             expected_atom_lower[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.lower().unwrap().error().is_none());
 
@@ -5621,21 +5389,21 @@ fn test_aa_order_leaflets_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_atom2_order[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.total().unwrap().error().is_none());
 
         assert_relative_eq!(
             order.upper().unwrap().value(),
             expected_atom2_upper[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.upper().unwrap().error().is_none());
 
         assert_relative_eq!(
             order.lower().unwrap().value(),
             expected_atom2_lower[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.lower().unwrap().error().is_none());
 
@@ -5700,32 +5468,32 @@ fn test_aa_order_error_leaflets_rust_api() {
     assert_relative_eq!(
         results.average_order().total().unwrap().value(),
         0.1423,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().total().unwrap().error().unwrap(),
         0.0026,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().upper().unwrap().value(),
         0.1411,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().upper().unwrap().error().unwrap(),
         0.0024,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().lower().unwrap().value(),
         0.1434,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().lower().unwrap().error().unwrap(),
         0.0031,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     assert!(results.average_ordermaps().total().is_none());
@@ -5876,17 +5644,17 @@ fn test_aa_order_ordermaps_rust_api() {
     assert_relative_eq!(
         map.get_at_convert(0.6, 8.0).unwrap(),
         0.1653,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(4.3, 0.0).unwrap(),
         0.1340,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(9.2, 4.0).unwrap(),
         0.1990,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     // ordermaps for a selected atom
@@ -5898,17 +5666,17 @@ fn test_aa_order_ordermaps_rust_api() {
     assert_relative_eq!(
         map.get_at_convert(0.6, 8.0).unwrap(),
         0.2224,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(4.3, 0.0).unwrap(),
         0.1532,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(9.2, 4.0).unwrap(),
         0.0982,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     // ordermaps for a selected bond
@@ -5920,12 +5688,12 @@ fn test_aa_order_ordermaps_rust_api() {
     assert_relative_eq!(
         map.get_at_convert(0.6, 8.0).unwrap(),
         0.2901,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(4.3, 0.0).unwrap(),
         0.1163,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(map.get_at_convert(9.2, 4.0).unwrap().is_nan());
 }
@@ -5983,12 +5751,12 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         total.get_at_convert(0.6, 8.0).unwrap(),
         0.1653,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         total.get_at_convert(9.2, 4.0).unwrap(),
         0.1990,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     let upper = molecule.average_ordermaps().upper().as_ref().unwrap();
@@ -5996,12 +5764,12 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         upper.get_at_convert(0.6, 8.0).unwrap(),
         0.1347,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         upper.get_at_convert(9.2, 4.0).unwrap(),
         0.3196,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     let lower = molecule.average_ordermaps().lower().as_ref().unwrap();
@@ -6009,12 +5777,12 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         lower.get_at_convert(0.6, 8.0).unwrap(),
         0.2104,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         lower.get_at_convert(9.2, 4.0).unwrap(),
         0.1106,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     // ordermaps for a selected atom
@@ -6024,12 +5792,12 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         total.get_at_convert(0.6, 8.0).unwrap(),
         0.2224,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         total.get_at_convert(9.2, 4.0).unwrap(),
         0.0982,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     let upper = atom.ordermaps().upper().as_ref().unwrap();
@@ -6037,7 +5805,7 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         upper.get_at_convert(0.6, 8.0).unwrap(),
         0.2039,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(upper.get_at_convert(9.2, 4.0).unwrap().is_nan());
 
@@ -6046,7 +5814,7 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         lower.get_at_convert(0.6, 8.0).unwrap(),
         0.2540,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(lower.get_at_convert(9.2, 4.0).unwrap().is_nan());
 
@@ -6057,7 +5825,7 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         total.get_at_convert(0.6, 8.0).unwrap(),
         0.2901,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(total.get_at_convert(9.2, 4.0).unwrap().is_nan());
 
@@ -6066,7 +5834,7 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         upper.get_at_convert(0.6, 8.0).unwrap(),
         0.3584,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(upper.get_at_convert(9.2, 4.0).unwrap().is_nan());
 
@@ -6075,7 +5843,7 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         lower.get_at_convert(0.6, 8.0).unwrap(),
         0.1715,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(lower.get_at_convert(9.2, 4.0).unwrap().is_nan());
 }

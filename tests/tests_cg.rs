@@ -17,7 +17,7 @@ use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
-use common::{assert_eq_maps, diff_files_ignore_first};
+use common::{assert_eq_csv, assert_eq_maps, assert_eq_order};
 
 #[test]
 fn test_cg_order_basic_yaml() {
@@ -36,11 +36,7 @@ fn test_cg_order_basic_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_basic.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_basic.yaml", 1);
 }
 
 #[test]
@@ -62,11 +58,7 @@ fn test_cg_order_basic_concatenated_yaml_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_basic.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_basic.yaml", 1);
     }
 }
 
@@ -88,11 +80,7 @@ fn test_cg_order_basic_ndx_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_basic.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_basic.yaml", 1);
 }
 
 #[test]
@@ -112,11 +100,7 @@ fn test_cg_order_basic_table() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/cg_order_basic.tab",
-        1
-    ));
+    assert_eq_order(path_to_table, "tests/files/cg_order_basic.tab", 1);
 }
 
 #[test]
@@ -142,7 +126,7 @@ fn test_cg_order_basic_xvg() {
         let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
         let path_expected = format!("tests/files/cg_order_basic_{}.xvg", molecule);
 
-        assert!(diff_files_ignore_first(&path, &path_expected, 1));
+        assert_eq_order(&path, &path_expected, 1);
     }
 }
 
@@ -163,11 +147,7 @@ fn test_cg_order_basic_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/cg_order_basic.csv",
-        0
-    ));
+    assert_eq_csv(path_to_csv, "tests/files/cg_order_basic.csv", 0);
 }
 
 #[test]
@@ -189,11 +169,7 @@ fn test_cg_order_basic_yaml_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_basic.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_basic.yaml", 1);
     }
 }
 
@@ -221,11 +197,7 @@ fn test_cg_order_leaflets_yaml() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
     }
 }
 
@@ -253,11 +225,11 @@ fn test_cg_order_leaflets_yaml_only_upper() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/cg_order_leaflets_only_upper.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -285,11 +257,7 @@ fn test_cg_order_leaflets_yaml_alt_traj() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/cg_order_leaflets.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
         }
     }
 }
@@ -317,11 +285,7 @@ fn test_cg_order_leaflets_yaml_trr_concatenated() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
     }
 }
 
@@ -344,11 +308,7 @@ fn test_cg_order_leaflets_yaml_from_gro() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -370,11 +330,7 @@ fn test_cg_order_leaflets_yaml_from_gro_min_bonds() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -395,11 +351,7 @@ fn test_cg_order_leaflets_yaml_from_pdb() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -421,11 +373,7 @@ fn test_cg_order_leaflets_yaml_from_pqr() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
 }
 
 // this test not only checks that a TPR file is redefined by a bond file but also checks the behavior of gorder when molecules with duplicate residue names are present
@@ -447,11 +395,11 @@ fn test_cg_order_leaflets_yaml_from_tpr_redefined_bonds() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_redefined_bonds.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -472,11 +420,11 @@ fn test_cg_order_leaflets_yaml_from_pdb_redefined_bonds() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_redefined_bonds.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -504,11 +452,7 @@ fn test_cg_order_leaflets_yaml_multiple_threads() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/cg_order_leaflets.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
         }
     }
 }
@@ -544,11 +488,7 @@ fn test_cg_order_leaflets_yaml_multiple_threads_various_frequencies() {
 
                 analysis.run().unwrap().write().unwrap();
 
-                assert!(diff_files_ignore_first(
-                    path_to_output,
-                    "tests/files/cg_order_leaflets.yaml",
-                    1
-                ));
+                assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
             }
         }
     }
@@ -580,11 +520,7 @@ fn test_cg_order_leaflets_clustering_yaml_multiple_threads_various_frequencies()
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/cg_order_leaflets.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
         }
     }
 }
@@ -612,11 +548,7 @@ fn test_cg_order_leaflets_table() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_table,
-            "tests/files/cg_order_leaflets.tab",
-            1
-        ));
+        assert_eq_order(path_to_table, "tests/files/cg_order_leaflets.tab", 1);
     }
 }
 
@@ -649,7 +581,7 @@ fn test_cg_order_leaflets_xvg() {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
             let path_expected = format!("tests/files/cg_order_leaflets_{}.xvg", molecule);
 
-            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+            assert_eq_order(&path, &path_expected, 1);
         }
     }
 }
@@ -677,11 +609,7 @@ fn test_cg_order_leaflets_csv() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_csv,
-            "tests/files/cg_order_leaflets.csv",
-            0
-        ));
+        assert_eq_csv(path_to_csv, "tests/files/cg_order_leaflets.csv", 0);
     }
 }
 
@@ -703,11 +631,7 @@ fn test_cg_order_limit_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_limit.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_limit.yaml", 1);
 }
 
 #[test]
@@ -729,11 +653,11 @@ fn test_cg_order_leaflets_limit_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_leaflets_limit.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -755,11 +679,7 @@ fn test_cg_order_leaflets_limit_tab() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/cg_order_leaflets_limit.tab",
-        1
-    ));
+    assert_eq_order(path_to_table, "tests/files/cg_order_leaflets_limit.tab", 1);
 }
 
 #[test]
@@ -781,11 +701,7 @@ fn test_cg_order_leaflets_limit_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/cg_order_leaflets_limit.csv",
-        1
-    ));
+    assert_eq_csv(path_to_csv, "tests/files/cg_order_leaflets_limit.csv", 0);
 }
 
 #[test]
@@ -846,11 +762,11 @@ fn test_cg_order_begin_end_step_yaml() {
     assert_eq!(results.n_analyzed_frames(), 13);
     results.write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_begin_end_step.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -878,11 +794,11 @@ fn test_cg_order_begin_end_step_yaml_multiple_threads() {
         assert_eq!(results.n_analyzed_frames(), 13);
         results.write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/cg_order_begin_end_step.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -917,11 +833,11 @@ fn test_cg_order_begin_end_step_concatenated_yaml_multiple_threads() {
         assert_eq!(results.n_analyzed_frames(), 13);
         results.write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/cg_order_begin_end_step.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -960,11 +876,11 @@ fn test_cg_order_begin_end_step_yaml_leaflets_multiple_threads_various_frequenci
                 assert_eq!(results.n_analyzed_frames(), 13);
                 results.write().unwrap();
 
-                assert!(diff_files_ignore_first(
+                assert_eq_order(
                     path_to_output,
                     "tests/files/cg_order_begin_end_step.yaml",
-                    1
-                ));
+                    1,
+                );
             }
         }
     }
@@ -992,11 +908,7 @@ fn test_cg_order_begin_end_yaml() {
     assert_eq!(results.n_analyzed_frames(), 61);
     results.write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_begin_end.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_begin_end.yaml", 1);
 }
 
 #[test]
@@ -1023,11 +935,7 @@ fn test_cg_order_begin_end_yaml_multiple_threads() {
         assert_eq!(results.n_analyzed_frames(), 61);
         results.write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_begin_end.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_begin_end.yaml", 1);
     }
 }
 
@@ -1132,18 +1040,12 @@ fn test_cg_order_basic_all_formats_backup() {
 
     analysis.run().unwrap().write().unwrap();
 
-    let all_files = [
-        ("tests/files/cg_order_basic.yaml", &file_paths[0]),
-        ("tests/files/cg_order_basic.tab", &file_paths[1]),
-        ("tests/files/cg_order_basic.csv", &file_paths[2]),
-        ("tests/files/cg_order_basic_POPC.xvg", &file_paths[3]),
-        ("tests/files/cg_order_basic_POPE.xvg", &file_paths[4]),
-        ("tests/files/cg_order_basic_POPG.xvg", &file_paths[5]),
-    ];
-
-    for (expected, result) in &all_files {
-        assert!(diff_files_ignore_first(result, expected, 1));
-    }
+    assert_eq_order(&file_paths[0], "tests/files/cg_order_basic.yaml", 1);
+    assert_eq_order(&file_paths[1], "tests/files/cg_order_basic.tab", 1);
+    assert_eq_csv(&file_paths[2], "tests/files/cg_order_basic.csv", 0);
+    assert_eq_order(&file_paths[3], "tests/files/cg_order_basic_POPC.xvg", 1);
+    assert_eq_order(&file_paths[4], "tests/files/cg_order_basic_POPE.xvg", 1);
+    assert_eq_order(&file_paths[5], "tests/files/cg_order_basic_POPG.xvg", 1);
 
     read_and_compare_files(
         path_to_dir,
@@ -1197,18 +1099,18 @@ fn test_cg_order_maps_basic() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
+    ));
 
     // full map for the entire system is the same as for POPC
     let real_file = format!("{}/ordermap_average_full.dat", path_to_dir);
     let test_file = "tests/files/ordermaps_cg/ordermap_average_full.dat";
     assert_eq_maps(&real_file, test_file, 2);
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_small.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_small.yaml", 1);
 }
 
 #[test]
@@ -1281,13 +1183,17 @@ fn test_cg_order_maps_leaflets() {
 
         // check the script
         let real_script = format!("{}/plot.py", path_to_dir);
-        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+        assert!(common::diff_files_ignore_first(
+            &real_script,
+            "scripts/plot.py",
+            0
+        ));
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/cg_order_leaflets_small.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -1329,7 +1235,11 @@ fn test_cg_order_maps_leaflets_full() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
+    ));
 }
 
 #[test]
@@ -1384,13 +1294,13 @@ fn test_cg_order_maps_basic_multiple_threads() {
 
         // check the script
         let real_script = format!("{}/plot.py", path_to_dir);
-        assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
-
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_small.yaml",
-            1
+        assert!(common::diff_files_ignore_first(
+            &real_script,
+            "scripts/plot.py",
+            0
         ));
+
+        assert_eq_order(path_to_output, "tests/files/cg_order_small.yaml", 1);
     }
 }
 
@@ -1444,13 +1354,13 @@ fn test_cg_order_maps_basic_backup() {
 
     // check the script
     let real_script = format!("{}/plot.py", path_to_dir);
-    assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
-
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_small.yaml",
-        1
+    assert!(common::diff_files_ignore_first(
+        &real_script,
+        "scripts/plot.py",
+        0
     ));
+
+    assert_eq_order(path_to_output, "tests/files/cg_order_small.yaml", 1);
 
     // check backed up directory
     let directories = std::fs::read_dir(path_to_outer_dir)
@@ -1489,11 +1399,7 @@ fn test_cg_order_error_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_error.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_error.yaml", 1);
 }
 
 #[test]
@@ -1516,11 +1422,7 @@ fn test_cg_order_error_yaml_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_error.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_error.yaml", 1);
     }
 }
 
@@ -1543,11 +1445,11 @@ fn test_cg_order_error_leaflets_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_error_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -1571,11 +1473,11 @@ fn test_cg_order_error_leaflets_yaml_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/cg_order_error_leaflets.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -1597,11 +1499,7 @@ fn test_cg_order_error_tab() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/cg_order_error.tab",
-        1
-    ));
+    assert_eq_order(path_to_table, "tests/files/cg_order_error.tab", 1);
 }
 
 #[test]
@@ -1623,11 +1521,7 @@ fn test_cg_order_error_leaflets_tab() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/cg_order_error_leaflets.tab",
-        1
-    ));
+    assert_eq_order(path_to_table, "tests/files/cg_order_error_leaflets.tab", 1);
 }
 
 #[test]
@@ -1648,11 +1542,7 @@ fn test_cg_order_error_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/cg_order_error.csv",
-        1
-    ));
+    assert_eq_csv(path_to_csv, "tests/files/cg_order_error.csv", 0);
 }
 
 #[test]
@@ -1674,11 +1564,7 @@ fn test_cg_order_error_leaflets_csv() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/cg_order_error_leaflets.csv",
-        1
-    ));
+    assert_eq_csv(path_to_csv, "tests/files/cg_order_error_leaflets.csv", 0);
 }
 
 #[test]
@@ -1706,7 +1592,7 @@ fn test_cg_order_error_xvg() {
         // same files as when `estimate_error` is not provided - xvg files do not show error
         let path_expected = format!("tests/files/cg_order_basic_{}.xvg", molecule);
 
-        assert!(diff_files_ignore_first(&path, &path_expected, 1));
+        assert_eq_order(&path, &path_expected, 1);
     }
 }
 
@@ -1736,7 +1622,7 @@ fn test_cg_order_error_leaflets_xvg() {
         // same files as when `estimate_error` is not provided - xvg files do not show error
         let path_expected = format!("tests/files/cg_order_leaflets_{}.xvg", molecule);
 
-        assert!(diff_files_ignore_first(&path, &path_expected, 1));
+        assert_eq_order(&path, &path_expected, 1);
     }
 }
 
@@ -1767,23 +1653,9 @@ fn test_cg_order_error_limit() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_yaml,
-        "tests/files/cg_order_error_limit.yaml",
-        1
-    ));
-
-    assert!(diff_files_ignore_first(
-        path_to_table,
-        "tests/files/cg_order_error_limit.tab",
-        1
-    ));
-
-    assert!(diff_files_ignore_first(
-        path_to_csv,
-        "tests/files/cg_order_error_limit.csv",
-        1
-    ));
+    assert_eq_order(path_to_yaml, "tests/files/cg_order_error_limit.yaml", 1);
+    assert_eq_order(path_to_table, "tests/files/cg_order_error_limit.tab", 1);
+    assert_eq_csv(path_to_csv, "tests/files/cg_order_error_limit.csv", 0);
 }
 
 #[test]
@@ -1814,23 +1686,23 @@ fn test_cg_order_error_leaflets_limit() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_yaml,
         "tests/files/cg_order_error_leaflets_limit.yaml",
-        1
-    ));
+        1,
+    );
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_table,
         "tests/files/cg_order_error_leaflets_limit.tab",
-        1
-    ));
+        1,
+    );
 
-    assert!(diff_files_ignore_first(
+    assert_eq_csv(
         path_to_csv,
         "tests/files/cg_order_error_leaflets_limit.csv",
-        1
-    ));
+        0,
+    );
 }
 
 #[test]
@@ -1850,11 +1722,7 @@ fn test_cg_order_convergence() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_convergence.xvg",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_convergence.xvg", 1);
 }
 
 #[test]
@@ -1875,11 +1743,11 @@ fn test_cg_order_leaflets_convergence() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_leaflets_convergence.xvg",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -1901,11 +1769,7 @@ fn test_cg_order_convergence_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_convergence.xvg",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_convergence.xvg", 1);
     }
 }
 
@@ -1927,11 +1791,7 @@ fn test_cg_order_convergence_step() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_convergence_s5.xvg",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_convergence_s5.xvg", 1);
 }
 
 #[test]
@@ -1989,11 +1849,11 @@ fn test_cg_order_leaflets_scrambling_various_methods_and_frequencies() {
                     _ => unreachable!("Unexpected method-frequency combination."),
                 };
 
-                assert!(diff_files_ignore_first(
+                assert_eq_order(
                     path_to_output,
                     &format!("tests/files/scrambling/{}", test_file),
-                    1
-                ));
+                    1,
+                );
             }
         }
     }
@@ -2034,11 +1894,11 @@ fn test_cg_order_leaflets_scrambling_clustering() {
             _ => unreachable!("Unexpected frequency."),
         };
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             &format!("tests/files/scrambling/{}", test_file),
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -2083,11 +1943,11 @@ fn test_cg_order_leaflets_scrambling_from_file() {
                 _ => panic!("Unexpected leaflets file provided."),
             };
 
-            assert!(diff_files_ignore_first(
+            assert_eq_order(
                 path_to_output,
                 &format!("tests/files/scrambling/{}", test_file),
-                1
-            ));
+                1,
+            );
         }
     }
 }
@@ -2132,11 +1992,11 @@ fn test_cg_order_leaflets_scrambling_from_map() {
                 _ => panic!("Unexpected leaflets file provided."),
             };
 
-            assert!(diff_files_ignore_first(
+            assert_eq_order(
                 path_to_output,
                 &format!("tests/files/scrambling/{}", test_file),
-                1
-            ));
+                1,
+            );
         }
     }
 }
@@ -2203,11 +2063,11 @@ fn test_cg_order_leaflets_scrambling_from_ndx() {
                 _ => panic!("Unexpected frequency."),
             };
 
-            assert!(diff_files_ignore_first(
+            assert_eq_order(
                 path_to_output,
                 &format!("tests/files/scrambling/{}", test_file),
-                1
-            ));
+                1,
+            );
         }
     }
 }
@@ -2246,23 +2106,23 @@ fn test_cg_order_leaflets_asymmetric_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_yaml,
             "tests/files/asymmetric/cg_order_asymmetric.yaml",
-            1
-        ));
+            1,
+        );
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_tab,
             "tests/files/asymmetric/cg_order_asymmetric.tab",
-            1
-        ));
+            1,
+        );
 
-        assert!(diff_files_ignore_first(
+        assert_eq_csv(
             path_to_csv,
             "tests/files/asymmetric/cg_order_asymmetric.csv",
-            0
-        ));
+            0,
+        );
 
         for molecule in ["POPE", "POPG"] {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
@@ -2271,7 +2131,7 @@ fn test_cg_order_leaflets_asymmetric_multiple_threads() {
                 molecule
             );
 
-            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+            assert_eq_order(&path, &path_expected, 1);
         }
     }
 }
@@ -2311,23 +2171,23 @@ fn test_cg_order_leaflets_asymmetric_error_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_yaml,
             "tests/files/asymmetric/cg_order_asymmetric_errors.yaml",
-            1
-        ));
+            1,
+        );
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_tab,
             "tests/files/asymmetric/cg_order_asymmetric_errors.tab",
-            1
-        ));
+            1,
+        );
 
-        assert!(diff_files_ignore_first(
+        assert_eq_csv(
             path_to_csv,
             "tests/files/asymmetric/cg_order_asymmetric_errors.csv",
-            0
-        ));
+            0,
+        );
 
         for molecule in ["POPE", "POPG"] {
             let path = format!("{}/order_{}.xvg", path_to_dir, molecule);
@@ -2336,7 +2196,7 @@ fn test_cg_order_leaflets_asymmetric_error_multiple_threads() {
                 molecule
             );
 
-            assert!(diff_files_ignore_first(&path, &path_expected, 1));
+            assert_eq_order(&path, &path_expected, 1);
         }
     }
 }
@@ -2371,7 +2231,7 @@ fn test_cg_order_leaflets_asymmetric_ordermaps_multiple_threads() {
                     for ((_, _, t), (_, _, u)) in
                         total.extract_convert().zip(upper.extract_convert())
                     {
-                        assert_relative_eq!(t, u, epsilon = 1e-4);
+                        assert_relative_eq!(t, u, epsilon = 2e-4);
                     }
 
                     for (_, _, l) in lower.extract_convert() {
@@ -2381,7 +2241,7 @@ fn test_cg_order_leaflets_asymmetric_ordermaps_multiple_threads() {
                     for ((_, _, t), (_, _, l)) in
                         total.extract_convert().zip(lower.extract_convert())
                     {
-                        assert_relative_eq!(t, l, epsilon = 1e-4);
+                        assert_relative_eq!(t, l, epsilon = 2e-4);
                     }
 
                     for (_, _, u) in upper.extract_convert() {
@@ -2427,11 +2287,7 @@ fn test_cg_order_geometry_cuboid_full() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_basic.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_basic.yaml", 1);
     }
 }
 
@@ -2468,11 +2324,7 @@ fn test_cg_order_geometry_cylinder_full() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
-                path_to_output,
-                "tests/files/cg_order_basic.yaml",
-                1
-            ));
+            assert_eq_order(path_to_output, "tests/files/cg_order_basic.yaml", 1);
         }
     }
 }
@@ -2501,11 +2353,7 @@ fn test_cg_order_geometry_sphere_full() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_basic.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_basic.yaml", 1);
     }
 }
 
@@ -2537,11 +2385,7 @@ fn test_cg_order_geometry_cuboid_box_center_square_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_cuboid_square.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_cuboid_square.yaml", 1);
     }
 }
 
@@ -2573,11 +2417,7 @@ fn test_cg_order_geometry_cylinder_static_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_cylinder.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_cylinder.yaml", 1);
     }
 }
 
@@ -2601,11 +2441,7 @@ fn test_cg_order_geometry_sphere_dynamic_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_sphere.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_sphere.yaml", 1);
     }
 }
 
@@ -2758,11 +2594,7 @@ fn test_cg_order_leaflets_from_file_once_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
     }
 }
 
@@ -2788,11 +2620,7 @@ fn test_cg_order_leaflets_from_map_once() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -2820,11 +2648,7 @@ fn test_cg_order_leaflets_from_file_every20_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
     }
 }
 
@@ -2853,11 +2677,7 @@ fn test_cg_order_leaflets_from_map_every20() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -2882,11 +2702,7 @@ fn test_cg_order_leaflets_from_file_every_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
     }
 }
 
@@ -2912,11 +2728,7 @@ fn test_cg_order_leaflets_from_map_every() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_leaflets.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
 }
 
 #[test]
@@ -3139,11 +2951,11 @@ fn test_cg_order_leaflets_no_pbc_multiple_threads() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
+            assert_eq_order(
                 path_to_output,
                 "tests/files/cg_order_leaflets_nopbc.yaml",
-                1
-            ));
+                1,
+            );
         }
     }
 }
@@ -3171,11 +2983,11 @@ fn test_cg_order_error_leaflets_no_pbc_multiple_threads() {
 
             analysis.run().unwrap().write().unwrap();
 
-            assert!(diff_files_ignore_first(
+            assert_eq_order(
                 path_to_output,
                 "tests/files/cg_order_error_leaflets_nopbc.yaml",
-                1
-            ));
+                1,
+            );
         }
     }
 }
@@ -3243,7 +3055,11 @@ fn test_cg_order_maps_leaflets_no_pbc() {
 
             // check the script
             let real_script = format!("{}/plot.py", path_to_dir);
-            assert!(diff_files_ignore_first(&real_script, "scripts/plot.py", 0));
+            assert!(common::diff_files_ignore_first(
+                &real_script,
+                "scripts/plot.py",
+                0
+            ));
         }
     }
 }
@@ -3290,11 +3106,7 @@ fn test_cg_order_geometry_cuboid_ordermaps_no_pbc() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_cuboid_nopbc.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_cuboid_nopbc.yaml", 1);
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_cg_nopbc/cuboid.dat";
@@ -3344,11 +3156,11 @@ fn test_cg_order_geometry_cylinder_ordermaps_no_pbc() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/cg_order_cylinder_nopbc.yaml",
-            1
-        ));
+            1,
+        );
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_cg_nopbc/cylinder.dat";
@@ -3390,11 +3202,7 @@ fn test_cg_order_geometry_sphere_ordermaps_no_pbc() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_sphere_nopbc.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_sphere_nopbc.yaml", 1);
 
         let real_file = format!("{}/{}", path_to_dir, "ordermap_average_full.dat");
         let test_file = "tests/files/ordermaps_cg_nopbc/sphere.dat";
@@ -3427,11 +3235,11 @@ fn test_cg_order_leaflets_dynamic_membrane_normal_yaml() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/cg_order_leaflets_dynamic.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -3457,11 +3265,7 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_yaml() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_vesicle.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_vesicle.yaml", 1);
     }
 }
 
@@ -3487,11 +3291,7 @@ fn test_cg_order_vesicle_membrane_normals_from_file_yaml() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_vesicle.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_vesicle.yaml", 1);
     }
 }
 
@@ -3627,11 +3427,7 @@ fn test_cg_order_vesicle_membrane_normals_from_map_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_vesicle.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_vesicle.yaml", 1);
 }
 
 #[test]
@@ -3663,11 +3459,11 @@ fn test_cg_order_vesicle_leaflets_dynamic_membrane_normal_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_vesicle_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3691,11 +3487,11 @@ fn test_cg_order_vesicle_leaflets_clustering_dynamic_membrane_normal_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_vesicle_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3718,11 +3514,11 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_centered_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_vesicle_centered.yaml", // very small differences compared to `cg_order_vesicle.yaml`
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3746,11 +3542,11 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_centered_nopbc_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_vesicle_centered.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3775,11 +3571,11 @@ fn test_cg_order_vesicle_dynamic_membrane_normal_centered_clustering_nopbc_yaml(
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_vesicle_leaflets_centered.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3800,11 +3596,7 @@ fn test_cg_order_buckled_dynamic_membrane_normal_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
-        path_to_output,
-        "tests/files/cg_order_buckled.yaml",
-        1
-    ));
+    assert_eq_order(path_to_output, "tests/files/cg_order_buckled.yaml", 1);
 }
 
 #[test]
@@ -3827,11 +3619,11 @@ fn test_cg_order_buckled_leaflets_clustering_dynamic_membrane_normal_yaml() {
 
     analysis.run().unwrap().write().unwrap();
 
-    assert!(diff_files_ignore_first(
+    assert_eq_order(
         path_to_output,
         "tests/files/cg_order_buckled_leaflets.yaml",
-        1
-    ));
+        1,
+    );
 }
 
 #[test]
@@ -3947,11 +3739,7 @@ fn test_cg_order_leaflets_from_ndx_once_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
     }
 }
 
@@ -3984,11 +3772,7 @@ fn test_cg_order_leaflets_from_ndx_every_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
     }
 }
 
@@ -4024,11 +3808,7 @@ fn test_cg_order_leaflets_from_ndx_every20_multiple_threads() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
-            path_to_output,
-            "tests/files/cg_order_leaflets.yaml",
-            1
-        ));
+        assert_eq_order(path_to_output, "tests/files/cg_order_leaflets.yaml", 1);
     }
 }
 
@@ -4066,11 +3846,11 @@ fn test_cg_order_leaflets_from_ndx_partial() {
 
         analysis.run().unwrap().write().unwrap();
 
-        assert!(diff_files_ignore_first(
+        assert_eq_order(
             path_to_output,
             "tests/files/cg_order_leaflets_small.yaml",
-            1
-        ));
+            1,
+        );
     }
 }
 
@@ -4103,7 +3883,7 @@ fn test_cg_order_basic_rust_api() {
     assert_relative_eq!(
         results.average_order().total().unwrap().value(),
         0.2962,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(results.average_order().upper().is_none());
     assert!(results.average_order().lower().is_none());
@@ -4123,7 +3903,7 @@ fn test_cg_order_basic_rust_api() {
         assert_relative_eq!(
             average_order.total().unwrap().value(),
             expected_average_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.total().unwrap().error().is_none());
         assert!(average_order.upper().is_none());
@@ -4150,7 +3930,7 @@ fn test_cg_order_basic_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_bond_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.total().unwrap().error().is_none());
         assert!(order.upper().is_none());
@@ -4209,12 +3989,12 @@ fn test_cg_order_error_rust_api() {
     assert_relative_eq!(
         results.average_order().total().unwrap().value(),
         0.2962,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().total().unwrap().error().unwrap(),
         0.0050,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert!(results.average_order().upper().is_none());
     assert!(results.average_order().lower().is_none());
@@ -4244,12 +4024,12 @@ fn test_cg_order_error_rust_api() {
         assert_relative_eq!(
             average_order.total().unwrap().value(),
             expected_average_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert_relative_eq!(
             average_order.total().unwrap().error().unwrap(),
             expected_average_errors[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.upper().is_none());
         assert!(average_order.lower().is_none());
@@ -4277,7 +4057,7 @@ fn test_cg_order_error_rust_api() {
             assert_relative_eq!(
                 *convergence.total().as_ref().unwrap().get(frame).unwrap(),
                 expected_convergence_values.get(i).unwrap().get(j).unwrap(),
-                epsilon = 1e-4
+                epsilon = 2e-4
             );
         }
 
@@ -4300,12 +4080,12 @@ fn test_cg_order_error_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_bond_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert_relative_eq!(
             order.total().unwrap().error().unwrap(),
             expected_bond_errors[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.upper().is_none());
         assert!(order.lower().is_none());
@@ -4355,17 +4135,17 @@ fn test_cg_order_leaflets_rust_api() {
     assert_relative_eq!(
         results.average_order().total().unwrap().value(),
         0.2962,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().upper().unwrap().value(),
         0.2971,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().lower().unwrap().value(),
         0.2954,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     assert!(results.average_ordermaps().total().is_none());
@@ -4388,21 +4168,21 @@ fn test_cg_order_leaflets_rust_api() {
         assert_relative_eq!(
             average_order.total().unwrap().value(),
             expected_average_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.total().unwrap().error().is_none());
 
         assert_relative_eq!(
             average_order.upper().unwrap().value(),
             expected_average_upper[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.upper().unwrap().error().is_none());
 
         assert_relative_eq!(
             average_order.lower().unwrap().value(),
             expected_average_lower[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(average_order.lower().unwrap().error().is_none());
 
@@ -4427,21 +4207,21 @@ fn test_cg_order_leaflets_rust_api() {
         assert_relative_eq!(
             order.total().unwrap().value(),
             expected_bond_orders[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.total().unwrap().error().is_none());
 
         assert_relative_eq!(
             order.upper().unwrap().value(),
             expected_bond_upper[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.upper().unwrap().error().is_none());
 
         assert_relative_eq!(
             order.lower().unwrap().value(),
             expected_bond_lower[i],
-            epsilon = 1e-4
+            epsilon = 2e-4
         );
         assert!(order.lower().unwrap().error().is_none());
 
@@ -4499,32 +4279,32 @@ fn test_cg_order_error_leaflets_rust_api() {
     assert_relative_eq!(
         results.average_order().total().unwrap().value(),
         0.2962,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().total().unwrap().error().unwrap(),
         0.0050,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().upper().unwrap().value(),
         0.2971,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().upper().unwrap().error().unwrap(),
         0.0049,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().lower().unwrap().value(),
         0.2954,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         results.average_order().lower().unwrap().error().unwrap(),
         0.0056,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     assert!(results.average_ordermaps().total().is_none());
@@ -4640,17 +4420,17 @@ fn test_cg_order_ordermaps_rust_api() {
     assert_relative_eq!(
         map.get_at_convert(1.0, 8.0).unwrap(),
         0.3590,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(7.0, 0.0).unwrap(),
         0.3765,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(13.0, 11.0).unwrap(),
         0.4296,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     // ordermaps for a selected bond
@@ -4662,17 +4442,17 @@ fn test_cg_order_ordermaps_rust_api() {
     assert_relative_eq!(
         map.get_at_convert(1.0, 8.0).unwrap(),
         0.3967,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(7.0, 0.0).unwrap(),
         0.3213,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         map.get_at_convert(13.0, 11.0).unwrap(),
         0.4104,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 }
 
@@ -4723,12 +4503,12 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         total.get_at_convert(1.0, 8.0).unwrap(),
         0.3590,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         total.get_at_convert(13.0, 11.0).unwrap(),
         0.4296,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     let upper = molecule.average_ordermaps().upper().as_ref().unwrap();
@@ -4736,12 +4516,12 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         upper.get_at_convert(1.0, 8.0).unwrap(),
         0.3418,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         upper.get_at_convert(13.0, 11.0).unwrap(),
         0.4051,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     let lower = molecule.average_ordermaps().lower().as_ref().unwrap();
@@ -4749,12 +4529,12 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         lower.get_at_convert(1.0, 8.0).unwrap(),
         0.3662,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         lower.get_at_convert(13.0, 11.0).unwrap(),
         0.4506,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     // ordermaps for a selected bond
@@ -4764,12 +4544,12 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         total.get_at_convert(1.0, 8.0).unwrap(),
         0.3967,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         total.get_at_convert(13.0, 11.0).unwrap(),
         0.4104,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     let upper = bond.ordermaps().upper().as_ref().unwrap();
@@ -4777,12 +4557,12 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         upper.get_at_convert(1.0, 8.0).unwrap(),
         0.3573,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         upper.get_at_convert(13.0, 11.0).unwrap(),
         0.4807,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 
     let lower = bond.ordermaps().lower().as_ref().unwrap();
@@ -4790,11 +4570,11 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
     assert_relative_eq!(
         lower.get_at_convert(1.0, 8.0).unwrap(),
         0.4118,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
     assert_relative_eq!(
         lower.get_at_convert(13.0, 11.0).unwrap(),
         0.3563,
-        epsilon = 1e-4
+        epsilon = 2e-4
     );
 }

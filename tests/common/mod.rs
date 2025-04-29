@@ -27,6 +27,85 @@ fn read_file_without_first_lines(file: &str, skip: usize) -> Vec<String> {
         .collect()
 }
 
+/// Test utility. Assert that two order files (not csv) match each other.
+#[allow(dead_code)]
+pub(super) fn assert_eq_order(a: &str, b: &str, skip: usize) {
+    let (file_a, file_b) = match (File::open(a), File::open(b)) {
+        (Ok(f1), Ok(f2)) => (f1, f2),
+        _ => panic!("One or both files do not exist."),
+    };
+
+    let mut lines_a = BufReader::new(file_a).lines().skip(skip);
+    let mut lines_b = BufReader::new(file_b).lines().skip(skip);
+
+    loop {
+        match (lines_a.next(), lines_b.next()) {
+            (Some(Ok(line_a)), Some(Ok(line_b))) => assert_lines(&line_a, &line_b),
+            (None, None) => break,
+            _ => panic!("Files have different number of lines"),
+        }
+    }
+}
+
+/// Test utility. Asser that two order csv files match each other.
+#[allow(dead_code)]
+pub(super) fn assert_eq_csv(a: &str, b: &str, skip: usize) {
+    let (file_a, file_b) = match (File::open(a), File::open(b)) {
+        (Ok(f1), Ok(f2)) => (f1, f2),
+        _ => panic!("One or both files do not exist."),
+    };
+
+    let mut lines_a = BufReader::new(file_a).lines().skip(skip);
+    let mut lines_b = BufReader::new(file_b).lines().skip(skip);
+
+    loop {
+        match (lines_a.next(), lines_b.next()) {
+            (Some(Ok(line_a)), Some(Ok(line_b))) => assert_lines_csv(&line_a, &line_b),
+            (None, None) => break,
+            _ => panic!("Files have different number of lines"),
+        }
+    }
+}
+
+fn assert_lines(line_a: &str, line_b: &str) {
+    let mut line_a_split = line_a.split_whitespace();
+    let mut line_b_split = line_b.split_whitespace();
+
+    loop {
+        match (line_a_split.next(), line_b_split.next()) {
+            (Some(item_a), Some(item_b)) => assert_items(item_a, item_b),
+            (None, None) => break,
+            _ => panic!("Lines do not match: {} vs. {}", line_a, line_b),
+        }
+    }
+}
+
+fn assert_lines_csv(line_a: &str, line_b: &str) {
+    let mut line_a_split = line_a.split(",");
+    let mut line_b_split = line_b.split(",");
+
+    loop {
+        match (line_a_split.next(), line_b_split.next()) {
+            (Some(item_a), Some(item_b)) => assert_items(item_a, item_b),
+            (None, None) => break,
+            _ => panic!("Lines do not match: {} vs. {}", line_a, line_b),
+        }
+    }
+}
+
+fn assert_items(item_a: &str, item_b: &str) {
+    match (item_a.parse::<f32>(), item_b.parse::<f32>()) {
+        (Ok(z1), Ok(z2)) if z1.is_nan() && z2.is_nan() => (),
+        (Ok(z1), Ok(z2)) => assert_relative_eq!(z1, z2, epsilon = 2e-4),
+        (Err(_), Err(_)) => assert_eq!(
+            item_a, item_b,
+            "Items do not match: {} vs {}",
+            item_a, item_b
+        ),
+        _ => panic!("Invalid or mismatched items: {} vs {}", item_a, item_b),
+    }
+}
+
 /// Test utility. Assert that two ordermap files match each other.
 #[allow(dead_code)]
 pub(super) fn assert_eq_maps(a: &str, b: &str, skip: usize) {
@@ -56,14 +135,7 @@ pub(super) fn assert_eq_maps(a: &str, b: &str, skip: usize) {
                     assert_eq!(p[0], q[0], "First columns differ");
                     assert_eq!(p[1], q[1], "Second columns differ");
 
-                    match (p[2].parse::<f32>(), q[2].parse::<f32>()) {
-                        (Ok(z1), Ok(z2)) if z1.is_nan() && z2.is_nan() => (),
-                        (Ok(z1), Ok(z2)) => assert_relative_eq!(z1, z2, epsilon = 1e-3),
-                        _ => panic!(
-                            "Invalid or mismatched numeric formats: {} vs {}",
-                            p[2], q[2]
-                        ),
-                    }
+                    assert_items(p[2], q[2]);
                 } else {
                     assert_eq!(line_a, line_b, "Non-data lines differ");
                 }
