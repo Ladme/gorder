@@ -5,7 +5,8 @@
 
 use std::{
     fs::File,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Read},
+    path::PathBuf,
 };
 
 use approx::assert_relative_eq;
@@ -144,4 +145,30 @@ pub(super) fn assert_eq_maps(a: &str, b: &str, skip: usize) {
             _ => panic!("Files have different number of lines"),
         }
     }
+}
+
+/// Test utility. Compares the content of all files in a directory except the excluded files.
+#[allow(dead_code)]
+pub(super) fn read_and_compare_files(dir: &str, exclude_paths: &[PathBuf], expected_content: &str) {
+    let mut count = 0;
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+
+        if path.is_dir() || exclude_paths.contains(&path) {
+            continue;
+        }
+
+        count += 1;
+
+        let mut file_content = String::new();
+        File::open(&path)
+            .unwrap()
+            .read_to_string(&mut file_content)
+            .unwrap();
+
+        assert_eq!(file_content, expected_content);
+    }
+
+    assert_eq!(count, 6);
 }

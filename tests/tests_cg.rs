@@ -17,7 +17,7 @@ use hashbrown::HashMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
-use common::{assert_eq_csv, assert_eq_maps, assert_eq_order};
+use common::{assert_eq_csv, assert_eq_maps, assert_eq_order, read_and_compare_files};
 
 #[test]
 fn test_cg_order_basic_yaml() {
@@ -982,30 +982,6 @@ macro_rules! create_file_for_backup {
     }};
 }
 
-fn read_and_compare_files(dir: &str, exclude_paths: &[&str], expected_content: &str) {
-    let mut count = 0;
-    for entry in std::fs::read_dir(dir).unwrap() {
-        let entry = entry.unwrap();
-        let path = entry.path();
-
-        if path.is_dir() || exclude_paths.contains(&path.to_str().unwrap()) {
-            continue;
-        }
-
-        count += 1;
-
-        let mut file_content = String::new();
-        File::open(&path)
-            .unwrap()
-            .read_to_string(&mut file_content)
-            .unwrap();
-
-        assert_eq!(file_content, expected_content);
-    }
-
-    assert_eq!(count, 6);
-}
-
 #[test]
 fn test_cg_order_basic_all_formats_backup() {
     let directory = TempDir::new().unwrap();
@@ -1049,7 +1025,10 @@ fn test_cg_order_basic_all_formats_backup() {
 
     read_and_compare_files(
         path_to_dir,
-        &file_paths.iter().map(|s| s.as_str()).collect::<Vec<_>>(),
+        &file_paths
+            .iter()
+            .map(|s| Path::new(s).to_path_buf())
+            .collect::<Vec<_>>(),
         "This file will be backed up.",
     );
 }
