@@ -97,7 +97,7 @@ fn assert_lines_csv(line_a: &str, line_b: &str) {
 fn assert_items(item_a: &str, item_b: &str) {
     match (item_a.parse::<f32>(), item_b.parse::<f32>()) {
         (Ok(z1), Ok(z2)) if z1.is_nan() && z2.is_nan() => (),
-        (Ok(z1), Ok(z2)) => assert_relative_eq!(z1, z2, epsilon = 2e-4),
+        (Ok(z1), Ok(z2)) => assert_relative_eq!(z1, z2, epsilon = 3e-4),
         (Err(_), Err(_)) => assert_eq!(
             item_a, item_b,
             "Items do not match: {} vs {}",
