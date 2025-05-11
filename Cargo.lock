@@ -1144,7 +1144,7 @@ dependencies = [
 
 [[package]]
 name = "pygorder"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "colog",
  "ctrlc",
