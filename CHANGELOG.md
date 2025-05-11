@@ -1,6 +1,14 @@
+## Version 0.7.2
+- Changes to the Rust API: Made all user-provided parameters of all methods for leaflet assignment public.
+
+## Version 0.7.1
+- Fixed undefined behavior in the `groan_rs` library's C source code that caused TRR files to be read incorrectly when compiled with certain C compilers (e.g., clang).
+
 ## Version 0.7.0
 - **Leaflet classification for curved membranes:** `gorder` can now use spectral clustering to classify lipids into leaflets for any membrane geometry, including buckled membranes and vesicles. See the [manual](https://ladme.github.io/gorder-manual/leaflets.html#clustering-method-for-leaflet-classification) for more information.
 - **!!BREAKING CHANGE!!** **Removed support for some trajectory formats:** Removed support for PDB, Amber NetCDF, DCD, and LAMMPSTRJ trajectories. (PDB structure files are still supported.) The parsing of these trajectories relied on the `chemfiles` library, whose maintenance standards and capabilities just do not meet the quality requirements for `gorder`. If you need to use these trajectory formats, you can still use `gorder v0.6`.
+
+***
 
 ## Version 0.6.0
 - **United-atom order parameters:** `gorder` is now able to calculate order parameters in united-atom systems. See the [manual](https://ladme.github.io/gorder-manual/uaorder_basics.html) for more information.
@@ -8,6 +16,8 @@
 - **Trajectory concatenation:** You can now provide multiple trajectory files which will be all joined into one trajectory and analyzed. In case there are duplicate frames at trajectory boundaries, `gorder` will analyze only one of the duplicate frames. This feature is currently only supported for XTC and TRR files. See the [manual](https://ladme.github.io/gorder-manual/multiple_trajectories.html) for more information.
 - **Manual membrane normals:** Membrane normals can be now assigned manually for each lipid molecule in each trajectory frame. See the [manual](https://ladme.github.io/gorder-manual/manual_normals.html) for more information.
 - **Optimizations:** Local leaflet classification method and dynamic local membrane normal calculation are now much faster, especially for very large systems, through using cell lists. **Warning:** The changes may cause small differences in the calculated order parameters compared to version 0.5, especially for very short trajectories. These differences should be on the order of 0.0001 arb. u. or lower.
+
+***
 
 ## Version 0.5.0
 - **Dynamic membrane normal calculation:** Membrane normals can be now calculated dynamically from actual membrane shape which allows the calculation of order parameters for vesicles and similar systems (see the [manual](https://ladme.github.io/gorder-manual/membrane_normal.html)).
@@ -21,11 +31,15 @@
   - Added more color to information written to standard output during analysis. Changed logging for output file writing. Changed logging for molecule types.
   - Reading an ndx file with invalid or duplicated group names no longer results in a hard error but instead raises a warning.
 
+***
+
 ## Version 0.4.0
 - **Geometry selection:** Added the ability to select a geometric region for analysis. Users can now specify cuboidal, spherical, or cylindrical regions, and order parameters will be calculated only for bonds located within the selected region.
 - **Support for reading GRO, PDB, and PQR files:** These file formats are now supported as input structure files. In some cases, an additional "bonds" file specifying the system's connectivity may be required. Refer to the manual for more details.
 - **Manual assignment of lipids to leaflets:** Lipids can now be manually assigned to leaflets using a provided leaflet assignment file. Refer to the manual for detailed instructions.
 - **Calculating average results for the entire system:** YAML and TAB files now include information about the average order parameters calculated across all bonds and molecule types in the system. Additionally, ordermaps are generated for the entire system.
+
+***
 
 ## Version 0.3.0
 - **Error estimation and convergence analysis**: Implemented error estimation and convergence analysis. Refer to the corresponding section of the manual for more details.
