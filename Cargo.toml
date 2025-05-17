@@ -11,7 +11,7 @@ categories = ["command-line-utilities", "science"]
 exclude = ["/tests", "/validation", "/pygorder", "/examples"]
 
 [dependencies]
-backitup = "0.1.1"
+backitup = "0.1.2"
 groan_rs = { version = "0.10.0-dev.5", features = ["parallel", "serde"] }
 colored = "3.0.0"
 thiserror = "2.0.12"

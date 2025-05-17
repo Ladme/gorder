@@ -1,5 +1,6 @@
 ## Version 0.7.2
 - Changes to the Rust API: Made all user-provided parameters of all methods for leaflet assignment public.
+- Providing the current working directory as the directory work saving ordermaps will now result in an error.
 
 ## Version 0.7.1
 - Fixed undefined behavior in the `groan_rs` library's C source code that caused TRR files to be read incorrectly when compiled with certain C compilers (e.g., clang).

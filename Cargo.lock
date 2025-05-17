@@ -123,9 +123,9 @@ checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 
 [[package]]
 name = "backitup"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a42e434f3c779825f3467207319c808863c7acae2d57d296faf1ebd6b7093d09"
+checksum = "28a625a14107d3a5edff553f32227992f3fab2d8179e4ff58d831afeb04f55a0"
 dependencies = [
  "chrono",
 ]
