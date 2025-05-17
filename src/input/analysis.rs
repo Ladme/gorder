@@ -888,7 +888,7 @@ mod tests_yaml {
 
         let map = analysis.map().as_ref().unwrap();
 
-        assert_eq!(map.output_directory().as_ref().unwrap(), ".");
+        assert_eq!(map.output_directory().as_ref().unwrap(), "ordermaps");
         matches!(
             map.dim_x(),
             GridSpan::Manual {
@@ -1320,6 +1320,17 @@ mod tests_yaml {
             Err(e) => panic!("Unexpected error type returned: {}", e),
         }
     }
+
+    #[test]
+    fn analysis_yaml_fail_ordermaps_working_directory() {
+        match Analysis::from_file("tests/files/inputs/fail_ordermaps_working_dir.yaml") {
+            Ok(_) => panic!("Should have failed, but succeeded."),
+            Err(ConfigError::InvalidOrderMap(OrderMapConfigError::InvalidOutputDirectory(x))) => {
+                assert_eq!(x, String::from("."))
+            }
+            Err(e) => panic!("Unexpected error type returned: {}", e),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1408,7 +1419,7 @@ mod tests_builder {
             )
             .map(
                 OrderMap::builder()
-                    .output_directory(".")
+                    .output_directory("ordermaps")
                     .dim([
                         GridSpan::Manual {
                             start: 0.5,
@@ -1462,7 +1473,7 @@ mod tests_builder {
 
         let map = analysis.map().as_ref().unwrap();
 
-        assert_eq!(map.output_directory().as_ref().unwrap(), ".");
+        assert_eq!(map.output_directory().as_ref().unwrap(), "ordermaps");
         matches!(
             map.dim_x(),
             GridSpan::Manual {

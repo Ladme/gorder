@@ -390,6 +390,9 @@ pub enum OrderMapConfigError {
     #[error("{} membrane normal is not a static global dimension => unable to automatically set ordermap plane ({} set ordermap plane manually)",
     "error:".red().bold(), "hint:".blue().bold())]
     InvalidPlaneAuto,
+
+    #[error("{} output directory specified for saving ordermaps cannot be the current directory (provided path: '{}')", "error:".red().bold(), .0.yellow())]
+    InvalidOutputDirectory(String),
 }
 
 /// Errors that can occur when estimating the error of the calculation.

@@ -139,7 +139,9 @@ impl OrderCalculable for OrderBonds {
     #[inline]
     fn get_timewise_info(&self, n_blocks: usize) -> Option<(usize, usize)> {
         if let Some(bond) = self.bond_types.first() {
-            bond.total().timewise().map(|timewise| (timewise.block_size(n_blocks), timewise.n_frames()))
+            bond.total()
+                .timewise()
+                .map(|timewise| (timewise.block_size(n_blocks), timewise.n_frames()))
         } else {
             None
         }
@@ -591,7 +593,9 @@ impl VirtualBondType {
 
     #[inline(always)]
     pub(crate) fn get_timewise_info(&self, n_blocks: usize) -> Option<(usize, usize)> {
-        self.total.timewise().map(|timewise| (timewise.block_size(n_blocks), timewise.n_frames()))
+        self.total
+            .timewise()
+            .map(|timewise| (timewise.block_size(n_blocks), timewise.n_frames()))
     }
 }
 
@@ -730,7 +734,7 @@ mod tests {
 
         let ordermap_params = OrderMap::builder()
             .dim([GridSpan::Auto, GridSpan::Auto])
-            .output_directory(".")
+            .output_directory("ordermaps")
             .plane(Plane::XY)
             .build()
             .unwrap();
@@ -761,7 +765,7 @@ mod tests {
 
         let ordermap_params = OrderMap::builder()
             .dim([GridSpan::Auto, GridSpan::Auto])
-            .output_directory(".")
+            .output_directory("ordermaps")
             .plane(Plane::XY)
             .build()
             .unwrap();
