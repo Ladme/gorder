@@ -94,7 +94,8 @@ pub enum TopologyError {
     #[error("{} system has undefined simulation box", "error:".red().bold())]
     UndefinedBox,
 
-    #[error("{} the simulation box is not orthogonal", "error:".red().bold())]
+    #[error("{} the simulation box is not orthogonal ({} consider setting '{}' to {} but make sure that your lipid molecules are whole)", 
+    "error:".red().bold(), "hint:".blue().bold(), "handle_pbc".bright_blue(), "false".bright_blue())]
     NotOrthogonalBox,
 
     #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
