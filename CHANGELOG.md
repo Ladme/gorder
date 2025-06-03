@@ -1,6 +1,10 @@
-## Version 0.7.2
+## Version 1.0.0
+- Support for GROMACS 2025 TPR files.
+- More precise calculation of geometric center of groups using Refined Bai-Breen algorithm.
 - Changes to the Rust API: Made all user-provided parameters of all methods for leaflet assignment public.
 - Providing the current working directory as the directory for saving ordermaps will now result in an error.
+
+***
 
 ## Version 0.7.1
 - Fixed undefined behavior in the `groan_rs` library's C source code that caused TRR files to be read incorrectly when compiled with certain C compilers (e.g., clang).

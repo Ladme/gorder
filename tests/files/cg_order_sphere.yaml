@@ -1,58 +1,58 @@
-# Order parameters calculated with 'gorder v0.4.0-dev.2' using structure file 'tests/files/cg.tpr' and trajectory file 'tests/files/cg.xtc'.
+# Order parameters calculated with 'gorder v1.0.0' using a structure file 'tests/files/cg.tpr' and a trajectory file 'tests/files/cg.xtc'.
 average order:
   total: 0.3178
 POPC:
   average order:
-    total: 0.3192
+    total: 0.3193
   order parameters:
     POPC NC3 (0) - POPC PO4 (1):
-      total: -0.1313
+      total: -0.1307
     POPC PO4 (1) - POPC GL1 (2):
-      total: 0.5975
+      total: 0.5971
     POPC GL1 (2) - POPC GL2 (3):
       total: -0.1749
     POPC GL1 (2) - POPC C1A (4):
-      total: 0.389
+      total: 0.3891
     POPC GL2 (3) - POPC C1B (8):
-      total: 0.5117
+      total: 0.5118
     POPC C1A (4) - POPC D2A (5):
-      total: 0.3709
+      total: 0.3713
     POPC D2A (5) - POPC C3A (6):
-      total: 0.3114
+      total: 0.3119
     POPC C3A (6) - POPC C4A (7):
-      total: 0.2688
+      total: 0.2687
     POPC C1B (8) - POPC C2B (9):
-      total: 0.5315
+      total: 0.5317
     POPC C2B (9) - POPC C3B (10):
       total: 0.4378
     POPC C3B (10) - POPC C4B (11):
-      total: 0.2784
+      total: 0.2782
 POPE:
   average order:
     total: 0.3164
   order parameters:
     POPE NH3 (0) - POPE PO4 (1):
-      total: -0.123
+      total: -0.124
     POPE PO4 (1) - POPE GL1 (2):
       total: 0.6165
     POPE GL1 (2) - POPE GL2 (3):
-      total: -0.1952
+      total: -0.195
     POPE GL1 (2) - POPE C1A (4):
-      total: 0.4155
+      total: 0.4153
     POPE GL2 (3) - POPE C1B (8):
-      total: 0.5044
+      total: 0.505
     POPE C1A (4) - POPE D2A (5):
-      total: 0.3841
+      total: 0.3838
     POPE D2A (5) - POPE C3A (6):
-      total: 0.2924
+      total: 0.2926
     POPE C3A (6) - POPE C4A (7):
-      total: 0.2437
+      total: 0.2432
     POPE C1B (8) - POPE C2B (9):
-      total: 0.5067
+      total: 0.5062
     POPE C2B (9) - POPE C3B (10):
-      total: 0.4226
+      total: 0.423
     POPE C3B (10) - POPE C4B (11):
-      total: 0.2741
+      total: 0.2746
 POPG:
   average order:
     total: 0.2547

@@ -403,6 +403,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fea41bba32d969b513997752735605054bc0dfa92b4c56bf1189f2e174be7a10"
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c7a8fb8a9fbf66c1f703fe16184d10ca0ee9d23be5b4436400408ba54a95005"
+
+[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -540,7 +546,7 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "gorder"
-version = "0.7.2"
+version = "1.0.0"
 dependencies = [
  "approx",
  "assert_cmd",
@@ -570,12 +576,13 @@ dependencies = [
 
 [[package]]
 name = "groan_rs"
-version = "0.10.0-dev.5"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb88305e5f3e587f55bc89ea44afb0dbad3ca38251da4cc03dc1e6c1e2bb1cb2"
+checksum = "16cea84e48552db2a9698c2f8b8b8720a3af869525ae843a86946e36217e6f25"
 dependencies = [
  "cc",
  "colored 3.0.0",
+ "dyn-clone",
  "fancy-regex",
  "float-cmp",
  "getset",
@@ -786,9 +793,9 @@ checksum = "8312069eadd5b2cb9ff1bbd3874927d0cc60007ef608507cf8a59920b8a140fd"
 
 [[package]]
 name = "minitpr"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5ab51163d71841e2efcebabf170428649353dae0c9066183a63c4b0f7d4ab30"
+checksum = "535f4372301896560342ac1fa15db2ace017078ab32c2a4db53b53dce16e4f63"
 dependencies = [
  "byteorder",
  "colored 2.1.0",
@@ -1144,7 +1151,7 @@ dependencies = [
 
 [[package]]
 name = "pygorder"
-version = "0.7.2"
+version = "1.0.0"
 dependencies = [
  "colog",
  "ctrlc",

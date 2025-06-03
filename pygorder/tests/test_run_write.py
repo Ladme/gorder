@@ -274,9 +274,9 @@ def test_scrambling_leaflets():
         ["order_once.yaml", "order_global.yaml", "order_global_every_10.yaml"],          # global
         ["order_once.yaml", "order_local.yaml", "order_local_every_10.yaml"],            # local
         ["order_once.yaml", "order_individual.yaml", "order_individual_every_10.yaml"],  # individual
-        ["order_once.yaml", "order_global.yaml", "order_global_every_10.yaml"],          # from file
-        ["order_once.yaml", "order_global.yaml", "order_global_every_10.yaml"],          # from dict
-        ["order_once.yaml", "order_global.yaml", "order_global_every_10.yaml"]           # from NDX
+        ["order_once.yaml", "order_manual.yaml", "order_global_every_10.yaml"],          # from file
+        ["order_once.yaml", "order_manual.yaml", "order_global_every_10.yaml"],          # from dict
+        ["order_once.yaml", "order_manual.yaml", "order_global_every_10.yaml"]           # from NDX
     ]
     manual_classification = ["once.yaml", "every.yaml", "every10.yaml"]
     dicts = [read_leaflets_yaml(f"../tests/files/scrambling/leaflets_{x}") for x in manual_classification]
