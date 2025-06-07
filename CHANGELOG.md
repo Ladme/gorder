@@ -1,8 +1,8 @@
 ## Version 1.0.0
 - Support for GROMACS 2025 TPR files.
-- More precise calculation of geometric center of groups using Refined Bai-Breen algorithm.
-- Changes to the Rust API: Made all user-provided parameters of all methods for leaflet assignment public.
+- More precise calculation of geometric center of groups using the Refined Bai-Breen algorithm. **Note that as a consequence of this, `gorder 1.0.0` may return slightly different results for some systems than previous versions.**
 - Providing the current working directory as the directory for saving ordermaps will now result in an error.
+- Changes to the Rust API: Made all user-provided parameters of all methods for leaflet assignment public.
 
 ***
 
