@@ -5,16 +5,25 @@ build-backend = "maturin"
 [project]
 name = "gorder"
 version = "1.1.0"
+description = "Calculate lipid order parameters from molecular simulations."
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
 license = "MIT"
 
+[project.urls]
+Homepage = "https://ladme.github.io/gorder-manual/"
+Documentation = "https://ladme.github.io/pygorder-docs/"
+Repository = "https://github.com/Ladme/gorder"
+Issues = "https://github.com/Ladme/gorder/issues"
+
 [dependency-groups]
-dev = ["numpy>=2.2.3", "pytest>=8.3.4", "pyyaml>=6.0.2"]
+dev = ["numpy>=2.2.3", "pytest>=8.3.4", "pyyaml>=6.0.2", "twine>=6.1.0"]
