@@ -3,14 +3,17 @@
 
 //! Contains structures and methods for the construction of maps of order parameters.
 
-use std::fmt;
+use std::{fmt, path::PathBuf};
 
 use derive_builder::Builder;
 use getset::{CopyGetters, Getters, Setters};
 use groan_rs::prelude::{SimBox, Vector3D};
 use serde::{Deserialize, Serialize};
 
-use crate::errors::{GridSpanError, OrderMapConfigError};
+use crate::{
+    errors::{GridSpanError, OrderMapConfigError},
+    PANIC_MESSAGE,
+};
 
 /// Orientation of the order map. Should correspond to the plane in which the membrane is built.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -189,6 +192,27 @@ fn validate_bin_size(size: [f32; 2]) -> Result<(), OrderMapConfigError> {
     Ok(())
 }
 
+/// Check that the output directory for ordermaps is not the current directory.
+/// If this is not checked, the user could delete their entire working directory on accident.
+fn validate_output_directory(directory: Option<&String>) -> Result<(), OrderMapConfigError> {
+    if let Some(directory) = directory {
+        if PathBuf::from(directory)
+            .canonicalize()
+            .unwrap_or(PathBuf::from(directory)) // if the directory does not exist, we are fine
+            == std::env::current_dir()
+                .expect(PANIC_MESSAGE)
+                .canonicalize()
+                .expect(PANIC_MESSAGE)
+        {
+            return Err(OrderMapConfigError::InvalidOutputDirectory(
+                directory.clone(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 impl OrderMap {
     /// Start providing ordermap parameters.
     pub fn builder() -> OrderMapBuilder {
@@ -200,12 +224,17 @@ impl OrderMap {
         validate_min_samples(self.min_samples)?;
         validate_gridspan(&self.dim)?;
         validate_bin_size(self.bin_size)?;
+        validate_output_directory(self.output_directory().as_ref())?;
         Ok(())
     }
 }
 
 impl OrderMapBuilder {
     fn validate(&self) -> Result<(), String> {
+        if let Some(directory) = &self.output_directory {
+            validate_output_directory(directory.as_ref()).map_err(|e| e.to_string())?;
+        }
+
         if let Some(min_samples) = self.min_samples {
             validate_min_samples(min_samples).map_err(|e| e.to_string())?;
         }
@@ -352,6 +381,31 @@ mod test_ordermap {
             Ok(_) => panic!("Function should have failed but it succeeded."),
             Err(OrderMapBuilderError::ValidationError(x)) => {
                 assert!(x.contains("invalid bin size"))
+            }
+            Err(e) => panic!("Unexpected error type returned {}", e),
+        }
+    }
+
+    #[test]
+    fn test_ordermap_fail_working_directory1() {
+        match OrderMap::builder().output_directory(".").build() {
+            Ok(_) => panic!("Function should have failed but it succeeded."),
+            Err(OrderMapBuilderError::ValidationError(x)) => {
+                assert!(x.contains("output directory specified for saving ordermaps cannot be the current directory"));
+            }
+            Err(e) => panic!("Unexpected error type returned {}", e),
+        }
+    }
+
+    #[test]
+    fn test_ordermap_fail_working_directory2() {
+        match OrderMap::builder()
+            .output_directory("tests/../src/..")
+            .build()
+        {
+            Ok(_) => panic!("Function should have failed but it succeeded."),
+            Err(OrderMapBuilderError::ValidationError(x)) => {
+                assert!(x.contains("output directory specified for saving ordermaps cannot be the current directory"));
             }
             Err(e) => panic!("Unexpected error type returned {}", e),
         }

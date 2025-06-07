@@ -337,10 +337,10 @@ pub struct IndividualParams {
 #[serde(deny_unknown_fields)]
 pub struct FromFileParams {
     /// Leaflet assignment file to read.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     file: String,
     /// Frequency of leaflet assignment.
-    #[getset(get_copy = "pub(crate)")]
+    #[getset(get_copy = "pub")]
     #[serde(default)]
     frequency: Frequency,
 }
@@ -377,11 +377,11 @@ impl<'de> Deserialize<'de> for FromFileParams {
 #[serde(deny_unknown_fields)]
 pub struct FromMapParams {
     /// Leaflet assignment map.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     assignment: HashMap<String, Vec<Vec<Leaflet>>>,
     /// Frequency of leaflet assignment.
     #[serde(default)]
-    #[getset(get_copy = "pub(crate)")]
+    #[getset(get_copy = "pub")]
     frequency: Frequency,
 }
 
@@ -437,22 +437,22 @@ impl<'de> Deserialize<'de> for FromMapParams {
 #[serde(deny_unknown_fields)]
 pub struct FromNdxParams {
     /// Head group atoms of the molecules. Only one head group atom per molecule!
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     heads: String,
     /// One or more NDX files containing the groups defining leaflets.
     /// You can also use `glob` pattern when specifying the NDX files.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     #[serde(deserialize_with = "deserialize_string_or_vec")]
     ndx: Vec<String>,
     /// Name of the group identifying upper leaflet molecules.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     upper_leaflet: String,
     /// Name of the group identifying lower leaflet molecules.
-    #[getset(get = "pub(crate)")]
+    #[getset(get = "pub")]
     lower_leaflet: String,
     /// Frequency of leaflet assignment.
     #[serde(default)]
-    #[getset(get_copy = "pub(crate)")]
+    #[getset(get_copy = "pub")]
     frequency: Frequency,
 }
 
@@ -545,7 +545,7 @@ pub struct ClusteringParams {
     heads: String,
     /// Frequency of leaflet assignment.
     #[serde(default)]
-    #[getset(get_copy = "pub(crate)")]
+    #[getset(get_copy = "pub")]
     frequency: Frequency,
 }
 

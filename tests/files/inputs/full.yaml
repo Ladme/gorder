@@ -18,7 +18,7 @@ leaflets: !Global
   heads: "name P"
   frequency: !Once
 map:
-  output_directory: "."
+  output_directory: ordermaps
   dim: 
     - !Manual { start: 0.5, end: 10.5 }
     - !Auto

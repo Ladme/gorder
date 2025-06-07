@@ -1,4 +1,4 @@
-# Order parameters calculated with 'gorder v0.6.0' using a structure file '../files/system.tpr' and a trajectory file '../files/traj.xtc'.
+# Order parameters calculated with 'gorder v1.0.0' using a structure file '../files/system.tpr' and a trajectory file '../files/traj.xtc'.
 average order:
   total: 0.1379
 POPC:

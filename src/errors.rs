@@ -94,7 +94,8 @@ pub enum TopologyError {
     #[error("{} system has undefined simulation box", "error:".red().bold())]
     UndefinedBox,
 
-    #[error("{} the simulation box is not orthogonal", "error:".red().bold())]
+    #[error("{} the simulation box is not orthogonal ({} consider setting '{}' to {} but make sure that your lipid molecules are whole)", 
+    "error:".red().bold(), "hint:".blue().bold(), "handle_pbc".bright_blue(), "false".bright_blue())]
     NotOrthogonalBox,
 
     #[error("{} all dimensions of the simulation box are zero", "error:".red().bold())]
@@ -390,6 +391,9 @@ pub enum OrderMapConfigError {
     #[error("{} membrane normal is not a static global dimension => unable to automatically set ordermap plane ({} set ordermap plane manually)",
     "error:".red().bold(), "hint:".blue().bold())]
     InvalidPlaneAuto,
+
+    #[error("{} output directory specified for saving ordermaps cannot be the current directory (provided path: '{}')", "error:".red().bold(), .0.yellow())]
+    InvalidOutputDirectory(String),
 }
 
 /// Errors that can occur when estimating the error of the calculation.

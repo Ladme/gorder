@@ -219,7 +219,7 @@ mod tests {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
         let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
-            .output_directory(".")
+            .output_directory("ordermaps")
             .bin_size([0.05, 0.2])
             .plane(Plane::XY)
             .build()
@@ -241,7 +241,7 @@ mod tests {
         let simbox = SimBox::from([10.0, 5.0, 7.0]);
         let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
-            .output_directory(".")
+            .output_directory("ordermaps")
             .dim([
                 GridSpan::Manual {
                     start: -4.0,
@@ -272,7 +272,7 @@ mod tests {
         let simbox = SimBox::from([10.0, 3.0, 6.0]);
         let pbc = PBC3D::new(&simbox);
         let params = OrderMap::builder()
-            .output_directory(".")
+            .output_directory("ordermaps")
             .bin_size([1.0, 5.0])
             .plane(Plane::XY)
             .build()
@@ -293,7 +293,7 @@ mod tests {
     #[test]
     fn new_map_manual_nopbc() {
         let params = OrderMap::builder()
-            .output_directory(".")
+            .output_directory("ordermaps")
             .dim([
                 GridSpan::Manual {
                     start: -4.0,
@@ -339,7 +339,7 @@ mod tests {
             [GridSpan::Auto, GridSpan::Auto],
         ] {
             let params = OrderMap::builder()
-                .output_directory(".")
+                .output_directory("ordermaps")
                 .dim(dim)
                 .plane(Plane::XY)
                 .build()
@@ -392,7 +392,10 @@ mod tests {
         .unwrap();
 
         let map1 = Map {
-            params: OrderMap::builder().output_directory(".").build().unwrap(),
+            params: OrderMap::builder()
+                .output_directory("ordermaps")
+                .build()
+                .unwrap(),
             values: map1_values,
             samples: map1_samples,
         };
@@ -423,7 +426,10 @@ mod tests {
         .unwrap();
 
         let map2 = Map {
-            params: OrderMap::builder().output_directory(".").build().unwrap(),
+            params: OrderMap::builder()
+                .output_directory("ordermaps")
+                .build()
+                .unwrap(),
             values: map2_values,
             samples: map2_samples,
         };
@@ -484,7 +490,10 @@ mod tests {
         .unwrap();
 
         let mut map1 = Map {
-            params: OrderMap::builder().output_directory(".").build().unwrap(),
+            params: OrderMap::builder()
+                .output_directory("ordermaps")
+                .build()
+                .unwrap(),
             values: map1_values,
             samples: map1_samples,
         };
@@ -515,7 +524,10 @@ mod tests {
         .unwrap();
 
         let map2 = Map {
-            params: OrderMap::builder().output_directory(".").build().unwrap(),
+            params: OrderMap::builder()
+                .output_directory("ordermaps")
+                .build()
+                .unwrap(),
             values: map2_values,
             samples: map2_samples,
         };
