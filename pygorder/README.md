@@ -9,13 +9,13 @@ This project contains Python bindings for the `gorder` tool for calculating lipi
 To install `gorder` as a Python package, you can use `pip`:
 
 ```bash
-pip install gorder
+pip install git+https://github.com/Ladme/gorder.git#subdirectory=pygorder
 ```
 
 But you **should** use `uv` instead. Here is how you add `gorder` to your `uv` project:
 
 ```bash
-uv add gorder
+uv add git+https://github.com/Ladme/gorder.git#subdirectory=pygorder
 ```
 
 ## Example
