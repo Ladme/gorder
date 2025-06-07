@@ -1,17 +1,38 @@
 # Python bindings for `gorder`
 
-This directory contains python bindings for the `gorder` tool. See the [gorder manual](https://ladme.github.io/gorder-manual/) for more information.
+This project contains Python bindings for the `gorder` tool for calculating lipid order parameters from Gromacs simulations.
 
-## For developers
+**See the [gorder manual](https://ladme.github.io/gorder-manual/) and [Python API documentation](https://ladme.github.io/pygorder-docs/) for more information.**
 
-### Running tests
+## Installation
 
-- Normally: `uv run pytest`
-- If you change the core `gorder` code or anything inside `src`: `uv run --reinstall pytest`
+To install `gorder` as a Python package, you can use `pip`:
 
-### Generating documentation
+```bash
+pip install gorder
+```
 
-- Activate a conda environment.
-- Run maturin: `maturin develop --release`.
-- Go to `docs` and run `make`: `cd docs && make clean html`.
-- Open `build/index.html`.
+But you **should** use `uv` instead. Here is how you add `gorder` to your `uv` project:
+
+```bash
+uv add gorder
+```
+
+## Example
+
+The following script calculates coarse-grained lipid order parameters using a TPR file `system.tpr` and a trajectory file `md.xtc`. The results are written into `order.yaml`.
+
+```python
+import gorder
+
+analysis = gorder.Analysis(
+    structure = "system.tpr",
+    trajectory = "md.xtc",
+    analysis_type = gorder.analysis_types.CGOrder("@membrane"),
+    output_yaml = "order.yaml",
+)
+
+results = analysis.run()
+
+results.write()
+```
