@@ -6,7 +6,7 @@ Command line tool for calculating lipid order parameters from Gromacs simulation
 ## Quick links
 - [The manual](https://ladme.github.io/gorder-manual/) describing how to use `gorder`.
 
-- [BioRxiv preprint](https://www.biorxiv.org/content/10.1101/2025.05.07.652627v1) describing how `gorder` works.
+- [The article](https://doi.org/10.1016/j.softx.2025.102254) describing how `gorder` works.
 
 ## Installation
 
