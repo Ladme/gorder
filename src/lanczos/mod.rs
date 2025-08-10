@@ -9,7 +9,7 @@
 //!
 //! # Examples
 //!
-//! ```
+//! ```ignore
 //! # use nalgebra::DMatrix;
 //! use lanczos::{Hermitian, Order};
 //!
@@ -36,6 +36,7 @@ use nalgebra::{ComplexField, DMatrix, DVector, Dyn, SymmetricEigen};
 #[derive(Copy, Clone)]
 pub enum Order {
     Smallest,
+    #[allow(unused)]
     Largest,
 }
 

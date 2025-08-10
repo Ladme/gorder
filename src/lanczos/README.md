@@ -1,6 +1,6 @@
 Eigen decomposition of Hermitian matrices using Lanczos algorithm
 
-**Fork of the lanczos crate.**
+**This is a fork of the `lanczos` crate. Code in this directory is licensed under the MIT or Apache-2.0 License at your option. The License holder is Tomer Diament (tomer <tomer.dmnt@gmail.com>).**
 
 ## Overview
 

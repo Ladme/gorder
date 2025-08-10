@@ -430,6 +430,7 @@ impl Display for Leaflet {
 mod analysis;
 pub mod errors;
 pub mod input;
+mod lanczos;
 pub mod presentation;
 
 use std::fmt::Display;

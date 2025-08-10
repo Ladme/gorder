@@ -1,7 +1,7 @@
 use nalgebra::{ComplexField, DMatrix, DVector, DVectorView, RealField};
 use nalgebra_sparse::{CscMatrix, CsrMatrix};
 
-use crate::{HermitianEigen, Order};
+use super::{HermitianEigen, Order};
 
 pub trait Hermitian<T>: Sized
 where
@@ -26,7 +26,7 @@ where
     ///
     ///  # Example
     ///
-    ///  ```
+    ///  ```ignore
     /// # use nalgebra::DMatrix;
     /// # use lanczos::{Hermitian, Order};
     /// # let matrix = DMatrix::<f64>::new_random(100, 100);

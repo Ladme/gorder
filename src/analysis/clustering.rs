@@ -8,7 +8,7 @@ use std::{cmp::Ordering, sync::Arc, time::{Duration, Instant}};
 use getset::Getters;
 use groan_rs::{prelude::Dimension, system::System};
 use hashbrown::{HashMap, HashSet};
-use lanczos::{Hermitian, Order};
+use crate::lanczos::{Hermitian, Order};
 use nalgebra::{DMatrix, SymmetricEigen};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
