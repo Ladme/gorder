@@ -30,7 +30,7 @@ strum_macros = "0.27.1"
 parking_lot = "0.12.4"
 nalgebra = "0.34.0"
 glob = "0.3.2"
-lanczos = { path = "external/lanczos" }
+lanczos = { version = "0.3.0", path = "external/lanczos" }
 
 [dev-dependencies]
 approx = "0.5.1"
@@ -39,4 +39,4 @@ assert_cmd = "2.0.17"
 rand = "0.9.1"
 
 [workspace]
-members = [".", "pygorder"]
+members = [".", "pygorder", "external/lanczos"]
