@@ -1,3 +1,11 @@
+## Version 1.1.0
+- The `@membrane` macro now matches a wider variety of lipid types. See the [GSL guide](https://ladme.github.io/gsl-guide/autodetection.html) for details on how the macro currently expands.
+  - This change makes selecting lipid molecules that form your membrane simpler and more reliable, especially when working with less common lipid types.
+  - The macro still cannot guarantee identification of all lipid molecules, so exercise caution when using it.
+  - ⚠️ **Since the `@membrane` macro now matches more lipid types, some queries using this macro may return different atom selections. Therefore, `gorder` v1.1.0 is not guaranteed to return the same results as `gorder` v1.0.0 or previous versions.** ⚠️
+    - *For reproducibility, you should always use the same version of `gorder`, but if you are starting a new project, use `gorder v1.1.0`.*
+  - Example of behavior change and required modification: In the [gorder article](https://doi.org/10.1016/j.softx.2025.102254) (Figure 3), we used the query `(@membrane and name r'C3.+|C2.+') or (resname PVCL2 and name r'C[ABCD].+')` to select all lipid tail carbons in a complex system. In previous versions of `gorder`, PVCL2 was not identified as a membrane lipid when using the `@membrane` macro. This behavior has now changed, and the PVCL2 molecule **is matched** by the `@membrane` macro. In `gorder` v1.1.0, the above query should therefore be modified to `(@membrane and not resname PVCL2 and name r'C3.+|C2.+') or (resname PVCL and name r'C[ABCD].+')` (this is one of the rare cases where the update complicates things, as we don't want the C3 and C2 atoms of PVCL2 to be selected).
+
 ## Version 1.0.0
 - Support for GROMACS 2025 TPR files.
 - More precise calculation of geometric center of groups using Refined Bai-Breen algorithm.
