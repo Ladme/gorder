@@ -40,7 +40,7 @@ static MOLECULE_CLASSIFICATION_TIME_LIMIT: Lazy<u64> = Lazy::new(|| {
 pub(crate) struct MoleculesClassifier;
 
 impl MoleculesClassifier {
-    /// Classify molecules in the system based on their topology and returns a list of molecule types,
+    /// Classify molecules in the system based on their topology and return a list of molecule types,
     /// along with information about the atoms that form each molecule.
     pub(crate) fn classify<'a>(
         system: &'a System,

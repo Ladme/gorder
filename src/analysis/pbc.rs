@@ -16,7 +16,7 @@ use crate::{errors::AnalysisError, PANIC_MESSAGE};
 
 use super::{common::macros::group_name, geometry::GeometrySelection};
 
-/// Trait implemented by structures that should handle PBC.
+/// Trait implemented by structures handling (or intentionally not handling) PBC.
 pub(crate) trait PBCHandler<'a> {
     /// Get the geometric center of a group.
     fn group_get_center(&self, system: &System, group: &str) -> Result<Vector3D, GroupError>;

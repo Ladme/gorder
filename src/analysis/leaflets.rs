@@ -754,7 +754,7 @@ impl LeafletClassifier for ManualClassification {
 }
 
 impl SystemTopology {
-    /// Finalize the set up of the manual leaflet classifier.
+    /// Finalize the setup of the manual leaflet classifier.
     pub(super) fn finalize_manual_leaflet_classification(
         &mut self,
         params: &LeafletClassification,
@@ -908,7 +908,7 @@ impl ManualClassification {
     }
 }
 
-/// Leaflet classification method that uses positions of lipid heads and the global membrane center of geometry.
+/// Leaflet classification method where lipids are assigned into leaflets using the provided NDX file(s).
 #[derive(Debug, Clone, CopyGetters, Getters, MutGetters, Setters)]
 pub(super) struct NdxClassification {
     /// NDX files to read.

@@ -699,7 +699,7 @@ pub(super) struct Clusters {
 
 impl Clusters {
     /// Classify clusters as leaflets using the properties of the clusters.
-    /// This should not be performed for the first frame.
+    /// This should only be performed for the first frame.
     fn classify_ab_initio(
         cluster1: HashSet<usize>,
         cluster2: HashSet<usize>,
