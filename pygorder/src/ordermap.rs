@@ -56,13 +56,18 @@ impl OrderMap {
         let mut builder: RsMapBuilder = RsMap::builder();
 
         apply_if_some!(builder, output_directory => output_directory);
-        builder.min_samples(min_samples).bin_size(bin_size).dim([dim[0].0, dim[1].0]);
+        builder
+            .min_samples(min_samples)
+            .bin_size(bin_size)
+            .dim([dim[0].0, dim[1].0]);
 
         if let Some(plane) = plane {
             builder.plane(string2plane(plane)?);
         }
 
-        let inner = builder.build().map_err(|e| ConfigError::new_err(e.to_string()))?;
+        let inner = builder
+            .build()
+            .map_err(|e| ConfigError::new_err(e.to_string()))?;
         Ok(Self(inner))
     }
 }

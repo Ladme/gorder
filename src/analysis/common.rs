@@ -7,14 +7,14 @@ use super::geometry::{GeometrySelection, GeometrySelectionType};
 use super::pbc::{NoPBC, PBC3D};
 use super::topology::molecule::MoleculeTypes;
 use super::topology::SystemTopology;
+use crate::errors::TopologyError;
 use crate::errors::{AnalysisError, GeometryConfigError};
 use crate::input::{Geometry, MembraneNormal};
-use crate::errors::TopologyError;
 use crate::PANIC_MESSAGE;
 use colored::Colorize;
 use groan_rs::files::FileType;
 use groan_rs::prelude::{
-    GroReader, GroupXtcReader, OrderedAtomIterator, ProgressPrinter, SimBox, TrrReader
+    GroReader, GroupXtcReader, OrderedAtomIterator, ProgressPrinter, SimBox, TrrReader,
 };
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 
@@ -106,11 +106,11 @@ pub(super) fn create_group(
 
 /// Check overlap between two groups and return an error if they overlap.
 pub(super) fn check_groups_overlap(
-    system: &System, 
-    group1_name: &str, 
-    group1_query: &str, 
-    group2_name: &str, 
-    group2_query: &str
+    system: &System,
+    group1_name: &str,
+    group1_query: &str,
+    group2_name: &str,
+    group2_query: &str,
 ) -> Result<(), TopologyError> {
     let n_overlapping = system
         .group_iter(&format!("{}{}", GORDER_GROUP_PREFIX, group1_name))
@@ -121,7 +121,7 @@ pub(super) fn check_groups_overlap(
                 .expect(PANIC_MESSAGE),
         )
         .count();
-    
+
     if n_overlapping > 0 {
         return Err(TopologyError::AtomsOverlap {
             n_overlapping,

@@ -23,7 +23,7 @@ use crate::{AnalysisError, ConfigError};
 /// ----------
 /// heavy_atoms : str
 ///     Selection query specifying the heavy atoms to be used in the analysis (typically carbon atoms in lipid tails).
-/// hydrogens : str 
+/// hydrogens : str
 ///     Selection query specifiying the hydrogen atoms to be used in the analysis (only those bonded to heavy atoms will be considered).
 ///
 /// Notes
@@ -76,7 +76,7 @@ impl CGOrder {
 ///     Selection query specifying unsaturated carbons which order parameters should be calculated.
 /// ignore : Optional[str], default=None
 ///     Selection query specifying atoms to be completely ignored when performing the analysis.
-/// 
+///
 /// Notes
 /// -----
 /// - To specify atoms, use the `groan selection language <https://ladme.github.io/gsl-guide>`_.
@@ -138,7 +138,9 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
             return Ok(TrajectoryInput(list.into()));
         }
 
-        Err(ConfigError::new_err("expected a string or a list of strings"))
+        Err(ConfigError::new_err(
+            "expected a string or a list of strings",
+        ))
     }
 }
 
@@ -166,7 +168,7 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 /// output_csv : Optional[str], default=None
 ///     Path to an output CSV file containing analysis results.
 /// membrane_normal : Optional[Union[str, dict, DynamicNormal]], default=None
-///     Direction of the membrane normal. 
+///     Direction of the membrane normal.
 ///     Allowed values are `x`, `y`, `z`, path to file, dictionary specifying manual membrane normals or an instance of `DynamicNormal`.
 ///     Defaults to the z-axis if not specified.
 /// begin : Optional[float], default=None
@@ -307,7 +309,8 @@ impl Analysis {
     /// Read the options for the analysis from a config YAML file.
     #[staticmethod]
     pub fn from_file(file: String) -> PyResult<Self> {
-        let analysis = RsAnalysis::from_file(file).map_err(|e| ConfigError::new_err(e.to_string()))?;
+        let analysis =
+            RsAnalysis::from_file(file).map_err(|e| ConfigError::new_err(e.to_string()))?;
         Ok(Analysis(analysis))
     }
 }

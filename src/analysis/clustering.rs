@@ -3,18 +3,23 @@
 
 //! Implementation of spectral clustering for leaflet classification.
 
-use std::{cmp::Ordering, sync::Arc, time::{Duration, Instant}};
+use std::{
+    cmp::Ordering,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
+use crate::lanczos::{Hermitian, Order};
 use getset::Getters;
 use groan_rs::{prelude::Dimension, system::System};
 use hashbrown::{HashMap, HashSet};
-use crate::lanczos::{Hermitian, Order};
 use nalgebra::{DMatrix, SymmetricEigen};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::{
-    errors::{AnalysisError, ClusterError}, PANIC_MESSAGE
+    errors::{AnalysisError, ClusterError},
+    PANIC_MESSAGE,
 };
 
 use super::{common::macros::group_name, pbc::PBCHandler};
@@ -89,49 +94,49 @@ impl SystemClusterClassification {
     }
 
     /// Assign lipid headgroups into individual leaflets using spectral clustering.
-    /// 
+    ///
     /// ## Algorithmic details
     /// Spectral clustering works by creating a graph structure from the provided headgroup
-    /// atoms (atoms are nodes) and assigning weights to the individual edges based on 
-    /// the distance between the atoms (between 0 and 1, inclusive). 
-    /// The closer the atoms are to each other, the higher the weight of the edge connecting them. 
-    /// 
+    /// atoms (atoms are nodes) and assigning weights to the individual edges based on
+    /// the distance between the atoms (between 0 and 1, inclusive).
+    /// The closer the atoms are to each other, the higher the weight of the edge connecting them.
+    ///
     /// Once this 'similarity matrix' is constructed, we calculate a normalized Laplacian from it
     /// and then perform eigendecomposition of the Laplacian. We use the two smallest eigenvectors
     /// with non-zero eigenvalues and perform k-means clustering on them.
-    /// 
+    ///
     /// From the k-means clustering, we obtain the assignments of individual headgroup atoms
     /// to clusters.
-    /// 
+    ///
     /// Ideally, the 'similarity matrix' should be constructed by calculating the distances
     /// between all pairs of atoms, and a complete eigendecomposition should be performed for the
     /// Laplacian. We call this method the 'precise' method.
-    /// 
+    ///
     /// The 'precise' method is however VERY computationally expensive for large systems
     /// (it scales as `O(n^3)`, where `n` is the number of particles).
-    /// 
-    /// It is in many cases sufficient to only calculate the distances for the 'similarity matrix' 
+    ///
+    /// It is in many cases sufficient to only calculate the distances for the 'similarity matrix'
     /// between nearby atoms (using CellGrid) and then only calculate several smallest eigenvectors
-    /// using the Lanczos method. We call this method the 'sloppy' method. 
+    /// using the Lanczos method. We call this method the 'sloppy' method.
     /// The 'sloppy' method has some problems:
     /// - It is heuristic and may fail even for simple geometries depending on the random seed used.
     /// - It will very likely fail for more complex geometries. Fortunately, the failure is typically
     ///   catastrophic, as in it is very easy to recognize when it happens.
     /// - For small systems, the Lanczos method performed at sufficient precision can be
     ///   slower than full eigendecomposition.
-    /// 
+    ///
     /// This function attempts to intelligently select the appropriate method to balance
     /// computational expense and accuracy. It also attempts to validate that the
     /// assignment did not catastrophically fail.
-    /// 
-    /// For the first analyzed frame, we aim to perform 'precise' clustering since we 
+    ///
+    /// For the first analyzed frame, we aim to perform 'precise' clustering since we
     /// need robust reference clusters. Only when clustering more than [`PRECISE_UPPER_LIMIT`]
-    /// atoms (lipid molecules) do we perform 'sloppy' clustering. To validate it (remember: 'sloppy' clustering is heuristic), 
+    /// atoms (lipid molecules) do we perform 'sloppy' clustering. To validate it (remember: 'sloppy' clustering is heuristic),
     /// we perform it up to three times until reaching two identical results in two independent runs.
-    /// If all three runs provide different results, we return an error. 
+    /// If all three runs provide different results, we return an error.
     /// When performing the 'precise' clustering, we assume that it is correct. If this assumption proves to be
     /// wrong, we will most likely get to know in the following frame.
-    /// 
+    ///
     /// For all other analyzed frames, we try to perform 'sloppy' clustering unless the system is very small
     /// (fewer than [`PRECISE_LOWER_LIMIT`] lipid molecules), in which case it will actually be faster to
     /// perform 'precise' clustering.
@@ -141,14 +146,14 @@ impl SystemClusterClassification {
     /// To see what constitutes a 'match' between clusters, see [`SystemClusterClassification::classify_clusters`].
     /// Simply put, clusters 'match' if they do not differ too much from each other.
     /// This is heuristic again and may fail if the frames are not sufficiently correlated, but this should be extremely rare.
-    /// 
+    ///
     /// In case none of the three 'sloppy' clustering runs returns a 'match', we switch to 'precise' clustering,
     /// unless the system is too large (larger than [`PRECISE_UPPER_LIMIT`], in which case we return an error).
     /// We only perform one 'precise' clustering and try to match the clusters again. If this fails, we return an error.
-    /// 
+    ///
     /// If 'sloppy' clustering fails in [`MAX_SLOPPY_FAILS`] consecutive analyzed frames, we switch to precise clustering
     /// permanently.
-    /// 
+    ///
     /// When performing 'precise' clustering (small systems or if 'sloppy' clustering fails too much),
     /// we always perform only one 'precise' run since it is not heuristic. We attempt to match the results
     /// to clusters from the previous frame, and if this fails, we immediately return an error.
@@ -166,8 +171,9 @@ impl SystemClusterClassification {
             }
 
             // print information about cluster classification
-            self.clusters.as_ref().expect(PANIC_MESSAGE).log_info();          
-        } else if self.converter.len() > PRECISE_LOWER_LIMIT && self.sloppy_fails < MAX_SLOPPY_FAILS {
+            self.clusters.as_ref().expect(PANIC_MESSAGE).log_info();
+        } else if self.converter.len() > PRECISE_LOWER_LIMIT && self.sloppy_fails < MAX_SLOPPY_FAILS
+        {
             // system is large and sloppy method did not fail often enough
             let matrix =
                 self.create_similarity_matrix(system, pbc, DISTANCE_CUTOFF, SLOPPY_SIGMA)?;
@@ -176,8 +182,7 @@ impl SystemClusterClassification {
 
             // try sloppy method up to three times (sloppy is heuristic)
             for _ in 0..3 {
-                if let Some(valid_cluster) = self.sloppy_clustering(&laplacian, n, frame_index)
-                {
+                if let Some(valid_cluster) = self.sloppy_clustering(&laplacian, n, frame_index) {
                     self.clusters = Some(valid_cluster);
                     // reset sloppy fails counter
                     self.sloppy_fails = 0;
@@ -191,8 +196,10 @@ impl SystemClusterClassification {
             // do not perform precise clustering if the system is very large
             if self.converter.len() > PRECISE_UPPER_LIMIT {
                 return Err(AnalysisError::ClusterError(
-                    ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8))
-                );
+                    ClusterError::CouldNotMatchLeaflets(
+                        (CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8,
+                    ),
+                ));
             }
 
             let matrix =
@@ -202,17 +209,30 @@ impl SystemClusterClassification {
 
             match self.precise_clustering(laplacian, n, frame_index) {
                 Some(x) => self.clusters = Some(x),
-                None => return Err(AnalysisError::ClusterError(ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8)))
+                None => {
+                    return Err(AnalysisError::ClusterError(
+                        ClusterError::CouldNotMatchLeaflets(
+                            (CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8,
+                        ),
+                    ))
+                }
             }
         } else {
             // system is small => use precise method
-            let matrix = self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
+            let matrix =
+                self.create_similarity_matrix(system, pbc, f32::INFINITY, PRECISE_SIGMA)?;
             let laplacian = Self::create_normalized_laplacian(&matrix);
             let n = matrix.shape().0;
 
             match self.precise_clustering(laplacian, n, frame_index) {
                 Some(x) => self.clusters = Some(x),
-                None => return Err(AnalysisError::ClusterError(ClusterError::CouldNotMatchLeaflets((CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8)))
+                None => {
+                    return Err(AnalysisError::ClusterError(
+                        ClusterError::CouldNotMatchLeaflets(
+                            (CLUSTER_CLASSIFICATION_LIMIT * 100.0) as u8,
+                        ),
+                    ))
+                }
             }
         }
 
@@ -262,7 +282,7 @@ impl SystemClusterClassification {
 
         // update shared data
         self.update_shared();
-        
+
         Ok(())
     }
 
@@ -307,7 +327,7 @@ impl SystemClusterClassification {
         loop {
             let shared_clusters = self.reference_clusters.lock();
             if let Some(clusters) = shared_clusters.clone() {
-                return clusters
+                return clusters;
             }
 
             // defensive check for a deadlock
@@ -391,12 +411,14 @@ If the issue persists, please report it by opening an issue at `github.com/Ladme
                     .expect(PANIC_MESSAGE)
                     .enumerate()
                 {
-                    let dist = pbc.atoms_distance(
-                        system, 
-                        atom1.get_index(), 
-                        atom2.get_index(), 
-                        Dimension::XYZ
-                    ).map_err(AnalysisError::AtomError)?;
+                    let dist = pbc
+                        .atoms_distance(
+                            system,
+                            atom1.get_index(),
+                            atom2.get_index(),
+                            Dimension::XYZ,
+                        )
+                        .map_err(AnalysisError::AtomError)?;
 
                     matrix[(i, j)] = (-sigma * dist * dist).exp();
                 }
@@ -708,20 +730,16 @@ impl Clusters {
     ) -> Self {
         match cluster1.len().cmp(&cluster2.len()) {
             // more populated cluster is `upper`
-            Ordering::Less => {
-                Clusters {
-                    upper: cluster2,
-                    lower: cluster1,
-                    min_index,
-                }
-            }
-            Ordering::Greater => {
-                Clusters {
-                    upper: cluster1,
-                    lower: cluster2,
-                    min_index,
-                }
-            }
+            Ordering::Less => Clusters {
+                upper: cluster2,
+                lower: cluster1,
+                min_index,
+            },
+            Ordering::Greater => Clusters {
+                upper: cluster1,
+                lower: cluster2,
+                min_index,
+            },
             Ordering::Equal => {
                 // if both clusters are equally populated, cluster containing `min_index` is `upper`
                 if min_index_cluster == 0 {
@@ -797,7 +815,12 @@ mod tests_clusters {
         let min_index = 1;
         let min_index_cluster = 1;
 
-        let clusters = Clusters::classify_ab_initio(cluster1.clone(), cluster2.clone(), min_index, min_index_cluster);
+        let clusters = Clusters::classify_ab_initio(
+            cluster1.clone(),
+            cluster2.clone(),
+            min_index,
+            min_index_cluster,
+        );
 
         assert_eq!(clusters.upper, cluster1);
         assert_eq!(clusters.lower, cluster2);
@@ -812,7 +835,12 @@ mod tests_clusters {
         let min_index = 1;
         let min_index_cluster = 1;
 
-        let clusters = Clusters::classify_ab_initio(cluster1.clone(), cluster2.clone(), min_index, min_index_cluster);
+        let clusters = Clusters::classify_ab_initio(
+            cluster1.clone(),
+            cluster2.clone(),
+            min_index,
+            min_index_cluster,
+        );
 
         assert_eq!(clusters.upper, cluster2);
         assert_eq!(clusters.lower, cluster1);
@@ -827,9 +855,15 @@ mod tests_clusters {
         let min_index = 1;
         let min_index_cluster = 1;
 
-        let clusters = Clusters::classify_ab_initio(cluster1.clone(), cluster2.clone(), min_index, min_index_cluster);
+        let clusters = Clusters::classify_ab_initio(
+            cluster1.clone(),
+            cluster2.clone(),
+            min_index,
+            min_index_cluster,
+        );
 
-        let clusters2 = Clusters::classify_by_match(&clusters, cluster1, cluster2, min_index).unwrap();
+        let clusters2 =
+            Clusters::classify_by_match(&clusters, cluster1, cluster2, min_index).unwrap();
 
         assert_eq!(clusters, clusters2);
     }
@@ -842,17 +876,22 @@ mod tests_clusters {
         let min_index = 1;
         let min_index_cluster = 1;
 
-        let clusters = Clusters::classify_ab_initio(cluster1, cluster2, min_index, min_index_cluster);
+        let clusters =
+            Clusters::classify_ab_initio(cluster1, cluster2, min_index, min_index_cluster);
 
         let cluster1 = HashSet::from([13, 18, 24, 27, 29, 33, 156, 17, 14, 1]);
         let cluster2 = HashSet::from([4, 8, 146, 158, 123, 1453, 13, 19]);
 
-        let clusters2 = Clusters::classify_by_match(&clusters, cluster1.clone(), cluster2.clone(), min_index).unwrap();
+        let clusters2 =
+            Clusters::classify_by_match(&clusters, cluster1.clone(), cluster2.clone(), min_index)
+                .unwrap();
 
         assert_eq!(clusters2.upper, cluster2);
         assert_eq!(clusters2.lower, cluster1);
 
-        let clusters3 = Clusters::classify_by_match(&clusters, cluster2.clone(), cluster1.clone(), min_index).unwrap();
+        let clusters3 =
+            Clusters::classify_by_match(&clusters, cluster2.clone(), cluster1.clone(), min_index)
+                .unwrap();
 
         assert_eq!(clusters3, clusters2);
     }
@@ -865,7 +904,8 @@ mod tests_clusters {
         let min_index = 1;
         let min_index_cluster = 1;
 
-        let clusters = Clusters::classify_ab_initio(cluster1, cluster2, min_index, min_index_cluster);
+        let clusters =
+            Clusters::classify_ab_initio(cluster1, cluster2, min_index, min_index_cluster);
 
         let cluster1 = HashSet::from([13, 18, 24, 27, 17, 14, 1, 13, 19]);
         let cluster2 = HashSet::from([4, 8, 146, 158, 123, 29, 33, 156, 1453]);
@@ -911,8 +951,12 @@ mod tests_classify {
             if i == 3 {
                 panic!("Could not reach match after 3 tries.");
             }
-            
-            let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_lanczos(&laplacian, n, LANCZOS_ITERATIONS);
+
+            let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_lanczos(
+                &laplacian,
+                n,
+                LANCZOS_ITERATIONS,
+            );
             let assignments = SystemClusterClassification::k_means(&embedding, N_CLUSTERS);
             let assignments_reversed: Vec<usize> = assignments
                 .iter()
@@ -952,7 +996,7 @@ mod tests_classify {
                 .create_similarity_matrix(&system, &NoPBC, f32::INFINITY, PRECISE_SIGMA)
                 .unwrap()
         };
-        
+
         let laplacian = SystemClusterClassification::create_normalized_laplacian(&matrix);
         let n = matrix.shape().0;
 
@@ -1011,7 +1055,11 @@ mod tests_classify {
                     panic!("Could not reach match after 3 tries.");
                 }
 
-                let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_lanczos(&laplacian, n, LANCZOS_ITERATIONS);
+                let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_lanczos(
+                    &laplacian,
+                    n,
+                    LANCZOS_ITERATIONS,
+                );
                 let assignments = SystemClusterClassification::k_means(&embedding, N_CLUSTERS);
                 let assignments_reversed: Vec<usize> = assignments
                     .iter()
@@ -1067,7 +1115,8 @@ mod tests_classify {
             let laplacian = SystemClusterClassification::create_normalized_laplacian(&matrix);
             let n = matrix.shape().0;
 
-            let embedding = SystemClusterClassification::calc_and_embed_eigenvectors_full(laplacian, n);
+            let embedding =
+                SystemClusterClassification::calc_and_embed_eigenvectors_full(laplacian, n);
             let assignments = SystemClusterClassification::k_means(&embedding, N_CLUSTERS);
             let assignments_reversed: Vec<usize> = assignments
                 .iter()

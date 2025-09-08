@@ -135,10 +135,7 @@ impl Sphere {
     #[pyo3(signature = (
         radius,
         reference = [0.0, 0.0, 0.0].into()))]
-    pub fn new(
-        radius: f32,
-        reference: GeomReference,
-    ) -> PyResult<Self> {
+    pub fn new(radius: f32, reference: GeomReference) -> PyResult<Self> {
         Ok(Self(
             RsGeometry::sphere(reference.0, radius)
                 .map_err(|e| ConfigError::new_err(e.to_string()))?,
@@ -176,6 +173,8 @@ impl<'source> FromPyObject<'source> for GeomReference {
 
 impl From<[f32; 3]> for GeomReference {
     fn from(value: [f32; 3]) -> Self {
-        Self(RsReference::Point(Vector3D::new(value[0], value[1], value[2])))
+        Self(RsReference::Point(Vector3D::new(
+            value[0], value[1], value[2],
+        )))
     }
 }
