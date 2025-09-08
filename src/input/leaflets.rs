@@ -929,6 +929,18 @@ lower_leaflet: LowerLeaflet";
     }
 
     #[test]
+    fn test_specifying_collect() {
+        let classification = LeafletClassification::global("@membrane", "name P").with_collect(true);
+        assert_eq!(classification.get_collect(), &Collect::Boolean(true));
+
+        let classification = LeafletClassification::local("@membrane", "name P", 2.5).with_collect(false);
+        assert_eq!(classification.get_collect(), &Collect::Boolean(false));
+
+        let classification = LeafletClassification::clustering("name P").with_collect("leaflets.yaml");
+        assert_eq!(classification.get_collect(), &Collect::File(String::from("leaflets.yaml")));
+    }
+
+    #[test]
     fn test_parse_collect() {
         for string in [
             "!Global

@@ -807,6 +807,7 @@ mod tests_yaml {
     use crate::errors::{ErrorEstimationError, GeometryConfigError};
     use crate::input::frequency::Frequency;
     use crate::input::geometry::GeomReference;
+    use crate::input::leaflets::Collect;
     use crate::{
         errors::OrderMapConfigError,
         input::{ordermap::Plane, GridSpan},
@@ -882,6 +883,7 @@ mod tests_yaml {
                 assert_eq!(x.heads(), "name P");
                 assert_eq!(x.membrane(), "@membrane");
                 assert!(matches!(x.frequency(), Frequency::Once));
+                assert_eq!(x.collect(), &Collect::File(String::from("leaflets.yaml")));
             }
             _ => panic!("Incorrect leaflet classification type returned."),
         }
@@ -1341,6 +1343,7 @@ mod tests_builder {
     use hashbrown::HashMap;
 
     use crate::input::geometry::GeomReference;
+    use crate::input::leaflets::Collect;
     use crate::input::ordermap::Plane;
     use crate::input::{DynamicNormal, Frequency};
 
@@ -1415,7 +1418,8 @@ mod tests_builder {
             .n_threads(4)
             .leaflets(
                 LeafletClassification::global("@membrane", "name P")
-                    .with_frequency(Frequency::once()),
+                    .with_frequency(Frequency::once())
+                    .with_collect("leaflets.yaml"),
             )
             .map(
                 OrderMap::builder()
@@ -1467,6 +1471,7 @@ mod tests_builder {
                 assert_eq!(x.heads(), "name P");
                 assert_eq!(x.membrane(), "@membrane");
                 assert!(matches!(x.frequency(), Frequency::Once));
+                assert_eq!(x.collect(), &Collect::File(String::from("leaflets.yaml")));
             }
             _ => panic!("Incorrect leaflet classification type returned."),
         }
