@@ -11,9 +11,11 @@ use crate::analysis::topology::bond::{BondType, OrderBonds, VirtualBondType};
 use crate::analysis::topology::molecule::{MoleculeType, MoleculeTypes};
 use crate::analysis::topology::uatom::UAOrderAtoms;
 use crate::analysis::topology::SystemTopology;
+use crate::input::leaflets::Collect;
 use crate::input::Analysis;
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
 use crate::presentation::cgresults::{CGMoleculeResults, CGOrderResults};
+use crate::presentation::leaflets::LeafletsData;
 use crate::presentation::OrderMapsCollection;
 use crate::presentation::{
     BondResults, GridMapF32, Order, OrderCollection, OrderResults, OrderType,
@@ -62,15 +64,60 @@ impl<O: MolConvert> ResultsConverter<O> {
                 }),
         );
 
+        let leaflets_data =
+            Self::extract_leaflet_data(moltypes, &self.analysis, topology.total_frames());
+
         O::new(
             molnames
                 .zip(molecule_results)
                 .collect::<IndexMap<String, O::MoleculeResults>>(),
             full_average_order,
             full_average_ordermap,
+            leaflets_data,
             self.analysis,
             topology.total_frames(),
         )
+    }
+
+    /// Extract leaflet assignment data into a presentable structure, if requested.
+    fn extract_leaflet_data<'a>(
+        molecule_types: &[MoleculeType<<O as OrderResults>::MoleculeBased>],
+        analysis: &'a Analysis,
+        n_analyzed_frames: usize,
+    ) -> Option<LeafletsData> {
+        // no leaflet assignment
+        if analysis.leaflets().is_none() {
+            return None;
+        }
+
+        // collecting data is not requested
+        match analysis
+            .leaflets()
+            .as_ref()
+            .expect(PANIC_MESSAGE)
+            .get_collect()
+        {
+            Collect::Boolean(false) => return None,
+            _ => (),
+        }
+
+        let mut leaflets_data = LeafletsData::new(analysis, n_analyzed_frames);
+
+        for mol in molecule_types.iter() {
+            if let Some(classification) = mol.leaflet_classification() {
+                if let Some(data) = classification.extract_shared_data() {
+                    leaflets_data.add_molecule_type(mol.name(), data);
+                }
+            }
+        }
+
+        // defensive check: if there are no molecules with shared storage, return None
+        // this should not happen though
+        if leaflets_data.is_empty() {
+            return None;
+        }
+
+        Some(leaflets_data)
     }
 
     /// Convert raw order from analysis into a presentable order parameter.

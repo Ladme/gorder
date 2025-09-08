@@ -7,10 +7,12 @@ use crate::analysis::topology::atom::AtomType;
 use crate::analysis::topology::bond::BondTopology;
 use crate::analysis::topology::molecule::MoleculeTypes;
 use crate::analysis::topology::OrderCalculable;
+use crate::input::leaflets::Collect;
 use crate::input::{Frequency, LeafletClassification, Plane};
 use crate::presentation::aaresults::AAOrderResults;
 use crate::presentation::cgresults::CGOrderResults;
 use crate::presentation::csv_presenter::{CsvPresenter, CsvProperties, CsvWrite};
+use crate::presentation::leaflets::LeafletsData;
 use crate::presentation::ordermaps_presenter::MapWrite;
 use crate::presentation::ordermaps_presenter::{OrderMapPresenter, OrderMapProperties};
 use crate::presentation::tab_presenter::{TabPresenter, TabProperties, TabWrite};
@@ -48,6 +50,7 @@ pub(crate) mod converter;
 mod csv_presenter;
 //pub(crate) mod ordermap;
 pub mod convergence;
+mod leaflets;
 pub mod ordermaps_presenter;
 mod tab_presenter;
 pub mod uaresults;
@@ -129,6 +132,7 @@ pub(crate) trait OrderResults:
         molecules: IndexMap<String, Self::MoleculeResults>,
         average_order: OrderCollection,
         average_ordermaps: OrderMapsCollection,
+        leaflets_data: Option<LeafletsData>,
         analysis: Analysis,
         n_analyzed_frames: usize,
     ) -> Self;
@@ -142,6 +146,9 @@ pub(crate) trait OrderResults:
 
     /// Get reference to average ordermaps calculated for the entire membrane.
     fn average_ordermaps(&self) -> &OrderMapsCollection;
+
+    /// Get reference to the leaflets data, if there are any.
+    fn leaflets_data(&self) -> &Option<LeafletsData>;
 
     /// Write results of the analysis into the output files.
     fn write_all_results(&self) -> Result<(), WriteError> {
@@ -200,6 +207,18 @@ pub(crate) trait OrderResults:
                     OrderMapProperties::new(map.plane().unwrap_or(Plane::XY)),
                 )
                 .write(output_dir, overwrite)?;
+            }
+        }
+
+        if let Some(data) = self.leaflets_data() {
+            // only export data, if an output file is provided
+            if let Collect::File(filename) = analysis
+                .leaflets()
+                .as_ref()
+                .expect(PANIC_MESSAGE)
+                .get_collect()
+            {
+                data.export(filename, analysis.trajectory(), analysis.overwrite())?;
             }
         }
 
@@ -286,6 +305,29 @@ impl FileStatus {
             Self::Overwrite => colog_warn!(
                 "Overwritten an already existing directory '{}' with ordermaps.",
                 dirname,
+            ),
+        }
+    }
+
+    /// Log information about a file and what has been performed with it.
+    /// Includes custom specification of what the file contains instead of the default 'order parameters'.
+    fn info_custom(self, format: OutputFormat, filename: &str, content: &str) {
+        match self {
+            Self::New => log::info!(
+                "Written {} into {} file '{}'.",
+                content,
+                format.to_string().cyan(),
+                filename.to_string().cyan()
+            ),
+            Self::Backup => log::info!(
+                "Backed up an already existing file '{}' and saved {}.",
+                filename.to_string().cyan(),
+                content,
+            ),
+            Self::Overwrite => log::warn!(
+                "Overwritten an already existing file '{}' with {}.",
+                filename.to_string().yellow(),
+                content,
             ),
         }
     }

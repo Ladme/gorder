@@ -16,7 +16,7 @@ mod clustering;
 mod common;
 pub(crate) mod geometry;
 mod index;
-mod leaflets;
+pub(crate) mod leaflets;
 mod normal;
 pub(crate) mod order;
 pub(crate) mod ordermap;

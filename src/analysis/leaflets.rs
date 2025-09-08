@@ -24,7 +24,7 @@ use crate::{
         AnalysisError, ConfigError, ManualLeafletClassificationError,
         NdxLeafletClassificationError, TopologyError,
     },
-    input::{Frequency, LeafletClassification, MembraneNormal},
+    input::{leaflets::Collect, Frequency, LeafletClassification, MembraneNormal},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
@@ -189,13 +189,12 @@ impl MoleculeLeafletClassification {
         n_threads: usize,
         step_size: usize,
     ) -> Result<Self, ConfigError> {
-        let needs_shared_storage = match (params.get_frequency(), n_threads) {
-            // shared storage is not needed if only one thread is used
-            // (there is no other thread to share data with, duh)
-            (Frequency::Every(_) | Frequency::Once, 1) => false,
+        let needs_shared_storage = match (params.get_collect(), params.get_frequency(), n_threads) {
+            // shared storage is not needed if only one thread is used and data collection is not requested
+            (Collect::Boolean(false), _, 1) => false,
             // shared storage is not needed if the assignment is performed for every analyzed frame
-            // (each thread handles lipid assignment locally and no data need to be shared)
-            (Frequency::Every(x), _) if x.get() == 1 => false,
+            // and data collection is not requested
+            (Collect::Boolean(false), Frequency::Every(x), _) if x.get() == 1 => false,
             // shared storage is needed in all other cases
             _ => true,
         };
@@ -454,6 +453,22 @@ impl MoleculeLeafletClassification {
             }
             MoleculeLeafletClassification::Clustering(x, y) => {
                 y.get_assigned_leaflet(molecule_index, current_frame, x.frequency)
+            }
+        }
+    }
+
+    /// Extract shared data from the leaflet assignment for this molecule type.
+    /// Returns `None` if the shared data storage was not set up.
+    /// Note that operation is expensive as the entire shared data storage is cloned!
+    pub(crate) fn extract_shared_data(&self) -> Option<HashMap<usize, Vec<Leaflet>>> {
+        match self {
+            MoleculeLeafletClassification::Global(_, shared)
+            | MoleculeLeafletClassification::Local(_, shared)
+            | MoleculeLeafletClassification::Individual(_, shared)
+            | MoleculeLeafletClassification::Clustering(_, shared)
+            | MoleculeLeafletClassification::Manual(_, shared)
+            | MoleculeLeafletClassification::ManualNdx(_, shared) => {
+                Some(shared.shared.as_ref()?.0.lock().clone())
             }
         }
     }
@@ -1166,6 +1181,7 @@ pub(super) struct AssignedLeaflets {
     local: Option<Vec<Leaflet>>,
     /// Leaflet assignment for each relevant frame. Shared across all threads.
     /// `None` if not needed, i.e. if the analysis is not multithreaded or if the frequency of leaflet assignment is 1.
+    /// If leaflet assignment data are to be collected, the shared storage is used for this.
     shared: Option<SharedAssignedLeaflets>,
     /// Index of the frame the data in `local` correspond to.
     local_frame: Option<usize>,
@@ -1174,7 +1190,8 @@ pub(super) struct AssignedLeaflets {
 impl AssignedLeaflets {
     /// Create a new structure for storing information about positions of lipids in leaflets.
     /// `shared` specifies whether shared storage should be set-up.
-    /// Use `true` if the analysis is multithreaded and the leaflet assignment is NOT performed every thread.
+    /// Use `true` if the analysis is multithreaded and the leaflet assignment is NOT performed every thread
+    /// or if leaflet assignment data should be collected (no matter the number of threads).
     /// Use `false` in all other cases.
     #[inline(always)]
     fn new(shared: bool) -> Self {
@@ -1210,7 +1227,7 @@ impl AssignedLeaflets {
         self.local_frame = Some(current_frame);
 
         // copy the current assignment to shared assignment, so other threads can also access it
-        // this should only be done if the number of threads is higher than 1 and the input frequency is NOT 1
+        // this is only performed if the shared storage is needed and set-up
         if let Some(shared) = self.shared.as_mut() {
             shared.copy_to(
                 self.local_frame.expect(PANIC_MESSAGE),
@@ -1744,7 +1761,11 @@ mod tests {
                     $variant(x, y) => {
                         assert!(matches!(x.frequency, $frequency));
                         assert!(matches!(x.membrane_normal, $exp_normal));
-                        assert!(y.shared.is_none());
+                        if ($classification.get_collect() == &Collect::Boolean(false)) {
+                            assert!(y.shared.is_none());
+                        } else {
+                            assert!(y.shared.is_some());
+                        }
                         assert!(y.local.is_none());
                         assert!(y.local_frame.is_none());
                     }
@@ -1757,7 +1778,13 @@ mod tests {
                     $variant(x, y) => {
                         assert!(matches!(x.frequency, $frequency));
                         match x.frequency {
-                            Frequency::Every(n) if n.get() == 2 => assert!(y.shared.is_none()),
+                            Frequency::Every(n) if n.get() == 2 => {
+                                if ($classification.get_collect() == &Collect::Boolean(false)) {
+                                    assert!(y.shared.is_none());
+                                } else {
+                                    assert!(y.shared.is_some());
+                                }
+                            },
                             Frequency::Every(n) if n.get() == 10 => {
                                 assert!(y.shared.is_some());
                             }
@@ -1946,6 +1973,28 @@ mod tests {
         Frequency::Every(_),
         DynamicNormal::new("name P", 2.0).unwrap().into(),
         Dimension::X
+    );
+
+    test_classification_new!(
+        test_global_leaflet_classification_new_every_one_with_export,
+        LeafletClassification::global("@membrane", "name P")
+            .with_frequency(Frequency::every(1).unwrap())
+            .with_collect(true),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_new_every_one_with_export,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_frequency(Frequency::every(1).unwrap())
+            .with_collect("leaflets.yaml"),
+        MoleculeLeafletClassification::Local,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     #[test]

@@ -11,6 +11,7 @@ use crate::{
     analysis::topology::uatom::UAOrderAtoms,
     input::Analysis,
     prelude::{AtomType, Convergence},
+    presentation::leaflets::LeafletsData,
 };
 
 use super::{
@@ -29,6 +30,10 @@ pub struct UAOrderResults {
     /// Average order parameter maps calculated from all bond types of all molecule type.
     #[getset(get = "pub")]
     average_ordermaps: OrderMapsCollection,
+    /// Leaflet classification data collected during the analysis.
+    /// Only collected, if explicitly requested.
+    #[getset(get = "pub")]
+    leaflets_data: Option<LeafletsData>,
     /// Parameters of the analysis.
     analysis: Analysis,
     /// Total number of analyzed frames.
@@ -83,6 +88,7 @@ impl OrderResults for UAOrderResults {
             average_order: OrderCollection::default(),
             average_ordermaps: OrderMapsCollection::default(),
             molecules: IndexMap::new(),
+            leaflets_data: None,
             analysis,
             n_analyzed_frames: 0,
         }
@@ -92,6 +98,7 @@ impl OrderResults for UAOrderResults {
         molecules: IndexMap<String, UAMoleculeResults>,
         average_order: OrderCollection,
         average_ordermaps: OrderMapsCollection,
+        leaflets_data: Option<LeafletsData>,
         analysis: Analysis,
         n_analyzed_frames: usize,
     ) -> Self {
@@ -99,6 +106,7 @@ impl OrderResults for UAOrderResults {
             molecules,
             average_order,
             average_ordermaps,
+            leaflets_data,
             analysis,
             n_analyzed_frames,
         }
@@ -116,6 +124,10 @@ impl OrderResults for UAOrderResults {
 
     fn average_ordermaps(&self) -> &OrderMapsCollection {
         &self.average_ordermaps
+    }
+
+    fn leaflets_data(&self) -> &Option<LeafletsData> {
+        self.leaflets_data()
     }
 }
 
