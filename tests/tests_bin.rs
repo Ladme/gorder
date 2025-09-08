@@ -8,6 +8,8 @@ mod common;
 use assert_cmd::Command;
 use common::{assert_eq_csv, assert_eq_maps, assert_eq_order};
 
+use crate::common::diff_files_ignore_first;
+
 #[test]
 fn test_bin_aa_order_basic_yaml() {
     Command::cargo_bin("gorder")
@@ -229,6 +231,35 @@ fn test_bin_cg_geometry_selection() {
     );
 
     std::fs::remove_file("temp_cg_order_cylinder.yaml").unwrap();
+}
+
+#[test]
+fn test_bin_aa_leaflets_every_export() {
+    Command::cargo_bin("gorder")
+        .unwrap()
+        .args([
+            "tests/files/inputs/leaflets_every_export.yaml",
+            "--silent",
+            "--overwrite",
+        ])
+        .assert()
+        .success()
+        .stdout("");
+
+    assert_eq_order(
+        "temp_aa_order_leaflets_with_export.yaml",
+        "tests/files/aa_order_leaflets.yaml",
+        1,
+    );
+
+    assert!(diff_files_ignore_first(
+        "temp_leaflets_exported_every.yaml",
+        "tests/files/aa_leaflets_every1.yaml",
+        1,
+    ));
+
+    std::fs::remove_file("temp_aa_order_leaflets_with_export.yaml").unwrap();
+    std::fs::remove_file("temp_leaflets_exported_every.yaml").unwrap();
 }
 
 #[test]

@@ -19,6 +19,8 @@ use tempfile::{NamedTempFile, TempDir};
 
 use common::{assert_eq_csv, assert_eq_maps, assert_eq_order, read_and_compare_files};
 
+use crate::common::diff_files_ignore_first;
+
 #[test]
 fn test_aa_order_basic_yaml() {
     let output = NamedTempFile::new().unwrap();
@@ -529,6 +531,224 @@ fn test_aa_order_leaflets_yaml_multiple_threads_various_frequencies() {
             }
         }
     }
+}
+
+#[test]
+fn test_aa_order_leaflets_yaml_multiple_threads_frequency_once_export() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        for method in [
+            LeafletClassification::global("@membrane", "name P"),
+            LeafletClassification::local("@membrane", "name P", 2.5),
+            LeafletClassification::individual("name P", "name C218 C316"),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let output_leaflets = NamedTempFile::new().unwrap();
+            let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(
+                    method
+                        .clone()
+                        .with_frequency(Frequency::Once)
+                        .with_collect(path_to_output_leaflets),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output_leaflets,
+                "tests/files/aa_leaflets_once.yaml",
+                1,
+            ));
+
+            assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_yaml_multiple_threads_frequency_every5_export() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        for method in [
+            LeafletClassification::global("@membrane", "name P"),
+            LeafletClassification::local("@membrane", "name P", 2.5),
+            LeafletClassification::individual("name P", "name C218 C316"),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let output_leaflets = NamedTempFile::new().unwrap();
+            let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(
+                    method
+                        .clone()
+                        .with_frequency(Frequency::every(5).unwrap())
+                        .with_collect(path_to_output_leaflets),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output_leaflets,
+                "tests/files/aa_leaflets_every5.yaml",
+                1,
+            ));
+
+            assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_yaml_multiple_threads_frequency_every1_export() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        for method in [
+            LeafletClassification::global("@membrane", "name P"),
+            LeafletClassification::local("@membrane", "name P", 2.5),
+            LeafletClassification::individual("name P", "name C218 C316"),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let output_leaflets = NamedTempFile::new().unwrap();
+            let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .output(path_to_output)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .leaflets(method.clone().with_collect(path_to_output_leaflets))
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert!(diff_files_ignore_first(
+                path_to_output_leaflets,
+                "tests/files/aa_leaflets_every1.yaml",
+                1,
+            ));
+
+            assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_yaml_multiple_threads_concatenation_frequency_every1_export() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let output_leaflets = NamedTempFile::new().unwrap();
+        let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory(vec![
+                "tests/files/split/pcpepg1.xtc",
+                "tests/files/split/pcpepg2.xtc",
+                "tests/files/split/pcpepg3.xtc",
+                "tests/files/split/pcpepg4.xtc",
+                "tests/files/split/pcpepg5.xtc",
+            ])
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(
+                LeafletClassification::global("@membrane", "name P")
+                    .with_collect(path_to_output_leaflets),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert!(diff_files_ignore_first(
+            path_to_output_leaflets,
+            "tests/files/aa_leaflets_every1.yaml",
+            1,
+        ));
+
+        assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
+    }
+}
+
+#[test]
+fn test_aa_order_leaflets_yaml_clustering_frequency_once_export() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let output_leaflets = NamedTempFile::new().unwrap();
+    let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::clustering("name P")
+                .with_frequency(Frequency::Once)
+                .with_collect(path_to_output_leaflets),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert!(diff_files_ignore_first(
+        path_to_output_leaflets,
+        "tests/files/aa_leaflets_once.yaml",
+        1,
+    ));
+
+    assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
 }
 
 #[test]

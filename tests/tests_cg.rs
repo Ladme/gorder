@@ -19,6 +19,8 @@ use tempfile::{NamedTempFile, TempDir};
 
 use common::{assert_eq_csv, assert_eq_maps, assert_eq_order, read_and_compare_files};
 
+use crate::common::diff_files_ignore_first;
+
 #[test]
 fn test_cg_order_basic_yaml() {
     let output = NamedTempFile::new().unwrap();
@@ -1928,6 +1930,130 @@ fn test_cg_order_leaflets_scrambling_from_file() {
                 &format!("tests/files/scrambling/{}", test_file),
                 1,
             );
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_scrambling_export() {
+    for n_threads in [1, 2, 3, 5, 8, 128] {
+        for freq in [
+            Frequency::every(1).unwrap(),
+            Frequency::every(10).unwrap(),
+            Frequency::once(),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let output_leaflets = NamedTempFile::new().unwrap();
+            let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/scrambling/cg_scrambling.tpr")
+                .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .output_yaml(path_to_output)
+                .leaflets(
+                    LeafletClassification::global("@membrane", "name PO4")
+                        .with_frequency(freq)
+                        .with_collect(path_to_output_leaflets),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let (test_order_file, test_leaflets_file) = match freq {
+                Frequency::Every(n) if n.get() == 1 => ("order_global.yaml", "leaflets_every.yaml"),
+                Frequency::Every(n) if n.get() == 10 => {
+                    ("order_global_every_10.yaml", "leaflets_every10.yaml")
+                }
+                Frequency::Once => ("order_once.yaml", "leaflets_once.yaml"),
+                _ => panic!("Unexpected frequency specified."),
+            };
+
+            assert_eq_order(
+                path_to_output,
+                &format!("tests/files/scrambling/{}", test_order_file),
+                1,
+            );
+
+            assert!(diff_files_ignore_first(
+                path_to_output_leaflets,
+                &format!("tests/files/scrambling/{}", test_leaflets_file),
+                1,
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_scrambling_export_and_load() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        for freq in [
+            Frequency::every(1).unwrap(),
+            Frequency::every(10).unwrap(),
+            Frequency::once(),
+        ] {
+            for step in [1, 3, 7, 64] {
+                // export the leaflet classification
+                let output_orig = NamedTempFile::new().unwrap();
+                let path_to_output_orig = output_orig.path().to_str().unwrap();
+
+                let output_leaflets = NamedTempFile::new().unwrap();
+                let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/scrambling/cg_scrambling.tpr")
+                    .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                    .analysis_type(AnalysisType::cgorder("@membrane"))
+                    .output_yaml(path_to_output_orig)
+                    .leaflets(
+                        LeafletClassification::global("@membrane", "name PO4")
+                            .with_frequency(freq)
+                            .with_collect(path_to_output_leaflets),
+                    )
+                    .step(step)
+                    .n_threads(n_threads)
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                analysis.run().unwrap().write().unwrap();
+
+                // rerun the analysis using the exported leaflet classification
+                let output_recalc = NamedTempFile::new().unwrap();
+                let path_to_output_recalc = output_recalc.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/scrambling/cg_scrambling.tpr")
+                    .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                    .analysis_type(AnalysisType::cgorder("@membrane"))
+                    .output_yaml(path_to_output_recalc)
+                    .leaflets(
+                        LeafletClassification::from_file(path_to_output_leaflets)
+                            .with_frequency(freq),
+                    )
+                    .step(step)
+                    .n_threads(1) // always one thread
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                analysis.run().unwrap().write().unwrap();
+
+                // order parameters should match exactly
+                assert!(diff_files_ignore_first(
+                    path_to_output_orig,
+                    path_to_output_recalc,
+                    1,
+                ));
+            }
         }
     }
 }
