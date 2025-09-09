@@ -5459,6 +5459,7 @@ fn test_aa_order_leaflets_rust_api() {
 
     assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.molecules().count(), 3);
+    assert!(results.leaflets_data().is_none());
 
     assert!(results.get_molecule("POPE").is_some());
     assert!(results.get_molecule("POPC").is_some());
@@ -6045,4 +6046,66 @@ fn test_aa_order_ordermaps_leaflets_rust_api() {
         epsilon = 2e-4
     );
     assert!(lower.get_at_convert(9.2, 4.0).unwrap().is_nan());
+}
+
+#[test]
+fn test_aa_order_leaflets_every1_collect_rust_api() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P").with_collect(true))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = match analysis.run().unwrap() {
+        AnalysisResults::AA(x) => x,
+        _ => panic!("Incorrect results type returned."),
+    };
+
+    let leaflets_data = results.leaflets_data().as_ref().unwrap();
+
+    let pope_data = leaflets_data.get_molecule("POPE").unwrap();
+    assert_eq!(pope_data.len(), 51);
+    for frame in pope_data.iter() {
+        assert_eq!(frame.len(), 131);
+        for (i, lipid) in frame.iter().enumerate() {
+            if i < 65 {
+                assert_eq!(lipid, &Leaflet::Upper);
+            } else {
+                assert_eq!(lipid, &Leaflet::Lower);
+            }
+        }
+    }
+
+    let popc_data = leaflets_data.get_molecule("POPC").unwrap();
+    assert_eq!(popc_data.len(), 51);
+    for frame in popc_data.iter() {
+        assert_eq!(frame.len(), 128);
+        for (i, lipid) in frame.iter().enumerate() {
+            if i < 64 {
+                assert_eq!(lipid, &Leaflet::Upper);
+            } else {
+                assert_eq!(lipid, &Leaflet::Lower);
+            }
+        }
+    }
+
+    let popg_data = leaflets_data.get_molecule("POPG").unwrap();
+    assert_eq!(popg_data.len(), 51);
+    for frame in popg_data.iter() {
+        assert_eq!(frame.len(), 15);
+        for (i, lipid) in frame.iter().enumerate() {
+            if i < 8 {
+                assert_eq!(lipid, &Leaflet::Upper);
+            } else {
+                assert_eq!(lipid, &Leaflet::Lower);
+            }
+        }
+    }
 }
