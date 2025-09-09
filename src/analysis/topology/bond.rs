@@ -133,7 +133,7 @@ impl OrderCalculable for OrderBonds {
 
     #[inline(always)]
     fn is_empty(&self) -> bool {
-        self.bond_types.first().is_none()
+        self.bond_types.is_empty()
     }
 
     #[inline]

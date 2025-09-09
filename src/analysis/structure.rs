@@ -245,6 +245,7 @@ fn should_guess_elements(analysis: &Analysis) -> bool {
 }
 
 /// Guess elements if this is requested in an input query.
+#[allow(clippy::format_in_format_args)]
 fn maybe_guess_elements(analysis: &Analysis, system: &mut System) -> Result<(), ElementError> {
     if should_guess_elements(analysis) {
         match system.guess_elements(Elements::default()) {

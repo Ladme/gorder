@@ -377,6 +377,9 @@
 //! 2. [`CGOrderResults`](crate::prelude::CGOrderResults) for coarse-grained results.
 //! 3. [`UAOrderResults`](crate::prelude::UAOrderResults) for united-atom results.
 
+// `doc_overindented_list_items` lint does not work correctly...
+#![allow(clippy::doc_overindented_list_items)]
+
 /// Version of the `gorder` crate.
 pub const GORDER_VERSION: &str = env!("CARGO_PKG_VERSION");
 

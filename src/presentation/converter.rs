@@ -80,9 +80,9 @@ impl<O: MolConvert> ResultsConverter<O> {
     }
 
     /// Extract leaflet assignment data into a presentable structure, if requested.
-    fn extract_leaflet_data<'a>(
+    fn extract_leaflet_data(
         molecule_types: &[MoleculeType<<O as OrderResults>::MoleculeBased>],
-        analysis: &'a Analysis,
+        analysis: &Analysis,
         n_analyzed_frames: usize,
     ) -> Option<LeafletsData> {
         // no leaflet assignment
@@ -91,14 +91,13 @@ impl<O: MolConvert> ResultsConverter<O> {
         }
 
         // collecting data is not requested
-        match analysis
+        if let Collect::Boolean(false) = analysis
             .leaflets()
             .as_ref()
             .expect(PANIC_MESSAGE)
             .get_collect()
         {
-            Collect::Boolean(false) => return None,
-            _ => (),
+            return None;
         }
 
         let mut leaflets_data = LeafletsData::new(analysis, n_analyzed_frames);
