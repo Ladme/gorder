@@ -183,9 +183,20 @@ pub enum DynamicNormalError {
 /// Errors that can occur when setting membrane normals manually.
 #[derive(Error, Debug)]
 pub enum ManualNormalError {
-    #[error("{} could not get membrane normals for frame index '{}' (membrane normals available for {} frames)", 
-    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
-    FrameNotFound(usize, usize),
+    #[error("{} could not get membrane normals for frame number '{}'
+{} membrane normals were provided for '{}' frames which can accommodate 
+at most '{}' trajectory frames at the current analysis step of '{}'",
+    "error:".red().bold(),
+    (.frame_index + 1).to_string().yellow(),
+    "details:".yellow().bold(),
+    .available_for.to_string().yellow(),
+    (.available_for * .step).to_string().yellow(),
+    .step.to_string().yellow())]
+    FrameNotFound {
+        frame_index: usize,
+        step: usize,
+        available_for: usize,
+    },
 
     #[error("{} could not open the normals file '{}'", "error:".red().bold(), .0.yellow())]
     FileNotFound(String),

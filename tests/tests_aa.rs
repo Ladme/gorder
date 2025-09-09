@@ -19,7 +19,7 @@ use tempfile::{NamedTempFile, TempDir};
 
 use common::{assert_eq_csv, assert_eq_maps, assert_eq_order, read_and_compare_files};
 
-use crate::common::diff_files_ignore_first;
+use crate::common::{assert_eq_normals, diff_files_ignore_first};
 
 #[test]
 fn test_aa_order_basic_yaml() {
@@ -4722,6 +4722,144 @@ fn test_aa_order_buckled_membrane_normals_from_file_from_map_min_yaml() {
 
     assert_eq_order(&output_paths[0], &output_paths[1], 1);
     assert_eq_order(&output_paths[1], &output_paths[2], 1);
+}
+
+#[test]
+fn test_aa_order_buckled_membrane_normals_export() {
+    for n_threads in [1, 2, 3, 8] {
+        let output_normals = NamedTempFile::new().unwrap();
+        let path_to_output_normals = output_normals.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/aa_buckled.tpr")
+            .trajectory("tests/files/aa_buckled.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .membrane_normal(
+                DynamicNormal::new("name P", 2.0)
+                    .unwrap()
+                    .with_collect(path_to_output_normals),
+            )
+            .end(1630000.0)
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert_eq_normals(
+            path_to_output_normals,
+            "tests/files/normals_aa_buckled_min.yaml",
+        );
+    }
+}
+
+#[test]
+fn test_aa_order_dynamic_normals_multiple_threads_various_steps_export_and_load() {
+    for n_threads in [1, 3, 8, 64] {
+        for step in [1, 3, 7] {
+            // export the normals
+            let output_orig = NamedTempFile::new().unwrap();
+            let path_to_output_orig = output_orig.path().to_str().unwrap();
+
+            let output_normals = NamedTempFile::new().unwrap();
+            let path_to_output_normals = output_normals.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .output(path_to_output_orig)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .membrane_normal(
+                    DynamicNormal::new("name P", 2.0)
+                        .unwrap()
+                        .with_collect(path_to_output_normals),
+                )
+                .n_threads(n_threads)
+                .step(step)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            // load the exported normals
+            let output_recalc = NamedTempFile::new().unwrap();
+            let path_to_output_recalc = output_recalc.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/pcpepg.tpr")
+                .trajectory("tests/files/pcpepg.xtc")
+                .output(path_to_output_recalc)
+                .analysis_type(AnalysisType::aaorder(
+                    "@membrane and element name carbon",
+                    "@membrane and element name hydrogen",
+                ))
+                .membrane_normal(path_to_output_normals)
+                .n_threads(1) // always one thread
+                .step(step)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            // order parameters should match
+            assert_eq_order(path_to_output_orig, path_to_output_recalc, 1);
+        }
+    }
+}
+
+#[test]
+fn test_aa_order_dynamic_normals_export_incomplete() {
+    for n_threads in [1, 2, 3, 8] {
+        let output_normals = NamedTempFile::new().unwrap();
+        let path_to_output_normals = output_normals.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .membrane_normal(
+                DynamicNormal::new("name P", 2.0)
+                    .unwrap()
+                    .with_collect(path_to_output_normals),
+            )
+            .geometry(
+                Geometry::cylinder(
+                    GeomReference::Center,
+                    2.5,
+                    [f32::NEG_INFINITY, f32::INFINITY],
+                    Axis::Z,
+                )
+                .unwrap(),
+            )
+            .step(10)
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert_eq_normals(
+            path_to_output_normals,
+            "tests/files/normals_incomplete.yaml",
+        );
+    }
 }
 
 #[test]

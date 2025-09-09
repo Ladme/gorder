@@ -807,7 +807,7 @@ mod tests_yaml {
     use crate::errors::{ErrorEstimationError, GeometryConfigError};
     use crate::input::frequency::Frequency;
     use crate::input::geometry::GeomReference;
-    use crate::input::leaflets::Collect;
+    use crate::input::Collect;
     use crate::{
         errors::OrderMapConfigError,
         input::{ordermap::Plane, GridSpan},
@@ -1343,8 +1343,8 @@ mod tests_builder {
     use hashbrown::HashMap;
 
     use crate::input::geometry::GeomReference;
-    use crate::input::leaflets::Collect;
     use crate::input::ordermap::Plane;
+    use crate::input::Collect;
     use crate::input::{DynamicNormal, Frequency};
 
     use super::super::GridSpan;

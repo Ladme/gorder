@@ -14,12 +14,13 @@ use std::{
 use approx::assert_relative_eq;
 use gorder::prelude::*;
 use hashbrown::HashMap;
+use indexmap::IndexMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
 use common::{assert_eq_csv, assert_eq_maps, assert_eq_order, read_and_compare_files};
 
-use crate::common::diff_files_ignore_first;
+use crate::common::{assert_eq_normals, diff_files_ignore_first};
 
 #[test]
 fn test_cg_order_basic_yaml() {
@@ -3402,6 +3403,40 @@ fn test_cg_order_vesicle_membrane_normals_from_file_yaml() {
 }
 
 #[test]
+fn test_cg_order_vesicle_dynamic_membrane_normals_export() {
+    for n_threads in [1, 3, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let output_normals = NamedTempFile::new().unwrap();
+        let path_to_output_normals = output_normals.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/vesicle.tpr")
+            .trajectory("tests/files/vesicle.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder(
+                "name C1A D2A C3A C4A C1B C2B C3B C4B",
+            ))
+            .membrane_normal(
+                DynamicNormal::new("name PO4", 2.0)
+                    .unwrap()
+                    .with_collect(path_to_output_normals),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert_eq_order(path_to_output, "tests/files/cg_order_vesicle.yaml", 1);
+        assert_eq_normals(path_to_output_normals, "tests/files/normals_vesicle.yaml");
+    }
+}
+
+#[test]
 fn test_cg_order_vesicle_membrane_normals_from_file_fail_unmatching_molecules() {
     let analysis = Analysis::builder()
         .structure("tests/files/vesicle.tpr")
@@ -4683,4 +4718,51 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
         0.3563,
         epsilon = 2e-4
     );
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normals_collect_rust_api() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(
+            DynamicNormal::new("name PO4", 2.0)
+                .unwrap()
+                .with_collect(true),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = analysis.run().unwrap();
+    results.write().unwrap(); // should not write out anything
+
+    let normals = match &results {
+        AnalysisResults::CG(x) => x.normals_data().as_ref().unwrap(),
+        _ => panic!("Invalid results type returned."),
+    };
+
+    let reference_content = std::fs::read_to_string("tests/files/normals_vesicle.yaml").unwrap();
+    let reference_normals: IndexMap<String, Vec<Vec<Vector3D>>> =
+        serde_yaml::from_str(&reference_content).unwrap();
+
+    for moltype in reference_normals.keys() {
+        for (frame_a, frame_b) in reference_normals
+            .get(moltype)
+            .unwrap()
+            .iter()
+            .zip(normals.get_molecule(moltype).unwrap().iter())
+        {
+            assert_eq!(frame_a.len(), frame_b.len());
+            for (mol_a, mol_b) in frame_a.iter().zip(frame_b.iter()) {
+                assert_relative_eq!(mol_a.x, mol_b.x, epsilon = 1e-5);
+                assert_relative_eq!(mol_a.y, mol_b.y, epsilon = 1e-5);
+                assert_relative_eq!(mol_a.z, mol_b.z, epsilon = 1e-5);
+            }
+        }
+    }
 }

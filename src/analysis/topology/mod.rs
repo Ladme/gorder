@@ -41,6 +41,7 @@ pub(crate) struct SystemTopology {
     #[getset(get_copy = "pub(super)")]
     frame: usize,
     /// Step size of the analysis.
+    #[getset(get_copy = "pub(super)")]
     step_size: usize,
     /// Total number of frames analyzed by this thread.
     #[getset(get_copy = "pub(crate)")]

@@ -3,6 +3,7 @@
 
 //! Structures and methods for converting between system topology and formatted results.
 
+use crate::analysis::normal::MoleculeMembraneNormal;
 use crate::analysis::order::{add_option_order, AnalysisOrder};
 use crate::analysis::ordermap::{add_option_map, Map};
 use crate::analysis::timewise::{AddSum, TimeWiseAddTreatment};
@@ -11,11 +12,12 @@ use crate::analysis::topology::bond::{BondType, OrderBonds, VirtualBondType};
 use crate::analysis::topology::molecule::{MoleculeType, MoleculeTypes};
 use crate::analysis::topology::uatom::UAOrderAtoms;
 use crate::analysis::topology::SystemTopology;
-use crate::input::leaflets::Collect;
-use crate::input::Analysis;
+use crate::input::Collect;
+use crate::input::{Analysis, MembraneNormal};
 use crate::presentation::aaresults::{AAAtomResults, AAMoleculeResults, AAOrderResults};
 use crate::presentation::cgresults::{CGMoleculeResults, CGOrderResults};
 use crate::presentation::leaflets::LeafletsData;
+use crate::presentation::normals::NormalsData;
 use crate::presentation::OrderMapsCollection;
 use crate::presentation::{
     BondResults, GridMapF32, Order, OrderCollection, OrderResults, OrderType,
@@ -66,6 +68,8 @@ impl<O: MolConvert> ResultsConverter<O> {
 
         let leaflets_data =
             Self::extract_leaflet_data(moltypes, &self.analysis, topology.total_frames());
+        let normals_data =
+            Self::extract_membrane_normals(moltypes, &self.analysis, topology.total_frames());
 
         O::new(
             molnames
@@ -74,6 +78,7 @@ impl<O: MolConvert> ResultsConverter<O> {
             full_average_order,
             full_average_ordermap,
             leaflets_data,
+            normals_data,
             self.analysis,
             topology.total_frames(),
         )
@@ -117,6 +122,40 @@ impl<O: MolConvert> ResultsConverter<O> {
         }
 
         Some(leaflets_data)
+    }
+
+    /// Extract membrane normals into a presentable structure, if requested.
+    fn extract_membrane_normals(
+        molecule_types: &[MoleculeType<<O as OrderResults>::MoleculeBased>],
+        analysis: &Analysis,
+        n_analyzed_frames: usize,
+    ) -> Option<NormalsData> {
+        // storing membrane normals not requested
+        match analysis.membrane_normal() {
+            MembraneNormal::Dynamic(normal) => {
+                if let Collect::Boolean(false) = normal.collect() {
+                    return None;
+                } else {
+                    ()
+                }
+            }
+            _ => return None,
+        }
+
+        let mut normals_data = NormalsData::new(analysis.step(), n_analyzed_frames);
+        for mol in molecule_types.iter() {
+            if let MoleculeMembraneNormal::Dynamic(normal) = mol.membrane_normal() {
+                if let Some(data) = normal.extract_storage() {
+                    normals_data.add_molecule_type(mol.name(), data);
+                }
+            }
+        }
+
+        if normals_data.is_empty() {
+            return None;
+        }
+
+        Some(normals_data)
     }
 
     /// Convert raw order from analysis into a presentable order parameter.

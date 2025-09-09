@@ -16,6 +16,7 @@ use super::{
 use crate::analysis::topology::bond::{BondTopology, OrderBonds};
 use crate::input::Analysis;
 use crate::presentation::leaflets::LeafletsData;
+use crate::presentation::normals::NormalsData;
 use crate::presentation::OrderMapsCollection;
 
 /// Results of the coarse-grained order parameters calculation.
@@ -33,6 +34,10 @@ pub struct CGOrderResults {
     /// Only collected, if explicitly requested.
     #[getset(get = "pub")]
     leaflets_data: Option<LeafletsData>,
+    /// Membrane normals collected during the analysis.
+    /// Only collected, if explicitly requested.
+    #[getset(get = "pub")]
+    normals_data: Option<NormalsData>,
     /// Parameters of the analysis.
     analysis: Analysis,
     /// Total number of analyzed frames.
@@ -88,6 +93,7 @@ impl OrderResults for CGOrderResults {
             average_order: OrderCollection::default(),
             average_ordermaps: OrderMapsCollection::default(),
             leaflets_data: None,
+            normals_data: None,
             analysis,
             n_analyzed_frames: 0,
         }
@@ -98,6 +104,7 @@ impl OrderResults for CGOrderResults {
         average_order: OrderCollection,
         average_ordermaps: OrderMapsCollection,
         leaflets_data: Option<LeafletsData>,
+        normals_data: Option<NormalsData>,
         analysis: Analysis,
         n_analyzed_frames: usize,
     ) -> Self {
@@ -106,6 +113,7 @@ impl OrderResults for CGOrderResults {
             average_order,
             average_ordermaps,
             leaflets_data,
+            normals_data,
             analysis,
             n_analyzed_frames,
         }
@@ -117,6 +125,10 @@ impl OrderResults for CGOrderResults {
 
     fn leaflets_data(&self) -> &Option<LeafletsData> {
         self.leaflets_data()
+    }
+
+    fn normals_data(&self) -> &Option<NormalsData> {
+        self.normals_data()
     }
 }
 

@@ -16,7 +16,8 @@ use indexmap::IndexMap;
 use crate::{
     errors::WriteError,
     input::{Analysis, Frequency},
-    presentation::{FileStatus, OutputFormat},
+    prelude::AAOrderResults,
+    presentation::{OutputFormat, Presenter, YamlPresenter},
     Leaflet, GORDER_VERSION, PANIC_MESSAGE,
 };
 
@@ -26,7 +27,7 @@ pub struct LeafletsData {
     /// Indices of trajectory frames for which leaflet assignment was performed with the first analyzed frame having the index 1.
     #[getset(get = "pub")]
     frames: Vec<usize>,
-    /// Leaflet assignment for each lipid type and each analyzed frame.
+    /// Leaflet assignment for each lipid and each analyzed frame.
     assignment: IndexMap<String, Vec<Vec<Leaflet>>>,
 }
 
@@ -40,7 +41,7 @@ impl LeafletsData {
             .expect(PANIC_MESSAGE)
             .get_frequency();
 
-        // determine the number of frames to assign
+        // determine the number of frames that were assigned
         let n_assigned_frames = match assignment_frequency {
             Frequency::Once => 1,
             Frequency::Every(n) => n_analyzed_frames.div_ceil(n.get()),
@@ -77,7 +78,8 @@ impl LeafletsData {
         trajectories: &[String],
         overwrite: bool,
     ) -> Result<(), WriteError> {
-        let file_status = self.try_backup(filename, overwrite)?;
+        // the type of presenter does not matter in this case
+        let file_status = YamlPresenter::<AAOrderResults>::try_backup(filename, overwrite)?;
         let file = File::create(filename.as_ref())
             .map_err(|_| WriteError::CouldNotCreateFile(Box::from(filename.as_ref())))?;
         let mut writer = BufWriter::new(file);
@@ -141,26 +143,6 @@ impl LeafletsData {
         }
 
         Ok(())
-    }
-
-    /// Backup the output file, if requested.
-    fn try_backup(
-        &self,
-        filename: &impl AsRef<Path>,
-        overwrite: bool,
-    ) -> Result<FileStatus, WriteError> {
-        if filename.as_ref().exists() {
-            if !overwrite {
-                backitup::backup(filename.as_ref())
-                    .map_err(|_| WriteError::CouldNotBackupFile(Box::from(filename.as_ref())))?;
-
-                Ok(FileStatus::Backup)
-            } else {
-                Ok(FileStatus::Overwrite)
-            }
-        } else {
-            Ok(FileStatus::New)
-        }
     }
 
     /// Add data obtained for a single lipid type into the structure.

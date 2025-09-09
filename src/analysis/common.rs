@@ -373,3 +373,40 @@ pub(super) fn get_reference_head(
 
     Ok(*atoms.first().expect(PANIC_MESSAGE))
 }
+
+/// Returns a new vector by interleaving elements from two slices.
+/// Up to `n` items are taken from `vec1`, followed by up to `m` items from `vec2`,
+/// repeating this pattern until both slices are exhausted.
+///
+/// # Example
+/// ```
+/// let v1 = vec![1, 2, 3, 4];
+/// let v2 = vec![10, 20, 30];
+/// let merged = interleave_vectors(&v1, &v2, 2, 1);
+/// assert_eq!(merged, vec![1, 2, 10, 3, 4, 20, 30]);
+/// ```
+pub(super) fn interleave_vectors<T: Clone>(vec1: &[T], vec2: &[T], n: usize, m: usize) -> Vec<T> {
+    let mut result = Vec::with_capacity(vec1.len() + vec2.len());
+    let mut iter1 = vec1.iter();
+    let mut iter2 = vec2.iter();
+
+    loop {
+        for _ in 0..n {
+            if let Some(value) = iter1.next() {
+                result.push(value.clone());
+            }
+        }
+
+        for _ in 0..m {
+            if let Some(value) = iter2.next() {
+                result.push(value.clone());
+            }
+        }
+
+        if iter1.len() == 0 && iter2.len() == 0 {
+            break;
+        }
+    }
+
+    result
+}

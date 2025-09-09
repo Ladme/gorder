@@ -11,7 +11,7 @@ use crate::{
     analysis::topology::uatom::UAOrderAtoms,
     input::Analysis,
     prelude::{AtomType, Convergence},
-    presentation::leaflets::LeafletsData,
+    presentation::{leaflets::LeafletsData, normals::NormalsData},
 };
 
 use super::{
@@ -34,6 +34,10 @@ pub struct UAOrderResults {
     /// Only collected, if explicitly requested.
     #[getset(get = "pub")]
     leaflets_data: Option<LeafletsData>,
+    /// Membrane normals collected during the analysis.
+    /// Only collected, if explicitly requested.
+    #[getset(get = "pub")]
+    normals_data: Option<NormalsData>,
     /// Parameters of the analysis.
     analysis: Analysis,
     /// Total number of analyzed frames.
@@ -89,6 +93,7 @@ impl OrderResults for UAOrderResults {
             average_ordermaps: OrderMapsCollection::default(),
             molecules: IndexMap::new(),
             leaflets_data: None,
+            normals_data: None,
             analysis,
             n_analyzed_frames: 0,
         }
@@ -99,6 +104,7 @@ impl OrderResults for UAOrderResults {
         average_order: OrderCollection,
         average_ordermaps: OrderMapsCollection,
         leaflets_data: Option<LeafletsData>,
+        normals_data: Option<NormalsData>,
         analysis: Analysis,
         n_analyzed_frames: usize,
     ) -> Self {
@@ -107,6 +113,7 @@ impl OrderResults for UAOrderResults {
             average_order,
             average_ordermaps,
             leaflets_data,
+            normals_data,
             analysis,
             n_analyzed_frames,
         }
@@ -128,6 +135,10 @@ impl OrderResults for UAOrderResults {
 
     fn leaflets_data(&self) -> &Option<LeafletsData> {
         self.leaflets_data()
+    }
+
+    fn normals_data(&self) -> &Option<NormalsData> {
+        self.normals_data()
     }
 }
 

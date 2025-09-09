@@ -11,7 +11,7 @@ use groan_rs::prelude::Vector3D;
 use hashbrown::HashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::errors::ConfigError;
+use crate::{errors::ConfigError, input::Collect};
 
 use super::Axis;
 
@@ -108,6 +108,10 @@ pub struct DynamicNormal {
     #[getset(get_copy = "pub")]
     #[serde(default = "default_dynamic_radius")]
     radius: f32,
+    /// Should the dynamic membrane normals be collected, stored and exported into an output file?
+    #[getset(get = "pub")]
+    #[serde(default, alias = "export")]
+    collect: Collect,
 }
 
 impl DynamicNormal {
@@ -124,6 +128,7 @@ impl DynamicNormal {
         Ok(DynamicNormal {
             heads: heads.to_owned(),
             radius,
+            collect: Default::default(),
         })
     }
 
@@ -134,6 +139,14 @@ impl DynamicNormal {
         } else {
             Ok(())
         }
+    }
+
+    /// Collect and store the dynamic membrane normals.
+    /// If `true`, the normals are collected but only accessible using API.
+    /// If a string is provided, the data will be exported into the output file.
+    pub fn with_collect(mut self, collect: impl Into<Collect>) -> Self {
+        self.collect = collect.into();
+        self
     }
 }
 
@@ -167,6 +180,33 @@ mod tests {
             MembraneNormal::Dynamic(dynamic) => {
                 assert_eq!(dynamic.heads(), "name P");
                 assert_relative_eq!(dynamic.radius, 2.0);
+                assert_eq!(dynamic.collect(), &Collect::Boolean(false));
+            }
+            _ => panic!("Incorrect membrane normal parsed."),
+        }
+
+        match serde_yaml::from_str("!Dynamic { heads: \"name P\", export: normals.yaml }").unwrap()
+        {
+            MembraneNormal::Dynamic(dynamic) => {
+                assert_eq!(dynamic.heads(), "name P");
+                assert_relative_eq!(dynamic.radius, 2.0);
+                assert_eq!(
+                    dynamic.collect(),
+                    &Collect::File(String::from("normals.yaml"))
+                );
+            }
+            _ => panic!("Incorrect membrane normal parsed."),
+        }
+
+        match serde_yaml::from_str("!Dynamic { heads: \"name P\", collect: normals.yaml }").unwrap()
+        {
+            MembraneNormal::Dynamic(dynamic) => {
+                assert_eq!(dynamic.heads(), "name P");
+                assert_relative_eq!(dynamic.radius, 2.0);
+                assert_eq!(
+                    dynamic.collect(),
+                    &Collect::File(String::from("normals.yaml"))
+                );
             }
             _ => panic!("Incorrect membrane normal parsed."),
         }

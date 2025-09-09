@@ -24,7 +24,7 @@ use crate::{
         AnalysisError, ConfigError, ManualLeafletClassificationError,
         NdxLeafletClassificationError, TopologyError,
     },
-    input::{leaflets::Collect, Frequency, LeafletClassification, MembraneNormal},
+    input::{Collect, Frequency, LeafletClassification, MembraneNormal},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};

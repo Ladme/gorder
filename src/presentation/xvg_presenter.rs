@@ -124,7 +124,7 @@ impl<'a, R: OrderResults> Presenter<'a, R> for XvgPresenter<'a, R> {
                 None => format!("{}_{}", file_path, names[i]),
             };
 
-            let file_status = self.try_backup(&filename, overwrite)?;
+            let file_status = Self::try_backup(&filename, overwrite)?;
             let mut writer = Self::create_and_open(&filename)?;
             XvgPresenter::<AAOrderResults>::write_header(
                 &mut writer,
