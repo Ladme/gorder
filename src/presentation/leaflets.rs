@@ -22,7 +22,7 @@ use crate::{
 /// Data for storing and presenting the leaflet assignment data.
 #[derive(Debug, Clone)]
 pub struct LeafletsData {
-    /// Indices of trajectory frames for which leaflet assignment was performed with the first analyzed frame having the index 0.
+    /// Indices of trajectory frames for which leaflet assignment was performed with the first analyzed frame having the index 1.
     frames: Vec<usize>,
     /// Leaflet assignment for each lipid type and each analyzed frame.
     assignment: IndexMap<String, Vec<Vec<Leaflet>>>,
@@ -51,7 +51,7 @@ impl LeafletsData {
         };
 
         // generate the assigned frame indices
-        let frames: Vec<usize> = std::iter::successors(Some(0), |prev| Some(prev + step_increment))
+        let frames: Vec<usize> = std::iter::successors(Some(1), |prev| Some(prev + step_increment))
             .take(n_assigned_frames)
             .collect();
 
@@ -169,10 +169,11 @@ impl LeafletsData {
     ) {
         let molecule_assignment: Vec<_> = self.frames.iter()
             .map(|&frame| {
-                assignment.remove(&frame).unwrap_or_else(|| {
+                // here, we number frames starting from 1, but internally we use 0-based indexing
+                assignment.remove(&(frame - 1)).unwrap_or_else(|| {
                     panic!(
                         "FATAL GORDER ERROR | LeafletsData::add_molecule_type | Frame index {} is not present in the stored leaflet assignment data. {}",
-                        frame, PANIC_MESSAGE
+                        frame - 1, PANIC_MESSAGE
                     )
                 })
             })
