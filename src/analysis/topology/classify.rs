@@ -297,14 +297,14 @@ trait MoleculesClassify: Sized {
     fn sanity_check_molecules(&self) -> bool {
         // if no molecules are detected, end the analysis
         if self.molecules().is_empty() {
-            log::warn!("No molecules suitable for the analysis detected.");
+            log::warn!("No molecules suitable for analysis detected.");
             return false;
         }
 
         // if only empty molecules are detected, end the analysis
         for mol in self.molecules().iter() {
             if mol.order_structure().is_empty() {
-                log::warn!("No bonds/atoms suitable for the analysis detected.");
+                log::warn!("No bonds/atoms suitable for analysis detected.");
                 return false;
             }
         }
