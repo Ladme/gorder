@@ -248,7 +248,7 @@ pub(super) fn read_trajectory(
 ) -> Result<SystemTopology, Box<dyn std::error::Error + Send + Sync>> {
     // get the format of the trajectory files from the first file;
     // this assumes that it has been validated before that all trajectories have the same format
-    let format = FileType::from_name(trajectory.first().unwrap_or_else(|| 
+    let format = FileType::from_name(trajectory.first().unwrap_or_else(||
         panic!("FATAL GORDER ERROR | common::read_trajectory | At least one trajectory file should have been provided. {}", PANIC_MESSAGE))
     );
 

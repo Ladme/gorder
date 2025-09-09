@@ -297,7 +297,7 @@ impl SystemClusterClassification {
         let n = matrix.shape().0;
         let clusters = self
             .precise_clustering(laplacian, n, 0)
-            .unwrap_or_else(|| 
+            .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | SystemClusterClassification::precise_cluster_frame_one | Could not classify clusters in frame 0. {}", 
                 PANIC_MESSAGE)
             );

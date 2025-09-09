@@ -110,7 +110,7 @@ impl<'a> PBCHandler<'a> for NoPBC {
     ) -> Result<Vec<Vector3D>, AnalysisError> {
         let membrane_iterator = system
             .group_iter(group_name!("Membrane"))
-            .unwrap_or_else(|_| 
+            .unwrap_or_else(|_|
                 panic!("FATAL GORDER ERROR | NoPBC::calc_local_membrane_centers | Could not get the `Membrane` group. {}", PANIC_MESSAGE)
             );
 
@@ -149,7 +149,7 @@ impl<'a> PBCHandler<'a> for NoPBC {
 
         system
             .group_iter(group_name!("NormalHeads"))
-            .unwrap_or_else(|_| 
+            .unwrap_or_else(|_|
                 panic!("FATAL GORDER ERROR | NoPBC::get_heads_cloud | Could not get NormalHeads group. {}", PANIC_MESSAGE))
             .filter_geometry_naive(sphere)
             .map(|atom| atom
@@ -279,7 +279,7 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
     ) -> Result<Vec<Vector3D>, AnalysisError> {
         let cell_grid = self.membrane_grid.get_or_init(|| {
             CellGrid::new(system, group_name!("Membrane"), radius)
-            .unwrap_or_else(|e| 
+            .unwrap_or_else(|e|
                 panic!("FATAL GORDER ERROR | PBC3D::calc_local_membrane_centers | Could not construct a cell grid `{}`. {}", e, PANIC_MESSAGE)
             )
         });
@@ -326,7 +326,7 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
     ) -> Result<Vec<Vector3D>, AnalysisError> {
         let cell_grid = self.heads_grid.get_or_init(|| {
             CellGrid::new(system, group_name!("NormalHeads"), radius)
-            .unwrap_or_else(|e| 
+            .unwrap_or_else(|e|
                 panic!("FATAL GORDER ERROR | PBC3D::get_heads_cloud | Could not construct a cell grid `{}`. {}", e, PANIC_MESSAGE)
             )
         });
@@ -435,7 +435,7 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
     ) -> impl Iterator<Item = (&'a Atom, f32)> {
         let cell_grid = self.cluster_grid.get_or_init(|| {
             CellGrid::new(system, group_name!("ClusterHeads"), distance)
-            .unwrap_or_else(|e| 
+            .unwrap_or_else(|e|
                 panic!("FATAL GORDER ERROR | PBC3D::nearby_atoms | Could not construct a cell grid `{}`. {}", e, PANIC_MESSAGE)
             )
         });

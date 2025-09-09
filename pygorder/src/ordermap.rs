@@ -39,10 +39,10 @@ pub struct OrderMap(pub(crate) RsMap);
 #[pymethods]
 impl OrderMap {
     #[pyo3(signature = (
-        output_directory = None, 
-        min_samples = 1, 
-        dim = [GridSpan::default(), GridSpan::default()], 
-        bin_size = [0.1, 0.1], 
+        output_directory = None,
+        min_samples = 1,
+        dim = [GridSpan::default(), GridSpan::default()],
+        bin_size = [0.1, 0.1],
         plane = None)
     )]
     #[new]

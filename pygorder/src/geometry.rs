@@ -57,8 +57,8 @@ pub struct Cuboid(RsGeometry);
 impl Cuboid {
     #[new]
     #[pyo3(signature = (
-        xdim = [f32::NEG_INFINITY, f32::INFINITY], 
-        ydim = [f32::NEG_INFINITY, f32::INFINITY], 
+        xdim = [f32::NEG_INFINITY, f32::INFINITY],
+        ydim = [f32::NEG_INFINITY, f32::INFINITY],
         zdim = [f32::NEG_INFINITY, f32::INFINITY],
         reference = [0.0, 0.0, 0.0].into()))]
     pub fn new(
@@ -98,8 +98,8 @@ impl Cylinder {
     #[new]
     #[pyo3(signature = (
         radius,
-        orientation, 
-        span = [f32::NEG_INFINITY, f32::INFINITY], 
+        orientation,
+        span = [f32::NEG_INFINITY, f32::INFINITY],
         reference = [0.0, 0.0, 0.0].into()))]
     pub fn new(
         radius: f32,

@@ -407,12 +407,12 @@ fn add_collect(
 ) -> PyResult<RsLeafletClassification> {
     if let Some(collect) = collect {
         match classification {
-            RsLeafletClassification::Global(_) | 
-            RsLeafletClassification::Local(_) | 
-            RsLeafletClassification::Individual(_) | 
+            RsLeafletClassification::Global(_) |
+            RsLeafletClassification::Local(_) |
+            RsLeafletClassification::Individual(_) |
             RsLeafletClassification::Clustering(_) => return Ok(classification.with_collect(collect.0)),
-            RsLeafletClassification::FromFile(_) | 
-            RsLeafletClassification::FromMap(_) | 
+            RsLeafletClassification::FromFile(_) |
+            RsLeafletClassification::FromMap(_) |
             RsLeafletClassification::FromNdx(_) => return Err(ConfigError::new_err("collecting leaflet classification data for manual leaflet classification methods is not supported"))
         }
     }

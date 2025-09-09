@@ -226,7 +226,7 @@ impl LeafletClassification {
             LeafletClassification::Individual(x) => x.collect = collect.into(),
             LeafletClassification::Clustering(x) => x.collect = collect.into(),
             // panic for manual classification
-            LeafletClassification::FromFile(_) | LeafletClassification::FromMap(_) | LeafletClassification::FromNdx(_) => 
+            LeafletClassification::FromFile(_) | LeafletClassification::FromMap(_) | LeafletClassification::FromNdx(_) =>
                 panic!("Collecting leaflet classification data is not supported for manual leaflet classification.\nThe data are already collected!"),
         }
 
