@@ -19,7 +19,7 @@ use crate::{AnalysisError, ConfigError};
 
 /// Request the calculation of atomistic order parameters.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// heavy_atoms : str
 ///     Selection query specifying the heavy atoms to be used in the analysis (typically carbon atoms in lipid tails).
@@ -45,7 +45,7 @@ impl AAOrder {
 
 /// Request the calculation of coarse-grained order parameters.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// beads : str
 ///     Selection query specifying the coarse-grained beads to be used in the analysis.
@@ -68,7 +68,7 @@ impl CGOrder {
 
 /// Request the calculation of united-atom order parameters.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// saturated : Optional[str], default=None
 ///     Selection query specifying saturated carbons which order parameters should be calculated.
@@ -146,7 +146,7 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 
 /// Class describing all the parameters of the analysis.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// structure : str
 ///     Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure and topology of the system.
@@ -294,7 +294,19 @@ impl Analysis {
         Ok(Analysis(inner))
     }
 
-    /// Perform the analysis.
+    /// Run the analysis.
+    ///
+    /// Executes the configured analysis on the input data and returns the results.
+    ///
+    /// Returns
+    /// -------
+    /// AnalysisResults
+    ///     Results of the analysis.
+    ///
+    /// Raises
+    /// ------
+    /// AnalysisError
+    ///     If the analysis fails.
     pub fn run(&mut self) -> PyResult<AnalysisResults> {
         if self.0.silent() {
             log::set_max_level(log::LevelFilter::Error);
@@ -306,7 +318,22 @@ impl Analysis {
         }
     }
 
-    /// Read the options for the analysis from a config YAML file.
+    /// Read analysis options from a YAML configuration file.
+    ///
+    /// Parameters
+    /// ----------
+    /// file : str
+    ///     Path to the YAML configuration file.
+    ///
+    /// Returns
+    /// -------
+    /// Analysis
+    ///     Analysis instance initialized from the file.
+    ///
+    /// Raises
+    /// ------
+    /// ConfigError
+    ///     If the file cannot be read or parsed.
     #[staticmethod]
     pub fn from_file(file: String) -> PyResult<Self> {
         let analysis =

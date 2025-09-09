@@ -86,23 +86,41 @@ fn string2plane(string: impl AsRef<str>) -> PyResult<Plane> {
     }
 }
 
-/// Type of an atom specific to a molecule.
+/// Represents an atom type within a molecule type.
+///
+/// Provides access to the atom's name, its relative position within the molecule type,
+/// and the residue it belongs to.
 #[pyclass]
 pub struct AtomType(pub(crate) RsAtomType);
 
 #[pymethods]
 impl AtomType {
     /// Get the name of the atom type.
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///     Name of the atom type.
     pub fn atom_name(&self) -> String {
         self.0.atom_name().clone()
     }
 
-    /// Get the relative index of the atom type in the molecule type.
+    /// Get the relative index of the atom type in its molecule type.
+    ///
+    /// Returns
+    /// -------
+    /// int
+    ///     Zero-based index of the atom within its molecule type.
     pub fn relative_index(&self) -> usize {
         self.0.relative_index()
     }
 
-    /// Get the name of the residue this atom type is part of.
+    /// Get the name of the residue this atom belongs to.
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///     Name of the residue containing this atom.
     pub fn residue_name(&self) -> String {
         self.0.residue_name().clone()
     }

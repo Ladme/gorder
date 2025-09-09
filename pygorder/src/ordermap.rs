@@ -9,29 +9,36 @@ use pyo3::prelude::*;
 use crate::string2plane;
 use crate::ConfigError;
 
-/// Represents the parameters for generating ordermaps.
+/// Parameters for generating order maps.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// output_directory : Optional[str]
-///     Directory where the output files containing individual order maps will be saved.
-/// min_samples : Optional[int]
+///     Directory where output files containing individual order maps will be saved.
+///
+/// min_samples : Optional[int], default=1
 ///     Minimum number of samples required in a grid tile to calculate the order parameter.
-///     Default is `1`.
+///
 /// dim : Optional[List[Union[str, List[float]]]]
-///     Span of the grid along the axes.
-///     - The first span corresponds to the x-axis (if the map is in the xy or xz plane) or the z-axis (if the map is in the yz plane).
-///     - The second span corresponds to the y-axis (if the map is in the xy or yz plane) or the z-axis (if the map is in the xz plane).
+///     Span of the grid along the axes:
+///     - First span corresponds to the x-axis (for xy or xz plane) or z-axis (for yz plane).
+///     - Second span corresponds to the y-axis (for xy or yz plane) or z-axis (for xz plane).
 ///     If not specified, the span is derived from the simulation box size of the input structure.
-/// bin_size : Optional[List[float]]
-///     Size of the grid bin along the axes.
-///     - The first bin dimension corresponds to the x-axis (if the map is in the xy or xz plane) or the z-axis (if the map is in the yz plane).
-///     - The second bin dimension corresponds to the y-axis (if the map is in the xy or yz plane) or the z-axis (if the map is in the xz plane).
-///     Defaults to `[0.1, 0.1]` nm if not specified.
+///
+/// bin_size : Optional[List[float]], default=[0.1, 0.1]
+///     Size of the grid bin along the axes:
+///     - First bin dimension corresponds to the x-axis (for xy or xz plane) or z-axis (for yz plane).
+///     - Second bin dimension corresponds to the y-axis (for xy or yz plane) or z-axis (for xz plane).
+///
 /// plane : Optional[str]
-///     Plane in which the order maps should be constructed.
-///     Allowed values are `xy`, `xz`, or `yz`.
+///     Plane in which the order maps are constructed. Allowed values: `xy`, `xz`, `yz`.
 ///     If not specified, the plane is assumed to be perpendicular to the membrane normal.
+///
+/// Raises
+/// ------
+/// ConfigError
+///     If `min_samples` <= 0, `bin_size` <= 0, any `dim` span is invalid (first value <= second),
+///     or if `plane` is not one of the allowed values (`xy`, `xz`, `yz`).
 #[pyclass]
 #[derive(Clone)]
 pub struct OrderMap(pub(crate) RsMap);

@@ -11,7 +11,7 @@ import gorder
 project = 'gorder'
 copyright = '2025, Ladislav Bartos'
 author = 'Ladislav Bartos'
-release = '"0.6.0-dev.2"'
+release = '"1.2.0"'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

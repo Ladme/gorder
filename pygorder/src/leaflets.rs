@@ -47,7 +47,9 @@ impl<'source> FromPyObject<'source> for LeafletClassification {
     }
 }
 
-/// Frequency of some action being performed.
+/// Represents how often an action is performed.
+///
+/// Can specify that an action occurs once or at a regular interval (every N frames).
 #[pyclass]
 #[derive(Clone)]
 pub struct Frequency(RsFreq);
@@ -55,13 +57,32 @@ pub struct Frequency(RsFreq);
 #[pymethods]
 impl Frequency {
     /// Perform the action once.
+    ///
+    /// Returns
+    /// -------
+    /// Frequency
+    ///     A frequency object representing a single execution.
     #[staticmethod]
     pub fn once() -> Self {
         Frequency(RsFreq::once())
     }
 
     /// Perform the action every N frames.
-    /// Returns an error if `n_frames` is 0.
+    ///
+    /// Parameters
+    /// ----------
+    /// n_frames : int
+    ///     Number of frames between each action.
+    ///
+    /// Returns
+    /// -------
+    /// Frequency
+    ///     A frequency object representing the repeated execution interval.
+    ///
+    /// Raises
+    /// ------
+    /// ConfigError
+    ///     If `n_frames` is 0.
     #[staticmethod]
     pub fn every(n_frames: usize) -> PyResult<Self> {
         Ok(Frequency(
@@ -95,7 +116,7 @@ impl<'source> FromPyObject<'source> for Collect {
 ///
 /// Generally reliable and fast. The best option for analyzing disrupted membranes.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// membrane : str
 ///     Selection query specifying all lipids forming the membrane.
@@ -108,11 +129,11 @@ impl<'source> FromPyObject<'source> for Collect {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
-/// collect : Optional[bool|str], default=False
-///     Leaflet classification data will be saved or exported.
-///     If `True`, the data are saved but not written out. They can be accessed using Python API.
-///     If a string is provided, the data are saved and written into an output file.
-///     Defaults to `False` (leaflet assignment data are not saved).
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether leaflet classification data are saved and exported.
+///     By default (`False`), data are not saved.
+///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, data are saved and written to the specified output file.
 #[pyclass]
 #[derive(Clone)]
 pub struct GlobalClassification(RsLeafletClassification);
@@ -144,7 +165,7 @@ impl GlobalClassification {
 ///
 /// Useful for curved membranes but computationally slow.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// membrane : str
 ///     Selection query specifying all lipids forming the membrane.
@@ -159,11 +180,11 @@ impl GlobalClassification {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
-/// collect : Optional[bool|str], default=False
-///     Leaflet classification data will be saved or exported.
-///     If `True`, the data are saved but not written out. They can be accessed using Python API.
-///     If a string is provided, the data are saved and written into an output file.
-///     Defaults to `False` (leaflet assignment data are not saved).
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether leaflet classification data are saved and exported.
+///     By default (`False`), data are not saved.
+///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, data are saved and written to the specified output file.
 #[pyclass]
 #[derive(Clone)]
 pub struct LocalClassification(RsLeafletClassification);
@@ -206,7 +227,7 @@ impl LocalClassification {
 ///
 /// Less reliable but computationally fast.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// heads : str
 ///     Selection query specifying reference atoms representing lipid headgroups
@@ -220,11 +241,11 @@ impl LocalClassification {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
-/// collect : Optional[bool|str], default=False
-///     Leaflet classification data will be saved or exported.
-///     If `True`, the data are saved but not written out. They can be accessed using Python API.
-///     If a string is provided, the data are saved and written into an output file.
-///     Defaults to `False` (leaflet assignment data are not saved).
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether leaflet classification data are saved and exported.
+///     By default (`False`), data are not saved.
+///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, data are saved and written to the specified output file.
 #[pyclass]
 #[derive(Clone)]
 pub struct IndividualClassification(RsLeafletClassification);
@@ -259,7 +280,7 @@ impl IndividualClassification {
 ///
 /// Reliable even for curved membranes but very slow, especially for large systems.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// heads : str
 ///     Selection query specifying reference atoms representing lipid headgroups
@@ -267,11 +288,11 @@ impl IndividualClassification {
 ///     There must be exactly one such atom/bead per lipid molecule.
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
-/// collect : Optional[bool|str], default=False
-///     Leaflet classification data will be saved or exported.
-///     If `True`, the data are saved but not written out. They can be accessed using Python API.
-///     If a string is provided, the data are saved and written into an output file.
-///     Defaults to `False` (leaflet assignment data are not saved).
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether leaflet classification data are saved and exported.
+///     By default (`False`), data are not saved.
+///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, data are saved and written to the specified output file.
 #[pyclass]
 #[derive(Clone)]
 pub struct ClusteringClassification(RsLeafletClassification);
@@ -296,7 +317,7 @@ impl ClusteringClassification {
 
 /// Get leaflet assignment from an external YAML file or a dictionary.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// input : Union[str, dict]
 ///     Path to the input YAML file containing the leaflet assignment
@@ -329,7 +350,7 @@ impl ManualClassification {
 
 /// Get leaflet assignment from NDX file(s).
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// ndx : List[str]
 ///     A list of NDX files to read.
