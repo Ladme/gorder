@@ -297,7 +297,8 @@ POPC:
             .unwrap(),
             "!Dynamic
 heads: name P
-radius: 3.0\n"
+radius: 3.0
+collect: false\n"
         );
 
         assert_eq!(

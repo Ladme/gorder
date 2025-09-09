@@ -4904,7 +4904,7 @@ fn test_aa_order_buckled_membrane_normals_from_file_fail_missing_frames() {
         Ok(_) => panic!("Analysis should have failed."),
         Err(e) => assert!(e
             .to_string()
-            .contains("could not get membrane normals for frame index")),
+            .contains("could not get membrane normals for frame")),
     }
 }
 
