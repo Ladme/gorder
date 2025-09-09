@@ -6071,6 +6071,8 @@ fn test_aa_order_leaflets_every1_collect_rust_api() {
 
     let leaflets_data = results.leaflets_data().as_ref().unwrap();
 
+    assert_eq!(leaflets_data.frames(), &((1..52).collect::<Vec<usize>>()));
+
     let pope_data = leaflets_data.get_molecule("POPE").unwrap();
     assert_eq!(pope_data.len(), 51);
     for frame in pope_data.iter() {

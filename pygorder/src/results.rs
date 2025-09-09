@@ -1171,7 +1171,7 @@ pub struct Convergence {
 
 #[pymethods]
 impl Convergence {
-    /// Get the indices of trajectory frames where order parameters were calculated.
+    /// Get the indices of trajectory frames for which order parameters were calculated.
     ///
     /// The first analyzed frame is assigned an index of 1. For example,
     /// if the analysis starts at 200 ns, the frame at or just after 200 ns
@@ -1278,6 +1278,24 @@ impl LeafletsData {
         let converted_data = convert_leaflets(molecule_data);
         Some(numpy::PyArray2::from_vec2(py, &converted_data).expect(
                 "FATAL GORDER ERROR | LeafletsData::get_molecule | Could not convert Vec<Vec> to numpy array.").into())
+    }
+
+    /// Get the indices of trajectory frames for which leaflet classification was performed.
+    ///
+    /// The first analyzed frame is assigned an index of 1. For example,
+    /// if the analysis starts at 200 ns, the frame at or just after 200 ns
+    /// is indexed as 1.
+    ///
+    /// Returns
+    /// -------
+    /// List[int]
+    ///     Indices of the frames for which leaflet classification was performed.
+    pub fn frames(&self) -> Vec<usize> {
+        match self.results.as_ref() {
+            RsResults::AA(x) => x.leaflets_data().as_ref().unwrap().frames().clone(),
+            RsResults::CG(x) => x.leaflets_data().as_ref().unwrap().frames().clone(),
+            RsResults::UA(x) => x.leaflets_data().as_ref().unwrap().frames().clone(),
+        }
     }
 }
 

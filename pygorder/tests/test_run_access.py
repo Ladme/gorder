@@ -1757,6 +1757,8 @@ def test_aa_order_leaflets_collect():
 
     results = analysis.run()
 
+    assert results.leaflets_data().frames() == [x for x in range(1, 52)]
+
     pope_data = results.leaflets_data().get_molecule("POPE")
     assert len(pope_data) == 51
     for frame in pope_data:

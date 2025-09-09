@@ -9,6 +9,7 @@ use std::{
     path::Path,
 };
 
+use getset::Getters;
 use hashbrown::HashMap;
 use indexmap::IndexMap;
 
@@ -20,9 +21,10 @@ use crate::{
 };
 
 /// Data for storing and presenting the leaflet assignment data.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Getters)]
 pub struct LeafletsData {
     /// Indices of trajectory frames for which leaflet assignment was performed with the first analyzed frame having the index 1.
+    #[getset(get = "pub")]
     frames: Vec<usize>,
     /// Leaflet assignment for each lipid type and each analyzed frame.
     assignment: IndexMap<String, Vec<Vec<Leaflet>>>,
