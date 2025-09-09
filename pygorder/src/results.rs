@@ -16,6 +16,7 @@ use gorder_core::prelude::UAMoleculeResults;
 use gorder_core::prelude::{
     AAMoleculeResults, AnalysisResults as RsResults, CGMoleculeResults, PublicOrderResults,
 };
+use gorder_core::Leaflet as RsLeaflet;
 use pyo3::prelude::*;
 
 use crate::APIError;
@@ -113,6 +114,26 @@ impl AnalysisResults {
             molecule: None,
             identifier: OrderIdentifier::Average,
         }
+    }
+
+    /// Get the collected leaflet classification data.
+    /// Returns None if no leaflet classification was performed or if the data were not stored.
+    /// Note that leaflet classification data are not stored by default.
+    /// To store leaflet classification data, you need to explicitly request it.
+    pub fn leaflets_data(&self) -> Option<LeafletsData> {
+        let leaflets_data_available = match self.0.as_ref() {
+            RsResults::AA(x) => x.leaflets_data().is_some(),
+            RsResults::CG(x) => x.leaflets_data().is_some(),
+            RsResults::UA(x) => x.leaflets_data().is_some(),
+        };
+
+        if !leaflets_data_available {
+            return None;
+        }
+
+        Some(LeafletsData {
+            results: self.0.clone(),
+        })
     }
 }
 
@@ -954,4 +975,60 @@ impl Convergence {
                 .unwrap(),
         }
     }
+}
+
+/// Stores collected leaflet classification data.
+#[pyclass]
+pub struct LeafletsData {
+    pub(crate) results: Arc<RsResults>,
+}
+
+#[pymethods]
+impl LeafletsData {
+    /// Get leaflet classification data for the specified molecule type.
+    ///
+    /// Parameters
+    /// ----------
+    /// molecule : str
+    ///     Name of the molecule type to query.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_frames, n_molecules), dtype=uint8
+    ///     A 2D array where rows correspond to analyzed trajectory frames and columns to
+    ///     individual molecules. Values are `1` for molecules in the upper leaflet
+    ///     and `0` for molecules in the lower leaflet. Returns `None` if no leaflet
+    ///     classification data exists for the specified molecule type.
+    ///
+    /// Notes
+    /// -----
+    /// This is a potentially expensive operation, as it involves copying and
+    /// converting from the internal Rust representation into a NumPy array.
+    pub fn get_molecule(&self, molecule: &str, py: Python<'_>) -> Option<Py<numpy::PyArray2<u8>>> {
+        let molecule_data = match self.results.as_ref() {
+            RsResults::AA(x) => x.leaflets_data().as_ref().unwrap().get_molecule(molecule),
+            RsResults::CG(x) => x.leaflets_data().as_ref().unwrap().get_molecule(molecule),
+            RsResults::UA(x) => x.leaflets_data().as_ref().unwrap().get_molecule(molecule),
+        }?;
+
+        let converted_data = convert_leaflets(molecule_data);
+        Some(numpy::PyArray2::from_vec2(py, &converted_data).expect(
+                "FATAL GORDER ERROR | LeafletsData::get_molecule | Could not convert Vec<Vec> to numpy array.").into())
+    }
+}
+
+/// Helper function for converting from Leaflet to u8.
+fn leaflet_to_u8(l: &RsLeaflet) -> u8 {
+    match l {
+        RsLeaflet::Upper => 1,
+        RsLeaflet::Lower => 0,
+    }
+}
+
+/// Helper function for converting leaflets data.
+fn convert_leaflets(input: &Vec<Vec<RsLeaflet>>) -> Vec<Vec<u8>> {
+    input
+        .into_iter()
+        .map(|inner| inner.into_iter().map(|leaf| leaflet_to_u8(&leaf)).collect())
+        .collect()
 }

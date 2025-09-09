@@ -5116,6 +5116,7 @@ fn test_aa_order_basic_rust_api() {
 
     assert_eq!(results.n_analyzed_frames(), 51);
     assert_eq!(results.analysis().structure(), "tests/files/pcpepg.tpr");
+    assert!(results.leaflets_data().is_none());
 
     assert_eq!(results.molecules().count(), 3);
 

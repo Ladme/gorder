@@ -178,6 +178,7 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
     results.add_class::<results::Order>()?;
     results.add_class::<results::Map>()?;
     results.add_class::<results::Convergence>()?;
+    results.add_class::<results::LeafletsData>()?;
     m.add_submodule(&results)?;
 
     // module: exceptions

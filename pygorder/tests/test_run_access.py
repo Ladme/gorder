@@ -1741,3 +1741,48 @@ def test_ua_order_leaflets_ordermaps():
             if math.isnan(map_val) and math.isnan(ext_val):
                 continue
             assert compare_orders(map_val, ext_val)
+
+def test_aa_order_leaflets_collect():
+    analysis = gorder.Analysis(
+        structure = "../tests/files/pcpepg.tpr",
+        trajectory = "../tests/files/pcpepg.xtc",
+        analysis_type = gorder.analysis_types.AAOrder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen"
+        ),
+        leaflets = gorder.leaflets.GlobalClassification("@membrane", "name P", collect = True),
+        silent = True,
+        overwrite = True,
+    )
+
+    results = analysis.run()
+
+    pope_data = results.leaflets_data().get_molecule("POPE")
+    assert len(pope_data) == 51
+    for frame in pope_data:
+        assert len(frame) == 131
+        for (i, lipid) in enumerate(frame):
+            if i < 65:
+                assert lipid == 1
+            else:
+                assert lipid == 0
+    
+    popc_data = results.leaflets_data().get_molecule("POPC")
+    assert len(popc_data) == 51
+    for frame in popc_data:
+        assert len(frame) == 128
+        for (i, lipid) in enumerate(frame):
+            if i < 64:
+                assert lipid == 1
+            else:
+                assert lipid == 0
+    
+    popg_data = results.leaflets_data().get_molecule("POPG")
+    assert len(popg_data) == 51
+    for frame in popg_data:
+        assert len(frame) == 15
+        for (i, lipid) in enumerate(frame):
+            if i < 8:
+                assert lipid == 1
+            else:
+                assert lipid == 0

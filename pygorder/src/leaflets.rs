@@ -1,6 +1,7 @@
 // Released under MIT License.
 // Copyright (c) 2024-2025 Ladislav Bartos
 
+use gorder_core::input::leaflets::Collect as RsCollect;
 use gorder_core::input::Frequency as RsFreq;
 use gorder_core::input::LeafletClassification as RsLeafletClassification;
 use gorder_core::Leaflet;
@@ -69,6 +70,27 @@ impl Frequency {
     }
 }
 
+/// Handles specifying how leaflet classification data should be collected.
+#[derive(Clone)]
+pub struct Collect(RsCollect);
+
+impl<'source> FromPyObject<'source> for Collect {
+    fn extract_bound(obj: &Bound<'source, PyAny>) -> PyResult<Self> {
+        // try to extract as boolean
+        if let Ok(boolean) = obj.extract::<bool>() {
+            return Ok(Collect(RsCollect::Boolean(boolean)));
+        }
+        // try to extract as a string
+        if let Ok(s) = obj.extract::<String>() {
+            return Ok(Collect(RsCollect::File(s)));
+        }
+
+        Err(ConfigError::new_err(
+            "invalid type for Collect constructor: expected a bool or str",
+        ))
+    }
+}
+
 /// Assign lipids into leaflets based on the global membrane center of geometry.
 ///
 /// Generally reliable and fast. The best option for analyzing disrupted membranes.
@@ -86,6 +108,11 @@ impl Frequency {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
+/// collect : Optional[bool|str], default=False
+///     Leaflet classification data will be saved or exported.
+///     If `True`, the data are saved but not written out. They can be accessed using Python API.
+///     If a string is provided, the data are saved and written into an output file.
+///     Defaults to `False` (leaflet assignment data are not saved).
 #[pyclass]
 #[derive(Clone)]
 pub struct GlobalClassification(RsLeafletClassification);
@@ -93,16 +120,20 @@ pub struct GlobalClassification(RsLeafletClassification);
 #[pymethods]
 impl GlobalClassification {
     #[new]
-    #[pyo3(signature = (membrane, heads, frequency = None, membrane_normal = None))]
+    #[pyo3(signature = (membrane, heads, frequency = None, membrane_normal = None, collect = None))]
     pub fn new(
         membrane: &str,
         heads: &str,
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
+        collect: Option<Collect>,
     ) -> PyResult<Self> {
-        let classification = add_normal(
-            add_freq(RsLeafletClassification::global(membrane, heads), frequency)?,
-            membrane_normal,
+        let classification = add_collect(
+            add_normal(
+                add_freq(RsLeafletClassification::global(membrane, heads), frequency)?,
+                membrane_normal,
+            )?,
+            collect,
         )?;
 
         Ok(Self(classification))
@@ -128,7 +159,11 @@ impl GlobalClassification {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
-
+/// collect : Optional[bool|str], default=False
+///     Leaflet classification data will be saved or exported.
+///     If `True`, the data are saved but not written out. They can be accessed using Python API.
+///     If a string is provided, the data are saved and written into an output file.
+///     Defaults to `False` (leaflet assignment data are not saved).
 #[pyclass]
 #[derive(Clone)]
 pub struct LocalClassification(RsLeafletClassification);
@@ -136,13 +171,14 @@ pub struct LocalClassification(RsLeafletClassification);
 #[pymethods]
 impl LocalClassification {
     #[new]
-    #[pyo3(signature = (membrane, heads, radius, frequency = None, membrane_normal = None))]
+    #[pyo3(signature = (membrane, heads, radius, frequency = None, membrane_normal = None, collect = None))]
     pub fn new(
         membrane: &str,
         heads: &str,
         radius: f32,
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
+        collect: Option<Collect>,
     ) -> PyResult<Self> {
         if radius <= 0.0 {
             return Err(ConfigError::new_err(format!(
@@ -151,12 +187,15 @@ impl LocalClassification {
             )));
         }
 
-        let classification = add_normal(
-            add_freq(
-                RsLeafletClassification::local(membrane, heads, radius),
-                frequency,
+        let classification = add_collect(
+            add_normal(
+                add_freq(
+                    RsLeafletClassification::local(membrane, heads, radius),
+                    frequency,
+                )?,
+                membrane_normal,
             )?,
-            membrane_normal,
+            collect,
         )?;
 
         Ok(Self(classification))
@@ -181,6 +220,11 @@ impl LocalClassification {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
+/// collect : Optional[bool|str], default=False
+///     Leaflet classification data will be saved or exported.
+///     If `True`, the data are saved but not written out. They can be accessed using Python API.
+///     If a string is provided, the data are saved and written into an output file.
+///     Defaults to `False` (leaflet assignment data are not saved).
 #[pyclass]
 #[derive(Clone)]
 pub struct IndividualClassification(RsLeafletClassification);
@@ -188,19 +232,23 @@ pub struct IndividualClassification(RsLeafletClassification);
 #[pymethods]
 impl IndividualClassification {
     #[new]
-    #[pyo3(signature = (heads, methyls, frequency = None, membrane_normal = None))]
+    #[pyo3(signature = (heads, methyls, frequency = None, membrane_normal = None, collect = None))]
     pub fn new(
         heads: &str,
         methyls: &str,
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
+        collect: Option<Collect>,
     ) -> PyResult<Self> {
-        let classification = add_normal(
-            add_freq(
-                RsLeafletClassification::individual(heads, methyls),
-                frequency,
+        let classification = add_collect(
+            add_normal(
+                add_freq(
+                    RsLeafletClassification::individual(heads, methyls),
+                    frequency,
+                )?,
+                membrane_normal,
             )?,
-            membrane_normal,
+            collect,
         )?;
 
         Ok(Self(classification))
@@ -219,6 +267,11 @@ impl IndividualClassification {
 ///     There must be exactly one such atom/bead per lipid molecule.
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
+/// collect : Optional[bool|str], default=False
+///     Leaflet classification data will be saved or exported.
+///     If `True`, the data are saved but not written out. They can be accessed using Python API.
+///     If a string is provided, the data are saved and written into an output file.
+///     Defaults to `False` (leaflet assignment data are not saved).
 #[pyclass]
 #[derive(Clone)]
 pub struct ClusteringClassification(RsLeafletClassification);
@@ -226,9 +279,16 @@ pub struct ClusteringClassification(RsLeafletClassification);
 #[pymethods]
 impl ClusteringClassification {
     #[new]
-    #[pyo3(signature = (heads, frequency = None))]
-    pub fn new(heads: &str, frequency: Option<Frequency>) -> PyResult<Self> {
-        let classification = add_freq(RsLeafletClassification::clustering(heads), frequency)?;
+    #[pyo3(signature = (heads, frequency = None, collect = None))]
+    pub fn new(
+        heads: &str,
+        frequency: Option<Frequency>,
+        collect: Option<Collect>,
+    ) -> PyResult<Self> {
+        let classification = add_collect(
+            add_freq(RsLeafletClassification::clustering(heads), frequency)?,
+            collect,
+        )?;
 
         Ok(Self(classification))
     }
@@ -335,6 +395,26 @@ fn add_normal(
 ) -> PyResult<RsLeafletClassification> {
     if let Some(normal) = normal {
         classification = classification.with_membrane_normal(string2axis(normal)?);
+    }
+
+    Ok(classification)
+}
+
+/// Attempt to add request for data collection to leaflet classification.
+fn add_collect(
+    classification: RsLeafletClassification,
+    collect: Option<Collect>,
+) -> PyResult<RsLeafletClassification> {
+    if let Some(collect) = collect {
+        match classification {
+            RsLeafletClassification::Global(_) | 
+            RsLeafletClassification::Local(_) | 
+            RsLeafletClassification::Individual(_) | 
+            RsLeafletClassification::Clustering(_) => return Ok(classification.with_collect(collect.0)),
+            RsLeafletClassification::FromFile(_) | 
+            RsLeafletClassification::FromMap(_) | 
+            RsLeafletClassification::FromNdx(_) => return Err(ConfigError::new_err("collecting leaflet classification data for manual leaflet classification methods is not supported"))
+        }
     }
 
     Ok(classification)
