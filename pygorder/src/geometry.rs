@@ -6,6 +6,8 @@ use pyo3::prelude::*;
 
 use gorder_core::input::GeomReference as RsReference;
 use gorder_core::input::Geometry as RsGeometry;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::string2axis;
 use crate::ConfigError;
@@ -44,17 +46,19 @@ impl<'source> FromPyObject<'source> for Geometry {
 ///     Span of the cuboid along the y-axis [nm]. Defaults to infinite if not specified.
 /// zdim : Optional[List[float]]
 ///     Span of the cuboid along the z-axis [nm]. Defaults to infinite if not specified.
-/// reference : Optional[List[float]]
+/// reference : Optional[Union[List[float],str]]
 ///     Reference point for the cuboid position. Defaults to [0.0, 0.0, 0.0].
 ///
 /// Raises
 /// ------
 /// ConfigError
 ///     If any dimension is invalid.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.geometry")]
 #[derive(Clone)]
 pub struct Cuboid(RsGeometry);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Cuboid {
     #[new]
@@ -62,15 +66,24 @@ impl Cuboid {
         xdim = [f32::NEG_INFINITY, f32::INFINITY],
         ydim = [f32::NEG_INFINITY, f32::INFINITY],
         zdim = [f32::NEG_INFINITY, f32::INFINITY],
-        reference = [0.0, 0.0, 0.0].into()))]
+        reference = None))]
     pub fn new(
         xdim: [f32; 2],
         ydim: [f32; 2],
         zdim: [f32; 2],
-        reference: GeomReference,
+        /*#[gen_stub(override_type(
+            type_repr = "builtins.Union[builtins.list[builtins.float], builtins.str, None]"
+        ))]*/
+        reference: Option<Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
+        let converted_ref = if let Some(reference) = reference {
+            GeomReference::extract_bound(&reference)?
+        } else {
+            GeomReference(RsReference::Point(Vector3D::default()))
+        };
+
         Ok(Self(
-            RsGeometry::cuboid(reference.0, xdim, ydim, zdim)
+            RsGeometry::cuboid(converted_ref.0, xdim, ydim, zdim)
                 .map_err(|e| ConfigError::new_err(e.to_string()))?,
         ))
     }
@@ -86,17 +99,19 @@ impl Cuboid {
 ///     Orientation of the cylinder's main axis. Expected values are x, y, or z.
 /// span : Optional[List[float]]
 ///     Span along the main axis [nm]. Defaults to infinite if not specified.
-/// reference : Optional[List[float]]
+/// reference : Optional[Union[List[float],str]]
 ///     Reference point for position and size. Defaults to [0.0, 0.0, 0.0].
 ///
 /// Raises
 /// ------
 /// ConfigError
 ///     If `radius` is not positive, `span` is invalid, or `orientation` is not recognized.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.geometry")]
 #[derive(Clone)]
 pub struct Cylinder(RsGeometry);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Cylinder {
     #[new]
@@ -104,15 +119,24 @@ impl Cylinder {
         radius,
         orientation,
         span = [f32::NEG_INFINITY, f32::INFINITY],
-        reference = [0.0, 0.0, 0.0].into()))]
-    pub fn new(
+        reference = None))]
+    pub fn new<'a>(
         radius: f32,
         orientation: &str,
         span: [f32; 2],
-        reference: GeomReference,
+        /*#[gen_stub(override_type(
+            type_repr = "builtins.Union[builtins.list[builtins.float], builtins.str, None]"
+        ))]*/
+        reference: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
+        let converted_ref = if let Some(reference) = reference {
+            GeomReference::extract_bound(&reference)?
+        } else {
+            GeomReference(RsReference::Point(Vector3D::default()))
+        };
+
         Ok(Self(
-            RsGeometry::cylinder(reference.0, radius, span, string2axis(orientation)?)
+            RsGeometry::cylinder(converted_ref.0, radius, span, string2axis(orientation)?)
                 .map_err(|e| ConfigError::new_err(e.to_string()))?,
         ))
     }
@@ -124,26 +148,40 @@ impl Cylinder {
 /// ----------
 /// radius : float
 ///     Radius of the sphere [nm].
-/// reference : Optional[List[float]]
+/// reference : Optional[Union[List[float],str]]
 ///     Center of the sphere. Defaults to [0.0, 0.0, 0.0].
 ///
 /// Raises
 /// ------
 /// ConfigError
 ///     If `radius` is not positive.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.geometry")]
 #[derive(Clone)]
 pub struct Sphere(RsGeometry);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Sphere {
     #[new]
     #[pyo3(signature = (
         radius,
-        reference = [0.0, 0.0, 0.0].into()))]
-    pub fn new(radius: f32, reference: GeomReference) -> PyResult<Self> {
+        reference = None))]
+    pub fn new<'a>(
+        radius: f32,
+        /*#[gen_stub(override_type(
+            type_repr = "builtins.Union[builtins.list[builtins.float], builtins.str, None]"
+        ))]*/
+        reference: Option<Bound<'a, PyAny>>,
+    ) -> PyResult<Self> {
+        let converted_ref = if let Some(reference) = reference {
+            GeomReference::extract_bound(&reference)?
+        } else {
+            GeomReference(RsReference::Point(Vector3D::default()))
+        };
+
         Ok(Self(
-            RsGeometry::sphere(reference.0, radius)
+            RsGeometry::sphere(converted_ref.0, radius)
                 .map_err(|e| ConfigError::new_err(e.to_string()))?,
         ))
     }

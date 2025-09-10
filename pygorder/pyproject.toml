@@ -27,3 +27,8 @@ Issues = "https://github.com/Ladme/gorder/issues"
 
 [dependency-groups]
 dev = ["numpy>=2.2.3", "pytest>=8.3.4", "pyyaml>=6.0.2", "twine>=6.1.0"]
+
+[tool.maturin]
+python-source = "python"
+module-name = "gorder"
+features = ["pyo3/extension-module"]

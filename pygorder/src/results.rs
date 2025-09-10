@@ -19,6 +19,8 @@ use gorder_core::prelude::{
 };
 use gorder_core::Leaflet as RsLeaflet;
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::APIError;
 use crate::AtomType;
@@ -28,9 +30,11 @@ use crate::WriteError;
 ///
 /// Provides access to overall results, per-molecule results, average order
 /// parameters, average order maps, and optionally collected leaflet classification data.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct AnalysisResults(pub(crate) Arc<RsResults>);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AnalysisResults {
     /// Write the results into output files.
@@ -219,12 +223,14 @@ impl AnalysisResults {
 ///
 /// Provides access to average order parameters, average order maps, and per-atom or
 /// per-bond results, as well as convergence data when available.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct MoleculeResults {
     results: Arc<RsResults>,
     name: String,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl MoleculeResults {
     /// Get the name of the molecule type.
@@ -475,13 +481,15 @@ impl MoleculeResults {
 ///
 /// Provides access to per-atom type order parameters, order maps, and the bond results
 /// associated with this atom type.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct AtomResults {
     results: Arc<RsResults>,
     molecule: String,
     atom: usize,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AtomResults {
     /// Get the type of the atom for which these results were calculated.
@@ -647,7 +655,8 @@ impl AtomResults {
 ///
 /// Provides access to the molecule name, the atom types involved (if available),
 /// and the order parameters and order maps for this bond type.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct BondResults {
     results: Arc<RsResults>,
     molecule: String,
@@ -656,6 +665,7 @@ pub struct BondResults {
     bond: (usize, usize),
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl BondResults {
     /// Get the name of the molecule type for this bond type.
@@ -895,13 +905,15 @@ impl OrderIdentifier {
 
 /// Order parameters for a single object (atom type, bond type, molecule type, system)
 /// calculated for the full membrane, the upper leaflet, and the lower leaflet.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct OrderCollection {
     results: Arc<RsResults>,
     molecule: Option<String>, // `None` for average order for the entire system
     identifier: OrderIdentifier,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl OrderCollection {
     /// Get the order parameter calculated from the whole membrane.
@@ -960,9 +972,11 @@ impl OrderCollection {
 }
 
 /// Single order parameter value, optionally with its estimated error.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct Order(pub(crate) RsOrder);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Order {
     /// Get the value of the order parameter (mean from the analyzed frames).
@@ -988,7 +1002,8 @@ impl Order {
 
 /// Order maps for a single object (atom type, bond type, molecule type, system)
 /// calculated for the full membrane, the upper leaflet, and the lower leaflet.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 #[derive(Clone)]
 pub struct OrderMapsCollection {
     results: Arc<RsResults>,
@@ -996,6 +1011,7 @@ pub struct OrderMapsCollection {
     identifier: OrderIdentifier,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl OrderMapsCollection {
     /// Get the order map calculated from the whole membrane.
@@ -1063,12 +1079,14 @@ impl OrderMapsCollection {
 }
 
 /// Map of order parameters.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct Map {
     collection: OrderMapsCollection,
     leaflet: Leaflet,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Map {
     /// Get the span of the map along the first dimension of the map.
@@ -1192,12 +1210,14 @@ impl Map {
 ///
 /// Provides cumulative averages over time for the full membrane and for
 /// individual leaflets.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct Convergence {
     results: Arc<RsResults>,
     molecule: String,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Convergence {
     /// Get the indices of trajectory frames for which order parameters were calculated.
@@ -1271,11 +1291,13 @@ impl Convergence {
 }
 
 /// Stores collected leaflet classification data.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct LeafletsData {
     pub(crate) results: Arc<RsResults>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl LeafletsData {
     /// Get leaflet classification data for the specified molecule type.
@@ -1345,11 +1367,13 @@ fn convert_leaflets(input: &Vec<Vec<RsLeaflet>>) -> Vec<Vec<u8>> {
 }
 
 /// Stores collected membrane normals.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.results")]
 pub struct NormalsData {
     pub(crate) results: Arc<RsResults>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl NormalsData {
     /// Get collected membrane normals for the specified molecule type.

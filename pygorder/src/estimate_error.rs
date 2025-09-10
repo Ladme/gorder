@@ -4,6 +4,7 @@
 use pyo3::prelude::*;
 
 use gorder_core::input::EstimateError as RsEstimateError;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 use crate::ConfigError;
 
@@ -23,10 +24,12 @@ use crate::ConfigError;
 /// ------
 /// ConfigError
 ///     If `n_blocks` is less than 2.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.estimate_error")]
 #[derive(Clone)]
 pub struct EstimateError(pub(crate) RsEstimateError);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl EstimateError {
     #[new]

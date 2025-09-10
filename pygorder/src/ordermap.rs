@@ -5,6 +5,9 @@ use gorder_core::input::ordermap::GridSpan as RsSpan;
 use gorder_core::input::ordermap::OrderMap as RsMap;
 use gorder_core::input::ordermap::OrderMapBuilder as RsMapBuilder;
 use pyo3::prelude::*;
+use pyo3::types::PySequence;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::string2plane;
 use crate::ConfigError;
@@ -39,34 +42,52 @@ use crate::ConfigError;
 /// ConfigError
 ///     If `min_samples` <= 0, `bin_size` <= 0, any `dim` span is invalid (first value <= second),
 ///     or if `plane` is not one of the allowed values (`xy`, `xz`, `yz`).
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.ordermap")]
 #[derive(Clone)]
 pub struct OrderMap(pub(crate) RsMap);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl OrderMap {
     #[pyo3(signature = (
         output_directory = None,
         min_samples = 1,
-        dim = [GridSpan::default(), GridSpan::default()],
+        dim = None,
         bin_size = [0.1, 0.1],
         plane = None)
     )]
     #[new]
-    pub fn new(
+    pub fn new<'a>(
         output_directory: Option<&str>,
         min_samples: usize,
-        dim: [GridSpan; 2],
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.List[typing.Union[builtins.str, typing.List[builtins.float]]]]", imports=("typing")
+        ))]
+        dim: Option<Bound<'a, PySequence>>,
         bin_size: [f32; 2],
         plane: Option<&str>,
     ) -> PyResult<Self> {
         let mut builder: RsMapBuilder = RsMap::builder();
 
+        let converted_dim = if let Some(dim) = dim {
+            if dim.len().unwrap() != 2 {
+                return Err(ConfigError::new_err("`dim` must have exactly two elements"));
+            }
+
+            [
+                GridSpan::extract_bound(&dim.get_item(0).unwrap())?,
+                GridSpan::extract_bound(&dim.get_item(1).unwrap())?,
+            ]
+        } else {
+            [GridSpan::default(), GridSpan::default()]
+        };
+
         apply_if_some!(builder, output_directory => output_directory);
         builder
             .min_samples(min_samples)
             .bin_size(bin_size)
-            .dim([dim[0].0, dim[1].0]);
+            .dim([converted_dim[0].0, converted_dim[1].0]);
 
         if let Some(plane) = plane {
             builder.plane(string2plane(plane)?);

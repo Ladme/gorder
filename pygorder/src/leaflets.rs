@@ -10,6 +10,8 @@ use numpy::PyArray2;
 use numpy::PyArrayMethods;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::string2axis;
 use crate::Collect;
@@ -50,10 +52,12 @@ impl<'source> FromPyObject<'source> for LeafletClassification {
 /// Represents how often an action is performed.
 ///
 /// Can specify that an action occurs once or at a regular interval (every N frames).
+#[gen_stub_pyclass]
 #[pyclass]
 #[derive(Clone)]
 pub struct Frequency(RsFreq);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Frequency {
     /// Perform the action once.
@@ -113,20 +117,25 @@ impl Frequency {
 ///     By default (`False`), data are not saved.
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct GlobalClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl GlobalClassification {
     #[new]
     #[pyo3(signature = (membrane, heads, frequency = None, membrane_normal = None, collect = None))]
-    pub fn new(
+    pub fn new<'a>(
         membrane: &str,
         heads: &str,
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
-        collect: Option<Collect>,
+        /*#[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]*/
+        collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         let classification = add_collect(
             add_normal(
@@ -164,21 +173,26 @@ impl GlobalClassification {
 ///     By default (`False`), data are not saved.
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct LocalClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl LocalClassification {
     #[new]
     #[pyo3(signature = (membrane, heads, radius, frequency = None, membrane_normal = None, collect = None))]
-    pub fn new(
+    pub fn new<'a>(
         membrane: &str,
         heads: &str,
         radius: f32,
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
-        collect: Option<Collect>,
+        /*#[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]*/
+        collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         if radius <= 0.0 {
             return Err(ConfigError::new_err(format!(
@@ -225,20 +239,25 @@ impl LocalClassification {
 ///     By default (`False`), data are not saved.
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct IndividualClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl IndividualClassification {
     #[new]
     #[pyo3(signature = (heads, methyls, frequency = None, membrane_normal = None, collect = None))]
-    pub fn new(
+    pub fn new<'a>(
         heads: &str,
         methyls: &str,
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
-        collect: Option<Collect>,
+        /*#[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]*/
+        collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         let classification = add_collect(
             add_normal(
@@ -272,18 +291,23 @@ impl IndividualClassification {
 ///     By default (`False`), data are not saved.
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct ClusteringClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl ClusteringClassification {
     #[new]
     #[pyo3(signature = (heads, frequency = None, collect = None))]
-    pub fn new(
+    pub fn new<'a>(
         heads: &str,
         frequency: Option<Frequency>,
-        collect: Option<Collect>,
+        /*#[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]*/
+        collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         let classification = add_collect(
             add_freq(RsLeafletClassification::clustering(heads), frequency)?,
@@ -303,10 +327,12 @@ impl ClusteringClassification {
 ///     or a dictionary specifying the leaflet assignment.
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct ManualClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl ManualClassification {
     #[new]
@@ -347,10 +373,12 @@ impl ManualClassification {
 /// Notes
 /// -----
 /// - No glob expansion is performed for the NDX files.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct NdxClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl NdxClassification {
     #[new]
@@ -401,16 +429,16 @@ fn add_normal(
 }
 
 /// Attempt to add request for data collection to leaflet classification.
-fn add_collect(
+fn add_collect<'a>(
     classification: RsLeafletClassification,
-    collect: Option<Collect>,
+    collect: Option<Bound<'a, PyAny>>,
 ) -> PyResult<RsLeafletClassification> {
     if let Some(collect) = collect {
         match classification {
             RsLeafletClassification::Global(_) |
             RsLeafletClassification::Local(_) |
             RsLeafletClassification::Individual(_) |
-            RsLeafletClassification::Clustering(_) => return Ok(classification.with_collect(collect.0)),
+            RsLeafletClassification::Clustering(_) => return Ok(classification.with_collect(Collect::extract_bound(&collect)?.0)),
             RsLeafletClassification::FromFile(_) |
             RsLeafletClassification::FromMap(_) |
             RsLeafletClassification::FromNdx(_) => return Err(ConfigError::new_err("collecting leaflet classification data for manual leaflet classification methods is not supported"))

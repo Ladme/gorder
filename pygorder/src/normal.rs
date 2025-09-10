@@ -11,6 +11,8 @@ use numpy::PyArray3;
 use numpy::PyArrayMethods;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::string2axis;
 use crate::Collect;
@@ -69,29 +71,38 @@ impl<'source> FromPyObject<'source> for MembraneNormal {
 /// ------
 /// ConfigError
 ///     If `radius` is not positive.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.membrane_normal")]
 #[derive(Clone)]
 pub struct DynamicNormal(RsDynamic);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl DynamicNormal {
     #[new]
     #[pyo3(signature = (heads, radius, collect = None))]
-    pub fn new(heads: &str, radius: f32, collect: Option<Collect>) -> PyResult<Self> {
+    pub fn new<'a>(
+        heads: &str,
+        radius: f32,
+        /*#[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]*/
+        collect: Option<Bound<'a, PyAny>>,
+    ) -> PyResult<Self> {
         Ok(Self(add_collect(
             RsDynamic::new(heads, radius).map_err(|e| ConfigError::new_err(e.to_string()))?,
             collect,
-        )))
+        )?))
     }
 }
 
 /// Attempt to add request for data collection to dynamic membrane normals.
-fn add_collect(normals: RsDynamic, collect: Option<Collect>) -> RsDynamic {
+fn add_collect<'a>(normals: RsDynamic, collect: Option<Bound<'a, PyAny>>) -> PyResult<RsDynamic> {
     if let Some(collect) = collect {
-        return normals.with_collect(collect.0);
+        return Ok(normals.with_collect(Collect::extract_bound(&collect)?.0));
     }
 
-    normals
+    Ok(normals)
 }
 
 /// Converts a three-dimensional numpy array into a Vec<Vec<Vector3D>>.

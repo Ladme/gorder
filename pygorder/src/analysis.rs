@@ -8,6 +8,8 @@ use gorder_core::input::AnalysisType as RsAnalysisType;
 use gorder_core::prelude::Analysis as RsAnalysis;
 use gorder_core::prelude::AnalysisBuilder as RsAnalysisBuilder;
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::estimate_error::EstimateError;
 use crate::geometry::Geometry;
@@ -31,10 +33,12 @@ use crate::{AnalysisError, ConfigError};
 /// - Atoms should be specified using the `groan selection language <https://ladme.github.io/gsl-guide>`_.
 /// - Order parameters are calculated for bonds between `heavy_atoms` and `hydrogens`. These bonds are detected automatically.
 /// - The order parameters for heavy atoms are determined by averaging the order parameters of the corresponding bonds.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.analysis_types")]
 #[derive(Clone)]
 pub struct AAOrder(RsAnalysisType);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AAOrder {
     #[new]
@@ -54,10 +58,12 @@ impl AAOrder {
 /// -----
 /// - Beads should be specified using the `groan selection language <https://ladme.github.io/gsl-guide>`_.
 /// - Order parameters are calculated for bonds between individual `beads`. These bonds are detected automatically.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.analysis_types")]
 #[derive(Clone)]
 pub struct CGOrder(RsAnalysisType);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl CGOrder {
     #[new]
@@ -86,10 +92,12 @@ impl CGOrder {
 /// - When calculating the number of bonds, `gorder` does not distinguish between single and double bonds.
 ///   This means it will attempt to add one hydrogen to a carboxyl atom if specified.
 ///   A simple solution to this issue is to exclude such atoms from the analysis.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.analysis_types")]
 #[derive(Clone)]
 pub struct UAOrder(RsAnalysisType);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl UAOrder {
     #[new]
@@ -195,9 +203,11 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 ///     If True, suppresses standard output messages during analysis.
 /// overwrite : Optional[bool], default=False
 ///     If True, overwrites existing output files and directories without backups.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder")]
 pub struct Analysis(RsAnalysis);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Analysis {
     #[allow(clippy::too_many_arguments)]
@@ -225,30 +235,43 @@ impl Analysis {
         handle_pbc=None,
         silent=None,
         overwrite=None))]
-    pub fn new(
+    pub fn new<'a>(
         structure: &str,
-        trajectory: TrajectoryInput,
-        analysis_type: AnalysisType,
+        trajectory: Bound<'a, PyAny>,
+        analysis_type: Bound<'a, PyAny>,
         bonds: Option<&str>,
         index: Option<&str>,
         output_yaml: Option<&str>,
         output_tab: Option<&str>,
         output_xvg: Option<&str>,
         output_csv: Option<&str>,
-        membrane_normal: Option<MembraneNormal>,
+        membrane_normal: Option<Bound<'a, PyAny>>,
         begin: Option<f32>,
         end: Option<f32>,
         step: Option<usize>,
         min_samples: Option<usize>,
         n_threads: Option<usize>,
-        leaflets: Option<LeafletClassification>,
+        leaflets: Option<Bound<'a, PyAny>>,
         ordermap: Option<OrderMap>,
         estimate_error: Option<EstimateError>,
-        geometry: Option<Geometry>,
+        geometry: Option<Bound<'a, PyAny>>,
         handle_pbc: Option<bool>,
         silent: Option<bool>,
         overwrite: Option<bool>,
     ) -> PyResult<Self> {
+        // convert to Rust
+        let trajectory = TrajectoryInput::extract_bound(&trajectory)?;
+        let analysis_type = AnalysisType::extract_bound(&analysis_type)?;
+        let membrane_normal = membrane_normal
+            .map(|normal| MembraneNormal::extract_bound(&normal))
+            .transpose()?;
+        let leaflets = leaflets
+            .map(|method| LeafletClassification::extract_bound(&method))
+            .transpose()?;
+        let geometry = geometry
+            .map(|shape| Geometry::extract_bound(&shape))
+            .transpose()?;
+
         let mut builder: RsAnalysisBuilder = RsAnalysis::builder();
         builder
             .structure(structure)

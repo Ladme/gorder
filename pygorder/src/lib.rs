@@ -7,6 +7,8 @@ use gorder_core::prelude::AtomType as RsAtomType;
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
+use pyo3_stub_gen::define_stub_info_gatherer;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
 use std::process;
 use std::sync::Once;
 
@@ -91,6 +93,7 @@ fn string2plane(string: impl AsRef<str>) -> PyResult<Plane> {
 ///
 /// Provides access to the atom's name, its relative position within the molecule type,
 /// and the residue it belongs to.
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct AtomType(pub(crate) RsAtomType);
 
@@ -231,3 +234,5 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     Ok(())
 }
+
+define_stub_info_gatherer!(stub_info);
