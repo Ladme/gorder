@@ -836,6 +836,33 @@ def test_ua_order_from_aa():
     finally:
         shutil.rmtree(temp_file_path, ignore_errors=True)
 
+
+def test_dynamic_normals_export():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file_normals:
+        temp_file_normals_path = temp_file_normals.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/vesicle.tpr",
+        trajectory = "../tests/files/vesicle.xtc",
+        analysis_type = gorder.analysis_types.CGOrder("name C1A D2A C3A C4A C1B C2B C3B C4B"),
+        output_yaml = temp_file_path,
+        membrane_normal = gorder.membrane_normal.DynamicNormal("name PO4", 2.0, collect = temp_file_normals_path),
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/cg_order_vesicle.yaml", 1), "Order files do not match!"
+        assert diff_files_ignore_first(temp_file_normals_path, f"../tests/files/normals_vesicle.yaml", 1), "Normals files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
+        shutil.rmtree(temp_file_normals_path, ignore_errors=True)
+
 def test_ua_order_fail_no_carbons():
     with tempfile.NamedTemporaryFile(delete = False) as temp_file:
         temp_file_path = temp_file.name

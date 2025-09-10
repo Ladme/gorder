@@ -1,6 +1,7 @@
 // Released under MIT License.
 // Copyright (c) 2024-2025 Ladislav Bartos
 
+use gorder_core::input::Collect as RsCollect;
 use gorder_core::input::{Axis, Plane};
 use gorder_core::prelude::AtomType as RsAtomType;
 use pyo3::create_exception;
@@ -123,6 +124,27 @@ impl AtomType {
     ///     Name of the residue containing this atom.
     pub fn residue_name(&self) -> String {
         self.0.residue_name().clone()
+    }
+}
+
+/// Handles specifying how data should be collected.
+#[derive(Clone)]
+pub struct Collect(RsCollect);
+
+impl<'source> FromPyObject<'source> for Collect {
+    fn extract_bound(obj: &Bound<'source, PyAny>) -> PyResult<Self> {
+        // try to extract as boolean
+        if let Ok(boolean) = obj.extract::<bool>() {
+            return Ok(Collect(RsCollect::Boolean(boolean)));
+        }
+        // try to extract as a string
+        if let Ok(s) = obj.extract::<String>() {
+            return Ok(Collect(RsCollect::File(s)));
+        }
+
+        Err(ConfigError::new_err(
+            "invalid type for Collect constructor: expected a bool or str",
+        ))
     }
 }
 

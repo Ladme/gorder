@@ -8,6 +8,20 @@ import gorder, pytest, math
 def compare_orders(x: float, y: float) -> bool:
     return math.isclose(round(x, 4), round(y, 4), rel_tol = 1e-4)
 
+def compare_normals(x: list[float], y: list[float]) -> bool:
+    """
+    Expects normals not containing any NaN values.
+    """
+
+    for (val1, val2) in zip(x, y):
+        if not math.isclose(round(val1, 5), round(val2, 5), rel_tol = 1e-4):
+            return False
+    
+    return True
+
+def normal_is_nan(x: list[float]) -> bool:
+    return math.isnan(x[0]) and math.isnan(x[1]) and math.isnan(x[2])
+
 def test_aa_order_basic():
     analysis = gorder.Analysis(
         structure = "../tests/files/pcpepg.tpr",
@@ -21,6 +35,7 @@ def test_aa_order_basic():
 
     assert results.n_analyzed_frames() == 51
     assert len(results.molecules()) == 3
+    assert results.normals_data() is None
     
     assert compare_orders(results.average_order().total().value(), 0.1423)
     assert results.average_order().total().error() is None
@@ -1788,3 +1803,49 @@ def test_aa_order_leaflets_collect():
                 assert lipid == 1
             else:
                 assert lipid == 0
+
+def test_aa_order_dynamic_normals_collect():
+    analysis = gorder.Analysis(
+        structure = "../tests/files/pcpepg.tpr",
+        trajectory = "../tests/files/pcpepg.xtc",
+        analysis_type = gorder.analysis_types.AAOrder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen"
+        ),
+        membrane_normal = gorder.membrane_normal.DynamicNormal(
+            "name P", 2.0, collect = True
+        ),
+        geometry = gorder.geometry.Cylinder(reference = "center", radius = 2.5, orientation = "z"),
+        step = 10,
+        silent = True,
+        overwrite = True,
+    )
+
+    results = analysis.run()
+
+    assert results.normals_data().frames() == [1, 11, 21, 31, 41, 51]
+
+    pope_data = results.normals_data().get_molecule("POPE")
+    assert len(pope_data) == 6
+
+    for frame in pope_data:
+        assert len(frame) == 131
+
+    assert normal_is_nan(pope_data[0][0])
+    assert compare_normals(pope_data[4][2], [0.038475, 0.171717, 0.984395])
+        
+    
+    popc_data = results.normals_data().get_molecule("POPC")
+    assert len(popc_data) == 6
+    for frame in popc_data:
+        assert len(frame) == 128
+
+    assert normal_is_nan(popc_data[2][-1])
+    assert compare_normals(popc_data[2][4], [0.156903, 0.041018, 0.986762])
+    
+    popg_data = results.normals_data().get_molecule("POPG")
+    assert len(popg_data) == 6
+    for frame in popg_data:
+        assert len(frame) == 15
+    
+    assert compare_normals(popg_data[5][-2], [0.069389, 0.018346, 0.997421])

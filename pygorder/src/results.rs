@@ -13,6 +13,7 @@ use gorder_core::prelude::OrderMapsCollection as RsMapsCollection;
 use gorder_core::prelude::PublicMoleculeResults;
 use gorder_core::prelude::UAAtomResults as RsUAAtomResults;
 use gorder_core::prelude::UAMoleculeResults;
+use gorder_core::prelude::Vector3D;
 use gorder_core::prelude::{
     AAMoleculeResults, AnalysisResults as RsResults, CGMoleculeResults, PublicOrderResults,
 };
@@ -181,6 +182,34 @@ impl AnalysisResults {
         }
 
         Some(LeafletsData {
+            results: self.0.clone(),
+        })
+    }
+
+    /// Get collected membrane normals.
+    ///
+    /// Returns
+    /// -------
+    /// NormalsData
+    ///     Membrane normals data if stored; otherwise `None`.
+    ///
+    /// Notes
+    /// -----
+    /// Membrane normals are not stored by default. To store them,
+    /// you must explicitly request collection during analysis.
+    /// Collecting membrane normals is only supported when they are dynamically calculated.
+    pub fn normals_data(&self) -> Option<NormalsData> {
+        let normals_data_available = match self.0.as_ref() {
+            RsResults::AA(x) => x.normals_data().is_some(),
+            RsResults::CG(x) => x.normals_data().is_some(),
+            RsResults::UA(x) => x.normals_data().is_some(),
+        };
+
+        if !normals_data_available {
+            return None;
+        }
+
+        Some(NormalsData {
             results: self.0.clone(),
         })
     }
@@ -1312,5 +1341,76 @@ fn convert_leaflets(input: &Vec<Vec<RsLeaflet>>) -> Vec<Vec<u8>> {
     input
         .into_iter()
         .map(|inner| inner.into_iter().map(|leaf| leaflet_to_u8(&leaf)).collect())
+        .collect()
+}
+
+/// Stores collected membrane normals.
+#[pyclass]
+pub struct NormalsData {
+    pub(crate) results: Arc<RsResults>,
+}
+
+#[pymethods]
+impl NormalsData {
+    /// Get collected membrane normals for the specified molecule type.
+    ///
+    /// Parameters
+    /// ----------
+    /// molecule : str
+    ///     Name of the molecule type to query.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_frames, n_molecules, 3), dtype=float
+    ///     A 2D array where rows correspond to analyzed trajectory frames and columns to
+    ///     individual molecules. Each entry is a 3D vector.
+    ///     If the membrane normal was not calculated for a given molecule in a frame,
+    ///     the corresponding vector is (NaN, NaN, NaN).
+    ///     Returns `None` if no membrane normals have been collected.
+    ///
+    /// Notes
+    /// -----
+    /// This is a potentially expensive operation, as it involves copying and
+    /// converting from the internal Rust representation into a NumPy array.
+    pub fn get_molecule(&self, molecule: &str, py: Python<'_>) -> Option<Py<numpy::PyArray3<f32>>> {
+        let molecule_data = match self.results.as_ref() {
+            RsResults::AA(x) => x.normals_data().as_ref().unwrap().get_molecule(molecule),
+            RsResults::CG(x) => x.normals_data().as_ref().unwrap().get_molecule(molecule),
+            RsResults::UA(x) => x.normals_data().as_ref().unwrap().get_molecule(molecule),
+        }?;
+
+        let converted_data = convert_normals(molecule_data);
+        Some(numpy::PyArray3::from_vec3(py, &converted_data).expect(
+                "FATAL GORDER ERROR | NormalsData::get_molecule | Could not convert Vec<Vec<Vec>> to numpy array.").into())
+    }
+
+    /// Get the indices of trajectory frames which were analyzed.
+    ///
+    /// The first analyzed frame is assigned an index of 1. For example,
+    /// if the analysis starts at 200 ns, the frame at or just after 200 ns
+    /// is indexed as 1.
+    ///
+    /// Returns
+    /// -------
+    /// List[int]
+    ///     Indices of the analyzed frames.
+    pub fn frames(&self) -> Vec<usize> {
+        match self.results.as_ref() {
+            RsResults::AA(x) => x.normals_data().as_ref().unwrap().frames().clone(),
+            RsResults::CG(x) => x.normals_data().as_ref().unwrap().frames().clone(),
+            RsResults::UA(x) => x.normals_data().as_ref().unwrap().frames().clone(),
+        }
+    }
+}
+
+fn convert_normals(input: &Vec<Vec<Vector3D>>) -> Vec<Vec<Vec<f32>>> {
+    input
+        .into_iter()
+        .map(|inner| {
+            inner
+                .into_iter()
+                .map(|vec| vec![vec.x, vec.y, vec.z])
+                .collect()
+        })
         .collect()
 }

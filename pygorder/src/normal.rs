@@ -13,6 +13,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 use crate::string2axis;
+use crate::Collect;
 use crate::ConfigError;
 
 /// Structure describing the direction of the membrane normal
@@ -58,6 +59,11 @@ impl<'source> FromPyObject<'source> for MembraneNormal {
 ///     Radius of the sphere used to select nearby lipids for membrane normal
 ///     estimation. Recommended value is half the membrane thickness. Must be
 ///     greater than 0.
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether dynamic membrane normals are saved and exported.
+///     By default (`False`), normals are not saved.
+///     If `True`, normals are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, normals are saved and written to the specified output file.
 ///
 /// Raises
 /// ------
@@ -70,11 +76,22 @@ pub struct DynamicNormal(RsDynamic);
 #[pymethods]
 impl DynamicNormal {
     #[new]
-    pub fn new(heads: &str, radius: f32) -> PyResult<Self> {
-        Ok(Self(
+    #[pyo3(signature = (heads, radius, collect = None))]
+    pub fn new(heads: &str, radius: f32, collect: Option<Collect>) -> PyResult<Self> {
+        Ok(Self(add_collect(
             RsDynamic::new(heads, radius).map_err(|e| ConfigError::new_err(e.to_string()))?,
-        ))
+            collect,
+        )))
     }
+}
+
+/// Attempt to add request for data collection to dynamic membrane normals.
+fn add_collect(normals: RsDynamic, collect: Option<Collect>) -> RsDynamic {
+    if let Some(collect) = collect {
+        return normals.with_collect(collect.0);
+    }
+
+    normals
 }
 
 /// Converts a three-dimensional numpy array into a Vec<Vec<Vector3D>>.

@@ -1,7 +1,6 @@
 // Released under MIT License.
 // Copyright (c) 2024-2025 Ladislav Bartos
 
-use gorder_core::input::Collect as RsCollect;
 use gorder_core::input::Frequency as RsFreq;
 use gorder_core::input::LeafletClassification as RsLeafletClassification;
 use gorder_core::Leaflet;
@@ -13,6 +12,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
 use crate::string2axis;
+use crate::Collect;
 use crate::ConfigError;
 
 macro_rules! try_extract {
@@ -87,27 +87,6 @@ impl Frequency {
     pub fn every(n_frames: usize) -> PyResult<Self> {
         Ok(Frequency(
             RsFreq::every(n_frames).map_err(|e| ConfigError::new_err(e.to_string()))?,
-        ))
-    }
-}
-
-/// Handles specifying how leaflet classification data should be collected.
-#[derive(Clone)]
-pub struct Collect(RsCollect);
-
-impl<'source> FromPyObject<'source> for Collect {
-    fn extract_bound(obj: &Bound<'source, PyAny>) -> PyResult<Self> {
-        // try to extract as boolean
-        if let Ok(boolean) = obj.extract::<bool>() {
-            return Ok(Collect(RsCollect::Boolean(boolean)));
-        }
-        // try to extract as a string
-        if let Ok(s) = obj.extract::<String>() {
-            return Ok(Collect(RsCollect::File(s)));
-        }
-
-        Err(ConfigError::new_err(
-            "invalid type for Collect constructor: expected a bool or str",
         ))
     }
 }
