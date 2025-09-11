@@ -125,14 +125,13 @@ impl NormalsData {
     fn format_vector(vec: &Vector3D) -> String {
         if vec.x.is_nan() && vec.y.is_nan() && vec.z.is_nan() {
             return format!("[{:9},{:9},{:9}]", ".nan", ".nan", ".nan");
-        } 
-        
+        }
+
         if !vec.x.is_nan() && !vec.y.is_nan() && !vec.z.is_nan() {
             return format!("[{:9.6 },{:9.6 },{:9.6 }]", vec.x, vec.y, vec.z);
         }
 
         unreachable!("FATAL GORDER ERROR | NormalsData::format_vector | Either all or no fields of Vector3D should be NaN (`{:?}`) {}", vec, PANIC_MESSAGE);
-        
     }
 
     /// Add membrane normals for a single lipid type into the structure.
@@ -140,7 +139,7 @@ impl NormalsData {
     pub(super) fn add_molecule_type(&mut self, name: &str, normals: Vec<Vec<Vector3D>>) {
         // defensive check that the number of frames in `normals` matches the expected number of frames
         assert!(
-            normals.len() == self.frames.len(), 
+            normals.len() == self.frames.len(),
             "FATAL GORDER ERROR | NormalsData::add_molecule_type | The `normals` vector contains an unexpected number of frames."
         );
 

@@ -1292,7 +1292,8 @@ impl AssignedLeaflets {
             (0..classifier.n_molecules())
                 .map(|index| {
                     classifier
-                        .identify_leaflet(system, pbc_handler, index, current_frame).map(|leaflet| classifier.maybe_flip(leaflet))
+                        .identify_leaflet(system, pbc_handler, index, current_frame)
+                        .map(|leaflet| classifier.maybe_flip(leaflet))
                 })
                 .collect::<Result<Vec<_>, _>>()?,
         );
