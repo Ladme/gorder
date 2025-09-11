@@ -4821,6 +4821,7 @@ fn test_cg_order_leaflets_scrambling_flip_rust_api() {
         LeafletClassification::global("@membrane", "name PO4"),
         LeafletClassification::local("@membrane", "name PO4", 3.0),
         LeafletClassification::individual("name PO4", "name C4A C4B"),
+        LeafletClassification::clustering("name PO4").with_frequency(Frequency::every(10).unwrap()),
     ] {
         // unflipped analysis run
         let analysis = Analysis::builder()

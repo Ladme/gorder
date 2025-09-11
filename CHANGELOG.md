@@ -2,12 +2,18 @@
 ### Exporting internal data
 - You can now collect and export information about which leaflets individual lipids were assigned to during the analysis, as well as dynamically calculated membrane normals, to external files. This is only performed when requested in the analysis setup. The data can also be accessed via the Rust and Python APIs. Read more in the corresponding sections of the manual: [Exporting lipid assignment data](https://ladme.github.io/gorder-manual/leaflets_export.html) and [Exporting membrane normals](https://ladme.github.io/gorder-manual/normals_export.html).
 
+### Flipping the assignment
+- When assigning lipids to leaflets, you can use the `flip` keyword, which reverses the assignment—upper leaflet becomes lower leaflet and vice versa. This may seem useless, but it can help with leaflet assignment when using the clustering method. See [the manual](https://ladme.github.io/gorder-manual/leaflets.html#flipping-the-assignment) for more details.
+
 ### Python API
 - The Python `gorder` library now exposes type information and supports autocomplete.
 - [Documentation of the Python API](https://ladme.github.io/pygorder-docs/) has been improved and should be much more complete.
 
 ### Bug fixes
 - Manually assigning membrane normals previously returned an error unless the analysis step was set to 1. This has been fixed, and manual membrane normals can now be used with any analysis step.
+
+### Other changes
+- Changed the wording of some error messages and adjusted the formatting of certain output written to stdout.
 
 ## Version 1.1.0
 - The `@membrane` macro now matches a wider variety of lipid types. See the [GSL guide](https://ladme.github.io/gsl-guide/autodetection.html) for details on how the macro currently expands.
