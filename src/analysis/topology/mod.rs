@@ -85,6 +85,7 @@ impl SystemTopology {
             Some(LeafletClassification::Clustering(x)) => Some(SystemLeafletClassification::new(
                 SystemLeafletClassificationType::Clustering(SystemClusterClassification::new(
                     system,
+                    x.flip(),
                 )),
                 x.frequency(),
                 step_size,

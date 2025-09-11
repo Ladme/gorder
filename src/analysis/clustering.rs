@@ -71,11 +71,13 @@ pub(crate) struct SystemClusterClassification {
     clusters: Option<Clusters>,
     /// Number of fails that were encountered using the sloppy method in a row.
     sloppy_fails: u8,
+    /// Flip leaflet assignment.
+    flip: bool,
 }
 
 impl SystemClusterClassification {
     /// Create a new structure for clustering.
-    pub(super) fn new(system: &System) -> Self {
+    pub(super) fn new(system: &System, flip: bool) -> Self {
         let mut converter = HashMap::new();
         for (i, atom) in system
             .group_iter(group_name!("ClusterHeads"))
@@ -90,6 +92,7 @@ impl SystemClusterClassification {
             reference_clusters: Arc::new(Mutex::new(None)),
             clusters: None,
             sloppy_fails: 0,
+            flip,
         }
     }
 
@@ -171,7 +174,10 @@ impl SystemClusterClassification {
             }
 
             // print information about cluster classification
-            self.clusters.as_ref().expect(PANIC_MESSAGE).log_info();
+            self.clusters
+                .as_ref()
+                .expect(PANIC_MESSAGE)
+                .log_info(self.flip);
         } else if self.converter.len() > PRECISE_LOWER_LIMIT && self.sloppy_fails < MAX_SLOPPY_FAILS
         {
             // system is large and sloppy method did not fail often enough
@@ -794,11 +800,13 @@ impl Clusters {
     }
 
     /// Log information about which cluster was assigned as the `upper` leaflet and which as the `lower` leaflet.
-    fn log_info(&self) {
+    fn log_info(&self, flip: bool) {
+        let main_leaflet = if flip { "lower" } else { "upper" };
+
         if self.upper.len() > self.lower.len() {
-            colog_info!("Clustering leaflet classification: classifying the more populated leaflet as '{}'.", "upper");
+            colog_info!("Clustering leaflet classification: classifying the more populated leaflet as '{}'.", main_leaflet);
         } else {
-            colog_info!("Clustering leaflet classification: classifying the leaflet containing lipid with reference atom index '{}' as '{}'.", self.min_index, "upper");
+            colog_info!("Clustering leaflet classification: classifying the leaflet containing lipid with reference atom index '{}' as '{}'.", self.min_index, main_leaflet);
         }
     }
 }
@@ -926,7 +934,7 @@ mod tests_classify {
             .group_create(group_name!("ClusterHeads"), heads)
             .unwrap();
 
-        let clustering = SystemClusterClassification::new(&system);
+        let clustering = SystemClusterClassification::new(&system, false);
         let matrix = if handle_pbc {
             clustering
                 .create_similarity_matrix(
@@ -981,7 +989,7 @@ mod tests_classify {
             .group_create(group_name!("ClusterHeads"), heads)
             .unwrap();
 
-        let clustering = SystemClusterClassification::new(&system);
+        let clustering = SystemClusterClassification::new(&system, false);
         let matrix = if handle_pbc {
             clustering
                 .create_similarity_matrix(
@@ -1027,7 +1035,7 @@ mod tests_classify {
             .group_create(group_name!("ClusterHeads"), heads)
             .unwrap();
 
-        let clustering = SystemClusterClassification::new(&system);
+        let clustering = SystemClusterClassification::new(&system, false);
 
         for frame in system.xtc_iter(xtc).unwrap().with_step(step).unwrap() {
             let frame = frame.unwrap();
@@ -1092,7 +1100,7 @@ mod tests_classify {
             .group_create(group_name!("ClusterHeads"), heads)
             .unwrap();
 
-        let clustering = SystemClusterClassification::new(&system);
+        let clustering = SystemClusterClassification::new(&system, false);
 
         for frame in system.xtc_iter(xtc).unwrap().with_step(step).unwrap() {
             let frame = frame.unwrap();
