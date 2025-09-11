@@ -61,10 +61,10 @@ impl GeometrySelectionType {
             GeometrySelectionType::Cuboid(cuboid) => {
                 colog_info!(
                     "Will only consider bonds located inside a {}:
-x-dimension: from {} nm to {} nm
-y-dimension: from {} nm to {} nm
-z-dimension: from {} nm to {} nm
-relative to {}",
+  x-dimension: from {} nm to {} nm
+  y-dimension: from {} nm to {} nm
+  z-dimension: from {} nm to {} nm
+  relative to {}",
                     "cuboid",
                     cuboid.properties.xdim()[0],
                     cuboid.properties.xdim()[1],
@@ -78,10 +78,10 @@ relative to {}",
             GeometrySelectionType::Cylinder(cylinder) => {
                 colog_info!(
                     "Will only consider bonds located inside a {}:
-radius: {} nm
-oriented along the {} axis 
-going from {} nm to {} nm along the {} axis
-relative to {}",
+  radius: {} nm
+  oriented along the {} axis 
+  going from {} nm to {} nm along the {} axis
+  relative to {}",
                     "cylinder",
                     cylinder.properties.radius(),
                     cylinder.properties.orientation(),
@@ -94,8 +94,8 @@ relative to {}",
             GeometrySelectionType::Sphere(sphere) => {
                 colog_info!(
                     "Will only consider bonds located inside a {}:
-radius: {} nm
-center: {}",
+  radius: {} nm
+  center: {}",
                     "sphere",
                     sphere.properties.radius(),
                     sphere.properties.reference()

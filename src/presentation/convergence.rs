@@ -157,7 +157,7 @@ impl<R: OrderResults> ConvWrite for R {
 fn write_metadata(writer: &mut impl Write, ylabel: &str) -> Result<(), WriteError> {
     write_result!(
         writer,
-        "@    title \"Convergence of average order parameters for individual molecules\"\n",
+        "@    title \"Convergence of average order parameters for individual molecule types\"\n",
     );
     write_result!(
         writer,

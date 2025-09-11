@@ -1,5 +1,5 @@
 # Order parameters calculated with 'gorder v0.3.0-dev.2' using structure file 'tests/files/pcpepg.tpr' and trajectory file 'tests/files/pcpepg.xtc'.
-@    title "Convergence of average order parameters for individual molecules"
+@    title "Convergence of average order parameters for individual molecule types"
 @    xaxis label "Frame number"
 @    yaxis label "-Sch"
 @    s0 legend "POPE"
