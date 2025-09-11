@@ -3,6 +3,7 @@
 
 import builtins
 import typing
+from math import inf
 
 class Cuboid:
     r"""
@@ -10,13 +11,13 @@ class Cuboid:
     
     Parameters
     ----------
-    xdim : Optional[List[float]]
+    xdim : Optional[Sequence[float]]
         Span of the cuboid along the x-axis [nm]. Defaults to infinite if not specified.
-    ydim : Optional[List[float]]
+    ydim : Optional[Sequence[float]]
         Span of the cuboid along the y-axis [nm]. Defaults to infinite if not specified.
-    zdim : Optional[List[float]]
+    zdim : Optional[Sequence[float]]
         Span of the cuboid along the z-axis [nm]. Defaults to infinite if not specified.
-    reference : Optional[Union[List[float],str]]
+    reference : Optional[Union[Sequence[float],str]]
         Reference point for the cuboid position. Defaults to [0.0, 0.0, 0.0].
     
     Raises
@@ -24,7 +25,7 @@ class Cuboid:
     ConfigError
         If any dimension is invalid.
     """
-    def __new__(cls, xdim:typing.Sequence[builtins.float]=[-inf, inf], ydim:typing.Sequence[builtins.float]=[-inf, inf], zdim:typing.Sequence[builtins.float]=[-inf, inf], reference:typing.Optional[typing.Any]=None) -> Cuboid: ...
+    def __new__(cls, xdim:typing.Sequence[builtins.float]=[-inf, inf], ydim:typing.Sequence[builtins.float]=[-inf, inf], zdim:typing.Sequence[builtins.float]=[-inf, inf], reference:typing.Union[typing.Sequence[builtins.float], builtins.str, None]=None) -> Cuboid: ...
 
 class Cylinder:
     r"""
@@ -36,9 +37,9 @@ class Cylinder:
         Radius of the cylinder [nm].
     orientation : str
         Orientation of the cylinder's main axis. Expected values are x, y, or z.
-    span : Optional[List[float]]
+    span : Optional[Sequence[float]]
         Span along the main axis [nm]. Defaults to infinite if not specified.
-    reference : Optional[Union[List[float],str]]
+    reference : Optional[Union[Sequence[float],str]]
         Reference point for position and size. Defaults to [0.0, 0.0, 0.0].
     
     Raises
@@ -46,7 +47,7 @@ class Cylinder:
     ConfigError
         If `radius` is not positive, `span` is invalid, or `orientation` is not recognized.
     """
-    def __new__(cls, radius:builtins.float, orientation:builtins.str, span:typing.Sequence[builtins.float]=[-inf, inf], reference:typing.Optional[typing.Any]=None) -> Cylinder: ...
+    def __new__(cls, radius:builtins.float, orientation:builtins.str, span:typing.Sequence[builtins.float]=[-inf, inf], reference:typing.Union[typing.Sequence[builtins.float], builtins.str, None]=None) -> Cylinder: ...
 
 class Sphere:
     r"""
@@ -56,7 +57,7 @@ class Sphere:
     ----------
     radius : float
         Radius of the sphere [nm].
-    reference : Optional[Union[List[float],str]]
+    reference : Optional[Union[Sequence[float],str]]
         Center of the sphere. Defaults to [0.0, 0.0, 0.0].
     
     Raises
@@ -64,5 +65,5 @@ class Sphere:
     ConfigError
         If `radius` is not positive.
     """
-    def __new__(cls, radius:builtins.float, reference:typing.Optional[typing.Any]=None) -> Sphere: ...
+    def __new__(cls, radius:builtins.float, reference:typing.Union[typing.Sequence[builtins.float], builtins.str, None]=None) -> Sphere: ...
 

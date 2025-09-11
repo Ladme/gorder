@@ -40,13 +40,13 @@ impl<'source> FromPyObject<'source> for Geometry {
 ///
 /// Parameters
 /// ----------
-/// xdim : Optional[List[float]]
+/// xdim : Optional[Sequence[float]]
 ///     Span of the cuboid along the x-axis [nm]. Defaults to infinite if not specified.
-/// ydim : Optional[List[float]]
+/// ydim : Optional[Sequence[float]]
 ///     Span of the cuboid along the y-axis [nm]. Defaults to infinite if not specified.
-/// zdim : Optional[List[float]]
+/// zdim : Optional[Sequence[float]]
 ///     Span of the cuboid along the z-axis [nm]. Defaults to infinite if not specified.
-/// reference : Optional[Union[List[float],str]]
+/// reference : Optional[Union[Sequence[float],str]]
 ///     Reference point for the cuboid position. Defaults to [0.0, 0.0, 0.0].
 ///
 /// Raises
@@ -71,9 +71,9 @@ impl Cuboid {
         xdim: [f32; 2],
         ydim: [f32; 2],
         zdim: [f32; 2],
-        /*#[gen_stub(override_type(
-            type_repr = "builtins.Union[builtins.list[builtins.float], builtins.str, None]"
-        ))]*/
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[typing.Sequence[builtins.float], builtins.str, None]", imports = ("typing")
+        ))]
         reference: Option<Bound<'_, PyAny>>,
     ) -> PyResult<Self> {
         let converted_ref = if let Some(reference) = reference {
@@ -97,9 +97,9 @@ impl Cuboid {
 ///     Radius of the cylinder [nm].
 /// orientation : str
 ///     Orientation of the cylinder's main axis. Expected values are x, y, or z.
-/// span : Optional[List[float]]
+/// span : Optional[Sequence[float]]
 ///     Span along the main axis [nm]. Defaults to infinite if not specified.
-/// reference : Optional[Union[List[float],str]]
+/// reference : Optional[Union[Sequence[float],str]]
 ///     Reference point for position and size. Defaults to [0.0, 0.0, 0.0].
 ///
 /// Raises
@@ -124,9 +124,9 @@ impl Cylinder {
         radius: f32,
         orientation: &str,
         span: [f32; 2],
-        /*#[gen_stub(override_type(
-            type_repr = "builtins.Union[builtins.list[builtins.float], builtins.str, None]"
-        ))]*/
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[typing.Sequence[builtins.float], builtins.str, None]", imports = ("typing")
+        ))]
         reference: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         let converted_ref = if let Some(reference) = reference {
@@ -148,7 +148,7 @@ impl Cylinder {
 /// ----------
 /// radius : float
 ///     Radius of the sphere [nm].
-/// reference : Optional[Union[List[float],str]]
+/// reference : Optional[Union[Sequence[float],str]]
 ///     Center of the sphere. Defaults to [0.0, 0.0, 0.0].
 ///
 /// Raises
@@ -169,9 +169,9 @@ impl Sphere {
         reference = None))]
     pub fn new<'a>(
         radius: f32,
-        /*#[gen_stub(override_type(
-            type_repr = "builtins.Union[builtins.list[builtins.float], builtins.str, None]"
-        ))]*/
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[typing.Sequence[builtins.float], builtins.str, None]", imports = ("typing")
+        ))]
         reference: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         let converted_ref = if let Some(reference) = reference {

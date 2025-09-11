@@ -161,8 +161,8 @@ def test_all_outputs():
     with tempfile.NamedTemporaryFile(delete = False) as temp_file_csv:
         csv_path = temp_file_csv.name
 
-    with tempfile.TemporaryDirectory(delete = False) as temp_dir:
-         dir_path = os.path.abspath(temp_dir)
+    temp_dir = tempfile.mkdtemp()
+    dir_path = os.path.abspath(temp_dir)
 
     analysis = gorder.Analysis(
         structure = "../tests/files/pcpepg.tpr",
@@ -704,8 +704,8 @@ def test_ignore_pbc():
         shutil.rmtree(temp_file_path, ignore_errors=True)
 
 def test_ordermaps_basic():
-    with tempfile.TemporaryDirectory(delete = False) as temp_dir:
-         dir_path = os.path.abspath(temp_dir)
+    temp_dir = tempfile.mkdtemp()
+    dir_path = os.path.abspath(temp_dir)
 
     analysis = gorder.Analysis(
         structure = "../tests/files/cg.tpr",
@@ -736,8 +736,8 @@ def test_ordermaps_basic():
         shutil.rmtree(dir_path, ignore_errors=True)
 
 def test_ordermaps_leaflets_nopbc_manual_everything():
-    with tempfile.TemporaryDirectory(delete = False) as temp_dir:
-        dir_path = os.path.abspath(temp_dir)
+    temp_dir = tempfile.mkdtemp()
+    dir_path = os.path.abspath(temp_dir)
 
     analysis = gorder.Analysis(
         structure = "../tests/files/pcpepg.tpr",

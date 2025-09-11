@@ -16,13 +16,13 @@ class OrderMap:
     min_samples : Optional[int], default=1
         Minimum number of samples required in a grid tile to calculate the order parameter.
     
-    dim : Optional[List[Union[str, List[float]]]]
+    dim : Optional[Sequence[Union[str, Sequence[float]]]]
         Span of the grid along the axes:
         - First span corresponds to the x-axis (for xy or xz plane) or z-axis (for yz plane).
         - Second span corresponds to the y-axis (for xy or yz plane) or z-axis (for xz plane).
         If not specified, the span is derived from the simulation box size of the input structure.
     
-    bin_size : Optional[List[float]], default=[0.1, 0.1]
+    bin_size : Optional[Sequence[float]], default=[0.1, 0.1]
         Size of the grid bin along the axes:
         - First bin dimension corresponds to the x-axis (for xy or xz plane) or z-axis (for yz plane).
         - Second bin dimension corresponds to the y-axis (for xy or yz plane) or z-axis (for xz plane).
@@ -37,5 +37,5 @@ class OrderMap:
         If `min_samples` <= 0, `bin_size` <= 0, any `dim` span is invalid (first value <= second),
         or if `plane` is not one of the allowed values (`xy`, `xz`, `yz`).
     """
-    def __new__(cls, output_directory:typing.Optional[builtins.str]=None, min_samples:builtins.int=1, dim:typing.Optional[typing.List[typing.Union[builtins.str, typing.List[builtins.float]]]]=None, bin_size:typing.Sequence[builtins.float]=[0.10000000149011612, 0.10000000149011612], plane:typing.Optional[builtins.str]=None) -> OrderMap: ...
+    def __new__(cls, output_directory:typing.Optional[builtins.str]=None, min_samples:builtins.int=1, dim:typing.Optional[typing.Sequence[typing.Union[builtins.str, typing.Sequence[builtins.float]]]]=None, bin_size:typing.Sequence[builtins.float]=[0.10000000149011612, 0.10000000149011612], plane:typing.Optional[builtins.str]=None) -> OrderMap: ...
 

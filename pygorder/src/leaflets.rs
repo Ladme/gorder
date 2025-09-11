@@ -130,11 +130,14 @@ impl GlobalClassification {
     pub fn new<'a>(
         membrane: &str,
         heads: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
-        /*#[gen_stub(override_type(
+        #[gen_stub(override_type(
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
-        ))]*/
+        ))]
         collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         let classification = add_collect(
@@ -187,11 +190,14 @@ impl LocalClassification {
         membrane: &str,
         heads: &str,
         radius: f32,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
-        /*#[gen_stub(override_type(
+        #[gen_stub(override_type(
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
-        ))]*/
+        ))]
         collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         if radius <= 0.0 {
@@ -252,11 +258,14 @@ impl IndividualClassification {
     pub fn new<'a>(
         heads: &str,
         methyls: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
-        /*#[gen_stub(override_type(
+        #[gen_stub(override_type(
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
-        ))]*/
+        ))]
         collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         let classification = add_collect(
@@ -303,10 +312,13 @@ impl ClusteringClassification {
     #[pyo3(signature = (heads, frequency = None, collect = None))]
     pub fn new<'a>(
         heads: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
-        /*#[gen_stub(override_type(
+        #[gen_stub(override_type(
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
-        ))]*/
+        ))]
         collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         let classification = add_collect(
@@ -322,7 +334,7 @@ impl ClusteringClassification {
 ///
 /// Parameters
 /// ----------
-/// input : Union[str, dict]
+/// input : Union[str, Mapping[str, ndarray[uint8]]]
 ///     Path to the input YAML file containing the leaflet assignment
 ///     or a dictionary specifying the leaflet assignment.
 /// frequency : Optional[Frequency]
@@ -337,7 +349,16 @@ pub struct ManualClassification(RsLeafletClassification);
 impl ManualClassification {
     #[new]
     #[pyo3(signature = (input, frequency = None))]
-    pub fn new(input: &Bound<'_, PyAny>, frequency: Option<Frequency>) -> PyResult<Self> {
+    pub fn new(
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.uint8]]]", imports=("typing", "numpy")
+        ))]
+        input: &Bound<'_, PyAny>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
+        frequency: Option<Frequency>,
+    ) -> PyResult<Self> {
         let classification = if let Ok(file) = input.extract::<String>() {
             RsLeafletClassification::from_file(&file)
         } else if let Ok(map) = extract_map(input) {
@@ -345,7 +366,7 @@ impl ManualClassification {
             RsLeafletClassification::from_map(converted_map)
         } else {
             return Err(ConfigError::new_err(
-                "invalid type for ManualClassification input: expected str or dict",
+                "invalid type for ManualClassification input: expected str or Mapping",
             ));
         };
 
@@ -357,7 +378,7 @@ impl ManualClassification {
 ///
 /// Parameters
 /// ----------
-/// ndx : List[str]
+/// ndx : Sequence[str]
 ///     A list of NDX files to read.
 /// heads : str
 ///     Selection query specifying reference atoms representing lipid headgroups
@@ -388,6 +409,9 @@ impl NdxClassification {
         heads: &str,
         upper_leaflet: &str,
         lower_leaflet: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
     ) -> PyResult<Self> {
         let classification = add_freq(

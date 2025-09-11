@@ -158,7 +158,7 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 /// ----------
 /// structure : str
 ///     Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure and topology of the system.
-/// trajectory : Union[str, list[str]]
+/// trajectory : Union[str, Sequence[str]]
 ///     Path to an XTC (recommended), TRR, or GRO trajectory file to be analyzed.
 ///     You can provide multiple XTC or TRR trajectories and these will be seamlessly concatenated.
 /// analysis_type : Union[AAOrder, CGOrder, UAOrder]
@@ -175,7 +175,7 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 ///     Filename pattern for output XVG files storing results. Each molecule type gets a separate file.
 /// output_csv : Optional[str], default=None
 ///     Path to an output CSV file containing analysis results.
-/// membrane_normal : Optional[Union[str, dict, DynamicNormal]], default=None
+/// membrane_normal : Optional[Union[str, Mapping[str, ndarray[float32]], DynamicNormal]], default=None
 ///     Direction of the membrane normal.
 ///     Allowed values are `x`, `y`, `z`, path to file, dictionary specifying manual membrane normals or an instance of `DynamicNormal`.
 ///     Defaults to the z-axis if not specified.
@@ -189,7 +189,7 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 ///     Minimum number of samples required for each heavy atom or bond type to compute its order parameter. Defaults to 1.
 /// n_threads : Optional[int], default=None
 ///     Number of threads to use for analysis. Defaults to 1.
-/// leaflets : Optional[Union[GlobalClassification, LocalClassification, IndividualClassification, ManualClassification, NdxClassification]], default=None
+/// leaflets : Optional[Union[GlobalClassification, LocalClassification, IndividualClassification, ClusteringClassification, ManualClassification, NdxClassification]], default=None
 ///     Defines how lipids are assigned to membrane leaflets. If provided, order parameters are calculated per leaflet.
 /// ordermap : Optional[OrderMap], default=None
 ///     Specifies parameters for ordermap calculations. If not provided, ordermaps are not generated.
@@ -237,7 +237,13 @@ impl Analysis {
         overwrite=None))]
     pub fn new<'a>(
         structure: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[builtins.str, typing.Sequence[str]]", imports=("typing")
+        ))]
         trajectory: Bound<'a, PyAny>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[gorder.analysis_types.AAOrder, gorder.analysis_types.CGOrder, gorder.analysis_types.UAOrder]"
+        ))]
         analysis_type: Bound<'a, PyAny>,
         bonds: Option<&str>,
         index: Option<&str>,
@@ -245,15 +251,28 @@ impl Analysis {
         output_tab: Option<&str>,
         output_xvg: Option<&str>,
         output_csv: Option<&str>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.float32]], gorder.membrane_normal.DynamicNormal]]", imports=("typing", "numpy")
+        ))]
         membrane_normal: Option<Bound<'a, PyAny>>,
         begin: Option<f32>,
         end: Option<f32>,
         step: Option<usize>,
         min_samples: Option<usize>,
         n_threads: Option<usize>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[gorder.leaflets.GlobalClassification, gorder.leaflets.LocalClassification, gorder.leaflets.IndividualClassification, gorder.leaflets.ClusteringClassification, gorder.leaflets.ManualClassification, gorder.leaflets.NdxClassification]]", imports=("typing")
+        ))]
         leaflets: Option<Bound<'a, PyAny>>,
+        #[gen_stub(override_type(type_repr = "typing.Optional[gorder.ordermap.OrderMap]"))]
         ordermap: Option<OrderMap>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.estimate_error.EstimateError]"
+        ))]
         estimate_error: Option<EstimateError>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[gorder.geometry.Cuboid, gorder.geometry.Cylinder, gorder.geometry.Sphere]]"
+        ))]
         geometry: Option<Bound<'a, PyAny>>,
         handle_pbc: Option<bool>,
         silent: Option<bool>,
@@ -330,6 +349,7 @@ impl Analysis {
     /// ------
     /// AnalysisError
     ///     If the analysis fails.
+    #[gen_stub(override_return_type(type_repr = "gorder.results.AnalysisResults"))]
     pub fn run(&mut self) -> PyResult<AnalysisResults> {
         if self.0.silent() {
             log::set_max_level(log::LevelFilter::Error);

@@ -2,6 +2,7 @@
 # ruff: noqa: E501, F401
 
 import builtins
+import numpy
 import typing
 import gorder
 
@@ -25,7 +26,7 @@ class ClusteringClassification:
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
     """
-    def __new__(cls, heads:builtins.str, frequency:typing.Optional[Frequency]=None, collect:typing.Optional[typing.Any]=None) -> ClusteringClassification: ...
+    def __new__(cls, heads:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> ClusteringClassification: ...
 
 class GlobalClassification:
     r"""
@@ -52,7 +53,7 @@ class GlobalClassification:
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
     """
-    def __new__(cls, membrane:builtins.str, heads:builtins.str, frequency:typing.Optional[Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Any]=None) -> GlobalClassification: ...
+    def __new__(cls, membrane:builtins.str, heads:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> GlobalClassification: ...
 
 class IndividualClassification:
     r"""
@@ -80,7 +81,7 @@ class IndividualClassification:
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
     """
-    def __new__(cls, heads:builtins.str, methyls:builtins.str, frequency:typing.Optional[Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Any]=None) -> IndividualClassification: ...
+    def __new__(cls, heads:builtins.str, methyls:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> IndividualClassification: ...
 
 class LocalClassification:
     r"""
@@ -109,7 +110,7 @@ class LocalClassification:
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
     """
-    def __new__(cls, membrane:builtins.str, heads:builtins.str, radius:builtins.float, frequency:typing.Optional[Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Any]=None) -> LocalClassification: ...
+    def __new__(cls, membrane:builtins.str, heads:builtins.str, radius:builtins.float, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> LocalClassification: ...
 
 class ManualClassification:
     r"""
@@ -117,13 +118,13 @@ class ManualClassification:
     
     Parameters
     ----------
-    input : Union[str, dict]
+    input : Union[str, Mapping[str, ndarray[uint8]]]
         Path to the input YAML file containing the leaflet assignment
         or a dictionary specifying the leaflet assignment.
     frequency : Optional[Frequency]
         Frequency of classification. Defaults to every frame.
     """
-    def __new__(cls, input:typing.Any, frequency:typing.Optional[Frequency]=None) -> ManualClassification: ...
+    def __new__(cls, input:typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.uint8]]], frequency:typing.Optional[gorder.Frequency]=None) -> ManualClassification: ...
 
 class NdxClassification:
     r"""
@@ -131,7 +132,7 @@ class NdxClassification:
     
     Parameters
     ----------
-    ndx : List[str]
+    ndx : Sequence[str]
         A list of NDX files to read.
     heads : str
         Selection query specifying reference atoms representing lipid headgroups
@@ -148,5 +149,5 @@ class NdxClassification:
     -----
     - No glob expansion is performed for the NDX files.
     """
-    def __new__(cls, ndx:typing.Sequence[builtins.str], heads:builtins.str, upper_leaflet:builtins.str, lower_leaflet:builtins.str, frequency:typing.Optional[Frequency]=None) -> NdxClassification: ...
+    def __new__(cls, ndx:typing.Sequence[builtins.str], heads:builtins.str, upper_leaflet:builtins.str, lower_leaflet:builtins.str, frequency:typing.Optional[gorder.Frequency]=None) -> NdxClassification: ...
 

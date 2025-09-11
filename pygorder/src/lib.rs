@@ -8,7 +8,7 @@ use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use pyo3_stub_gen::define_stub_info_gatherer;
-use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use std::process;
 use std::sync::Once;
 
@@ -97,6 +97,7 @@ fn string2plane(string: impl AsRef<str>) -> PyResult<Plane> {
 #[pyclass]
 pub struct AtomType(pub(crate) RsAtomType);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AtomType {
     /// Get the name of the atom type.

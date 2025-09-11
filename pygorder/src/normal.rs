@@ -44,7 +44,7 @@ impl<'source> FromPyObject<'source> for MembraneNormal {
         }
 
         Err(ConfigError::new_err(
-            "invalid type for MembraneNormal constructor: expected a str, DynamicNormal, or dict",
+            "invalid type for MembraneNormal constructor: expected a str, DynamicNormal, or Mapping",
         ))
     }
 }
@@ -84,9 +84,9 @@ impl DynamicNormal {
     pub fn new<'a>(
         heads: &str,
         radius: f32,
-        /*#[gen_stub(override_type(
+        #[gen_stub(override_type(
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
-        ))]*/
+        ))]
         collect: Option<Bound<'a, PyAny>>,
     ) -> PyResult<Self> {
         Ok(Self(add_collect(

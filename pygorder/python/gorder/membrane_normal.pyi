@@ -29,5 +29,5 @@ class DynamicNormal:
     ConfigError
         If `radius` is not positive.
     """
-    def __new__(cls, heads:builtins.str, radius:builtins.float, collect:typing.Optional[typing.Any]=None) -> DynamicNormal: ...
+    def __new__(cls, heads:builtins.str, radius:builtins.float, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> DynamicNormal: ...
 

@@ -350,7 +350,7 @@ impl MoleculeResults {
     /// Parameters
     /// ----------
     /// relative_index : int
-    ///     Zero-based index of the atom type within the molecule type.
+    ///     Relative index (zero-based) of the atom type within the molecule type.
     ///
     /// Returns
     /// -------
@@ -399,7 +399,7 @@ impl MoleculeResults {
     /// ----------
     /// relative_index_1 : int
     /// relative_index_2 : int
-    ///     Zero-based indices of the bonded atom types.
+    ///     Relative indices (zero-based) of the bonded atom types.
     ///
     /// Returns
     /// -------
@@ -498,6 +498,7 @@ impl AtomResults {
     /// -------
     /// AtomType
     ///     The atom type for which these results were calculated.
+    #[gen_stub(override_return_type(type_repr = "gorder.AtomType"))]
     pub fn atom(&self) -> AtomType {
         match self.results.as_ref() {
             RsResults::AA(_) => AtomType(self.get_atom_aa_results().atom().clone()),
@@ -555,7 +556,7 @@ impl AtomResults {
     /// Parameters
     /// ----------
     /// relative_index : int
-    ///     Relative index of the bonded hydrogen atom type.
+    ///     Relative index (zero-based) of the bonded hydrogen atom type.
     ///
     /// Returns
     /// -------
@@ -689,6 +690,9 @@ impl BondResults {
     /// ------
     /// APIError
     ///     If the bond type is a virtual united-atom bond type (UA), where only one real atom type exists.
+    #[gen_stub(override_return_type(
+        type_repr = "builtins.tuple[gorder.AtomType, gorder.AtomType]"
+    ))]
     pub fn atoms(&self) -> Result<(AtomType, AtomType), PyErr> {
         match self.results.as_ref() {
             RsResults::AA(_) | RsResults::CG(_) => {
@@ -1144,7 +1148,7 @@ impl Map {
     ///
     /// Returns
     /// -------
-    /// Tuple[np.ndarray, np.ndarray, np.ndarray]
+    /// Tuple[np.ndarray[float32], np.ndarray[float32], np.ndarray[float32]]
     ///     A tuple of NumPy arrays:
     ///     - The first array (1D) contains positions of the grid tiles along the first dimension of the map (typically `x`).
     ///     - The second array (1D) contains positions of the grid tiles along the second dimension of the map (typically `y`).
@@ -1385,7 +1389,7 @@ impl NormalsData {
     ///
     /// Returns
     /// -------
-    /// numpy.ndarray of shape (n_frames, n_molecules, 3), dtype=float
+    /// numpy.ndarray of shape (n_frames, n_molecules, 3), dtype=float32
     ///     A 2D array where rows correspond to analyzed trajectory frames and columns to
     ///     individual molecules. Each entry is a 3D vector.
     ///     If the membrane normal was not calculated for a given molecule in a frame,

@@ -115,7 +115,7 @@ class AtomResults:
     Provides access to per-atom type order parameters, order maps, and the bond results
     associated with this atom type.
     """
-    def atom(self) -> AtomType:
+    def atom(self) -> gorder.AtomType:
         r"""
         Get the type of the atom for which these results were calculated.
         
@@ -149,7 +149,7 @@ class AtomResults:
         Parameters
         ----------
         relative_index : int
-            Relative index of the bonded hydrogen atom type.
+            Relative index (zero-based) of the bonded hydrogen atom type.
         
         Returns
         -------
@@ -196,7 +196,7 @@ class BondResults:
         str
             Name of the molecule containing this bond type.
         """
-    def atoms(self) -> tuple[AtomType, AtomType]:
+    def atoms(self) -> builtins.tuple[gorder.AtomType, gorder.AtomType]:
         r"""
         Get the atom types involved in this bond type.
         
@@ -373,7 +373,7 @@ class Map:
         
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray, np.ndarray]
+        Tuple[np.ndarray[float32], np.ndarray[float32], np.ndarray[float32]]
             A tuple of NumPy arrays:
             - The first array (1D) contains positions of the grid tiles along the first dimension of the map (typically `x`).
             - The second array (1D) contains positions of the grid tiles along the second dimension of the map (typically `y`).
@@ -444,7 +444,7 @@ class MoleculeResults:
         Parameters
         ----------
         relative_index : int
-            Zero-based index of the atom type within the molecule type.
+            Relative index (zero-based) of the atom type within the molecule type.
         
         Returns
         -------
@@ -464,7 +464,7 @@ class MoleculeResults:
         ----------
         relative_index_1 : int
         relative_index_2 : int
-            Zero-based indices of the bonded atom types.
+            Relative indices (zero-based) of the bonded atom types.
         
         Returns
         -------
@@ -501,7 +501,7 @@ class NormalsData:
         
         Returns
         -------
-        numpy.ndarray of shape (n_frames, n_molecules, 3), dtype=float
+        numpy.ndarray of shape (n_frames, n_molecules, 3), dtype=float32
             A 2D array where rows correspond to analyzed trajectory frames and columns to
             individual molecules. Each entry is a 3D vector.
             If the membrane normal was not calculated for a given molecule in a frame,

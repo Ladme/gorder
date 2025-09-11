@@ -3,6 +3,8 @@ Released under MIT License.
 Copyright (c) 2024-2025 Ladislav Bartos
 """
 
+# pyright: reportArgumentType=false, reportOptionalMemberAccess=false, reportOptionalSubscript=false, reportOptionalIterable=false
+
 import gorder, pytest, math
 
 def compare_orders(x: float, y: float) -> bool:

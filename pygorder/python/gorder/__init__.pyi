@@ -2,10 +2,9 @@
 # ruff: noqa: E501, F401
 
 import builtins
-import gorder.estimate_error
-import gorder.ordermap
-import gorder.results
+import numpy
 import typing
+import gorder
 from . import analysis_types
 from . import estimate_error
 from . import geometry
@@ -13,6 +12,7 @@ from . import leaflets
 from . import membrane_normal
 from . import ordermap
 from . import results
+from . import exceptions
 
 class Analysis:
     r"""
@@ -22,7 +22,7 @@ class Analysis:
     ----------
     structure : str
         Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure and topology of the system.
-    trajectory : Union[str, list[str]]
+    trajectory : Union[str, Sequence[str]]
         Path to an XTC (recommended), TRR, or GRO trajectory file to be analyzed.
         You can provide multiple XTC or TRR trajectories and these will be seamlessly concatenated.
     analysis_type : Union[AAOrder, CGOrder, UAOrder]
@@ -39,7 +39,7 @@ class Analysis:
         Filename pattern for output XVG files storing results. Each molecule type gets a separate file.
     output_csv : Optional[str], default=None
         Path to an output CSV file containing analysis results.
-    membrane_normal : Optional[Union[str, dict, DynamicNormal]], default=None
+    membrane_normal : Optional[Union[str, Mapping[str, ndarray[float32]], DynamicNormal]], default=None
         Direction of the membrane normal.
         Allowed values are `x`, `y`, `z`, path to file, dictionary specifying manual membrane normals or an instance of `DynamicNormal`.
         Defaults to the z-axis if not specified.
@@ -53,7 +53,7 @@ class Analysis:
         Minimum number of samples required for each heavy atom or bond type to compute its order parameter. Defaults to 1.
     n_threads : Optional[int], default=None
         Number of threads to use for analysis. Defaults to 1.
-    leaflets : Optional[Union[GlobalClassification, LocalClassification, IndividualClassification, ManualClassification, NdxClassification]], default=None
+    leaflets : Optional[Union[GlobalClassification, LocalClassification, IndividualClassification, ClusteringClassification, ManualClassification, NdxClassification]], default=None
         Defines how lipids are assigned to membrane leaflets. If provided, order parameters are calculated per leaflet.
     ordermap : Optional[OrderMap], default=None
         Specifies parameters for ordermap calculations. If not provided, ordermaps are not generated.
@@ -68,8 +68,8 @@ class Analysis:
     overwrite : Optional[bool], default=False
         If True, overwrites existing output files and directories without backups.
     """
-    def __new__(cls, structure:builtins.str, trajectory:typing.Any, analysis_type:typing.Any, bonds:typing.Optional[builtins.str]=None, index:typing.Optional[builtins.str]=None, output_yaml:typing.Optional[builtins.str]=None, output_tab:typing.Optional[builtins.str]=None, output_xvg:typing.Optional[builtins.str]=None, output_csv:typing.Optional[builtins.str]=None, membrane_normal:typing.Optional[typing.Any]=None, begin:typing.Optional[builtins.float]=None, end:typing.Optional[builtins.float]=None, step:typing.Optional[builtins.int]=None, min_samples:typing.Optional[builtins.int]=None, n_threads:typing.Optional[builtins.int]=None, leaflets:typing.Optional[typing.Any]=None, ordermap:typing.Optional[OrderMap]=None, estimate_error:typing.Optional[EstimateError]=None, geometry:typing.Optional[typing.Any]=None, handle_pbc:typing.Optional[builtins.bool]=None, silent:typing.Optional[builtins.bool]=None, overwrite:typing.Optional[builtins.bool]=None) -> Analysis: ...
-    def run(self) -> AnalysisResults:
+    def __new__(cls, structure:builtins.str, trajectory:typing.Union[builtins.str, typing.Sequence[str]], analysis_type:typing.Union[gorder.analysis_types.AAOrder, gorder.analysis_types.CGOrder, gorder.analysis_types.UAOrder], bonds:typing.Optional[builtins.str]=None, index:typing.Optional[builtins.str]=None, output_yaml:typing.Optional[builtins.str]=None, output_tab:typing.Optional[builtins.str]=None, output_xvg:typing.Optional[builtins.str]=None, output_csv:typing.Optional[builtins.str]=None, membrane_normal:typing.Optional[typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.float32]], gorder.membrane_normal.DynamicNormal]]=None, begin:typing.Optional[builtins.float]=None, end:typing.Optional[builtins.float]=None, step:typing.Optional[builtins.int]=None, min_samples:typing.Optional[builtins.int]=None, n_threads:typing.Optional[builtins.int]=None, leaflets:typing.Optional[typing.Union[gorder.leaflets.GlobalClassification, gorder.leaflets.LocalClassification, gorder.leaflets.IndividualClassification, gorder.leaflets.ClusteringClassification, gorder.leaflets.ManualClassification, gorder.leaflets.NdxClassification]]=None, ordermap:typing.Optional[gorder.ordermap.OrderMap]=None, estimate_error:typing.Optional[gorder.estimate_error.EstimateError]=None, geometry:typing.Optional[typing.Union[gorder.geometry.Cuboid, gorder.geometry.Cylinder, gorder.geometry.Sphere]]=None, handle_pbc:typing.Optional[builtins.bool]=None, silent:typing.Optional[builtins.bool]=None, overwrite:typing.Optional[builtins.bool]=None) -> Analysis: ...
+    def run(self) -> gorder.results.AnalysisResults:
         r"""
         Run the analysis.
         
@@ -113,7 +113,33 @@ class AtomType:
     Provides access to the atom's name, its relative position within the molecule type,
     and the residue it belongs to.
     """
-    ...
+    def atom_name(self) -> builtins.str:
+        r"""
+        Get the name of the atom type.
+        
+        Returns
+        -------
+        str
+            Name of the atom type.
+        """
+    def relative_index(self) -> builtins.int:
+        r"""
+        Get the relative index of the atom type in its molecule type.
+        
+        Returns
+        -------
+        int
+            Zero-based index of the atom within its molecule type.
+        """
+    def residue_name(self) -> builtins.str:
+        r"""
+        Get the name of the residue this atom belongs to.
+        
+        Returns
+        -------
+        str
+            Name of the residue containing this atom.
+        """
 
 class Frequency:
     r"""
