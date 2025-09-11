@@ -316,6 +316,57 @@ fn test_aa_order_leaflets_yaml() {
     }
 }
 
+#[test]
+fn test_aa_order_leaflets_yaml_multiple_threads_binary_presice_comparison() {
+    let output_reference = NamedTempFile::new().unwrap();
+    let path_to_output_reference = output_reference.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .output(path_to_output_reference)
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(LeafletClassification::global("@membrane", "name P"))
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    for n_threads in [2, 3, 5, 8, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/pcpepg.tpr")
+            .trajectory("tests/files/pcpepg.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::aaorder(
+                "@membrane and element name carbon",
+                "@membrane and element name hydrogen",
+            ))
+            .leaflets(LeafletClassification::global("@membrane", "name P"))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        // precise comparison
+        assert!(diff_files_ignore_first(
+            path_to_output,
+            path_to_output_reference,
+            1
+        ));
+    }
+}
+
 /* deprecated since v0.7
 #[test]
 fn test_aa_order_leaflets_yaml_alt_traj() {
@@ -667,6 +718,46 @@ fn test_aa_order_leaflets_yaml_multiple_threads_frequency_every1_export() {
             assert_eq_order(path_to_output, "tests/files/aa_order_leaflets.yaml", 1);
         }
     }
+}
+
+#[test]
+fn test_aa_order_leaflets_yaml_geometry_export() {
+    let output_leaflets = NamedTempFile::new().unwrap();
+    let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/pcpepg.tpr")
+        .trajectory("tests/files/pcpepg.xtc")
+        .analysis_type(AnalysisType::aaorder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen",
+        ))
+        .leaflets(
+            LeafletClassification::global("@membrane", "name P")
+                .with_collect(path_to_output_leaflets),
+        )
+        .geometry(
+            Geometry::cylinder(
+                GeomReference::center(),
+                1.0,
+                [f32::NEG_INFINITY, f32::INFINITY],
+                Axis::Z,
+            )
+            .unwrap(),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    // assignment for all lipids should be exported even though only lipids in cylinder are used to calculate order parameters
+    assert!(diff_files_ignore_first(
+        path_to_output_leaflets,
+        "tests/files/aa_leaflets_every1.yaml",
+        1,
+    ));
 }
 
 #[test]

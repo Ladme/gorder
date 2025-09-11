@@ -218,7 +218,7 @@ impl LeafletClassification {
         self
     }
 
-    /// Collect and store the leaflet classification data.
+    /// Collect and store leaflet classification data.
     /// If `true`, the data are collected but only accessible using API.
     /// If a string is provided, the data will be exported into the output file.
     ///

@@ -3437,6 +3437,54 @@ fn test_cg_order_vesicle_dynamic_membrane_normals_export() {
 }
 
 #[test]
+fn test_cg_order_vesicle_dynamic_membrane_normals_leflets_export() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let output_normals = NamedTempFile::new().unwrap();
+    let path_to_output_normals = output_normals.path().to_str().unwrap();
+
+    let output_leaflets = NamedTempFile::new().unwrap();
+    let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(
+            DynamicNormal::new("name PO4", 2.0)
+                .unwrap()
+                .with_collect(path_to_output_normals),
+        )
+        .leaflets(
+            LeafletClassification::clustering("name PO4")
+                .with_frequency(Frequency::once())
+                .with_collect(path_to_output_leaflets),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert_eq_order(
+        path_to_output,
+        "tests/files/cg_order_vesicle_leaflets.yaml",
+        1,
+    );
+    assert_eq_normals(path_to_output_normals, "tests/files/normals_vesicle.yaml");
+    assert!(diff_files_ignore_first(
+        path_to_output_leaflets,
+        "tests/files/leaflets_vesicle.yaml",
+        1
+    ));
+}
+
+#[test]
 fn test_cg_order_vesicle_membrane_normals_from_file_fail_unmatching_molecules() {
     let analysis = Analysis::builder()
         .structure("tests/files/vesicle.tpr")
