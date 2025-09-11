@@ -135,8 +135,6 @@ impl<O: MolConvert> ResultsConverter<O> {
             MembraneNormal::Dynamic(normal) => {
                 if let Collect::Boolean(false) = normal.collect() {
                     return None;
-                } else {
-                    ()
                 }
             }
             _ => return None,

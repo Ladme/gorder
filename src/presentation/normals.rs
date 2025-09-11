@@ -112,7 +112,7 @@ impl NormalsData {
                     "  - [{}]\n",
                     frame_data
                         .iter()
-                        .map(|vector| Self::format_vector(vector))
+                        .map(Self::format_vector)
                         .collect::<Vec<String>>()
                         .join(",")
                 );

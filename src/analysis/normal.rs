@@ -227,10 +227,7 @@ impl DynamicMembraneNormal {
     }
 
     pub(crate) fn extract_storage(&self) -> Option<Vec<Vec<Vector3D>>> {
-        match self.storage.as_ref() {
-            None => None,
-            Some(x) => Some(x.normals.clone()),
-        }
+        self.storage.as_ref().map(|x| x.normals.clone())
     }
 }
 
