@@ -4766,3 +4766,88 @@ fn test_cg_order_vesicle_dynamic_membrane_normals_collect_rust_api() {
         }
     }
 }
+
+#[test]
+fn test_cg_order_leaflets_scrambling_flip_rust_api() {
+    for leaflets in [
+        LeafletClassification::global("@membrane", "name PO4"),
+        LeafletClassification::local("@membrane", "name PO4", 3.0),
+        LeafletClassification::individual("name PO4", "name C4A C4B"),
+    ] {
+        // unflipped analysis run
+        let analysis = Analysis::builder()
+            .structure("tests/files/scrambling/cg_scrambling.tpr")
+            .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(leaflets.clone().with_collect(true))
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        let unflipped_results = match analysis.run().unwrap() {
+            AnalysisResults::CG(x) => x,
+            _ => panic!("Invalid results."),
+        };
+
+        // flipped analysis run
+        let analysis = Analysis::builder()
+            .structure("tests/files/scrambling/cg_scrambling.tpr")
+            .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(leaflets.with_collect(true).with_flip(true))
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        let flipped_results = match analysis.run().unwrap() {
+            AnalysisResults::CG(x) => x,
+            _ => panic!("Invalid results."),
+        };
+
+        // compare assignment data
+        let unflipped_leaflets = unflipped_results
+            .leaflets_data()
+            .as_ref()
+            .unwrap()
+            .get_molecule("POPC")
+            .unwrap();
+        let flipped_leaflets = flipped_results
+            .leaflets_data()
+            .as_ref()
+            .unwrap()
+            .get_molecule("POPC")
+            .unwrap();
+
+        assert_eq!(unflipped_leaflets.len(), flipped_leaflets.len());
+        for (unflipped_frame, flipped_frame) in
+            unflipped_leaflets.iter().zip(flipped_leaflets.iter())
+        {
+            assert_eq!(unflipped_frame.len(), flipped_frame.len());
+            for (unflipped, flipped) in unflipped_frame.iter().zip(flipped_frame.iter()) {
+                assert_ne!(unflipped, flipped);
+            }
+        }
+
+        // compare order parameters
+        let unflipped_order = unflipped_results.get_molecule("POPC").unwrap();
+        let flipped_order = flipped_results.get_molecule("POPC").unwrap();
+
+        assert_eq!(
+            unflipped_order.bonds().count(),
+            flipped_order.bonds().count()
+        );
+
+        for (unflipped_bond, flipped_bond) in unflipped_order.bonds().zip(flipped_order.bonds()) {
+            assert_relative_eq!(
+                unflipped_bond.order().total().unwrap().value(),
+                flipped_bond.order().total().unwrap().value()
+            );
+            assert_relative_eq!(
+                unflipped_bond.order().upper().unwrap().value(),
+                flipped_bond.order().lower().unwrap().value()
+            );
+        }
+    }
+}
