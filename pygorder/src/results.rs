@@ -719,7 +719,7 @@ impl BondResults {
         OrderCollection {
             results: self.results.clone(),
             molecule: Some(self.molecule.clone()),
-            identifier: identifier,
+            identifier,
         }
     }
 
@@ -738,7 +738,7 @@ impl BondResults {
         OrderMapsCollection {
             results: self.results.clone(),
             molecule: Some(self.molecule.clone()),
-            identifier: identifier,
+            identifier,
         }
     }
 }
@@ -1363,10 +1363,10 @@ fn leaflet_to_u8(l: &RsLeaflet) -> u8 {
 }
 
 /// Helper function for converting leaflets data.
-fn convert_leaflets(input: &Vec<Vec<RsLeaflet>>) -> Vec<Vec<u8>> {
+fn convert_leaflets(input: &[Vec<RsLeaflet>]) -> Vec<Vec<u8>> {
     input
-        .into_iter()
-        .map(|inner| inner.into_iter().map(|leaf| leaflet_to_u8(&leaf)).collect())
+        .iter()
+        .map(|inner| inner.iter().map(leaflet_to_u8).collect())
         .collect()
 }
 
@@ -1431,14 +1431,9 @@ impl NormalsData {
     }
 }
 
-fn convert_normals(input: &Vec<Vec<Vector3D>>) -> Vec<Vec<Vec<f32>>> {
+fn convert_normals(input: &[Vec<Vector3D>]) -> Vec<Vec<Vec<f32>>> {
     input
-        .into_iter()
-        .map(|inner| {
-            inner
-                .into_iter()
-                .map(|vec| vec![vec.x, vec.y, vec.z])
-                .collect()
-        })
+        .iter()
+        .map(|inner| inner.iter().map(|vec| vec![vec.x, vec.y, vec.z]).collect())
         .collect()
 }
