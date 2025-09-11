@@ -97,7 +97,7 @@ impl Frequency {
 
 /// Assign lipids into leaflets based on the global membrane center of geometry.
 ///
-/// Generally reliable and fast. The best option for analyzing disrupted membranes.
+/// Reliable for planar membranes and fast. Recommended for most membranes.
 ///
 /// Parameters
 /// ----------
@@ -154,7 +154,8 @@ impl GlobalClassification {
 
 /// Assign lipids into leaflets based on the local membrane center of geometry.
 ///
-/// Useful for curved membranes but computationally slow.
+/// Reliable for planar membranes but slow.
+/// Recommended for planar membranes if the global and individual methods do not work for you.
 ///
 /// Parameters
 /// ----------
@@ -224,7 +225,7 @@ impl LocalClassification {
 
 /// Assign lipids into leaflets based on the orientation of acyl chains.
 ///
-/// Less reliable but computationally fast.
+/// Less reliable but very fast. Recommended for very large, undulating planar membranes.
 ///
 /// Parameters
 /// ----------
@@ -285,7 +286,7 @@ impl IndividualClassification {
 
 /// Assign lipids into leaflets using spectral clustering.
 ///
-/// Reliable even for curved membranes but very slow, especially for large systems.
+/// Reliable but very slow. Recommended for curved membranes, tubes and vesicles.
 ///
 /// Parameters
 /// ----------
