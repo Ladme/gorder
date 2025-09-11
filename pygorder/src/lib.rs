@@ -167,6 +167,8 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
         .unwrap_or_else(|e| panic!("FATAL GORDER ERROR | python::analysis::Analysis | Could not set up the CTRL-C handler: {}.", e));
     });
 
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+
     // global classes
     m.add_class::<analysis::Analysis>()?;
     m.add_class::<leaflets::Frequency>()?;

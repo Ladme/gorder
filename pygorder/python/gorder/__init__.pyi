@@ -14,6 +14,8 @@ from . import ordermap
 from . import results
 from . import exceptions
 
+__version__: str
+
 class Analysis:
     r"""
     Class describing all the parameters of the analysis.
