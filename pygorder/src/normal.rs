@@ -59,8 +59,8 @@ impl<'source> FromPyObject<'source> for MembraneNormal {
 ///     atom/bead per lipid molecule.
 /// radius : float
 ///     Radius of the sphere used to select nearby lipids for membrane normal
-///     estimation. Recommended value is half the membrane thickness. Must be
-///     greater than 0.
+///     estimation in nm. Recommended value is half the membrane thickness.
+///     Must be greater than 0. The default value is 2.0 (nm).
 /// collect : Optional[Union[bool, str]], default=False
 ///     Determines whether dynamic membrane normals are saved and exported.
 ///     By default (`False`), normals are not saved.
@@ -80,7 +80,7 @@ pub struct DynamicNormal(RsDynamic);
 #[pymethods]
 impl DynamicNormal {
     #[new]
-    #[pyo3(signature = (heads, radius, collect = None))]
+    #[pyo3(signature = (heads, radius = 2.0, collect = None))]
     pub fn new<'a>(
         heads: &str,
         radius: f32,

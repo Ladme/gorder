@@ -16,8 +16,8 @@ class DynamicNormal:
         atom/bead per lipid molecule.
     radius : float
         Radius of the sphere used to select nearby lipids for membrane normal
-        estimation. Recommended value is half the membrane thickness. Must be
-        greater than 0.
+        estimation in nm. Recommended value is half the membrane thickness.
+        Must be greater than 0. The default value is 2.0 (nm).
     collect : Optional[Union[bool, str]], default=False
         Determines whether dynamic membrane normals are saved and exported.
         By default (`False`), normals are not saved.
@@ -29,5 +29,5 @@ class DynamicNormal:
     ConfigError
         If `radius` is not positive.
     """
-    def __new__(cls, heads:builtins.str, radius:builtins.float, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> DynamicNormal: ...
+    def __new__(cls, heads:builtins.str, radius:builtins.float=2.0, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> DynamicNormal: ...
 

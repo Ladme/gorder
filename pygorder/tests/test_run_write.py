@@ -417,7 +417,7 @@ def test_dynamic_normals():
         trajectory = "../tests/files/vesicle.xtc",
         analysis_type = gorder.analysis_types.CGOrder("name C1A D2A C3A C4A C1B C2B C3B C4B"),
         output_yaml = temp_file_path,
-        membrane_normal = gorder.membrane_normal.DynamicNormal("name PO4", 2.0),
+        membrane_normal = gorder.membrane_normal.DynamicNormal("name PO4"),
         silent = True,
         overwrite = True,
     )
