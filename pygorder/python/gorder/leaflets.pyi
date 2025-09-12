@@ -26,7 +26,7 @@ class ClusteringClassification:
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
     flip : bool, default=False
-        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+        Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
     """
     def __new__(cls, heads:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None, flip:builtins.bool=False) -> ClusteringClassification: ...
 
@@ -55,7 +55,7 @@ class GlobalClassification:
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
     flip : bool, default=False
-        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+        Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
     """
     def __new__(cls, membrane:builtins.str, heads:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None, flip:builtins.bool=False) -> GlobalClassification: ...
 
@@ -85,7 +85,7 @@ class IndividualClassification:
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
     flip : bool, default=False
-        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+        Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
     """
     def __new__(cls, heads:builtins.str, methyls:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None, flip:builtins.bool=False) -> IndividualClassification: ...
 
@@ -117,7 +117,7 @@ class LocalClassification:
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
     flip : bool, default=False
-        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+        Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
     """
     def __new__(cls, membrane:builtins.str, heads:builtins.str, radius:builtins.float, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None, flip:builtins.bool=False) -> LocalClassification: ...
 
@@ -133,7 +133,7 @@ class ManualClassification:
     frequency : Optional[Frequency]
         Frequency of classification. Defaults to every frame.
     flip : bool, default=False
-        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+        Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
     """
     def __new__(cls, input:typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.uint8]]], frequency:typing.Optional[gorder.Frequency]=None, flip:builtins.bool=False) -> ManualClassification: ...
 
@@ -156,7 +156,7 @@ class NdxClassification:
     frequency : Optional[Frequency]
         Frequency of classification. Defaults to every frame.
     flip : bool, default=False
-        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+        Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
     
     Notes
     -----

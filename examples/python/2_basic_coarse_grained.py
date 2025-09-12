@@ -22,7 +22,7 @@ analysis = gorder.Analysis(
     # Calculate coarse-grained order parameters.
     analysis_type = gorder.analysis_types.CGOrder(
         # Analyze all bonds between particles of the membrane.
-        "@membrane",
+        beads = "@membrane",
     ),
     # Path to the output yaml file. Contains full results of the analysis.
     output_yaml = "order.yaml",
@@ -46,4 +46,4 @@ results.write()
 for molecule in results.molecules():
     print(f"Molecule type '{molecule.molecule()}':")
     for bond in molecule.bonds():
-        print(f"   Bond type '{bond.atoms()[0].atom_name()}-{bond.atoms()[1].atom_name()}': {bond.order().total().value():.4f}")
+        print(f"   Bond type '{bond.atoms()[0].atom_name()}-{bond.atoms()[1].atom_name()}': {bond.order().total().value():.4f}") # pyright: ignore[reportOptionalMemberAccess]

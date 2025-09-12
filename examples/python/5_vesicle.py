@@ -1,9 +1,10 @@
-# Basic calculation of atomistic lipid order parameters.
+# Basic calculation of atomistic order
+# parameters in a lipid vesicle. 
 # Only full membrane, all output formats.
 # Analysis performed using 4 threads.
 # Manual: ladme.github.io/gorder-manual
 
-# Run using `uv`: `uv run 1_basic_atomistic.py`.
+# Run using `uv`: `uv run 5_vesicle.py`.
 
 # /// script
 # requires-python = ">=3.10"
@@ -26,6 +27,12 @@ analysis = gorder.Analysis(
         # These are the hydrogens of the lipids in the membrane. 
         # `gorder` will search for bonds between the specified heavy atoms and hydrogens.
         hydrogens = "@membrane and element name hydrogen"
+    ),
+    # Calculate membrane normal for each lipid molecule dynamically, based on the shape of the vesicle.
+    membrane_normal = gorder.membrane_normal.DynamicNormal(
+        # Phosphorus atoms of membrane lipids identifying lipid heads. 
+        # Only one such atom per molecule!
+        heads = "name P",
     ),
     # Path to the output yaml file. Contains full results of the analysis.
     output_yaml = "order.yaml",

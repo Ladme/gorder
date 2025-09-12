@@ -1,9 +1,10 @@
-# Basic calculation of atomistic lipid order parameters.
+# Calculation of atomistic lipid order
+# parameters with error estimation.
 # Only full membrane, all output formats.
 # Analysis performed using 4 threads.
 # Manual: ladme.github.io/gorder-manual
 
-# Run using `uv`: `uv run 1_basic_atomistic.py`.
+# Run using `uv`: `uv run 7_estimate_error.py`.
 
 # /// script
 # requires-python = ">=3.10"
@@ -27,6 +28,13 @@ analysis = gorder.Analysis(
         # `gorder` will search for bonds between the specified heavy atoms and hydrogens.
         hydrogens = "@membrane and element name hydrogen"
     ),
+    # Estimate the error of the analysis.
+    estimate_error = gorder.estimate_error.EstimateError(
+        # Output the convergence of the calculated order parameters into an xvg file.
+        # This file can be plotted using `xmgrace`.
+        # If the order parameters stabilize, your simulation is converged.
+        output_convergence = "convergence.xvg"
+    ),
     # Path to the output yaml file. Contains full results of the analysis.
     output_yaml = "order.yaml",
     # Path to the output "table" file. Simple to read.
@@ -49,4 +57,15 @@ results.write()
 for molecule in results.molecules():
     print(f"Molecule type '{molecule.molecule()}':")
     for atom in molecule.atoms():
-        print(f"   Atom type '{atom.atom().atom_name()}': {atom.order().total().value():.4f}") # pyright: ignore[reportOptionalMemberAccess]
+        order = atom.order().total()
+        print(f"   Atom type '{atom.atom().atom_name()}': {order.value():.4f} ± {order.error():.4f}") # pyright: ignore[reportOptionalMemberAccess]
+
+    # You can also directly access the convergence data for each molecule type.
+    convergence = molecule.convergence()
+    assert convergence is not None
+    print("   Average order parameter in time")
+    for (frame, order) in zip(convergence.frames(), convergence.total()): # pyright: ignore[reportArgumentType]
+        print(f"     > Frame {frame:5}: {order:.4f}")
+
+    
+    

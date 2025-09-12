@@ -118,7 +118,7 @@ impl Frequency {
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
 /// flip : bool, default=False
-///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -181,7 +181,7 @@ impl GlobalClassification {
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
 /// flip : bool, default=False
-///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -253,7 +253,7 @@ impl LocalClassification {
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
 /// flip : bool, default=False
-///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -311,7 +311,7 @@ impl IndividualClassification {
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
 /// flip : bool, default=False
-///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -353,7 +353,7 @@ impl ClusteringClassification {
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
 /// flip : bool, default=False
-///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -407,7 +407,7 @@ impl ManualClassification {
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
 /// flip : bool, default=False
-///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
 ///
 /// Notes
 /// -----

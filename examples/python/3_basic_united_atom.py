@@ -1,9 +1,9 @@
-# Basic calculation of atomistic lipid order parameters.
+# Basic calculation of united-atom lipid order parameters.
 # Only full membrane, all output formats.
 # Analysis performed using 4 threads.
 # Manual: ladme.github.io/gorder-manual
 
-# Run using `uv`: `uv run 1_basic_atomistic.py`.
+# Run using `uv`: `uv run 3_basic_united_atom.py`.
 
 # /// script
 # requires-python = ">=3.10"
@@ -19,13 +19,12 @@ analysis = gorder.Analysis(
     structure = "system.tpr",
     # Input Gromacs compressed trajectory file.
     trajectory = "traj.xtc",
-    # Calculate atomistic order parameters.
-    analysis_type = gorder.analysis_types.AAOrder(
-        # Calculate order parameters for carbons of the palmitoyl and oleoyl chains.
-        heavy_atoms = "@membrane and name r'C3.+|C2.+'",
-        # These are the hydrogens of the lipids in the membrane. 
-        # `gorder` will search for bonds between the specified heavy atoms and hydrogens.
-        hydrogens = "@membrane and element name hydrogen"
+    # Calculate united-atom order parameters.
+    analysis_type = gorder.analysis_types.UAOrder(
+        # Calculate order parameters for saturated carbons of the palmitoyl and oleoyl chains.
+        saturated = "resname POPC and name r'C(1[7-9]|2[0-36-9]|3[0-16-9]|4[0-9]|50|A[1-2])'",
+        # Calculate order parameters for unsaturated carbons of the oleoyl chain.
+        unsaturated = "resname POPC and name C24 C25"
     ),
     # Path to the output yaml file. Contains full results of the analysis.
     output_yaml = "order.yaml",
