@@ -3032,7 +3032,7 @@ fn test_cg_order_leaflets_from_file_not_enough_frames() {
         Ok(_) => panic!("Run should have failed."),
         Err(e) => assert!(e
             .to_string()
-            .contains("could not get leaflet assignment for frame index")),
+            .contains("could not get leaflet assignment for frame")),
     }
 }
 
@@ -4897,6 +4897,10 @@ fn test_cg_order_leaflets_scrambling_flip_rust_api() {
                 unflipped_bond.order().upper().unwrap().value(),
                 flipped_bond.order().lower().unwrap().value()
             );
+            assert_relative_eq!(
+                unflipped_bond.order().lower().unwrap().value(),
+                flipped_bond.order().upper().unwrap().value(),
+            )
         }
     }
 }

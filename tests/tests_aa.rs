@@ -4142,7 +4142,7 @@ fn test_aa_order_leaflets_from_file_not_enough_frames() {
         Ok(_) => panic!("Run should have failed."),
         Err(e) => assert!(e
             .to_string()
-            .contains("could not get leaflet assignment for frame index")),
+            .contains("could not get leaflet assignment for frame")),
     }
 }
 
@@ -4172,7 +4172,7 @@ fn test_aa_order_leaflets_from_map_not_enough_frames() {
         Ok(_) => panic!("Run should have failed."),
         Err(e) => assert!(e
             .to_string()
-            .contains("could not get leaflet assignment for frame index")),
+            .contains("could not get leaflet assignment for frame")),
     }
 }
 
@@ -5281,9 +5281,7 @@ fn test_aa_order_leaflets_from_ndx_fail_missing_ndx() {
     match analysis.run() {
         Ok(_) => panic!("Analysis should have failed but it succeeded."),
         Err(e) => {
-            assert!(e
-                .to_string()
-                .contains("could not get ndx file for frame index"))
+            assert!(e.to_string().contains("could not get ndx file for frame"))
         }
     }
 }
