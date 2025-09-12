@@ -20,3 +20,41 @@ pub use geometry::{GeomReference, Geometry};
 pub use leaflets::LeafletClassification;
 pub use membrane_normal::{DynamicNormal, MembraneNormal};
 pub use ordermap::{GridSpan, OrderMap, Plane};
+use serde::{Deserialize, Deserializer, Serialize};
+
+/// Helper struct specifying whether some data should be collected or not
+/// and where they should be exported to.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
+pub enum Collect {
+    Boolean(bool),
+    File(String),
+}
+
+impl From<bool> for Collect {
+    fn from(value: bool) -> Self {
+        Self::Boolean(value)
+    }
+}
+
+impl From<&str> for Collect {
+    fn from(value: &str) -> Self {
+        Self::File(value.to_owned())
+    }
+}
+
+impl Default for Collect {
+    fn default() -> Self {
+        Self::Boolean(false)
+    }
+}
+
+impl<'de> Deserialize<'de> for Collect {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Collect::File(s))
+    }
+}

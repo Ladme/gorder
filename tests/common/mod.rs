@@ -10,6 +10,8 @@ use std::{
 };
 
 use approx::assert_relative_eq;
+use gorder::prelude::Vector3D;
+use indexmap::IndexMap;
 
 /// Test utility. Diff the contents of two files without the first `skip` lines.
 #[allow(dead_code)]
@@ -48,7 +50,47 @@ pub(super) fn assert_eq_order(a: &str, b: &str, skip: usize) {
     }
 }
 
-/// Test utility. Asser that two order csv files match each other.
+/// Test utility. Assert that two membrane normal files match each other.
+#[allow(dead_code)]
+pub(super) fn assert_eq_normals(a: &str, b: &str) {
+    let content_a = std::fs::read_to_string(a).unwrap();
+    let content_b = std::fs::read_to_string(b).unwrap();
+
+    let normals_a: IndexMap<String, Vec<Vec<Vector3D>>> = serde_yaml::from_str(&content_a).unwrap();
+    let normals_b: IndexMap<String, Vec<Vec<Vector3D>>> = serde_yaml::from_str(&content_b).unwrap();
+
+    assert_eq!(normals_a.len(), normals_b.len());
+    for (moltype_a, moltype_b) in normals_a.keys().zip(normals_b.keys()) {
+        //assert_eq!(moltype_a, moltype_b);
+        assert_eq!(
+            normals_a.get(moltype_a).unwrap().len(),
+            normals_b.get(moltype_b).unwrap().len()
+        );
+
+        for (frame_a, frame_b) in normals_a
+            .get(moltype_a)
+            .unwrap()
+            .iter()
+            .zip(normals_b.get(moltype_b).unwrap().iter())
+        {
+            assert_eq!(frame_a.len(), frame_b.len());
+            for (mol_a, mol_b) in frame_a.iter().zip(frame_b.iter()) {
+                if mol_a.x.is_nan() && mol_a.y.is_nan() && mol_a.z.is_nan() {
+                    assert!(mol_b.x.is_nan());
+                    assert!(mol_b.y.is_nan());
+                    assert!(mol_b.z.is_nan());
+                    continue;
+                }
+
+                assert_relative_eq!(mol_a.x, mol_b.x, epsilon = 1e-5);
+                assert_relative_eq!(mol_a.y, mol_b.y, epsilon = 1e-5);
+                assert_relative_eq!(mol_a.z, mol_b.z, epsilon = 1e-5);
+            }
+        }
+    }
+}
+
+/// Test utility. Assert that two order csv files match each other.
 #[allow(dead_code)]
 pub(super) fn assert_eq_csv(a: &str, b: &str, skip: usize) {
     let (file_a, file_b) = match (File::open(a), File::open(b)) {

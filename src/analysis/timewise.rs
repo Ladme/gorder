@@ -3,6 +3,7 @@
 
 //! Structures and methods for timewise analysis.
 
+use crate::analysis::common::interleave_vectors;
 use crate::PANIC_MESSAGE;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -279,33 +280,6 @@ impl<T: TimeWiseAddTreatment> AddAssign<f32> for TimeWiseData<T> {
         *self.order.last_mut().expect(PANIC_MESSAGE) += rhs;
         *self.n_samples.last_mut().expect(PANIC_MESSAGE) += 1;
     }
-}
-
-/// Merge two vectors interleaving the second with the first one.
-fn interleave_vectors<T: Clone>(vec1: &[T], vec2: &[T], n: usize, m: usize) -> Vec<T> {
-    let mut result = Vec::with_capacity(vec1.len() + vec2.len());
-    let mut iter1 = vec1.iter();
-    let mut iter2 = vec2.iter();
-
-    loop {
-        for _ in 0..n {
-            if let Some(value) = iter1.next() {
-                result.push(value.clone());
-            }
-        }
-
-        for _ in 0..m {
-            if let Some(value) = iter2.next() {
-                result.push(value.clone());
-            }
-        }
-
-        if iter1.len() == 0 && iter2.len() == 0 {
-            break;
-        }
-    }
-
-    result
 }
 
 #[allow(clippy::excessive_precision)]

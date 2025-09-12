@@ -8,6 +8,8 @@ use gorder_core::input::AnalysisType as RsAnalysisType;
 use gorder_core::prelude::Analysis as RsAnalysis;
 use gorder_core::prelude::AnalysisBuilder as RsAnalysisBuilder;
 use pyo3::prelude::*;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::estimate_error::EstimateError;
 use crate::geometry::Geometry;
@@ -19,11 +21,11 @@ use crate::{AnalysisError, ConfigError};
 
 /// Request the calculation of atomistic order parameters.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// heavy_atoms : str
 ///     Selection query specifying the heavy atoms to be used in the analysis (typically carbon atoms in lipid tails).
-/// hydrogens : str 
+/// hydrogens : str
 ///     Selection query specifiying the hydrogen atoms to be used in the analysis (only those bonded to heavy atoms will be considered).
 ///
 /// Notes
@@ -31,10 +33,12 @@ use crate::{AnalysisError, ConfigError};
 /// - Atoms should be specified using the `groan selection language <https://ladme.github.io/gsl-guide>`_.
 /// - Order parameters are calculated for bonds between `heavy_atoms` and `hydrogens`. These bonds are detected automatically.
 /// - The order parameters for heavy atoms are determined by averaging the order parameters of the corresponding bonds.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.analysis_types")]
 #[derive(Clone)]
 pub struct AAOrder(RsAnalysisType);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AAOrder {
     #[new]
@@ -45,7 +49,7 @@ impl AAOrder {
 
 /// Request the calculation of coarse-grained order parameters.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// beads : str
 ///     Selection query specifying the coarse-grained beads to be used in the analysis.
@@ -54,10 +58,12 @@ impl AAOrder {
 /// -----
 /// - Beads should be specified using the `groan selection language <https://ladme.github.io/gsl-guide>`_.
 /// - Order parameters are calculated for bonds between individual `beads`. These bonds are detected automatically.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.analysis_types")]
 #[derive(Clone)]
 pub struct CGOrder(RsAnalysisType);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl CGOrder {
     #[new]
@@ -68,7 +74,7 @@ impl CGOrder {
 
 /// Request the calculation of united-atom order parameters.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// saturated : Optional[str], default=None
 ///     Selection query specifying saturated carbons which order parameters should be calculated.
@@ -76,7 +82,7 @@ impl CGOrder {
 ///     Selection query specifying unsaturated carbons which order parameters should be calculated.
 /// ignore : Optional[str], default=None
 ///     Selection query specifying atoms to be completely ignored when performing the analysis.
-/// 
+///
 /// Notes
 /// -----
 /// - To specify atoms, use the `groan selection language <https://ladme.github.io/gsl-guide>`_.
@@ -86,10 +92,12 @@ impl CGOrder {
 /// - When calculating the number of bonds, `gorder` does not distinguish between single and double bonds.
 ///   This means it will attempt to add one hydrogen to a carboxyl atom if specified.
 ///   A simple solution to this issue is to exclude such atoms from the analysis.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.analysis_types")]
 #[derive(Clone)]
 pub struct UAOrder(RsAnalysisType);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl UAOrder {
     #[new]
@@ -138,17 +146,19 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
             return Ok(TrajectoryInput(list.into()));
         }
 
-        Err(ConfigError::new_err("expected a string or a list of strings"))
+        Err(ConfigError::new_err(
+            "expected a string or a list of strings",
+        ))
     }
 }
 
 /// Class describing all the parameters of the analysis.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// structure : str
 ///     Path to a TPR (recommended), PDB, GRO, or PQR file containing the structure and topology of the system.
-/// trajectory : Union[str, list[str]]
+/// trajectory : Union[str, Sequence[str]]
 ///     Path to an XTC (recommended), TRR, or GRO trajectory file to be analyzed.
 ///     You can provide multiple XTC or TRR trajectories and these will be seamlessly concatenated.
 /// analysis_type : Union[AAOrder, CGOrder, UAOrder]
@@ -165,8 +175,8 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 ///     Filename pattern for output XVG files storing results. Each molecule type gets a separate file.
 /// output_csv : Optional[str], default=None
 ///     Path to an output CSV file containing analysis results.
-/// membrane_normal : Optional[Union[str, dict, DynamicNormal]], default=None
-///     Direction of the membrane normal. 
+/// membrane_normal : Optional[Union[str, Mapping[str, ndarray[float32]], DynamicNormal]], default=None
+///     Direction of the membrane normal.
 ///     Allowed values are `x`, `y`, `z`, path to file, dictionary specifying manual membrane normals or an instance of `DynamicNormal`.
 ///     Defaults to the z-axis if not specified.
 /// begin : Optional[float], default=None
@@ -179,7 +189,7 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 ///     Minimum number of samples required for each heavy atom or bond type to compute its order parameter. Defaults to 1.
 /// n_threads : Optional[int], default=None
 ///     Number of threads to use for analysis. Defaults to 1.
-/// leaflets : Optional[Union[GlobalClassification, LocalClassification, IndividualClassification, ManualClassification, NdxClassification]], default=None
+/// leaflets : Optional[Union[GlobalClassification, LocalClassification, IndividualClassification, ClusteringClassification, ManualClassification, NdxClassification]], default=None
 ///     Defines how lipids are assigned to membrane leaflets. If provided, order parameters are calculated per leaflet.
 /// ordermap : Optional[OrderMap], default=None
 ///     Specifies parameters for ordermap calculations. If not provided, ordermaps are not generated.
@@ -193,60 +203,94 @@ impl<'source> FromPyObject<'source> for TrajectoryInput {
 ///     If True, suppresses standard output messages during analysis.
 /// overwrite : Optional[bool], default=False
 ///     If True, overwrites existing output files and directories without backups.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder")]
 pub struct Analysis(RsAnalysis);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Analysis {
     #[allow(clippy::too_many_arguments)]
     #[new]
     #[pyo3(signature = (
-        structure, 
-        trajectory, 
+        structure,
+        trajectory,
         analysis_type,
-        bonds=None, 
-        index=None, 
-        output_yaml=None, 
-        output_tab=None, 
-        output_xvg=None, 
-        output_csv=None, 
-        membrane_normal=None, 
-        begin=None, 
-        end=None, 
-        step=None, 
-        min_samples=None, 
-        n_threads=None, 
-        leaflets=None, 
-        ordermap=None, 
-        estimate_error=None, 
-        geometry=None, 
-        handle_pbc=None, 
-        silent=None, 
+        bonds=None,
+        index=None,
+        output_yaml=None,
+        output_tab=None,
+        output_xvg=None,
+        output_csv=None,
+        membrane_normal=None,
+        begin=None,
+        end=None,
+        step=None,
+        min_samples=None,
+        n_threads=None,
+        leaflets=None,
+        ordermap=None,
+        estimate_error=None,
+        geometry=None,
+        handle_pbc=None,
+        silent=None,
         overwrite=None))]
-    pub fn new(
+    pub fn new<'a>(
         structure: &str,
-        trajectory: TrajectoryInput,
-        analysis_type: AnalysisType,
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[builtins.str, typing.Sequence[str]]", imports=("typing")
+        ))]
+        trajectory: Bound<'a, PyAny>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[gorder.analysis_types.AAOrder, gorder.analysis_types.CGOrder, gorder.analysis_types.UAOrder]"
+        ))]
+        analysis_type: Bound<'a, PyAny>,
         bonds: Option<&str>,
         index: Option<&str>,
         output_yaml: Option<&str>,
         output_tab: Option<&str>,
         output_xvg: Option<&str>,
         output_csv: Option<&str>,
-        membrane_normal: Option<MembraneNormal>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.float32]], gorder.membrane_normal.DynamicNormal]]", imports=("typing", "numpy")
+        ))]
+        membrane_normal: Option<Bound<'a, PyAny>>,
         begin: Option<f32>,
         end: Option<f32>,
         step: Option<usize>,
         min_samples: Option<usize>,
         n_threads: Option<usize>,
-        leaflets: Option<LeafletClassification>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[gorder.leaflets.GlobalClassification, gorder.leaflets.LocalClassification, gorder.leaflets.IndividualClassification, gorder.leaflets.ClusteringClassification, gorder.leaflets.ManualClassification, gorder.leaflets.NdxClassification]]", imports=("typing")
+        ))]
+        leaflets: Option<Bound<'a, PyAny>>,
+        #[gen_stub(override_type(type_repr = "typing.Optional[gorder.ordermap.OrderMap]"))]
         ordermap: Option<OrderMap>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.estimate_error.EstimateError]"
+        ))]
         estimate_error: Option<EstimateError>,
-        geometry: Option<Geometry>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[gorder.geometry.Cuboid, gorder.geometry.Cylinder, gorder.geometry.Sphere]]"
+        ))]
+        geometry: Option<Bound<'a, PyAny>>,
         handle_pbc: Option<bool>,
         silent: Option<bool>,
         overwrite: Option<bool>,
     ) -> PyResult<Self> {
+        // convert to Rust
+        let trajectory = TrajectoryInput::extract_bound(&trajectory)?;
+        let analysis_type = AnalysisType::extract_bound(&analysis_type)?;
+        let membrane_normal = membrane_normal
+            .map(|normal| MembraneNormal::extract_bound(&normal))
+            .transpose()?;
+        let leaflets = leaflets
+            .map(|method| LeafletClassification::extract_bound(&method))
+            .transpose()?;
+        let geometry = geometry
+            .map(|shape| Geometry::extract_bound(&shape))
+            .transpose()?;
+
         let mut builder: RsAnalysisBuilder = RsAnalysis::builder();
         builder
             .structure(structure)
@@ -292,7 +336,20 @@ impl Analysis {
         Ok(Analysis(inner))
     }
 
-    /// Perform the analysis.
+    /// Run the analysis.
+    ///
+    /// Executes the configured analysis on the input data and returns the results.
+    ///
+    /// Returns
+    /// -------
+    /// AnalysisResults
+    ///     Results of the analysis.
+    ///
+    /// Raises
+    /// ------
+    /// AnalysisError
+    ///     If the analysis fails.
+    #[gen_stub(override_return_type(type_repr = "gorder.results.AnalysisResults"))]
     pub fn run(&mut self) -> PyResult<AnalysisResults> {
         if self.0.silent() {
             log::set_max_level(log::LevelFilter::Error);
@@ -304,10 +361,26 @@ impl Analysis {
         }
     }
 
-    /// Read the options for the analysis from a config YAML file.
+    /// Read analysis options from a YAML configuration file.
+    ///
+    /// Parameters
+    /// ----------
+    /// file : str
+    ///     Path to the YAML configuration file.
+    ///
+    /// Returns
+    /// -------
+    /// Analysis
+    ///     Analysis instance initialized from the file.
+    ///
+    /// Raises
+    /// ------
+    /// ConfigError
+    ///     If the file cannot be read or parsed.
     #[staticmethod]
     pub fn from_file(file: String) -> PyResult<Self> {
-        let analysis = RsAnalysis::from_file(file).map_err(|e| ConfigError::new_err(e.to_string()))?;
+        let analysis =
+            RsAnalysis::from_file(file).map_err(|e| ConfigError::new_err(e.to_string()))?;
         Ok(Analysis(analysis))
     }
 }

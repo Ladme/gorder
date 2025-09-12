@@ -17,6 +17,7 @@ leaflets: !Global
   membrane: "@membrane"
   heads: "name P"
   frequency: !Once
+  export: "leaflets.yaml"
 map:
   output_directory: ordermaps
   dim: 

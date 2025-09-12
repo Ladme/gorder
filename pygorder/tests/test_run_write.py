@@ -161,8 +161,8 @@ def test_all_outputs():
     with tempfile.NamedTemporaryFile(delete = False) as temp_file_csv:
         csv_path = temp_file_csv.name
 
-    with tempfile.TemporaryDirectory(delete = False) as temp_dir:
-         dir_path = os.path.abspath(temp_dir)
+    temp_dir = tempfile.mkdtemp()
+    dir_path = os.path.abspath(temp_dir)
 
     analysis = gorder.Analysis(
         structure = "../tests/files/pcpepg.tpr",
@@ -276,7 +276,7 @@ def test_scrambling_leaflets():
         ["order_once.yaml", "order_individual.yaml", "order_individual_every_10.yaml"],  # individual
         ["order_once.yaml", "order_manual.yaml", "order_global_every_10.yaml"],          # from file
         ["order_once.yaml", "order_manual.yaml", "order_global_every_10.yaml"],          # from dict
-        ["order_once.yaml", "order_manual.yaml", "order_global_every_10.yaml"]           # from NDX
+        ["order_once.yaml", "order_manual_ndx.yaml", "order_global_every_10.yaml"]           # from NDX
     ]
     manual_classification = ["once.yaml", "every.yaml", "every10.yaml"]
     dicts = [read_leaflets_yaml(f"../tests/files/scrambling/leaflets_{x}") for x in manual_classification]
@@ -314,6 +314,35 @@ def test_scrambling_leaflets():
             finally:
                 shutil.rmtree(temp_file_path, ignore_errors=True)
 
+def test_scrambling_leaflets_export():
+    output_files = ["order_once.yaml", "order_global.yaml", "order_global_every_10.yaml"]
+    leaflets_files = ["leaflets_once.yaml", "leaflets_every.yaml", "leaflets_every10.yaml"]
+    
+    for (i, freq) in enumerate([gorder.Frequency.once(), gorder.Frequency.every(1), gorder.Frequency.every(10)]):
+        with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+            temp_file_path = temp_file.name
+
+        with tempfile.NamedTemporaryFile(delete = False) as temp_file_leaflets:
+            temp_file_leaflets_path = temp_file_leaflets.name
+        
+        analysis = gorder.Analysis(
+            structure = "../tests/files/scrambling/cg_scrambling.tpr",
+            trajectory = "../tests/files/scrambling/cg_scrambling.xtc",
+            analysis_type = gorder.analysis_types.CGOrder("@membrane"),
+            leaflets = gorder.leaflets.GlobalClassification("@membrane", "name PO4", frequency = freq, collect = temp_file_leaflets_path),
+            output_yaml = temp_file_path,
+            silent = True,
+            overwrite = True,
+        )
+
+        analysis.run().write()
+
+        try:
+            assert diff_files_ignore_first(temp_file_path, f"../tests/files/scrambling/{output_files[i]}", 1), "Files do not match!"
+            assert diff_files_ignore_first(temp_file_leaflets_path, f"../tests/files/scrambling/{leaflets_files[i]}", 1), "Leaflet files do not match!"
+        finally:
+            shutil.rmtree(temp_file_path, ignore_errors=True)
+            shutil.rmtree(temp_file_leaflets_path, ignore_errors=True)
 
 def test_ndx():
     with tempfile.NamedTemporaryFile(delete = False) as temp_file:
@@ -388,7 +417,7 @@ def test_dynamic_normals():
         trajectory = "../tests/files/vesicle.xtc",
         analysis_type = gorder.analysis_types.CGOrder("name C1A D2A C3A C4A C1B C2B C3B C4B"),
         output_yaml = temp_file_path,
-        membrane_normal = gorder.membrane_normal.DynamicNormal("name PO4", 2.0),
+        membrane_normal = gorder.membrane_normal.DynamicNormal("name PO4"),
         silent = True,
         overwrite = True,
     )
@@ -675,8 +704,8 @@ def test_ignore_pbc():
         shutil.rmtree(temp_file_path, ignore_errors=True)
 
 def test_ordermaps_basic():
-    with tempfile.TemporaryDirectory(delete = False) as temp_dir:
-         dir_path = os.path.abspath(temp_dir)
+    temp_dir = tempfile.mkdtemp()
+    dir_path = os.path.abspath(temp_dir)
 
     analysis = gorder.Analysis(
         structure = "../tests/files/cg.tpr",
@@ -707,8 +736,8 @@ def test_ordermaps_basic():
         shutil.rmtree(dir_path, ignore_errors=True)
 
 def test_ordermaps_leaflets_nopbc_manual_everything():
-    with tempfile.TemporaryDirectory(delete = False) as temp_dir:
-        dir_path = os.path.abspath(temp_dir)
+    temp_dir = tempfile.mkdtemp()
+    dir_path = os.path.abspath(temp_dir)
 
     analysis = gorder.Analysis(
         structure = "../tests/files/pcpepg.tpr",
@@ -806,6 +835,33 @@ def test_ua_order_from_aa():
         assert diff_files_ignore_first(temp_file_path, "../tests/files/ua_order_from_aa.yaml", 1), "Files do not match!"
     finally:
         shutil.rmtree(temp_file_path, ignore_errors=True)
+
+
+def test_dynamic_normals_export():
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file:
+        temp_file_path = temp_file.name
+
+    with tempfile.NamedTemporaryFile(delete = False) as temp_file_normals:
+        temp_file_normals_path = temp_file_normals.name
+
+    analysis = gorder.Analysis(
+        structure = "../tests/files/vesicle.tpr",
+        trajectory = "../tests/files/vesicle.xtc",
+        analysis_type = gorder.analysis_types.CGOrder("name C1A D2A C3A C4A C1B C2B C3B C4B"),
+        output_yaml = temp_file_path,
+        membrane_normal = gorder.membrane_normal.DynamicNormal("name PO4", 2.0, collect = temp_file_normals_path),
+        silent = True,
+        overwrite = True,
+    )
+
+    analysis.run().write()
+
+    try:
+        assert diff_files_ignore_first(temp_file_path, "../tests/files/cg_order_vesicle.yaml", 1), "Order files do not match!"
+        assert diff_files_ignore_first(temp_file_normals_path, f"../tests/files/normals_vesicle.yaml", 1), "Normals files do not match!"
+    finally:
+        shutil.rmtree(temp_file_path, ignore_errors=True)
+        shutil.rmtree(temp_file_normals_path, ignore_errors=True)
 
 def test_ua_order_fail_no_carbons():
     with tempfile.NamedTemporaryFile(delete = False) as temp_file:

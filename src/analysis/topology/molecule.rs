@@ -85,6 +85,9 @@ impl MoleculeTypes {
                         molecule.analyze_frame(frame, pbc_handler, frame_index, x)?
                     }
                 }
+
+                // store dynamic membrane normals, if requested
+                molecule.membrane_normal_mut().store_normals();
             }
         });
 
@@ -364,7 +367,7 @@ impl<O: OrderCalculable> Add<MoleculeType<O>> for MoleculeType<O> {
             reference_atoms: self.reference_atoms,
             order_atoms: self.order_atoms,
             leaflet_classification: self.leaflet_classification,
-            membrane_normal: self.membrane_normal,
+            membrane_normal: self.membrane_normal + rhs.membrane_normal,
         }
     }
 }

@@ -14,10 +14,13 @@ use std::{
 use approx::assert_relative_eq;
 use gorder::prelude::*;
 use hashbrown::HashMap;
+use indexmap::IndexMap;
 use std::io::Write;
 use tempfile::{NamedTempFile, TempDir};
 
 use common::{assert_eq_csv, assert_eq_maps, assert_eq_order, read_and_compare_files};
+
+use crate::common::{assert_eq_normals, diff_files_ignore_first};
 
 #[test]
 fn test_cg_order_basic_yaml() {
@@ -1933,6 +1936,130 @@ fn test_cg_order_leaflets_scrambling_from_file() {
 }
 
 #[test]
+fn test_cg_order_leaflets_scrambling_export() {
+    for n_threads in [1, 2, 3, 5, 8, 128] {
+        for freq in [
+            Frequency::every(1).unwrap(),
+            Frequency::every(10).unwrap(),
+            Frequency::once(),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_output = output.path().to_str().unwrap();
+
+            let output_leaflets = NamedTempFile::new().unwrap();
+            let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/scrambling/cg_scrambling.tpr")
+                .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                .analysis_type(AnalysisType::cgorder("@membrane"))
+                .output_yaml(path_to_output)
+                .leaflets(
+                    LeafletClassification::global("@membrane", "name PO4")
+                        .with_frequency(freq)
+                        .with_collect(path_to_output_leaflets),
+                )
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            let (test_order_file, test_leaflets_file) = match freq {
+                Frequency::Every(n) if n.get() == 1 => ("order_global.yaml", "leaflets_every.yaml"),
+                Frequency::Every(n) if n.get() == 10 => {
+                    ("order_global_every_10.yaml", "leaflets_every10.yaml")
+                }
+                Frequency::Once => ("order_once.yaml", "leaflets_once.yaml"),
+                _ => panic!("Unexpected frequency specified."),
+            };
+
+            assert_eq_order(
+                path_to_output,
+                &format!("tests/files/scrambling/{}", test_order_file),
+                1,
+            );
+
+            assert!(diff_files_ignore_first(
+                path_to_output_leaflets,
+                &format!("tests/files/scrambling/{}", test_leaflets_file),
+                1,
+            ));
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_scrambling_export_and_load() {
+    for n_threads in [1, 2, 5, 8, 64] {
+        for freq in [
+            Frequency::every(1).unwrap(),
+            Frequency::every(10).unwrap(),
+            Frequency::once(),
+        ] {
+            for step in [1, 3, 7, 64] {
+                // export the leaflet classification
+                let output_orig = NamedTempFile::new().unwrap();
+                let path_to_output_orig = output_orig.path().to_str().unwrap();
+
+                let output_leaflets = NamedTempFile::new().unwrap();
+                let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/scrambling/cg_scrambling.tpr")
+                    .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                    .analysis_type(AnalysisType::cgorder("@membrane"))
+                    .output_yaml(path_to_output_orig)
+                    .leaflets(
+                        LeafletClassification::global("@membrane", "name PO4")
+                            .with_frequency(freq)
+                            .with_collect(path_to_output_leaflets),
+                    )
+                    .step(step)
+                    .n_threads(n_threads)
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                analysis.run().unwrap().write().unwrap();
+
+                // rerun the analysis using the exported leaflet classification
+                let output_recalc = NamedTempFile::new().unwrap();
+                let path_to_output_recalc = output_recalc.path().to_str().unwrap();
+
+                let analysis = Analysis::builder()
+                    .structure("tests/files/scrambling/cg_scrambling.tpr")
+                    .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+                    .analysis_type(AnalysisType::cgorder("@membrane"))
+                    .output_yaml(path_to_output_recalc)
+                    .leaflets(
+                        LeafletClassification::from_file(path_to_output_leaflets)
+                            .with_frequency(freq),
+                    )
+                    .step(step)
+                    .n_threads(1) // always one thread
+                    .silent()
+                    .overwrite()
+                    .build()
+                    .unwrap();
+
+                analysis.run().unwrap().write().unwrap();
+
+                // order parameters should match exactly
+                assert!(diff_files_ignore_first(
+                    path_to_output_orig,
+                    path_to_output_recalc,
+                    1,
+                ));
+            }
+        }
+    }
+}
+
+#[test]
 fn test_cg_order_leaflets_scrambling_from_map() {
     let output = NamedTempFile::new().unwrap();
     let path_to_output = output.path().to_str().unwrap();
@@ -2905,7 +3032,7 @@ fn test_cg_order_leaflets_from_file_not_enough_frames() {
         Ok(_) => panic!("Run should have failed."),
         Err(e) => assert!(e
             .to_string()
-            .contains("could not get leaflet assignment for frame index")),
+            .contains("could not get leaflet assignment for frame")),
     }
 }
 
@@ -3273,6 +3400,88 @@ fn test_cg_order_vesicle_membrane_normals_from_file_yaml() {
 
         assert_eq_order(path_to_output, "tests/files/cg_order_vesicle.yaml", 1);
     }
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normals_export() {
+    for n_threads in [1, 3, 8, 16] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_output = output.path().to_str().unwrap();
+
+        let output_normals = NamedTempFile::new().unwrap();
+        let path_to_output_normals = output_normals.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/vesicle.tpr")
+            .trajectory("tests/files/vesicle.xtc")
+            .output(path_to_output)
+            .analysis_type(AnalysisType::cgorder(
+                "name C1A D2A C3A C4A C1B C2B C3B C4B",
+            ))
+            .membrane_normal(
+                DynamicNormal::new("name PO4", 2.0)
+                    .unwrap()
+                    .with_collect(path_to_output_normals),
+            )
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert_eq_order(path_to_output, "tests/files/cg_order_vesicle.yaml", 1);
+        assert_eq_normals(path_to_output_normals, "tests/files/normals_vesicle.yaml");
+    }
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normals_leflets_export() {
+    let output = NamedTempFile::new().unwrap();
+    let path_to_output = output.path().to_str().unwrap();
+
+    let output_normals = NamedTempFile::new().unwrap();
+    let path_to_output_normals = output_normals.path().to_str().unwrap();
+
+    let output_leaflets = NamedTempFile::new().unwrap();
+    let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .output(path_to_output)
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(
+            DynamicNormal::new("name PO4", 2.0)
+                .unwrap()
+                .with_collect(path_to_output_normals),
+        )
+        .leaflets(
+            LeafletClassification::clustering("name PO4")
+                .with_frequency(Frequency::once())
+                .with_collect(path_to_output_leaflets),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    analysis.run().unwrap().write().unwrap();
+
+    assert_eq_order(
+        path_to_output,
+        "tests/files/cg_order_vesicle_leaflets.yaml",
+        1,
+    );
+    assert_eq_normals(path_to_output_normals, "tests/files/normals_vesicle.yaml");
+    assert!(diff_files_ignore_first(
+        path_to_output_leaflets,
+        "tests/files/leaflets_vesicle.yaml",
+        1
+    ));
 }
 
 #[test]
@@ -4557,4 +4766,141 @@ fn test_cg_order_ordermaps_leaflets_rust_api() {
         0.3563,
         epsilon = 2e-4
     );
+}
+
+#[test]
+fn test_cg_order_vesicle_dynamic_membrane_normals_collect_rust_api() {
+    let analysis = Analysis::builder()
+        .structure("tests/files/vesicle.tpr")
+        .trajectory("tests/files/vesicle.xtc")
+        .analysis_type(AnalysisType::cgorder(
+            "name C1A D2A C3A C4A C1B C2B C3B C4B",
+        ))
+        .membrane_normal(
+            DynamicNormal::new("name PO4", 2.0)
+                .unwrap()
+                .with_collect(true),
+        )
+        .silent()
+        .overwrite()
+        .build()
+        .unwrap();
+
+    let results = analysis.run().unwrap();
+    results.write().unwrap(); // should not write out anything
+
+    let normals = match &results {
+        AnalysisResults::CG(x) => x.normals_data().as_ref().unwrap(),
+        _ => panic!("Invalid results type returned."),
+    };
+
+    let reference_content = std::fs::read_to_string("tests/files/normals_vesicle.yaml").unwrap();
+    let reference_normals: IndexMap<String, Vec<Vec<Vector3D>>> =
+        serde_yaml::from_str(&reference_content).unwrap();
+
+    for moltype in reference_normals.keys() {
+        for (frame_a, frame_b) in reference_normals
+            .get(moltype)
+            .unwrap()
+            .iter()
+            .zip(normals.get_molecule(moltype).unwrap().iter())
+        {
+            assert_eq!(frame_a.len(), frame_b.len());
+            for (mol_a, mol_b) in frame_a.iter().zip(frame_b.iter()) {
+                assert_relative_eq!(mol_a.x, mol_b.x, epsilon = 1e-5);
+                assert_relative_eq!(mol_a.y, mol_b.y, epsilon = 1e-5);
+                assert_relative_eq!(mol_a.z, mol_b.z, epsilon = 1e-5);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_cg_order_leaflets_scrambling_flip_rust_api() {
+    for leaflets in [
+        LeafletClassification::global("@membrane", "name PO4"),
+        LeafletClassification::local("@membrane", "name PO4", 3.0),
+        LeafletClassification::individual("name PO4", "name C4A C4B"),
+        LeafletClassification::clustering("name PO4").with_frequency(Frequency::every(10).unwrap()),
+    ] {
+        // unflipped analysis run
+        let analysis = Analysis::builder()
+            .structure("tests/files/scrambling/cg_scrambling.tpr")
+            .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(leaflets.clone().with_collect(true))
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        let unflipped_results = match analysis.run().unwrap() {
+            AnalysisResults::CG(x) => x,
+            _ => panic!("Invalid results."),
+        };
+
+        // flipped analysis run
+        let analysis = Analysis::builder()
+            .structure("tests/files/scrambling/cg_scrambling.tpr")
+            .trajectory("tests/files/scrambling/cg_scrambling.xtc")
+            .analysis_type(AnalysisType::cgorder("@membrane"))
+            .leaflets(leaflets.with_collect(true).with_flip(true))
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        let flipped_results = match analysis.run().unwrap() {
+            AnalysisResults::CG(x) => x,
+            _ => panic!("Invalid results."),
+        };
+
+        // compare assignment data
+        let unflipped_leaflets = unflipped_results
+            .leaflets_data()
+            .as_ref()
+            .unwrap()
+            .get_molecule("POPC")
+            .unwrap();
+        let flipped_leaflets = flipped_results
+            .leaflets_data()
+            .as_ref()
+            .unwrap()
+            .get_molecule("POPC")
+            .unwrap();
+
+        assert_eq!(unflipped_leaflets.len(), flipped_leaflets.len());
+        for (unflipped_frame, flipped_frame) in
+            unflipped_leaflets.iter().zip(flipped_leaflets.iter())
+        {
+            assert_eq!(unflipped_frame.len(), flipped_frame.len());
+            for (unflipped, flipped) in unflipped_frame.iter().zip(flipped_frame.iter()) {
+                assert_ne!(unflipped, flipped);
+            }
+        }
+
+        // compare order parameters
+        let unflipped_order = unflipped_results.get_molecule("POPC").unwrap();
+        let flipped_order = flipped_results.get_molecule("POPC").unwrap();
+
+        assert_eq!(
+            unflipped_order.bonds().count(),
+            flipped_order.bonds().count()
+        );
+
+        for (unflipped_bond, flipped_bond) in unflipped_order.bonds().zip(flipped_order.bonds()) {
+            assert_relative_eq!(
+                unflipped_bond.order().total().unwrap().value(),
+                flipped_bond.order().total().unwrap().value()
+            );
+            assert_relative_eq!(
+                unflipped_bond.order().upper().unwrap().value(),
+                flipped_bond.order().lower().unwrap().value()
+            );
+            assert_relative_eq!(
+                unflipped_bond.order().lower().unwrap().value(),
+                flipped_bond.order().upper().unwrap().value(),
+            )
+        }
+    }
 }

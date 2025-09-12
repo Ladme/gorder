@@ -13,6 +13,8 @@ use tempfile::{NamedTempFile, TempDir};
 
 use common::{assert_eq_csv, assert_eq_maps, assert_eq_order};
 
+use crate::common::{assert_eq_normals, diff_files_ignore_first};
+
 #[test]
 fn test_ua_order_basic() {
     for n_threads in [1, 2, 3, 4, 8, 16, 64] {
@@ -245,6 +247,52 @@ fn test_ua_order_leaflets_clustering() {
                 "tests/files/ua_order_leaflets_flipped.yaml",
                 1,
             );
+        }
+    }
+}
+
+#[test]
+fn test_ua_order_leaflets_export() {
+    for n_threads in [1, 2, 3, 8, 64] {
+        for method in [
+            LeafletClassification::global("@membrane", "name r'^P'"),
+            LeafletClassification::local("@membrane", "name r'^P'", 2.5),
+            LeafletClassification::individual(
+                "name r'^P'",
+                "(resname POPC and name CA2 C50) or (resname POPS and name C36 C55)",
+            ),
+        ] {
+            let output = NamedTempFile::new().unwrap();
+            let path_to_yaml = output.path().to_str().unwrap();
+
+            let output_leaflets = NamedTempFile::new().unwrap();
+            let path_to_output_leaflets = output_leaflets.path().to_str().unwrap();
+
+            let analysis = Analysis::builder()
+                .structure("tests/files/ua.tpr")
+                .trajectory("tests/files/ua.xtc")
+                .output_yaml(path_to_yaml)
+                .analysis_type(AnalysisType::uaorder(
+                    Some("(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)"),
+                    Some("(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+                    None
+                ))
+                .leaflets(method.clone().with_frequency(Frequency::once()).with_collect(path_to_output_leaflets))
+                .n_threads(n_threads)
+                .silent()
+                .overwrite()
+                .build()
+                .unwrap();
+
+            analysis.run().unwrap().write().unwrap();
+
+            assert_eq_order(path_to_yaml, "tests/files/ua_order_leaflets.yaml", 1);
+
+            assert!(diff_files_ignore_first(
+                path_to_output_leaflets,
+                "tests/files/ua_leaflets_once.yaml",
+                1,
+            ));
         }
     }
 }
@@ -690,6 +738,38 @@ fn test_ua_order_dynamic_normals() {
         analysis.run().unwrap().write().unwrap();
 
         assert_eq_order(path_to_yaml, "tests/files/ua_order_dynamic_normals.yaml", 1);
+    }
+}
+
+#[test]
+fn test_ua_order_dynamic_normals_export() {
+    for n_threads in [1, 2, 4, 8, 64] {
+        let output = NamedTempFile::new().unwrap();
+        let path_to_yaml = output.path().to_str().unwrap();
+
+        let output_normals = NamedTempFile::new().unwrap();
+        let path_to_output_normals = output_normals.path().to_str().unwrap();
+
+        let analysis = Analysis::builder()
+            .structure("tests/files/ua.tpr")
+            .trajectory("tests/files/ua.xtc")
+            .output_yaml(path_to_yaml)
+            .analysis_type(AnalysisType::uaorder(
+                Some("(resname POPC and name r'^C' and not name C15 C34 C24 C25) or (resname POPS and name r'^C' and not name C6 C18 C39 C27 C28)"),
+                Some("(resname POPC and name C24 C25) or (resname POPS and name C27 C28)"),
+                None
+            ))
+            .membrane_normal(DynamicNormal::new("name r'^P'", 2.0).unwrap().with_collect(path_to_output_normals))
+            .n_threads(n_threads)
+            .silent()
+            .overwrite()
+            .build()
+            .unwrap();
+
+        analysis.run().unwrap().write().unwrap();
+
+        assert_eq_order(path_to_yaml, "tests/files/ua_order_dynamic_normals.yaml", 1);
+        assert_eq_normals(path_to_output_normals, "tests/files/ua_normals.yaml");
     }
 }
 

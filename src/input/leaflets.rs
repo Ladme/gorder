@@ -14,7 +14,7 @@ use serde::{
 };
 use serde_yaml::Value;
 
-use crate::Leaflet;
+use crate::{input::Collect, Leaflet};
 
 use super::{frequency::Frequency, Axis};
 
@@ -60,6 +60,8 @@ impl LeafletClassification {
             heads: heads.to_string(),
             frequency: Frequency::default(),
             membrane_normal: None,
+            collect: Collect::default(),
+            flip: Default::default(),
         })
     }
 
@@ -85,6 +87,8 @@ impl LeafletClassification {
             radius,
             frequency: Frequency::default(),
             membrane_normal: None,
+            collect: Collect::default(),
+            flip: Default::default(),
         })
     }
 
@@ -103,6 +107,8 @@ impl LeafletClassification {
             methyls: methyls.to_string(),
             frequency: Frequency::default(),
             membrane_normal: None,
+            collect: Collect::default(),
+            flip: Default::default(),
         })
     }
 
@@ -115,6 +121,7 @@ impl LeafletClassification {
         Self::FromFile(FromFileParams {
             file: file.to_owned(),
             frequency: Frequency::default(),
+            flip: Default::default(),
         })
     }
 
@@ -124,6 +131,7 @@ impl LeafletClassification {
         Self::FromMap(FromMapParams {
             assignment,
             frequency: Frequency::default(),
+            flip: Default::default(),
         })
     }
 
@@ -150,6 +158,7 @@ impl LeafletClassification {
             upper_leaflet: upper_leaflet.to_owned(),
             lower_leaflet: lower_leaflet.to_owned(),
             frequency: Frequency::default(),
+            flip: Default::default(),
         })
     }
 
@@ -164,6 +173,8 @@ impl LeafletClassification {
         Self::Clustering(ClusteringParams {
             heads: heads.to_owned(),
             frequency: Frequency::default(),
+            collect: Collect::default(),
+            flip: Default::default(),
         })
     }
 
@@ -207,6 +218,45 @@ impl LeafletClassification {
         self
     }
 
+    /// Collect and store leaflet classification data.
+    /// If `true`, the data are collected but only accessible using API.
+    /// If a string is provided, the data will be exported into the output file.
+    ///
+    /// ## Panics
+    /// This method is not supported for manual leaflet classification methods
+    /// (FromFile, FromMap, FromNdx) and will panic if called.
+    #[inline(always)]
+    pub fn with_collect(mut self, collect: impl Into<Collect>) -> Self {
+        match &mut self {
+            LeafletClassification::Global(x) => x.collect = collect.into(),
+            LeafletClassification::Local(x) => x.collect = collect.into(),
+            LeafletClassification::Individual(x) => x.collect = collect.into(),
+            LeafletClassification::Clustering(x) => x.collect = collect.into(),
+            // panic for manual classification
+            LeafletClassification::FromFile(_) | LeafletClassification::FromMap(_) | LeafletClassification::FromNdx(_) =>
+                panic!("Collecting leaflet classification data is not supported for manual leaflet classification.\nThe data are already collected!"),
+        }
+
+        self
+    }
+
+    /// Treat the `upper` leaflet as the `lower` leaflet and vice versa.
+    /// Typically only useful for clustering classification if the leaflets get labeled
+    /// differently than you want.
+    pub fn with_flip(mut self, flip: bool) -> Self {
+        match &mut self {
+            LeafletClassification::Global(x) => x.flip = flip,
+            LeafletClassification::Local(x) => x.flip = flip,
+            LeafletClassification::Individual(x) => x.flip = flip,
+            LeafletClassification::FromFile(x) => x.flip = flip,
+            LeafletClassification::FromMap(x) => x.flip = flip,
+            LeafletClassification::FromNdx(x) => x.flip = flip,
+            LeafletClassification::Clustering(x) => x.flip = flip,
+        }
+
+        self
+    }
+
     /// Get the frequency of the analysis.
     #[inline(always)]
     pub fn get_frequency(&self) -> Frequency {
@@ -233,6 +283,35 @@ impl LeafletClassification {
             | LeafletClassification::FromMap(_)
             | LeafletClassification::FromNdx(_) => None,
             LeafletClassification::Clustering(_) => None,
+        }
+    }
+
+    /// Should the leaflet classification data be collected and where?
+    /// Always returns `Collect::Boolean(false)` for manual leaflet classification.
+    #[inline(always)]
+    pub fn get_collect(&self) -> &Collect {
+        match self {
+            LeafletClassification::Global(x) => x.collect(),
+            LeafletClassification::Local(x) => x.collect(),
+            LeafletClassification::Individual(x) => x.collect(),
+            LeafletClassification::Clustering(x) => x.collect(),
+            LeafletClassification::FromFile(_)
+            | LeafletClassification::FromMap(_)
+            | LeafletClassification::FromNdx(_) => &Collect::Boolean(false),
+        }
+    }
+
+    /// Should the leaflets be flipped.
+    #[inline(always)]
+    pub fn get_flip(&self) -> bool {
+        match self {
+            LeafletClassification::Global(x) => x.flip(),
+            LeafletClassification::Local(x) => x.flip(),
+            LeafletClassification::Individual(x) => x.flip(),
+            LeafletClassification::FromFile(x) => x.flip(),
+            LeafletClassification::FromMap(x) => x.flip(),
+            LeafletClassification::FromNdx(x) => x.flip(),
+            LeafletClassification::Clustering(x) => x.flip(),
         }
     }
 
@@ -267,6 +346,14 @@ pub struct GlobalParams {
     #[getset(get_copy = "pub")]
     #[serde(default)]
     membrane_normal: Option<Axis>,
+    /// Should the leaflet assignment data be collected, stored and exported into an output file?
+    #[getset(get = "pub")]
+    #[serde(default, alias = "export")]
+    collect: Collect,
+    /// Will treat upper leaflet as lower leaflet and vice versa.
+    #[getset(get_copy = "pub")]
+    #[serde(default)] // false by default
+    flip: bool,
 }
 
 /// Parameters for classification of lipids.
@@ -294,6 +381,14 @@ pub struct LocalParams {
     #[getset(get_copy = "pub")]
     #[serde(default)]
     membrane_normal: Option<Axis>,
+    /// Should the leaflet assignment data be collected, stored and exported into an output file?
+    #[getset(get = "pub")]
+    #[serde(default, alias = "export")]
+    collect: Collect,
+    /// Will treat upper leaflet as lower leaflet and vice versa.
+    #[getset(get_copy = "pub")]
+    #[serde(default)] // false by default
+    flip: bool,
 }
 
 fn validate_radius<'de, D>(deserializer: D) -> Result<f32, D::Error>
@@ -330,6 +425,14 @@ pub struct IndividualParams {
     #[getset(get_copy = "pub")]
     #[serde(default)]
     membrane_normal: Option<Axis>,
+    /// Should the leaflet assignment data be collected, stored and exported into an output file?
+    #[getset(get = "pub")]
+    #[serde(default, alias = "export")]
+    collect: Collect,
+    /// Will treat upper leaflet as lower leaflet and vice versa.
+    #[getset(get_copy = "pub")]
+    #[serde(default)] // false by default
+    flip: bool,
 }
 
 /// Classification of lipids into leaflets should be read from a separate leaflet assignment file.
@@ -343,6 +446,10 @@ pub struct FromFileParams {
     #[getset(get_copy = "pub")]
     #[serde(default)]
     frequency: Frequency,
+    /// Will treat upper leaflet as lower leaflet and vice versa.
+    #[getset(get_copy = "pub")]
+    #[serde(default)] // false by default
+    flip: bool,
 }
 
 impl<'de> Deserialize<'de> for FromFileParams {
@@ -355,18 +462,23 @@ impl<'de> Deserialize<'de> for FromFileParams {
             Ok(Self {
                 file: s,
                 frequency: Default::default(),
+                flip: Default::default(),
             })
         } else {
             #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
             struct Helper {
                 file: String,
                 #[serde(default)]
                 frequency: Frequency,
+                #[serde(default)]
+                flip: bool,
             }
             let h: Helper = serde_yaml::from_value(v).map_err(serde::de::Error::custom)?;
             Ok(Self {
                 file: h.file,
                 frequency: h.frequency,
+                flip: h.flip,
             })
         }
     }
@@ -383,6 +495,10 @@ pub struct FromMapParams {
     #[serde(default)]
     #[getset(get_copy = "pub")]
     frequency: Frequency,
+    /// Will treat upper leaflet as lower leaflet and vice versa.
+    #[getset(get_copy = "pub")]
+    #[serde(default)] // false by default
+    flip: bool,
 }
 
 impl<'de> Deserialize<'de> for FromMapParams {
@@ -402,6 +518,7 @@ impl<'de> Deserialize<'de> for FromMapParams {
             {
                 let mut assignment: Option<HashMap<String, Vec<Vec<Leaflet>>>> = None;
                 let mut frequency: Option<Frequency> = None;
+                let mut flip: Option<bool> = None;
                 let mut raw = HashMap::new();
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
@@ -417,6 +534,12 @@ impl<'de> Deserialize<'de> for FromMapParams {
                             }
                             frequency = Some(map.next_value()?);
                         }
+                        "flip" => {
+                            if flip.is_some() {
+                                return Err(de::Error::duplicate_field("flip"));
+                            }
+                            flip = Some(map.next_value()?);
+                        }
                         other => {
                             raw.insert(other.to_owned(), map.next_value()?);
                         }
@@ -425,6 +548,7 @@ impl<'de> Deserialize<'de> for FromMapParams {
                 Ok(FromMapParams {
                     assignment: assignment.unwrap_or(raw),
                     frequency: frequency.unwrap_or_default(),
+                    flip: flip.unwrap_or_default(),
                 })
             }
         }
@@ -454,6 +578,10 @@ pub struct FromNdxParams {
     #[serde(default)]
     #[getset(get_copy = "pub")]
     frequency: Frequency,
+    /// Will treat upper leaflet as lower leaflet and vice versa.
+    #[getset(get_copy = "pub")]
+    #[serde(default)] // false by default
+    flip: bool,
 }
 
 impl FromNdxParams {
@@ -544,9 +672,17 @@ pub struct ClusteringParams {
     #[getset(get = "pub")]
     heads: String,
     /// Frequency of leaflet assignment.
-    #[serde(default)]
     #[getset(get_copy = "pub")]
+    #[serde(default)]
     frequency: Frequency,
+    /// Should the leaflet assignment data be collected, stored and exported into an output file?
+    #[getset(get = "pub")]
+    #[serde(default, alias = "export")]
+    collect: Collect,
+    /// Will treat upper leaflet as lower leaflet and vice versa.
+    #[getset(get_copy = "pub")]
+    #[serde(default)] // false by default
+    flip: bool,
 }
 
 #[cfg(test)]
@@ -831,6 +967,259 @@ lower_leaflet: LowerLeaflet";
             }
             _ => panic!("Invalid leaflet classification returned."),
         }
+    }
+
+    #[test]
+    fn test_specifying_collect() {
+        let classification =
+            LeafletClassification::global("@membrane", "name P").with_collect(true);
+        assert_eq!(classification.get_collect(), &Collect::Boolean(true));
+
+        let classification =
+            LeafletClassification::local("@membrane", "name P", 2.5).with_collect(false);
+        assert_eq!(classification.get_collect(), &Collect::Boolean(false));
+
+        let classification =
+            LeafletClassification::clustering("name P").with_collect("leaflets.yaml");
+        assert_eq!(
+            classification.get_collect(),
+            &Collect::File(String::from("leaflets.yaml"))
+        );
+    }
+
+    #[test]
+    fn test_parse_collect() {
+        for string in [
+            "!Global
+membrane: \"@membrane\"
+heads: \"name P\"
+collect: \"leaflets.yaml\"",
+            "!Global
+membrane: \"@membrane\"
+heads: \"name P\"
+export: \"leaflets.yaml\"",
+        ] {
+            match serde_yaml::from_str(string).unwrap() {
+                LeafletClassification::Global(params) => {
+                    assert_eq!(params.membrane(), "@membrane");
+                    assert_eq!(params.heads(), "name P");
+                    assert_eq!(
+                        params.collect(),
+                        &Collect::File(String::from("leaflets.yaml"))
+                    );
+                }
+                _ => panic!("Invalid leaflet classification returned."),
+            }
+        }
+
+        for string in [
+            "!Local
+membrane: \"@membrane\"
+heads: \"name P\"
+radius: 2.5
+collect: \"leaflets.yaml\"",
+            "!Local
+membrane: \"@membrane\"
+heads: \"name P\"
+radius: 2.5
+export: \"leaflets.yaml\"",
+        ] {
+            match serde_yaml::from_str(string).unwrap() {
+                LeafletClassification::Local(params) => {
+                    assert_eq!(params.membrane(), "@membrane");
+                    assert_eq!(params.heads(), "name P");
+                    assert_eq!(params.radius(), 2.5);
+                    assert_eq!(
+                        params.collect(),
+                        &Collect::File(String::from("leaflets.yaml"))
+                    );
+                }
+                _ => panic!("Invalid leaflet classification returned."),
+            }
+        }
+
+        for string in [
+            "!Individual
+heads: \"name P\"
+methyls: \"name C316 C218\"
+collect: \"leaflets.yaml\"",
+            "!Individual
+heads: \"name P\"
+methyls: \"name C316 C218\"
+export: \"leaflets.yaml\"",
+        ] {
+            match serde_yaml::from_str(string).unwrap() {
+                LeafletClassification::Individual(params) => {
+                    assert_eq!(params.heads(), "name P");
+                    assert_eq!(params.methyls(), "name C316 C218");
+                    assert_eq!(
+                        params.collect(),
+                        &Collect::File(String::from("leaflets.yaml"))
+                    );
+                }
+                _ => panic!("Invalid leaflet classification returned."),
+            }
+        }
+
+        for string in [
+            "!Clustering
+heads: \"name P\"
+collect: \"leaflets.yaml\"",
+            "!Clustering
+heads: \"name P\"
+export: \"leaflets.yaml\"",
+        ] {
+            match serde_yaml::from_str(string).unwrap() {
+                LeafletClassification::Clustering(params) => {
+                    assert_eq!(params.heads(), "name P");
+                    assert_eq!(
+                        params.collect(),
+                        &Collect::File(String::from("leaflets.yaml"))
+                    );
+                }
+                _ => panic!("Invalid leaflet classification returned."),
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_flip() {
+        let string = "!Global
+  membrane: \"@membrane\"
+  heads: \"name P\"
+  flip: true";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Global(params) => {
+                assert_eq!(params.membrane(), "@membrane");
+                assert_eq!(params.heads(), "name P");
+                assert!(params.flip())
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+
+        let string = "!Local
+  membrane: \"@membrane\"
+  heads: \"name P\"
+  radius: 2.5
+  flip: true";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Local(params) => {
+                assert_eq!(params.membrane(), "@membrane");
+                assert_eq!(params.heads(), "name P");
+                assert!(params.flip())
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+
+        let string = "!Individual
+  heads: \"name P\"
+  methyls: \"name C218 C316\"
+  flip: true";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Individual(params) => {
+                assert_eq!(params.heads(), "name P");
+                assert_eq!(params.methyls(), "name C218 C316");
+                assert!(params.flip())
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+
+        let string = "!Clustering
+  heads: \"name P\"
+  flip: true";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::Clustering(params) => {
+                assert_eq!(params.heads(), "name P");
+                assert!(params.flip())
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+
+        let string = "!FromFile
+  file: leaflets.yaml
+  flip: true";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::FromFile(params) => {
+                assert_eq!(params.file(), "leaflets.yaml");
+                assert!(params.flip())
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+
+        let string = "!Inline
+  assignment:
+    POPE:
+      - [Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper]
+    POPC:
+      - [Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower]
+    POPG:
+      - [Upper, Upper, Upper, Upper, Lower, Lower, Lower, Lower]
+  flip: true";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::FromMap(params) => {
+                assert!(params.assignment().contains_key("POPE"));
+                assert!(params.assignment().contains_key("POPC"));
+                assert!(params.assignment().contains_key("POPG"));
+                assert!(params.flip())
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+
+        let string = "!FromNdx
+  ndx: \"leaflets.ndx\"
+  heads: \"name P\"
+  upper_leaflet: \"UpperLeaflet\"
+  lower_leaflet: \"LowerLeaflet\"
+  flip: true";
+
+        match serde_yaml::from_str(string).unwrap() {
+            LeafletClassification::FromNdx(params) => {
+                assert_eq!(params.heads(), "name P");
+                assert_eq!(params.ndx(), &vec![String::from("leaflets.ndx")]);
+                assert!(params.flip())
+            }
+            _ => panic!("Invalid leaflet classification returned."),
+        }
+    }
+
+    #[test]
+    fn test_parse_collect_manual_fail() {
+        let string = "!FromFile
+file: \"input_leaflets.yaml\"
+collect: \"leaflets.yaml\"";
+
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
+
+        let string = "!Inline
+assignment: 
+    POPE:
+      - [Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper, Upper]
+    POPC:
+      - [Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower, Lower]
+    POPG:
+      - [Upper, Upper, Upper, Upper, Lower, Lower, Lower, Lower]
+frequency: !Once
+export: \"leaflets.yaml\"";
+
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
+
+        let string = "!FromNdx
+  ndx: \"leaflets.ndx\"
+  heads: \"name P\"
+  upper_leaflet: \"UpperLeaflet\"
+  lower_leaflet: \"LowerLeaflet\"
+  collect: \"leaflets.yaml\"";
+
+        let params: Result<LeafletClassification, _> = serde_yaml::from_str(string);
+        assert!(params.is_err());
     }
 
     #[test]

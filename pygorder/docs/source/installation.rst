@@ -33,3 +33,12 @@ If you use neither ``uv`` nor ``conda``, you can also install ``gorder`` using `
 .. code-block:: bash
 
     pip install git+https://github.com/Ladme/gorder.git#subdirectory=pygorder
+
+Optional dependencies
++++++++++++++++++++++
+
+If you intend to provide leaflet assignment or membrane normals manually using a dictionary,
+or if you want to access maps of order parameters, collected leaflet assignments, or calculated
+membrane normals directly from Python, you also need to `install NumPy <https://numpy.org/install>`_.
+
+You do not need NumPy for regular usage.

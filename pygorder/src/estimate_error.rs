@@ -4,24 +4,32 @@
 use pyo3::prelude::*;
 
 use gorder_core::input::EstimateError as RsEstimateError;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 use crate::ConfigError;
 
 /// Parameters for estimating the error of the analysis.
 ///
-/// Attributes
+/// Parameters
 /// ----------
-/// n_blocks : int
-///     Number of blocks to divide the trajectory into for error estimation.
-///     Default is 5. It is recommended not to modify this value to artificially lower error estimates.
-/// output_convergence : Optional[str]
-///     Optional filename for writing convergence data.
-///     If error estimation is enabled, convergence analysis will be performed even if this option
-///     is not specified; the results just won’t be written to a file.
-#[pyclass]
+/// n_blocks : int, default=5
+///     Number of blocks to divide the trajectory for error estimation.
+///     Must be at least 2. It is recommended not to modify this value to
+///     artificially reduce error estimates.
+/// output_convergence : Optional[str], default=None
+///     Filename for writing convergence data. If omitted, convergence analysis
+///     is still performed but results are not written into a file.
+///
+/// Raises
+/// ------
+/// ConfigError
+///     If `n_blocks` is less than 2.
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.estimate_error")]
 #[derive(Clone)]
 pub struct EstimateError(pub(crate) RsEstimateError);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl EstimateError {
     #[new]

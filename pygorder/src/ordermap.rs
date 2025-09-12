@@ -5,64 +5,97 @@ use gorder_core::input::ordermap::GridSpan as RsSpan;
 use gorder_core::input::ordermap::OrderMap as RsMap;
 use gorder_core::input::ordermap::OrderMapBuilder as RsMapBuilder;
 use pyo3::prelude::*;
+use pyo3::types::PySequence;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::string2plane;
 use crate::ConfigError;
 
-/// Represents the parameters for generating ordermaps.
+/// Parameters for generating order maps.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// output_directory : Optional[str]
-///     Directory where the output files containing individual order maps will be saved.
-/// min_samples : Optional[int]
+///     Directory where output files containing individual order maps will be saved.
+///
+/// min_samples : Optional[int], default=1
 ///     Minimum number of samples required in a grid tile to calculate the order parameter.
-///     Default is `1`.
-/// dim : Optional[List[Union[str, List[float]]]]
-///     Span of the grid along the axes.
-///     - The first span corresponds to the x-axis (if the map is in the xy or xz plane) or the z-axis (if the map is in the yz plane).
-///     - The second span corresponds to the y-axis (if the map is in the xy or yz plane) or the z-axis (if the map is in the xz plane).
+///
+/// dim : Optional[Sequence[Union[str, Sequence[float]]]]
+///     Span of the grid along the axes:
+///     - First span corresponds to the x-axis (for xy or xz plane) or z-axis (for yz plane).
+///     - Second span corresponds to the y-axis (for xy or yz plane) or z-axis (for xz plane).
 ///     If not specified, the span is derived from the simulation box size of the input structure.
-/// bin_size : Optional[List[float]]
-///     Size of the grid bin along the axes.
-///     - The first bin dimension corresponds to the x-axis (if the map is in the xy or xz plane) or the z-axis (if the map is in the yz plane).
-///     - The second bin dimension corresponds to the y-axis (if the map is in the xy or yz plane) or the z-axis (if the map is in the xz plane).
-///     Defaults to `[0.1, 0.1]` nm if not specified.
+///
+/// bin_size : Optional[Sequence[float]], default=[0.1, 0.1]
+///     Size of the grid bin along the axes:
+///     - First bin dimension corresponds to the x-axis (for xy or xz plane) or z-axis (for yz plane).
+///     - Second bin dimension corresponds to the y-axis (for xy or yz plane) or z-axis (for xz plane).
+///
 /// plane : Optional[str]
-///     Plane in which the order maps should be constructed.
-///     Allowed values are `xy`, `xz`, or `yz`.
+///     Plane in which the order maps are constructed. Allowed values: `xy`, `xz`, `yz`.
 ///     If not specified, the plane is assumed to be perpendicular to the membrane normal.
-#[pyclass]
+///
+/// Raises
+/// ------
+/// ConfigError
+///     If `min_samples` <= 0, `bin_size` <= 0, any `dim` span is invalid (first value <= second),
+///     or if `plane` is not one of the allowed values (`xy`, `xz`, `yz`).
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.ordermap")]
 #[derive(Clone)]
 pub struct OrderMap(pub(crate) RsMap);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl OrderMap {
     #[pyo3(signature = (
-        output_directory = None, 
-        min_samples = 1, 
-        dim = [GridSpan::default(), GridSpan::default()], 
-        bin_size = [0.1, 0.1], 
+        output_directory = None,
+        min_samples = 1,
+        dim = None,
+        bin_size = [0.1, 0.1],
         plane = None)
     )]
     #[new]
-    pub fn new(
+    pub fn new<'a>(
         output_directory: Option<&str>,
         min_samples: usize,
-        dim: [GridSpan; 2],
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Sequence[typing.Union[builtins.str, typing.Sequence[builtins.float]]]]", imports=("typing")
+        ))]
+        dim: Option<Bound<'a, PySequence>>,
         bin_size: [f32; 2],
         plane: Option<&str>,
     ) -> PyResult<Self> {
         let mut builder: RsMapBuilder = RsMap::builder();
 
+        let converted_dim = if let Some(dim) = dim {
+            if dim.len().unwrap() != 2 {
+                return Err(ConfigError::new_err("`dim` must have exactly two elements"));
+            }
+
+            [
+                GridSpan::extract_bound(&dim.get_item(0).unwrap())?,
+                GridSpan::extract_bound(&dim.get_item(1).unwrap())?,
+            ]
+        } else {
+            [GridSpan::default(), GridSpan::default()]
+        };
+
         apply_if_some!(builder, output_directory => output_directory);
-        builder.min_samples(min_samples).bin_size(bin_size).dim([dim[0].0, dim[1].0]);
+        builder
+            .min_samples(min_samples)
+            .bin_size(bin_size)
+            .dim([converted_dim[0].0, converted_dim[1].0]);
 
         if let Some(plane) = plane {
             builder.plane(string2plane(plane)?);
         }
 
-        let inner = builder.build().map_err(|e| ConfigError::new_err(e.to_string()))?;
+        let inner = builder
+            .build()
+            .map_err(|e| ConfigError::new_err(e.to_string()))?;
         Ok(Self(inner))
     }
 }

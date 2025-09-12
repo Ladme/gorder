@@ -1,0 +1,13 @@
+# Test file for binary application.
+structure: tests/files/pcpepg.tpr
+trajectory: tests/files/pcpepg.xtc
+output: temp_aa_order_leaflets_with_export.yaml
+analysis_type: !AAOrder
+    heavy_atoms: "@membrane and element name carbon"
+    hydrogens: "@membrane and element name hydrogen"
+leaflets: !Global
+    membrane: "@membrane"
+    heads: "name P"
+    export: temp_leaflets_exported_every.yaml
+silent: true
+overwrite: true

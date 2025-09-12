@@ -11,8 +11,11 @@ use numpy::PyArray3;
 use numpy::PyArrayMethods;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::string2axis;
+use crate::Collect;
 use crate::ConfigError;
 
 /// Structure describing the direction of the membrane normal
@@ -41,34 +44,65 @@ impl<'source> FromPyObject<'source> for MembraneNormal {
         }
 
         Err(ConfigError::new_err(
-            "invalid type for MembraneNormal constructor: expected a str, DynamicNormal, or dict",
+            "invalid type for MembraneNormal constructor: expected a str, DynamicNormal, or Mapping",
         ))
     }
 }
 
 /// Request a dynamic local membrane normal calculation.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// heads : str
 ///     Selection query specifying reference atoms representing lipid headgroups
-///     (typically phosphorus atoms or phosphate beads).
-///     There must be exactly one such atom/bead per lipid molecule.
+///     (typically phosphorus atoms or phosphate beads). Must be exactly one
+///     atom/bead per lipid molecule.
 /// radius : float
-///     Radius of the sphere used to select nearby lipids for membrane normal estimation.
-///     The recommended value is half the membrane thickness.
-#[pyclass]
+///     Radius of the sphere used to select nearby lipids for membrane normal
+///     estimation in nm. Recommended value is half the membrane thickness.
+///     Must be greater than 0. The default value is 2.0 (nm).
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether dynamic membrane normals are saved and exported.
+///     By default (`False`), normals are not saved.
+///     If `True`, normals are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, normals are saved and written to the specified output file.
+///
+/// Raises
+/// ------
+/// ConfigError
+///     If `radius` is not positive.
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.membrane_normal")]
 #[derive(Clone)]
 pub struct DynamicNormal(RsDynamic);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl DynamicNormal {
     #[new]
-    pub fn new(heads: &str, radius: f32) -> PyResult<Self> {
-        Ok(Self(
+    #[pyo3(signature = (heads, radius = 2.0, collect = None))]
+    pub fn new<'a>(
+        heads: &str,
+        radius: f32,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]
+        collect: Option<Bound<'a, PyAny>>,
+    ) -> PyResult<Self> {
+        Ok(Self(add_collect(
             RsDynamic::new(heads, radius).map_err(|e| ConfigError::new_err(e.to_string()))?,
-        ))
+            collect,
+        )?))
     }
+}
+
+/// Attempt to add request for data collection to dynamic membrane normals.
+fn add_collect<'a>(normals: RsDynamic, collect: Option<Bound<'a, PyAny>>) -> PyResult<RsDynamic> {
+    if let Some(collect) = collect {
+        return Ok(normals.with_collect(Collect::extract_bound(&collect)?.0));
+    }
+
+    Ok(normals)
 }
 
 /// Converts a three-dimensional numpy array into a Vec<Vec<Vector3D>>.

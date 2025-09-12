@@ -10,8 +10,11 @@ use numpy::PyArray2;
 use numpy::PyArrayMethods;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use pyo3_stub_gen::derive::gen_stub_pyclass;
+use pyo3_stub_gen::derive::gen_stub_pymethods;
 
 use crate::string2axis;
+use crate::Collect;
 use crate::ConfigError;
 
 macro_rules! try_extract {
@@ -46,21 +49,44 @@ impl<'source> FromPyObject<'source> for LeafletClassification {
     }
 }
 
-/// Frequency of some action being performed.
+/// Represents how often an action is performed.
+///
+/// Can specify that an action occurs once or at a regular interval (every N frames).
+#[gen_stub_pyclass]
 #[pyclass]
 #[derive(Clone)]
 pub struct Frequency(RsFreq);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Frequency {
     /// Perform the action once.
+    ///
+    /// Returns
+    /// -------
+    /// Frequency
+    ///     A frequency object representing a single execution.
     #[staticmethod]
     pub fn once() -> Self {
         Frequency(RsFreq::once())
     }
 
     /// Perform the action every N frames.
-    /// Returns an error if `n_frames` is 0.
+    ///
+    /// Parameters
+    /// ----------
+    /// n_frames : int
+    ///     Number of frames between each action.
+    ///
+    /// Returns
+    /// -------
+    /// Frequency
+    ///     A frequency object representing the repeated execution interval.
+    ///
+    /// Raises
+    /// ------
+    /// ConfigError
+    ///     If `n_frames` is 0.
     #[staticmethod]
     pub fn every(n_frames: usize) -> PyResult<Self> {
         Ok(Frequency(
@@ -71,9 +97,9 @@ impl Frequency {
 
 /// Assign lipids into leaflets based on the global membrane center of geometry.
 ///
-/// Generally reliable and fast. The best option for analyzing disrupted membranes.
+/// Reliable for planar membranes and fast. Recommended for most membranes.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// membrane : str
 ///     Selection query specifying all lipids forming the membrane.
@@ -86,34 +112,55 @@ impl Frequency {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
-#[pyclass]
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether leaflet classification data are saved and exported.
+///     By default (`False`), data are not saved.
+///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, data are saved and written to the specified output file.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct GlobalClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl GlobalClassification {
     #[new]
-    #[pyo3(signature = (membrane, heads, frequency = None, membrane_normal = None))]
-    pub fn new(
+    #[pyo3(signature = (membrane, heads, frequency = None, membrane_normal = None, collect = None, flip = false))]
+    pub fn new<'a>(
         membrane: &str,
         heads: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]
+        collect: Option<Bound<'a, PyAny>>,
+        flip: bool,
     ) -> PyResult<Self> {
-        let classification = add_normal(
-            add_freq(RsLeafletClassification::global(membrane, heads), frequency)?,
-            membrane_normal,
+        let classification = add_collect(
+            add_normal(
+                add_freq(RsLeafletClassification::global(membrane, heads), frequency)?,
+                membrane_normal,
+            )?,
+            collect,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
 /// Assign lipids into leaflets based on the local membrane center of geometry.
 ///
-/// Useful for curved membranes but computationally slow.
+/// Reliable for planar membranes but slow.
+/// Recommended for planar membranes if the global and individual methods do not work for you.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// membrane : str
 ///     Selection query specifying all lipids forming the membrane.
@@ -128,21 +175,37 @@ impl GlobalClassification {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
-
-#[pyclass]
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether leaflet classification data are saved and exported.
+///     By default (`False`), data are not saved.
+///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, data are saved and written to the specified output file.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct LocalClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl LocalClassification {
     #[new]
-    #[pyo3(signature = (membrane, heads, radius, frequency = None, membrane_normal = None))]
-    pub fn new(
+    #[pyo3(signature = (membrane, heads, radius, frequency = None, membrane_normal = None, collect = None, flip = false))]
+    pub fn new<'a>(
         membrane: &str,
         heads: &str,
         radius: f32,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]
+        collect: Option<Bound<'a, PyAny>>,
+        flip: bool,
     ) -> PyResult<Self> {
         if radius <= 0.0 {
             return Err(ConfigError::new_err(format!(
@@ -151,23 +214,26 @@ impl LocalClassification {
             )));
         }
 
-        let classification = add_normal(
-            add_freq(
-                RsLeafletClassification::local(membrane, heads, radius),
-                frequency,
+        let classification = add_collect(
+            add_normal(
+                add_freq(
+                    RsLeafletClassification::local(membrane, heads, radius),
+                    frequency,
+                )?,
+                membrane_normal,
             )?,
-            membrane_normal,
+            collect,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
 /// Assign lipids into leaflets based on the orientation of acyl chains.
 ///
-/// Less reliable but computationally fast.
+/// Less reliable but very fast. Recommended for very large, undulating planar membranes.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// heads : str
 ///     Selection query specifying reference atoms representing lipid headgroups
@@ -181,37 +247,57 @@ impl LocalClassification {
 /// membrane_normal : Optional[str]
 ///     Membrane normal used for leaflet classification. Defaults to the membrane normal
 ///     specified for the entire Analysis.
-#[pyclass]
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether leaflet classification data are saved and exported.
+///     By default (`False`), data are not saved.
+///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, data are saved and written to the specified output file.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct IndividualClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl IndividualClassification {
     #[new]
-    #[pyo3(signature = (heads, methyls, frequency = None, membrane_normal = None))]
-    pub fn new(
+    #[pyo3(signature = (heads, methyls, frequency = None, membrane_normal = None, collect = None, flip = false))]
+    pub fn new<'a>(
         heads: &str,
         methyls: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
         membrane_normal: Option<&str>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]
+        collect: Option<Bound<'a, PyAny>>,
+        flip: bool,
     ) -> PyResult<Self> {
-        let classification = add_normal(
-            add_freq(
-                RsLeafletClassification::individual(heads, methyls),
-                frequency,
+        let classification = add_collect(
+            add_normal(
+                add_freq(
+                    RsLeafletClassification::individual(heads, methyls),
+                    frequency,
+                )?,
+                membrane_normal,
             )?,
-            membrane_normal,
+            collect,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
 /// Assign lipids into leaflets using spectral clustering.
 ///
-/// Reliable even for curved membranes but very slow, especially for large systems.
+/// Reliable but very slow. Recommended for curved membranes, tubes and vesicles.
 ///
-/// Attributes
+/// Parameters
 /// ----------
 /// heads : str
 ///     Selection query specifying reference atoms representing lipid headgroups
@@ -219,39 +305,76 @@ impl IndividualClassification {
 ///     There must be exactly one such atom/bead per lipid molecule.
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
-#[pyclass]
+/// collect : Optional[Union[bool, str]], default=False
+///     Determines whether leaflet classification data are saved and exported.
+///     By default (`False`), data are not saved.
+///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
+///     If a string is provided, data are saved and written to the specified output file.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct ClusteringClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl ClusteringClassification {
     #[new]
-    #[pyo3(signature = (heads, frequency = None))]
-    pub fn new(heads: &str, frequency: Option<Frequency>) -> PyResult<Self> {
-        let classification = add_freq(RsLeafletClassification::clustering(heads), frequency)?;
+    #[pyo3(signature = (heads, frequency = None, collect = None, flip = false))]
+    pub fn new<'a>(
+        heads: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
+        frequency: Option<Frequency>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
+        ))]
+        collect: Option<Bound<'a, PyAny>>,
+        flip: bool,
+    ) -> PyResult<Self> {
+        let classification = add_collect(
+            add_freq(RsLeafletClassification::clustering(heads), frequency)?,
+            collect,
+        )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
 /// Get leaflet assignment from an external YAML file or a dictionary.
 ///
-/// Attributes
+/// Parameters
 /// ----------
-/// input : Union[str, dict]
+/// input : Union[str, Mapping[str, ndarray[uint8]]]
 ///     Path to the input YAML file containing the leaflet assignment
 ///     or a dictionary specifying the leaflet assignment.
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
-#[pyclass]
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct ManualClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl ManualClassification {
     #[new]
-    #[pyo3(signature = (input, frequency = None))]
-    pub fn new(input: &Bound<'_, PyAny>, frequency: Option<Frequency>) -> PyResult<Self> {
+    #[pyo3(signature = (input, frequency = None, flip = false))]
+    pub fn new(
+        #[gen_stub(override_type(
+            type_repr = "typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.uint8]]]", imports=("typing", "numpy")
+        ))]
+        input: &Bound<'_, PyAny>,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
+        frequency: Option<Frequency>,
+        flip: bool,
+    ) -> PyResult<Self> {
         let classification = if let Ok(file) = input.extract::<String>() {
             RsLeafletClassification::from_file(&file)
         } else if let Ok(map) = extract_map(input) {
@@ -259,19 +382,19 @@ impl ManualClassification {
             RsLeafletClassification::from_map(converted_map)
         } else {
             return Err(ConfigError::new_err(
-                "invalid type for ManualClassification input: expected str or dict",
+                "invalid type for ManualClassification input: expected str or Mapping",
             ));
         };
 
-        Ok(Self(add_freq(classification, frequency)?))
+        Ok(Self(add_freq(classification, frequency)?.with_flip(flip)))
     }
 }
 
 /// Get leaflet assignment from NDX file(s).
 ///
-/// Attributes
+/// Parameters
 /// ----------
-/// ndx : List[str]
+/// ndx : Sequence[str]
 ///     A list of NDX files to read.
 /// heads : str
 ///     Selection query specifying reference atoms representing lipid headgroups
@@ -283,24 +406,32 @@ impl ManualClassification {
 ///     Name of the group in the NDX file(s) specifying the atoms of the lower leaflet.
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet becomes lower leaflet and vice versa. The default value is False.
 ///
 /// Notes
 /// -----
 /// - No glob expansion is performed for the NDX files.
-#[pyclass]
+#[gen_stub_pyclass]
+#[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
 pub struct NdxClassification(RsLeafletClassification);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl NdxClassification {
     #[new]
-    #[pyo3(signature = (ndx, heads, upper_leaflet, lower_leaflet, frequency = None))]
+    #[pyo3(signature = (ndx, heads, upper_leaflet, lower_leaflet, frequency = None, flip = false))]
     pub fn new(
         ndx: Vec<String>,
         heads: &str,
         upper_leaflet: &str,
         lower_leaflet: &str,
+        #[gen_stub(override_type(
+            type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
+        ))]
         frequency: Option<Frequency>,
+        flip: bool,
     ) -> PyResult<Self> {
         let classification = add_freq(
             RsLeafletClassification::from_ndx(
@@ -312,7 +443,7 @@ impl NdxClassification {
             frequency,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
@@ -335,6 +466,26 @@ fn add_normal(
 ) -> PyResult<RsLeafletClassification> {
     if let Some(normal) = normal {
         classification = classification.with_membrane_normal(string2axis(normal)?);
+    }
+
+    Ok(classification)
+}
+
+/// Attempt to add request for data collection to leaflet classification.
+fn add_collect<'a>(
+    classification: RsLeafletClassification,
+    collect: Option<Bound<'a, PyAny>>,
+) -> PyResult<RsLeafletClassification> {
+    if let Some(collect) = collect {
+        match classification {
+            RsLeafletClassification::Global(_) |
+            RsLeafletClassification::Local(_) |
+            RsLeafletClassification::Individual(_) |
+            RsLeafletClassification::Clustering(_) => return Ok(classification.with_collect(Collect::extract_bound(&collect)?.0)),
+            RsLeafletClassification::FromFile(_) |
+            RsLeafletClassification::FromMap(_) |
+            RsLeafletClassification::FromNdx(_) => return Err(ConfigError::new_err("collecting leaflet classification data for manual leaflet classification methods is not supported"))
+        }
     }
 
     Ok(classification)

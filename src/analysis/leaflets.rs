@@ -24,7 +24,7 @@ use crate::{
         AnalysisError, ConfigError, ManualLeafletClassificationError,
         NdxLeafletClassificationError, TopologyError,
     },
-    input::{Frequency, LeafletClassification, MembraneNormal},
+    input::{Collect, Frequency, LeafletClassification, MembraneNormal},
     Leaflet, PANIC_MESSAGE,
 };
 use getset::{CopyGetters, Getters, MutGetters, Setters};
@@ -50,6 +50,25 @@ const HARD_TIMEOUT_SECONDS: u64 = 720;
 /// Global HARD timeout duration for spin-lock used when fetching data for leaflet assignment.
 /// After this time a PANIC is raised.
 static HARD_TIMEOUT: Lazy<Duration> = Lazy::new(|| Duration::from_secs(HARD_TIMEOUT_SECONDS));
+
+impl Leaflet {
+    /// Flip the leaflet assignment.
+    #[inline(always)]
+    #[allow(unused)]
+    fn flip(self) -> Leaflet {
+        // we make this branchless by casting to u8, XORing and transmuting back
+        unsafe { std::mem::transmute::<u8, Leaflet>((self as u8) ^ 1) }
+    }
+
+    /// Flip the leaflet assignment if the condition is true.
+    #[inline(always)]
+    fn maybe_flip(self, condition: bool) -> Leaflet {
+        let mask = condition as u8;
+        // XOR flips if condition is `true`, keeps the same if `false`
+        let val = (self as u8) ^ mask;
+        unsafe { std::mem::transmute::<u8, Leaflet>(val) }
+    }
+}
 
 impl LeafletClassification {
     /// Create groups in the system that are required for leaflet classification.
@@ -189,13 +208,12 @@ impl MoleculeLeafletClassification {
         n_threads: usize,
         step_size: usize,
     ) -> Result<Self, ConfigError> {
-        let needs_shared_storage = match (params.get_frequency(), n_threads) {
-            // shared storage is not needed if only one thread is used
-            // (there is no other thread to share data with, duh)
-            (Frequency::Every(_) | Frequency::Once, 1) => false,
+        let needs_shared_storage = match (params.get_collect(), params.get_frequency(), n_threads) {
+            // shared storage is not needed if only one thread is used and data collection is not requested
+            (Collect::Boolean(false), _, 1) => false,
             // shared storage is not needed if the assignment is performed for every analyzed frame
-            // (each thread handles lipid assignment locally and no data need to be shared)
-            (Frequency::Every(x), _) if x.get() == 1 => false,
+            // and data collection is not requested
+            (Collect::Boolean(false), Frequency::Every(x), _) if x.get() == 1 => false,
             // shared storage is needed in all other cases
             _ => true,
         };
@@ -224,6 +242,7 @@ impl MoleculeLeafletClassification {
                     membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                    flip: params.get_flip(),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
@@ -235,6 +254,7 @@ impl MoleculeLeafletClassification {
                     membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                    flip: params.get_flip(),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
@@ -245,6 +265,7 @@ impl MoleculeLeafletClassification {
                     membrane_normal: get_membrane_normal(params, membrane_normal)?,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                    flip: params.get_flip(),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
@@ -253,6 +274,7 @@ impl MoleculeLeafletClassification {
                     assignment: None,
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                    flip: params.get_flip(),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
@@ -266,6 +288,7 @@ impl MoleculeLeafletClassification {
                     lower_leaflet: ndx_params.lower_leaflet().clone(),
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                    flip: params.get_flip(),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
@@ -275,6 +298,7 @@ impl MoleculeLeafletClassification {
                     assignment: Vec::new(),
                     frequency: params.get_frequency()
                         * NonZeroUsize::new(step_size).expect(PANIC_MESSAGE),
+                    flip: params.get_flip(),
                 },
                 AssignedLeaflets::new(needs_shared_storage),
             ),
@@ -457,6 +481,22 @@ impl MoleculeLeafletClassification {
             }
         }
     }
+
+    /// Extract shared data from the leaflet assignment for this molecule type.
+    /// Returns `None` if the shared data storage was not set up.
+    /// Note that operation is expensive as the entire shared data storage is cloned!
+    pub(crate) fn extract_shared_data(&self) -> Option<HashMap<usize, Vec<Leaflet>>> {
+        match self {
+            MoleculeLeafletClassification::Global(_, shared)
+            | MoleculeLeafletClassification::Local(_, shared)
+            | MoleculeLeafletClassification::Individual(_, shared)
+            | MoleculeLeafletClassification::Clustering(_, shared)
+            | MoleculeLeafletClassification::Manual(_, shared)
+            | MoleculeLeafletClassification::ManualNdx(_, shared) => {
+                Some(shared.shared.as_ref()?.0.lock().clone())
+            }
+        }
+    }
 }
 
 /// Trait implemented by all leaflet classification methods.
@@ -472,6 +512,9 @@ trait LeafletClassifier {
 
     /// Get the number of molecules in the system.
     fn n_molecules(&self) -> usize;
+
+    /// Flip a leaflet assignment, depending on whether the `flip` is set to true.
+    fn maybe_flip(&self, leaflet: Leaflet) -> Leaflet;
 }
 
 /// Leaflet classification method that uses positions of lipid heads and the global membrane center of geometry.
@@ -489,6 +532,8 @@ pub(super) struct GlobalClassification {
     /// Frequency with which the assignment should be performed.
     /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
     frequency: Frequency,
+    /// Treat the upper leaflet as lower leaflet and vice versa.
+    flip: bool,
 }
 
 impl GlobalClassification {
@@ -524,6 +569,11 @@ impl LeafletClassifier for GlobalClassification {
     fn n_molecules(&self) -> usize {
         self.heads.len()
     }
+
+    #[inline(always)]
+    fn maybe_flip(&self, leaflet: Leaflet) -> Leaflet {
+        leaflet.maybe_flip(self.flip)
+    }
 }
 
 /// Leaflet classification method that uses positions of lipid heads and the local membrane center of geometry.
@@ -544,6 +594,8 @@ pub(super) struct LocalClassification {
     /// Frequency with which the assignment should be performed.
     /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
     frequency: Frequency,
+    /// Treat the upper leaflet as lower leaflet and vice versa.
+    flip: bool,
 }
 
 impl LocalClassification {
@@ -599,6 +651,11 @@ impl LeafletClassifier for LocalClassification {
     fn n_molecules(&self) -> usize {
         self.heads.len()
     }
+
+    #[inline(always)]
+    fn maybe_flip(&self, leaflet: Leaflet) -> Leaflet {
+        leaflet.maybe_flip(self.flip)
+    }
 }
 
 /// Handles classification of lipid into a membrane leaflet for the Global and Local classification.
@@ -640,6 +697,8 @@ pub(crate) struct IndividualClassification {
     /// Frequency with which the assignment should be performed.
     /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
     frequency: Frequency,
+    /// Treat the upper leaflet as lower leaflet and vice versa.
+    flip: bool,
 }
 
 impl IndividualClassification {
@@ -696,6 +755,11 @@ impl LeafletClassifier for IndividualClassification {
     fn n_molecules(&self) -> usize {
         self.heads.len()
     }
+
+    #[inline(always)]
+    fn maybe_flip(&self, leaflet: Leaflet) -> Leaflet {
+        leaflet.maybe_flip(self.flip)
+    }
 }
 
 /// Leaflet classification method where lipids are assigned manually.
@@ -706,6 +770,8 @@ pub(crate) struct ManualClassification {
     assignment: Option<Vec<Vec<Leaflet>>>,
     /// Frequency of the classification.
     frequency: Frequency,
+    /// Treat the upper leaflet as lower leaflet and vice versa.
+    flip: bool,
 }
 
 impl LeafletClassifier for ManualClassification {
@@ -750,6 +816,11 @@ impl LeafletClassifier for ManualClassification {
             .unwrap_or_else(||
                 panic!("FATAL GORDER ERROR | ManualClassification::n_molecules | Assignment is empty. {}", PANIC_MESSAGE))
             .len()
+    }
+
+    #[inline(always)]
+    fn maybe_flip(&self, leaflet: Leaflet) -> Leaflet {
+        leaflet.maybe_flip(self.flip)
     }
 }
 
@@ -930,6 +1001,8 @@ pub(super) struct NdxClassification {
     /// Frequency with which the assignment should be performed.
     /// Note that this is a 'real frequency' (input frequency multiplied by the step_size).
     frequency: Frequency,
+    /// Treat the upper leaflet as lower leaflet and vice versa.
+    flip: bool,
 }
 
 impl NdxClassification {
@@ -1091,6 +1164,11 @@ impl LeafletClassifier for NdxClassification {
         self.assign_molecule(molecule_index)
             .map_err(AnalysisError::NdxLeafletError)
     }
+
+    #[inline(always)]
+    fn maybe_flip(&self, leaflet: Leaflet) -> Leaflet {
+        leaflet.maybe_flip(self.flip)
+    }
 }
 
 /// Leaflet classification method that uses Spectral clustering to identify leaflets.
@@ -1102,6 +1180,8 @@ pub(super) struct ClusterClassification {
     assignment: Vec<Leaflet>,
     /// Frequency with which the assignment should be performed.
     frequency: Frequency,
+    /// Treat the upper leaflet as lower leaflet and vice versa.
+    flip: bool,
 }
 
 impl LeafletClassifier for ClusterClassification {
@@ -1124,6 +1204,11 @@ impl LeafletClassifier for ClusterClassification {
             .unwrap_or_else(|| panic!("FATAL GORDER ERROR | ClusterClassification::identify_leaflet | Molecule index `{}` not found in the assignment. {}", 
             molecule_index, PANIC_MESSAGE))
         )
+    }
+
+    #[inline(always)]
+    fn maybe_flip(&self, leaflet: Leaflet) -> Leaflet {
+        leaflet.maybe_flip(self.flip)
     }
 }
 
@@ -1166,6 +1251,7 @@ pub(super) struct AssignedLeaflets {
     local: Option<Vec<Leaflet>>,
     /// Leaflet assignment for each relevant frame. Shared across all threads.
     /// `None` if not needed, i.e. if the analysis is not multithreaded or if the frequency of leaflet assignment is 1.
+    /// If leaflet assignment data are to be collected, the shared storage is used for this.
     shared: Option<SharedAssignedLeaflets>,
     /// Index of the frame the data in `local` correspond to.
     local_frame: Option<usize>,
@@ -1174,7 +1260,8 @@ pub(super) struct AssignedLeaflets {
 impl AssignedLeaflets {
     /// Create a new structure for storing information about positions of lipids in leaflets.
     /// `shared` specifies whether shared storage should be set-up.
-    /// Use `true` if the analysis is multithreaded and the leaflet assignment is NOT performed every thread.
+    /// Use `true` if the analysis is multithreaded and the leaflet assignment is NOT performed every thread
+    /// or if leaflet assignment data should be collected (no matter the number of threads).
     /// Use `false` in all other cases.
     #[inline(always)]
     fn new(shared: bool) -> Self {
@@ -1203,14 +1290,18 @@ impl AssignedLeaflets {
     ) -> Result<(), AnalysisError> {
         self.local = Some(
             (0..classifier.n_molecules())
-                .map(|index| classifier.identify_leaflet(system, pbc_handler, index, current_frame))
+                .map(|index| {
+                    classifier
+                        .identify_leaflet(system, pbc_handler, index, current_frame)
+                        .map(|leaflet| classifier.maybe_flip(leaflet))
+                })
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
         self.local_frame = Some(current_frame);
 
         // copy the current assignment to shared assignment, so other threads can also access it
-        // this should only be done if the number of threads is higher than 1 and the input frequency is NOT 1
+        // this is only performed if the shared storage is needed and set-up
         if let Some(shared) = self.shared.as_mut() {
             shared.copy_to(
                 self.local_frame.expect(PANIC_MESSAGE),
@@ -1372,6 +1463,20 @@ mod tests {
 
     use super::super::common::macros::group_name;
     use super::*;
+
+    #[test]
+    fn test_leaflet_flip() {
+        assert_eq!(Leaflet::Upper.flip(), Leaflet::Lower);
+        assert_eq!(Leaflet::Lower.flip(), Leaflet::Upper);
+    }
+
+    #[test]
+    fn test_leaflet_maybe_flip() {
+        assert_eq!(Leaflet::Upper.maybe_flip(true), Leaflet::Lower);
+        assert_eq!(Leaflet::Upper.maybe_flip(false), Leaflet::Upper);
+        assert_eq!(Leaflet::Lower.maybe_flip(true), Leaflet::Upper);
+        assert_eq!(Leaflet::Lower.maybe_flip(false), Leaflet::Lower);
+    }
 
     #[test]
     fn test_global_leaflet_classification() {
@@ -1744,7 +1849,11 @@ mod tests {
                     $variant(x, y) => {
                         assert!(matches!(x.frequency, $frequency));
                         assert!(matches!(x.membrane_normal, $exp_normal));
-                        assert!(y.shared.is_none());
+                        if ($classification.get_collect() == &Collect::Boolean(false)) {
+                            assert!(y.shared.is_none());
+                        } else {
+                            assert!(y.shared.is_some());
+                        }
                         assert!(y.local.is_none());
                         assert!(y.local_frame.is_none());
                     }
@@ -1757,7 +1866,13 @@ mod tests {
                     $variant(x, y) => {
                         assert!(matches!(x.frequency, $frequency));
                         match x.frequency {
-                            Frequency::Every(n) if n.get() == 2 => assert!(y.shared.is_none()),
+                            Frequency::Every(n) if n.get() == 2 => {
+                                if ($classification.get_collect() == &Collect::Boolean(false)) {
+                                    assert!(y.shared.is_none());
+                                } else {
+                                    assert!(y.shared.is_some());
+                                }
+                            },
                             Frequency::Every(n) if n.get() == 10 => {
                                 assert!(y.shared.is_some());
                             }
@@ -1946,6 +2061,28 @@ mod tests {
         Frequency::Every(_),
         DynamicNormal::new("name P", 2.0).unwrap().into(),
         Dimension::X
+    );
+
+    test_classification_new!(
+        test_global_leaflet_classification_new_every_one_with_export,
+        LeafletClassification::global("@membrane", "name P")
+            .with_frequency(Frequency::every(1).unwrap())
+            .with_collect(true),
+        MoleculeLeafletClassification::Global,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
+    );
+
+    test_classification_new!(
+        test_local_leaflet_classification_new_every_one_with_export,
+        LeafletClassification::local("@membrane", "name P", 2.5)
+            .with_frequency(Frequency::every(1).unwrap())
+            .with_collect("leaflets.yaml"),
+        MoleculeLeafletClassification::Local,
+        Frequency::Every(_),
+        Axis::Z.into(),
+        Dimension::Z
     );
 
     #[test]
@@ -2182,6 +2319,7 @@ mod tests {
             upper_leaflet: "Upper".to_string(),
             lower_leaflet: "Lower".to_string(),
             frequency: Frequency::once(),
+            flip: false,
         };
 
         classification.read_ndx_file(0, 7000).unwrap();
@@ -2205,6 +2343,7 @@ mod tests {
             upper_leaflet: "Upper".to_string(),
             lower_leaflet: "Lower".to_string(),
             frequency: Frequency::every(5).unwrap(),
+            flip: false,
         };
 
         match classification.read_ndx_file(6, 7000) {
@@ -2854,6 +2993,7 @@ mod tests_ndx_reading {
             upper_leaflet: "Upper".to_string(),
             lower_leaflet: "Lower".to_string(),
             frequency: Frequency::once(),
+            flip: false,
         };
 
         match classification.read_ndx_file(0, 10) {
@@ -2876,6 +3016,7 @@ mod tests_ndx_reading {
             upper_leaflet: "U!pper".to_string(),
             lower_leaflet: "Lower".to_string(),
             frequency: Frequency::once(),
+            flip: false,
         };
 
         match classification.read_ndx_file(0, 10) {
@@ -2898,6 +3039,7 @@ mod tests_ndx_reading {
             upper_leaflet: "Upper".to_string(),
             lower_leaflet: "Lower".to_string(),
             frequency: Frequency::once(),
+            flip: false,
         };
 
         match classification.read_ndx_file(0, 10) {
@@ -2921,6 +3063,7 @@ mod tests_ndx_reading {
             upper_leaflet: "Upper".to_string(),
             lower_leaflet: "Lower".to_string(),
             frequency: Frequency::once(),
+            flip: false,
         };
 
         match classification.read_ndx_file(0, 10) {
@@ -2944,6 +3087,7 @@ mod tests_ndx_reading {
             upper_leaflet: "Upper".to_string(),
             lower_leaflet: "Lower".to_string(),
             frequency: Frequency::once(),
+            flip: false,
         };
 
         classification.read_ndx_file(0, 10).unwrap();

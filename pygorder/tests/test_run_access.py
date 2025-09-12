@@ -3,10 +3,26 @@ Released under MIT License.
 Copyright (c) 2024-2025 Ladislav Bartos
 """
 
+# pyright: reportArgumentType=false, reportOptionalMemberAccess=false, reportOptionalSubscript=false, reportOptionalIterable=false
+
 import gorder, pytest, math
 
 def compare_orders(x: float, y: float) -> bool:
     return math.isclose(round(x, 4), round(y, 4), rel_tol = 1e-4)
+
+def compare_normals(x: list[float], y: list[float]) -> bool:
+    """
+    Expects normals not containing any NaN values.
+    """
+
+    for (val1, val2) in zip(x, y):
+        if not math.isclose(round(val1, 5), round(val2, 5), rel_tol = 1e-4):
+            return False
+    
+    return True
+
+def normal_is_nan(x: list[float]) -> bool:
+    return math.isnan(x[0]) and math.isnan(x[1]) and math.isnan(x[2])
 
 def test_aa_order_basic():
     analysis = gorder.Analysis(
@@ -21,6 +37,7 @@ def test_aa_order_basic():
 
     assert results.n_analyzed_frames() == 51
     assert len(results.molecules()) == 3
+    assert results.normals_data() is None
     
     assert compare_orders(results.average_order().total().value(), 0.1423)
     assert results.average_order().total().error() is None
@@ -1741,3 +1758,156 @@ def test_ua_order_leaflets_ordermaps():
             if math.isnan(map_val) and math.isnan(ext_val):
                 continue
             assert compare_orders(map_val, ext_val)
+
+def test_aa_order_leaflets_collect():
+    analysis = gorder.Analysis(
+        structure = "../tests/files/pcpepg.tpr",
+        trajectory = "../tests/files/pcpepg.xtc",
+        analysis_type = gorder.analysis_types.AAOrder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen"
+        ),
+        leaflets = gorder.leaflets.GlobalClassification("@membrane", "name P", collect = True),
+        silent = True,
+        overwrite = True,
+    )
+
+    results = analysis.run()
+
+    assert results.leaflets_data().frames() == [x for x in range(1, 52)]
+
+    pope_data = results.leaflets_data().get_molecule("POPE")
+    assert len(pope_data) == 51
+    for frame in pope_data:
+        assert len(frame) == 131
+        for (i, lipid) in enumerate(frame):
+            if i < 65:
+                assert lipid == 1
+            else:
+                assert lipid == 0
+    
+    popc_data = results.leaflets_data().get_molecule("POPC")
+    assert len(popc_data) == 51
+    for frame in popc_data:
+        assert len(frame) == 128
+        for (i, lipid) in enumerate(frame):
+            if i < 64:
+                assert lipid == 1
+            else:
+                assert lipid == 0
+    
+    popg_data = results.leaflets_data().get_molecule("POPG")
+    assert len(popg_data) == 51
+    for frame in popg_data:
+        assert len(frame) == 15
+        for (i, lipid) in enumerate(frame):
+            if i < 8:
+                assert lipid == 1
+            else:
+                assert lipid == 0
+
+def test_aa_order_dynamic_normals_collect():
+    analysis = gorder.Analysis(
+        structure = "../tests/files/pcpepg.tpr",
+        trajectory = "../tests/files/pcpepg.xtc",
+        analysis_type = gorder.analysis_types.AAOrder(
+            "@membrane and element name carbon",
+            "@membrane and element name hydrogen"
+        ),
+        membrane_normal = gorder.membrane_normal.DynamicNormal(
+            "name P", 2.0, collect = True
+        ),
+        geometry = gorder.geometry.Cylinder(reference = "center", radius = 2.5, orientation = "z"),
+        step = 10,
+        silent = True,
+        overwrite = True,
+    )
+
+    results = analysis.run()
+
+    assert results.normals_data().frames() == [1, 11, 21, 31, 41, 51]
+
+    pope_data = results.normals_data().get_molecule("POPE")
+    assert len(pope_data) == 6
+
+    for frame in pope_data:
+        assert len(frame) == 131
+
+    assert normal_is_nan(pope_data[0][0])
+    assert compare_normals(pope_data[4][2], [0.038475, 0.171717, 0.984395])
+        
+    
+    popc_data = results.normals_data().get_molecule("POPC")
+    assert len(popc_data) == 6
+    for frame in popc_data:
+        assert len(frame) == 128
+
+    assert normal_is_nan(popc_data[2][-1])
+    assert compare_normals(popc_data[2][4], [0.156903, 0.041018, 0.986762])
+    
+    popg_data = results.normals_data().get_molecule("POPG")
+    assert len(popg_data) == 6
+    for frame in popg_data:
+        assert len(frame) == 15
+    
+    assert compare_normals(popg_data[5][-2], [0.069389, 0.018346, 0.997421])
+
+def test_aa_order_scrambling_leaflets_flip():
+    for (leaflets_unflipped, leaflets_flipped) in [
+        (gorder.leaflets.GlobalClassification("@membrane", "name PO4", collect = True),
+         gorder.leaflets.GlobalClassification("@membrane", "name PO4", collect = True, flip = True)),
+        (gorder.leaflets.LocalClassification("@membrane", "name PO4", 2.5, collect = True),
+         gorder.leaflets.LocalClassification("@membrane", "name PO4", 2.5, collect = True, flip = True)),
+        (gorder.leaflets.IndividualClassification("name PO4", "name C4A C4B", collect = True),
+         gorder.leaflets.IndividualClassification("name PO4", "name C4A C4B", collect = True, flip = True)),
+        (gorder.leaflets.ClusteringClassification("name PO4", frequency = gorder.Frequency.every(10), collect = True),
+         gorder.leaflets.ClusteringClassification("name PO4", frequency = gorder.Frequency.every(10), collect = True, flip = True))
+    ]:
+            
+        analysis_unflipped = gorder.Analysis(
+            structure = "../tests/files/cg.tpr",
+            trajectory = "../tests/files/cg.xtc",
+            analysis_type = gorder.analysis_types.CGOrder("@membrane"),
+            leaflets = leaflets_unflipped,
+            silent = True,
+            overwrite = True,
+        )
+
+        results_unflipped = analysis_unflipped.run()
+
+        analysis_flipped = gorder.Analysis(
+            structure = "../tests/files/cg.tpr",
+            trajectory = "../tests/files/cg.xtc",
+            analysis_type = gorder.analysis_types.CGOrder("@membrane"),
+            leaflets = leaflets_flipped,
+            silent = True,
+            overwrite = True,
+        )
+
+        results_flipped = analysis_flipped.run()
+
+        # compare leaflet assignment data
+        leaflets_unflipped = results_unflipped.leaflets_data().get_molecule("POPC")
+        leaflets_flipped = results_flipped.leaflets_data().get_molecule("POPC")
+
+        assert len(leaflets_unflipped) == len(leaflets_flipped)
+
+        for (frame_unflipped, frame_flipped) in zip(leaflets_unflipped, leaflets_flipped):
+            assert len(frame_unflipped) == len(frame_flipped)
+            for (leaflet_unflipped, leaflet_flipped) in zip(frame_unflipped, frame_flipped):
+                assert leaflet_unflipped != leaflet_flipped
+        
+        # compare order parameters
+        order_unflipped = results_unflipped.get_molecule("POPC")
+        order_flipped = results_flipped.get_molecule("POPC")
+
+        assert len(order_unflipped.bonds()) == len(order_flipped.bonds())
+
+        for (bond_unflipped, bond_flipped) in zip(order_unflipped.bonds(), order_flipped.bonds()):
+            assert compare_orders(bond_unflipped.order().total().value(), bond_flipped.order().total().value())
+            assert bond_unflipped.order().upper() is not None
+            assert bond_unflipped.order().lower() is not None
+            assert bond_flipped.order().upper() is not None
+            assert bond_flipped.order().lower() is not None
+            assert compare_orders(bond_unflipped.order().upper().value(), bond_flipped.order().lower().value())
+            assert compare_orders(bond_unflipped.order().lower().value(), bond_flipped.order().upper().value())

@@ -7,14 +7,14 @@ use super::geometry::{GeometrySelection, GeometrySelectionType};
 use super::pbc::{NoPBC, PBC3D};
 use super::topology::molecule::MoleculeTypes;
 use super::topology::SystemTopology;
+use crate::errors::TopologyError;
 use crate::errors::{AnalysisError, GeometryConfigError};
 use crate::input::{Geometry, MembraneNormal};
-use crate::errors::TopologyError;
 use crate::PANIC_MESSAGE;
 use colored::Colorize;
 use groan_rs::files::FileType;
 use groan_rs::prelude::{
-    GroReader, GroupXtcReader, OrderedAtomIterator, ProgressPrinter, SimBox, TrrReader
+    GroReader, GroupXtcReader, OrderedAtomIterator, ProgressPrinter, SimBox, TrrReader,
 };
 use groan_rs::{errors::GroupError, structures::group::Group, system::System};
 
@@ -106,11 +106,11 @@ pub(super) fn create_group(
 
 /// Check overlap between two groups and return an error if they overlap.
 pub(super) fn check_groups_overlap(
-    system: &System, 
-    group1_name: &str, 
-    group1_query: &str, 
-    group2_name: &str, 
-    group2_query: &str
+    system: &System,
+    group1_name: &str,
+    group1_query: &str,
+    group2_name: &str,
+    group2_query: &str,
 ) -> Result<(), TopologyError> {
     let n_overlapping = system
         .group_iter(&format!("{}{}", GORDER_GROUP_PREFIX, group1_name))
@@ -121,7 +121,7 @@ pub(super) fn check_groups_overlap(
                 .expect(PANIC_MESSAGE),
         )
         .count();
-    
+
     if n_overlapping > 0 {
         return Err(TopologyError::AtomsOverlap {
             n_overlapping,
@@ -248,7 +248,7 @@ pub(super) fn read_trajectory(
 ) -> Result<SystemTopology, Box<dyn std::error::Error + Send + Sync>> {
     // get the format of the trajectory files from the first file;
     // this assumes that it has been validated before that all trajectories have the same format
-    let format = FileType::from_name(trajectory.first().unwrap_or_else(|| 
+    let format = FileType::from_name(trajectory.first().unwrap_or_else(||
         panic!("FATAL GORDER ERROR | common::read_trajectory | At least one trajectory file should have been provided. {}", PANIC_MESSAGE))
     );
 
@@ -372,4 +372,33 @@ pub(super) fn get_reference_head(
     }
 
     Ok(*atoms.first().expect(PANIC_MESSAGE))
+}
+
+/// Returns a new vector by interleaving elements from two slices.
+/// Up to `n` items are taken from `vec1`, followed by up to `m` items from `vec2`,
+/// repeating this pattern until both slices are exhausted.
+pub(super) fn interleave_vectors<T: Clone>(vec1: &[T], vec2: &[T], n: usize, m: usize) -> Vec<T> {
+    let mut result = Vec::with_capacity(vec1.len() + vec2.len());
+    let mut iter1 = vec1.iter();
+    let mut iter2 = vec2.iter();
+
+    loop {
+        for _ in 0..n {
+            if let Some(value) = iter1.next() {
+                result.push(value.clone());
+            }
+        }
+
+        for _ in 0..m {
+            if let Some(value) = iter2.next() {
+                result.push(value.clone());
+            }
+        }
+
+        if iter1.len() == 0 && iter2.len() == 0 {
+            break;
+        }
+    }
+
+    result
 }

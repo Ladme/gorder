@@ -22,10 +22,10 @@ analysis = gorder.Analysis(
     # Calculate atomistic order parameters.
     analysis_type = gorder.analysis_types.AAOrder(
         # Calculate order parameters for carbons of the palmitoyl and oleoyl chains.
-        "@membrane and name r'C3.+|C2.+'",
+        heavy_atoms = "@membrane and name r'C3.+|C2.+'",
         # These are the hydrogens of the lipids in the membrane. 
         # `gorder` will search for bonds between the specified heavy atoms and hydrogens.
-        "@membrane and element name hydrogen"
+        hydrogens = "@membrane and element name hydrogen"
     ),
     # Path to the output yaml file. Contains full results of the analysis.
     output_yaml = "order.yaml",
@@ -49,4 +49,4 @@ results.write()
 for molecule in results.molecules():
     print(f"Molecule type '{molecule.molecule()}':")
     for atom in molecule.atoms():
-        print(f"   Atom type '{atom.atom().atom_name()}': {atom.order().total().value():.4f}")
+        print(f"   Atom type '{atom.atom().atom_name()}': {atom.order().total().value():.4f}") # pyright: ignore[reportOptionalMemberAccess]

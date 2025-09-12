@@ -20,6 +20,7 @@ Welcome to gorder's Python API documentation!
    membrane_normal
    results
    exceptions
+   examples
 
 Indices and tables
 ==================

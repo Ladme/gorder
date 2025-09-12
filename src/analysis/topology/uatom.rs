@@ -103,7 +103,7 @@ impl OrderCalculable for UAOrderAtoms {
 
     #[inline(always)]
     fn is_empty(&self) -> bool {
-        self.atom_types().first().is_none()
+        self.atom_types().is_empty()
     }
 
     #[inline(always)]

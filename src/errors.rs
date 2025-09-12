@@ -183,9 +183,20 @@ pub enum DynamicNormalError {
 /// Errors that can occur when setting membrane normals manually.
 #[derive(Error, Debug)]
 pub enum ManualNormalError {
-    #[error("{} could not get membrane normals for frame index '{}' (membrane normals available for {} frames)", 
-    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow())]
-    FrameNotFound(usize, usize),
+    #[error("{} could not get membrane normals for frame number '{}'
+{} membrane normals were provided for '{}' frames which can accommodate 
+at most '{}' trajectory frames at the current analysis step of '{}'",
+    "error:".red().bold(),
+    (.frame_index + 1).to_string().yellow(),
+    "details:".yellow().bold(),
+    .available_for.to_string().yellow(),
+    (.available_for * .step).to_string().yellow(),
+    .step.to_string().yellow())]
+    FrameNotFound {
+        frame_index: usize,
+        step: usize,
+        available_for: usize,
+    },
 
     #[error("{} could not open the normals file '{}'", "error:".red().bold(), .0.yellow())]
     FileNotFound(String),
@@ -340,7 +351,8 @@ pub enum ConfigError {
     NoTrajectoryFile,
 
     #[error("{} static global membrane normal is not used but leaflet classification requires it
-({} add '{}' to the '{}' section of your input configuration file or, if analyzing a vesicle, assign the lipids into leaflets manually)", 
+({} add '{}' to the '{}' section of your input configuration file or, if analyzing a vesicle, 
+ assign the lipids into leaflets using the clustering method or manually)", 
     "error:".red().bold(), "hint:".blue().bold(), "membrane_normal".bright_blue(), "leaflets".bright_blue())]
     MissingMembraneNormal,
 
@@ -434,9 +446,9 @@ pub enum NdxLeafletClassificationError {
     #[error("{}", .0)]
     CouldNotParse(ParseNdxError),
 
-    #[error("{} could not get ndx file for frame index '{}' [expected index of the ndx file: '{}']
+    #[error("{} could not get ndx file for frame number '{}' [expected index of the ndx file: '{}']
 (total number of specified ndx files is '{}'; maybe the assignment frequency is incorrect?)", 
-    "error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+    "error:".red().bold(), (.0 + 1).to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
     FrameNotFound(usize, usize, usize),
 
     #[error("{} group name '{}' specified in an ndx file '{}' is invalid and cannot be used ({} following characters are not allowed in group names: \'\"&|!@()<>=)",
@@ -480,9 +492,9 @@ pub enum ManualLeafletClassificationError {
     #[error("{} molecule type '{}' not found in the leaflet assignment structure", "error:".red().bold(), .0.yellow())]
     MoleculeTypeNotFound(String),
 
-    #[error("{} could not get leaflet assignment for frame index '{}' [expected index in the leaflet assignment structure: '{}']
+    #[error("{} could not get leaflet assignment for frame number '{}' [expected index in the leaflet assignment structure: '{}']
 (total number of frames in the leaflet assignment structure is '{}'; maybe the assignment frequency is incorrect?)", 
-"error:".red().bold(), .0.to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
+"error:".red().bold(), (.0 + 1).to_string().yellow(), .1.to_string().yellow(), .2.to_string().yellow())]
     FrameNotFound(usize, usize, usize),
 
     #[error("{} inconsistent number of molecules specified in the leaflet assignment: expected '{}' molecules of type '{}', got '{}' molecules in assignment frame '{}'", 

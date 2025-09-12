@@ -1,11 +1,14 @@
 // Released under MIT License.
 // Copyright (c) 2024-2025 Ladislav Bartos
 
+use gorder_core::input::Collect as RsCollect;
 use gorder_core::input::{Axis, Plane};
 use gorder_core::prelude::AtomType as RsAtomType;
 use pyo3::create_exception;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
+use pyo3_stub_gen::define_stub_info_gatherer;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use std::process;
 use std::sync::Once;
 
@@ -86,25 +89,66 @@ fn string2plane(string: impl AsRef<str>) -> PyResult<Plane> {
     }
 }
 
-/// Type of an atom specific to a molecule.
+/// Represents an atom type within a molecule type.
+///
+/// Provides access to the atom's name, its relative position within the molecule type,
+/// and the residue it belongs to.
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct AtomType(pub(crate) RsAtomType);
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl AtomType {
     /// Get the name of the atom type.
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///     Name of the atom type.
     pub fn atom_name(&self) -> String {
         self.0.atom_name().clone()
     }
 
-    /// Get the relative index of the atom type in the molecule type.
+    /// Get the relative index of the atom type in its molecule type.
+    ///
+    /// Returns
+    /// -------
+    /// int
+    ///     Zero-based index of the atom within its molecule type.
     pub fn relative_index(&self) -> usize {
         self.0.relative_index()
     }
 
-    /// Get the name of the residue this atom type is part of.
+    /// Get the name of the residue this atom belongs to.
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///     Name of the residue containing this atom.
     pub fn residue_name(&self) -> String {
         self.0.residue_name().clone()
+    }
+}
+
+/// Handles specifying how data should be collected.
+#[derive(Clone)]
+pub struct Collect(RsCollect);
+
+impl<'source> FromPyObject<'source> for Collect {
+    fn extract_bound(obj: &Bound<'source, PyAny>) -> PyResult<Self> {
+        // try to extract as boolean
+        if let Ok(boolean) = obj.extract::<bool>() {
+            return Ok(Collect(RsCollect::Boolean(boolean)));
+        }
+        // try to extract as a string
+        if let Ok(s) = obj.extract::<String>() {
+            return Ok(Collect(RsCollect::File(s)));
+        }
+
+        Err(ConfigError::new_err(
+            "invalid type for Collect constructor: expected a bool or str",
+        ))
     }
 }
 
@@ -122,6 +166,8 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
         })
         .unwrap_or_else(|e| panic!("FATAL GORDER ERROR | python::analysis::Analysis | Could not set up the CTRL-C handler: {}.", e));
     });
+
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
     // global classes
     m.add_class::<analysis::Analysis>()?;
@@ -178,6 +224,7 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
     results.add_class::<results::Order>()?;
     results.add_class::<results::Map>()?;
     results.add_class::<results::Convergence>()?;
+    results.add_class::<results::LeafletsData>()?;
     m.add_submodule(&results)?;
 
     // module: exceptions
@@ -190,3 +237,5 @@ fn gorder(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     Ok(())
 }
+
+define_stub_info_gatherer!(stub_info);

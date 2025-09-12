@@ -6,7 +6,8 @@
 use groan_rs::{
     errors::{AtomError, GroupError},
     prelude::{
-        Atom, AtomIterable, AtomIteratorWithBox, CellGrid, CellNeighbors, Cylinder, Dimension, ImmutableAtomIterable, SimBox, Sphere, Vector3D
+        Atom, AtomIterable, AtomIteratorWithBox, CellGrid, CellNeighbors, Cylinder, Dimension,
+        ImmutableAtomIterable, SimBox, Sphere, Vector3D,
     },
     system::System,
 };
@@ -31,7 +32,12 @@ pub(crate) trait PBCHandler<'a> {
     ) -> Result<Vec<Vector3D>, AnalysisError>;
 
     /// Get the cloud of lipid heads for local membrane normal calculations.
-    fn get_heads_cloud(&'a self, system: &'a System, reference: &Vector3D, radius: f32) -> Result<Vec<Vector3D>, AnalysisError>;
+    fn get_heads_cloud(
+        &'a self,
+        system: &'a System,
+        reference: &Vector3D,
+        radius: f32,
+    ) -> Result<Vec<Vector3D>, AnalysisError>;
 
     /// Calculate distance between two points in the specified dimensions.
     fn distance(&self, point1: &Vector3D, point2: &Vector3D, dim: Dimension) -> f32;
@@ -77,7 +83,12 @@ pub(crate) trait PBCHandler<'a> {
 
     /// Get atoms that are closer to the `reference` than `distance`.
     /// Returns an iterator over atoms and their distances from reference.
-    fn nearby_atoms(&'a self, system: &'a System, reference: Vector3D, distance: f32) -> impl Iterator<Item = (&'a Atom, f32)>;
+    fn nearby_atoms(
+        &'a self,
+        system: &'a System,
+        reference: Vector3D,
+        distance: f32,
+    ) -> impl Iterator<Item = (&'a Atom, f32)>;
 }
 
 /// PBCHandler that ignores all periodic boundary conditions.
@@ -99,7 +110,7 @@ impl<'a> PBCHandler<'a> for NoPBC {
     ) -> Result<Vec<Vector3D>, AnalysisError> {
         let membrane_iterator = system
             .group_iter(group_name!("Membrane"))
-            .unwrap_or_else(|_| 
+            .unwrap_or_else(|_|
                 panic!("FATAL GORDER ERROR | NoPBC::calc_local_membrane_centers | Could not get the `Membrane` group. {}", PANIC_MESSAGE)
             );
 
@@ -109,12 +120,8 @@ impl<'a> PBCHandler<'a> for NoPBC {
                 .get_position()
                 .ok_or(AnalysisError::UndefinedPosition(index))?;
 
-            let cylinder = self.cylinder_for_local_center(
-                position.x,
-                position.y,
-                radius,
-                membrane_normal,
-            );
+            let cylinder =
+                self.cylinder_for_local_center(position.x, position.y, radius, membrane_normal);
 
             let center = membrane_iterator
                 .clone()
@@ -132,12 +139,17 @@ impl<'a> PBCHandler<'a> for NoPBC {
         Ok(centers)
     }
 
-    fn get_heads_cloud(&self, system: &System, reference: &Vector3D, radius: f32) -> Result<Vec<Vector3D>, AnalysisError> {
+    fn get_heads_cloud(
+        &self,
+        system: &System,
+        reference: &Vector3D,
+        radius: f32,
+    ) -> Result<Vec<Vector3D>, AnalysisError> {
         let sphere = Sphere::new(reference.clone(), radius);
 
         system
             .group_iter(group_name!("NormalHeads"))
-            .unwrap_or_else(|_| 
+            .unwrap_or_else(|_|
                 panic!("FATAL GORDER ERROR | NoPBC::get_heads_cloud | Could not get NormalHeads group. {}", PANIC_MESSAGE))
             .filter_geometry_naive(sphere)
             .map(|atom| atom
@@ -215,7 +227,12 @@ impl<'a> PBCHandler<'a> for NoPBC {
     #[inline(always)]
     fn init_new_frame(&mut self) {}
 
-    fn nearby_atoms(&'a self, system: &'a System, reference: Vector3D, distance: f32) -> impl Iterator<Item = (&'a Atom, f32)> {
+    fn nearby_atoms(
+        &'a self,
+        system: &'a System,
+        reference: Vector3D,
+        distance: f32,
+    ) -> impl Iterator<Item = (&'a Atom, f32)> {
         system
             .group_iter(group_name!("ClusterHeads"))
             .unwrap_or_else(|_| panic!("FATAL GORDER ERROR | NoPBC::nearby_atoms | Group `ClusterHeads` should exist. {}", PANIC_MESSAGE))
@@ -237,7 +254,7 @@ impl<'a> PBCHandler<'a> for NoPBC {
 
 /// PBCHandler that assumes periodic boundary conditions in all three dimensions.
 #[derive(Debug, Clone)]
-pub(crate) struct PBC3D<'a> { 
+pub(crate) struct PBC3D<'a> {
     simbox: &'a SimBox,
     /// Cell grid for membrane atoms.
     membrane_grid: OnceCell<CellGrid<'a>>,
@@ -262,11 +279,11 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
     ) -> Result<Vec<Vector3D>, AnalysisError> {
         let cell_grid = self.membrane_grid.get_or_init(|| {
             CellGrid::new(system, group_name!("Membrane"), radius)
-            .unwrap_or_else(|e| 
+            .unwrap_or_else(|e|
                 panic!("FATAL GORDER ERROR | PBC3D::calc_local_membrane_centers | Could not construct a cell grid `{}`. {}", e, PANIC_MESSAGE)
             )
         });
-        
+
         let neighbors = match membrane_normal {
             Dimension::X => CellNeighbors::new(.., -1..=1, -1..=1),
             Dimension::Y => CellNeighbors::new(-1..=1, .., -1..=1),
@@ -280,15 +297,10 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
                 .get_position()
                 .ok_or(AnalysisError::UndefinedPosition(index))?;
 
-            let cylinder = self.cylinder_for_local_center(
-                position.x,
-                position.y,
-                radius,
-                membrane_normal,
-            );
+            let cylinder =
+                self.cylinder_for_local_center(position.x, position.y, radius, membrane_normal);
 
-            let membrane_iterator = cell_grid
-                .neighbors_iter(position.clone(), neighbors.clone());
+            let membrane_iterator = cell_grid.neighbors_iter(position.clone(), neighbors.clone());
 
             let center = membrane_iterator
                 .filter_geometry(cylinder)
@@ -306,10 +318,15 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
     }
 
     /// The cloud of positions is made whole, i.e., it is not broken at PBC.
-    fn get_heads_cloud(&'a self, system: &'a System, reference: &Vector3D, radius: f32) -> Result<Vec<Vector3D>, AnalysisError> {
+    fn get_heads_cloud(
+        &'a self,
+        system: &'a System,
+        reference: &Vector3D,
+        radius: f32,
+    ) -> Result<Vec<Vector3D>, AnalysisError> {
         let cell_grid = self.heads_grid.get_or_init(|| {
             CellGrid::new(system, group_name!("NormalHeads"), radius)
-            .unwrap_or_else(|e| 
+            .unwrap_or_else(|e|
                 panic!("FATAL GORDER ERROR | PBC3D::get_heads_cloud | Could not construct a cell grid `{}`. {}", e, PANIC_MESSAGE)
             )
         });
@@ -319,11 +336,13 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
         let mut positions = Vec::new();
         for atom in cell_grid
             .neighbors_iter(reference.clone(), CellNeighbors::default())
-            .filter_geometry(sphere) 
+            .filter_geometry(sphere)
         {
             // select images of atoms that are closest to the reference atom
             // if this is not done, the positions might be broken at box boundaries which breaks the PCA
-            let position = atom.get_position().ok_or_else(|| AnalysisError::UndefinedPosition(atom.get_index()))?;
+            let position = atom
+                .get_position()
+                .ok_or_else(|| AnalysisError::UndefinedPosition(atom.get_index()))?;
             let vector = reference.vector_to(position, self.simbox);
             positions.push(reference + vector);
         }
@@ -378,7 +397,11 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
 
     #[inline(always)]
     fn get_box_center(&self) -> Vector3D {
-        Vector3D::new(self.simbox.x / 2.0f32, self.simbox.y / 2.0f32, self.simbox.z / 2.0f32)
+        Vector3D::new(
+            self.simbox.x / 2.0f32,
+            self.simbox.y / 2.0f32,
+            self.simbox.z / 2.0f32,
+        )
     }
 
     #[inline(always)]
@@ -404,17 +427,27 @@ impl<'a> PBCHandler<'a> for PBC3D<'a> {
         self.cluster_grid = OnceCell::new();
     }
 
-    fn nearby_atoms(&'a self, system: &'a System, reference: Vector3D, distance: f32) -> impl Iterator<Item = (&'a Atom, f32)> {
+    fn nearby_atoms(
+        &'a self,
+        system: &'a System,
+        reference: Vector3D,
+        distance: f32,
+    ) -> impl Iterator<Item = (&'a Atom, f32)> {
         let cell_grid = self.cluster_grid.get_or_init(|| {
             CellGrid::new(system, group_name!("ClusterHeads"), distance)
-            .unwrap_or_else(|e| 
+            .unwrap_or_else(|e|
                 panic!("FATAL GORDER ERROR | PBC3D::nearby_atoms | Could not construct a cell grid `{}`. {}", e, PANIC_MESSAGE)
             )
         });
 
-        cell_grid.neighbors_iter(reference.clone(), CellNeighbors::default())
+        cell_grid
+            .neighbors_iter(reference.clone(), CellNeighbors::default())
             .filter_map(move |atom| {
-                match atom.distance_from_point(&reference, Dimension::XYZ, system.get_box().expect(PANIC_MESSAGE)) {
+                match atom.distance_from_point(
+                    &reference,
+                    Dimension::XYZ,
+                    system.get_box().expect(PANIC_MESSAGE),
+                ) {
                     Ok(x) if x < distance => Some((atom, x)),
                     Ok(_) => None,
                     Err(_) => None,
@@ -455,7 +488,9 @@ mod tests {
     #[test]
     fn test_group_filter_geometry_get_pos_pbc3d() {
         let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
-        system.group_create("xxxGorderReservedxxx-NormalHeads", "name P").unwrap();
+        system
+            .group_create("xxxGorderReservedxxx-NormalHeads", "name P")
+            .unwrap();
 
         let pbc = PBC3D::new(system.get_box().unwrap());
 
@@ -464,9 +499,7 @@ mod tests {
                 for y in [7.5, 8.0, 8.5, 9.0, 10.0] {
                     for z in [3.0, 3.5, 5.0, 5.5, 6.0] {
                         let reference = Vector3D::new(x, y, z);
-                        let positions = pbc
-                            .get_heads_cloud(&system, &reference, radius)
-                            .unwrap();
+                        let positions = pbc.get_heads_cloud(&system, &reference, radius).unwrap();
 
                         for pos in positions {
                             assert!(reference.distance_naive(&pos, Dimension::XYZ) <= radius);
@@ -480,7 +513,9 @@ mod tests {
     #[test]
     fn test_group_filter_geometry_get_pos_nopbc() {
         let mut system = System::from_file("tests/files/pcpepg.tpr").unwrap();
-        system.group_create("xxxGorderReservedxxx-NormalHeads", "name P").unwrap();
+        system
+            .group_create("xxxGorderReservedxxx-NormalHeads", "name P")
+            .unwrap();
 
         let pbc = NoPBC;
 
@@ -489,9 +524,7 @@ mod tests {
                 for y in [7.5, 8.0, 8.5, 9.0, 10.0] {
                     for z in [3.0, 3.5, 5.0, 5.5, 6.0] {
                         let reference = Vector3D::new(x, y, z);
-                        let positions = pbc
-                            .get_heads_cloud(&system, &reference, radius)
-                            .unwrap();
+                        let positions = pbc.get_heads_cloud(&system, &reference, radius).unwrap();
 
                         for pos in positions {
                             assert!(reference.distance_naive(&pos, Dimension::XYZ) <= radius);

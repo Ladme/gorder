@@ -1,5 +1,5 @@
 # Order parameters calculated with 'gorder v0.6.0-dev.2' using a structure file 'tests/files/ua.tpr' and a trajectory file 'tests/files/ua.xtc'.
-@    title "Convergence of average order parameters for individual molecules"
+@    title "Convergence of average order parameters for individual molecule types"
 @    xaxis label "Frame number"
 @    yaxis label "-Sch"
 @    s0 legend "POPC"
