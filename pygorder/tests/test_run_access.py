@@ -1851,3 +1851,63 @@ def test_aa_order_dynamic_normals_collect():
         assert len(frame) == 15
     
     assert compare_normals(popg_data[5][-2], [0.069389, 0.018346, 0.997421])
+
+def test_aa_order_scrambling_leaflets_flip():
+    for (leaflets_unflipped, leaflets_flipped) in [
+        (gorder.leaflets.GlobalClassification("@membrane", "name PO4", collect = True),
+         gorder.leaflets.GlobalClassification("@membrane", "name PO4", collect = True, flip = True)),
+        (gorder.leaflets.LocalClassification("@membrane", "name PO4", 2.5, collect = True),
+         gorder.leaflets.LocalClassification("@membrane", "name PO4", 2.5, collect = True, flip = True)),
+        (gorder.leaflets.IndividualClassification("name PO4", "name C4A C4B", collect = True),
+         gorder.leaflets.IndividualClassification("name PO4", "name C4A C4B", collect = True, flip = True)),
+        (gorder.leaflets.ClusteringClassification("name PO4", frequency = gorder.Frequency.every(10), collect = True),
+         gorder.leaflets.ClusteringClassification("name PO4", frequency = gorder.Frequency.every(10), collect = True, flip = True))
+    ]:
+            
+        analysis_unflipped = gorder.Analysis(
+            structure = "../tests/files/cg.tpr",
+            trajectory = "../tests/files/cg.xtc",
+            analysis_type = gorder.analysis_types.CGOrder("@membrane"),
+            leaflets = leaflets_unflipped,
+            silent = True,
+            overwrite = True,
+        )
+
+        results_unflipped = analysis_unflipped.run()
+
+        analysis_flipped = gorder.Analysis(
+            structure = "../tests/files/cg.tpr",
+            trajectory = "../tests/files/cg.xtc",
+            analysis_type = gorder.analysis_types.CGOrder("@membrane"),
+            leaflets = leaflets_flipped,
+            silent = True,
+            overwrite = True,
+        )
+
+        results_flipped = analysis_flipped.run()
+
+        # compare leaflet assignment data
+        leaflets_unflipped = results_unflipped.leaflets_data().get_molecule("POPC")
+        leaflets_flipped = results_flipped.leaflets_data().get_molecule("POPC")
+
+        assert len(leaflets_unflipped) == len(leaflets_flipped)
+
+        for (frame_unflipped, frame_flipped) in zip(leaflets_unflipped, leaflets_flipped):
+            assert len(frame_unflipped) == len(frame_flipped)
+            for (leaflet_unflipped, leaflet_flipped) in zip(frame_unflipped, frame_flipped):
+                assert leaflet_unflipped != leaflet_flipped
+        
+        # compare order parameters
+        order_unflipped = results_unflipped.get_molecule("POPC")
+        order_flipped = results_flipped.get_molecule("POPC")
+
+        assert len(order_unflipped.bonds()) == len(order_flipped.bonds())
+
+        for (bond_unflipped, bond_flipped) in zip(order_unflipped.bonds(), order_flipped.bonds()):
+            assert compare_orders(bond_unflipped.order().total().value(), bond_flipped.order().total().value())
+            assert bond_unflipped.order().upper() is not None
+            assert bond_unflipped.order().lower() is not None
+            assert bond_flipped.order().upper() is not None
+            assert bond_flipped.order().lower() is not None
+            assert compare_orders(bond_unflipped.order().upper().value(), bond_flipped.order().lower().value())
+            assert compare_orders(bond_unflipped.order().lower().value(), bond_flipped.order().upper().value())

@@ -117,6 +117,8 @@ impl Frequency {
 ///     By default (`False`), data are not saved.
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -126,7 +128,7 @@ pub struct GlobalClassification(RsLeafletClassification);
 #[pymethods]
 impl GlobalClassification {
     #[new]
-    #[pyo3(signature = (membrane, heads, frequency = None, membrane_normal = None, collect = None))]
+    #[pyo3(signature = (membrane, heads, frequency = None, membrane_normal = None, collect = None, flip = false))]
     pub fn new<'a>(
         membrane: &str,
         heads: &str,
@@ -139,6 +141,7 @@ impl GlobalClassification {
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
         ))]
         collect: Option<Bound<'a, PyAny>>,
+        flip: bool,
     ) -> PyResult<Self> {
         let classification = add_collect(
             add_normal(
@@ -148,7 +151,7 @@ impl GlobalClassification {
             collect,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
@@ -177,6 +180,8 @@ impl GlobalClassification {
 ///     By default (`False`), data are not saved.
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -186,7 +191,7 @@ pub struct LocalClassification(RsLeafletClassification);
 #[pymethods]
 impl LocalClassification {
     #[new]
-    #[pyo3(signature = (membrane, heads, radius, frequency = None, membrane_normal = None, collect = None))]
+    #[pyo3(signature = (membrane, heads, radius, frequency = None, membrane_normal = None, collect = None, flip = false))]
     pub fn new<'a>(
         membrane: &str,
         heads: &str,
@@ -200,6 +205,7 @@ impl LocalClassification {
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
         ))]
         collect: Option<Bound<'a, PyAny>>,
+        flip: bool,
     ) -> PyResult<Self> {
         if radius <= 0.0 {
             return Err(ConfigError::new_err(format!(
@@ -219,7 +225,7 @@ impl LocalClassification {
             collect,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
@@ -246,6 +252,8 @@ impl LocalClassification {
 ///     By default (`False`), data are not saved.
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -255,7 +263,7 @@ pub struct IndividualClassification(RsLeafletClassification);
 #[pymethods]
 impl IndividualClassification {
     #[new]
-    #[pyo3(signature = (heads, methyls, frequency = None, membrane_normal = None, collect = None))]
+    #[pyo3(signature = (heads, methyls, frequency = None, membrane_normal = None, collect = None, flip = false))]
     pub fn new<'a>(
         heads: &str,
         methyls: &str,
@@ -268,6 +276,7 @@ impl IndividualClassification {
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
         ))]
         collect: Option<Bound<'a, PyAny>>,
+        flip: bool,
     ) -> PyResult<Self> {
         let classification = add_collect(
             add_normal(
@@ -280,7 +289,7 @@ impl IndividualClassification {
             collect,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
@@ -301,6 +310,8 @@ impl IndividualClassification {
 ///     By default (`False`), data are not saved.
 ///     If `True`, data are saved internally and accessible via the Python API, but not written to a file.
 ///     If a string is provided, data are saved and written to the specified output file.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -310,7 +321,7 @@ pub struct ClusteringClassification(RsLeafletClassification);
 #[pymethods]
 impl ClusteringClassification {
     #[new]
-    #[pyo3(signature = (heads, frequency = None, collect = None))]
+    #[pyo3(signature = (heads, frequency = None, collect = None, flip = false))]
     pub fn new<'a>(
         heads: &str,
         #[gen_stub(override_type(
@@ -321,13 +332,14 @@ impl ClusteringClassification {
             type_repr = "typing.Optional[typing.Union[builtins.bool, builtins.str]]", imports=("typing")
         ))]
         collect: Option<Bound<'a, PyAny>>,
+        flip: bool,
     ) -> PyResult<Self> {
         let classification = add_collect(
             add_freq(RsLeafletClassification::clustering(heads), frequency)?,
             collect,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 
@@ -340,6 +352,8 @@ impl ClusteringClassification {
 ///     or a dictionary specifying the leaflet assignment.
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
 #[gen_stub_pyclass]
 #[pyclass(module = "gorder.leaflets")]
 #[derive(Clone)]
@@ -349,7 +363,7 @@ pub struct ManualClassification(RsLeafletClassification);
 #[pymethods]
 impl ManualClassification {
     #[new]
-    #[pyo3(signature = (input, frequency = None))]
+    #[pyo3(signature = (input, frequency = None, flip = false))]
     pub fn new(
         #[gen_stub(override_type(
             type_repr = "typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.uint8]]]", imports=("typing", "numpy")
@@ -359,6 +373,7 @@ impl ManualClassification {
             type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
         ))]
         frequency: Option<Frequency>,
+        flip: bool,
     ) -> PyResult<Self> {
         let classification = if let Ok(file) = input.extract::<String>() {
             RsLeafletClassification::from_file(&file)
@@ -371,7 +386,7 @@ impl ManualClassification {
             ));
         };
 
-        Ok(Self(add_freq(classification, frequency)?))
+        Ok(Self(add_freq(classification, frequency)?.with_flip(flip)))
     }
 }
 
@@ -391,6 +406,8 @@ impl ManualClassification {
 ///     Name of the group in the NDX file(s) specifying the atoms of the lower leaflet.
 /// frequency : Optional[Frequency]
 ///     Frequency of classification. Defaults to every frame.
+/// flip : bool, default=False
+///     Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
 ///
 /// Notes
 /// -----
@@ -404,7 +421,7 @@ pub struct NdxClassification(RsLeafletClassification);
 #[pymethods]
 impl NdxClassification {
     #[new]
-    #[pyo3(signature = (ndx, heads, upper_leaflet, lower_leaflet, frequency = None))]
+    #[pyo3(signature = (ndx, heads, upper_leaflet, lower_leaflet, frequency = None, flip = false))]
     pub fn new(
         ndx: Vec<String>,
         heads: &str,
@@ -414,6 +431,7 @@ impl NdxClassification {
             type_repr = "typing.Optional[gorder.Frequency]", imports=("typing")
         ))]
         frequency: Option<Frequency>,
+        flip: bool,
     ) -> PyResult<Self> {
         let classification = add_freq(
             RsLeafletClassification::from_ndx(
@@ -425,7 +443,7 @@ impl NdxClassification {
             frequency,
         )?;
 
-        Ok(Self(classification))
+        Ok(Self(classification.with_flip(flip)))
     }
 }
 

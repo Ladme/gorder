@@ -25,8 +25,10 @@ class ClusteringClassification:
         By default (`False`), data are not saved.
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
+    flip : bool, default=False
+        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
     """
-    def __new__(cls, heads:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> ClusteringClassification: ...
+    def __new__(cls, heads:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None, flip:builtins.bool=False) -> ClusteringClassification: ...
 
 class GlobalClassification:
     r"""
@@ -52,8 +54,10 @@ class GlobalClassification:
         By default (`False`), data are not saved.
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
+    flip : bool, default=False
+        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
     """
-    def __new__(cls, membrane:builtins.str, heads:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> GlobalClassification: ...
+    def __new__(cls, membrane:builtins.str, heads:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None, flip:builtins.bool=False) -> GlobalClassification: ...
 
 class IndividualClassification:
     r"""
@@ -80,8 +84,10 @@ class IndividualClassification:
         By default (`False`), data are not saved.
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
+    flip : bool, default=False
+        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
     """
-    def __new__(cls, heads:builtins.str, methyls:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> IndividualClassification: ...
+    def __new__(cls, heads:builtins.str, methyls:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None, flip:builtins.bool=False) -> IndividualClassification: ...
 
 class LocalClassification:
     r"""
@@ -110,8 +116,10 @@ class LocalClassification:
         By default (`False`), data are not saved.
         If `True`, data are saved internally and accessible via the Python API, but not written to a file.
         If a string is provided, data are saved and written to the specified output file.
+    flip : bool, default=False
+        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
     """
-    def __new__(cls, membrane:builtins.str, heads:builtins.str, radius:builtins.float, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None) -> LocalClassification: ...
+    def __new__(cls, membrane:builtins.str, heads:builtins.str, radius:builtins.float, frequency:typing.Optional[gorder.Frequency]=None, membrane_normal:typing.Optional[builtins.str]=None, collect:typing.Optional[typing.Union[builtins.bool, builtins.str]]=None, flip:builtins.bool=False) -> LocalClassification: ...
 
 class ManualClassification:
     r"""
@@ -124,8 +132,10 @@ class ManualClassification:
         or a dictionary specifying the leaflet assignment.
     frequency : Optional[Frequency]
         Frequency of classification. Defaults to every frame.
+    flip : bool, default=False
+        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
     """
-    def __new__(cls, input:typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.uint8]]], frequency:typing.Optional[gorder.Frequency]=None) -> ManualClassification: ...
+    def __new__(cls, input:typing.Union[builtins.str, typing.Mapping[builtins.str, numpy.typing.NDArray[numpy.uint8]]], frequency:typing.Optional[gorder.Frequency]=None, flip:builtins.bool=False) -> ManualClassification: ...
 
 class NdxClassification:
     r"""
@@ -145,10 +155,12 @@ class NdxClassification:
         Name of the group in the NDX file(s) specifying the atoms of the lower leaflet.
     frequency : Optional[Frequency]
         Frequency of classification. Defaults to every frame.
+    flip : bool, default=False
+        Flip the assignment. Upper leaflet should become lower leaflet and vice versa. The default value is false.
     
     Notes
     -----
     - No glob expansion is performed for the NDX files.
     """
-    def __new__(cls, ndx:typing.Sequence[builtins.str], heads:builtins.str, upper_leaflet:builtins.str, lower_leaflet:builtins.str, frequency:typing.Optional[gorder.Frequency]=None) -> NdxClassification: ...
+    def __new__(cls, ndx:typing.Sequence[builtins.str], heads:builtins.str, upper_leaflet:builtins.str, lower_leaflet:builtins.str, frequency:typing.Optional[gorder.Frequency]=None, flip:builtins.bool=False) -> NdxClassification: ...
 
