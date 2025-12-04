@@ -151,3 +151,4 @@ The command line tool, the Python package, and the Rust crate are all released u
 ## Limitations
 - `gorder` does not fully support simulation boxes that are **not** orthogonal. [You can still use them but it requires some additional effort.](https://ladme.github.io/gorder-manual/no_pbc.html)
 - `gorder` does not support TPR files generated with Gromacs older than version 5.1. [But you can use PDB, GRO, or PQR file instead.](https://ladme.github.io/gorder-manual/other_structure.html)
+- `gorder` reports order parameters per atom in the order in which they appear in the provided .itp file. This is not necessarily the same order as in the acyl chain.
